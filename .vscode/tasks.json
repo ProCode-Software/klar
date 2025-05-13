@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Watch VSCode",
+			"type": "shell",
+			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}/klar-vscode"
+			},
+			"command": "bun run watch",
+			"problemMatcher": []
+		}
+	]
+}

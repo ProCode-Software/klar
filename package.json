@@ -1,0 +1,9 @@
+{
+  "name": "klar",
+  "version": "0.0.1",
+  "description": "A programming language",
+  "workspaces": ["klar-vscode"],
+  "keywords": ["programming language"],
+  "author": "ProCode Software",
+  "license": "MIT"
+}

@@ -1,0 +1,11 @@
+{
+    "[typescript]": {
+        "editor.fontLigatures": false,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.fontLigatures": false,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "npm.packageManager": "bun"
+}

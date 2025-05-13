@@ -1,0 +1,33 @@
+{
+  "name": "klar",
+  "displayName": "Klar",
+  "description": "A programming language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "devDependencies": {
+    "vsxtools": "link:vsxtools",
+    "@vscode/vsce": "3.3.2"
+  },
+  "scripts": {
+    "watch": "vsxtools build-grammar src/klar.ts syntaxes/klar.tmLanguage.json --watch",
+    "build": "vsce package"
+  },
+  "contributes": {
+    "languages": [{
+      "id": "klar",
+      "aliases": ["Klar", "klar"],
+      "extensions": [".klar"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "klar",
+      "scopeName": "source.klar",
+      "path": "./syntaxes/klar.tmLanguage.json"
+    }]
+  }
+}

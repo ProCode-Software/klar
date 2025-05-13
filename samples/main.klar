@@ -1,0 +1,33 @@
+type Gender { male | female | nonBinary | other }
+
+type Person(Other) {
+    name: String
+    age: Int
+    gender: Gender?
+}
+
+func Person.greet(person otherPerson: String) {
+    print("Hello {otherPerson}! My name is {name}.")
+}
+
+people: [Person] := [
+    Person(name: "John", age: 34, gender: .male),
+    Person(name: "Jane", age: 32, gender: .female),
+]
+print(people)
+
+name: String := [String]("John")
+
+when this := scan() {
+    'John' | 'Jane' -> 'JD'
+    _ -> '??'
+}
+
+a: [String] := "John"
+
+
+for i, person := 1..10 {
+
+}
+
+1..10
