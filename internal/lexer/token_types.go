@@ -10,6 +10,8 @@ const (
 	// Punctuation
 	Comma            // ,
 	Dot              // .
+	LineComment      // //
+	BlockComment     // /*
 	Colon            // :
 	LeftBracket      // [
 	RightBracket     // ]
@@ -54,11 +56,12 @@ const (
 
 	// Types
 	Alternative // |
-	TypeOption  // ?
+	Optional    // ?
 
 	// Misc
-	Spread // ...
-	Arrow  // ->
+	Spread   // ...
+	Arrow    // ->
+	Pipeline // |>
 
 	// Keywords
 	For
@@ -76,14 +79,6 @@ const (
 	Octal
 	Binary
 )
-
-var Operators = []string{
-	"++", "--", "...",
-	":=", "+=", "-=",
-	"==", "!=", ">=", "<=", "||", "&&",
-	"=", "+", "-", "*", "/", "%", "^", "!", ">", "<",
-	"|", "?", "->",
-}
 
 var OperatorMap = map[string]TokenType{
 	"++":  Increment,
@@ -110,8 +105,13 @@ var OperatorMap = map[string]TokenType{
 	">":   GreaterThan,
 	"<":   LessThan,
 	"|":   Alternative,
-	"?":   TypeOption,
-	":":   Colon, // Punctuation
+	"?":   Optional,
+	"|>":  Pipeline,
+
+	// Punctuation
+	":":  Colon,
+	"//": LineComment,
+	"/*": BlockComment,
 }
 
 var KeywordMap = map[string]TokenType{
@@ -123,7 +123,26 @@ var KeywordMap = map[string]TokenType{
 	"type":   Type,
 	"when":   When,
 	"_":      Discard,
-	"true": Boolean,
-	"false": Boolean,
-	"nil": Nil,
+	"true":   Boolean,
+	"false":  Boolean,
+	"nil":    Nil,
+}
+
+func NewLexerToken(pos Position, kind TokenType, src string) *Token {
+	return &Token{pos, kind, src, nil}
+}
+
+type Token struct {
+	Position
+	Kind       TokenType
+	Source     string
+	Attributes map[string]any
+}
+
+func (t *Token) SetAttribute(key string, value any) *Token {
+	if t.Attributes == nil {
+		t.Attributes = make(map[string]any)
+	}
+	t.Attributes[key] = value
+	return t
 }

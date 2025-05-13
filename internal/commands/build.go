@@ -18,11 +18,11 @@ func BuildError(err error) {
 func Build() {
 	cli := args.ArgTable{}
 	wg := sync.WaitGroup{}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
+	cli.Parse()
 	for _, input := range cli.Args {
 		wg.Add(1)
 		go func(input string) {
@@ -39,10 +39,11 @@ func Build() {
 			buildFile(file)
 		}(input)
 	}
+	wg.Wait()
+	fmt.Println("Build complete!")
 }
 
 func buildFile(file *os.File) {
-	outputFile, _ := os.Create(file.Name() + "_build.txt")
 	lexer := lxr.NewLexer(file)
 
 	// Recover if the lexer panics
@@ -52,10 +53,27 @@ func buildFile(file *os.File) {
 		}
 	}()
 	for {
-		pos, token, src := lexer.Parse()
-		if token == lxr.EOF { // EOF
+		token := lexer.Parse()
+		if token.Kind == lxr.EOF { // EOF
 			break
 		}
-		fmt.Fprintf(outputFile, "%")
+		var pre, post string
+		if token.Kind == lxr.Illegal {
+			pre, post = "\033[31m", "\033[m"
+		}
+		if token.Attributes != nil {
+			fmt.Printf(
+				pre+"%-20s %-8q %v %+v\n"+post,
+				lxr.TokenTypes[token.Kind],
+				token.Source, token.Position,
+				token.Attributes,
+			)
+		} else {
+			fmt.Printf(
+				pre+"%-20s %-8q %v\n"+post,
+				lxr.TokenTypes[token.Kind],
+				token.Source, token.Position,
+			)
+		}
 	}
 }

@@ -6,20 +6,22 @@ import (
 )
 
 type FlagType int
+
 const (
 	TypeBoolFlag FlagType = iota
 	TypeStringFlag
 )
 
-type FlagDefinition struct{
-	Type FlagType
+type FlagDefinition struct {
+	Type        FlagType
 	Description string
-	Default any
+	Default     any
 }
 
 type ArgTable struct {
-	Args []string
-	Flags map[string]any
+	NoShift     bool
+	Args        []string
+	Flags       map[string]any
 	Definitions map[string]FlagDefinition
 }
 
@@ -71,8 +73,11 @@ func (t *ArgTable) Parse() {
 			t.Args = append(t.Args, arg)
 		}
 	}
+	if !t.NoShift {
+		t.Args = t.Args[1:]
+	}
 }
 
 func (t ArgTable) PrintHelp(cmdName string) {
-	
+
 }
