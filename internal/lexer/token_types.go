@@ -110,6 +110,7 @@ var OperatorMap = map[string]TokenType{
 
 	// Punctuation
 	":":  Colon,
+	".":  Dot,
 	"//": LineComment,
 	"/*": BlockComment,
 }

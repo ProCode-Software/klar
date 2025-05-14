@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+go run ./cmd/klar build ./samples/main.klar

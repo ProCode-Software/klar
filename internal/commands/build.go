@@ -47,13 +47,13 @@ func buildFile(file *os.File) {
 	lexer := lxr.NewLexer(file)
 
 	// Recover if the lexer panics
-	defer func() {
+	/* defer func() {
 		if err := recover(); err != nil {
 			BuildError(fmt.Errorf("%v", err))
 		}
-	}()
+	}() */
 	for {
-		token := lexer.Parse()
+		token := lexer.Tokenize()
 		if token.Kind == lxr.EOF { // EOF
 			break
 		}

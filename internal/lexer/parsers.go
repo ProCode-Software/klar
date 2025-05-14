@@ -1,32 +1,53 @@
 package lexer
 
 import (
-	"fmt"
+	"io"
 	"unicode"
 )
 
-func getOperatorType(op string) (TokenType, string) {
+// Returns true if the error is EOF, otherwise panics
+func handlePeekError(err error) bool {
+	if err != nil {
+		if err == io.EOF {
+			return true
+		}
+		panic(err)
+	}
+	return false
+}
+
+func (l *Lexer) ParseOperator() (TokenType, string) {
+	op := l.TokenizeFunc(func(r rune, s *string) {
+		switch r {
+		// Only characters in a multichar operator
+		case '/', '*', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
+			*s += string(r)
+		}
+	})
 	for len(op) >= 1 {
 		if operator, is := OperatorMap[op]; is {
+			if operator == Dot {
+				l.Reader.UnreadRune()
+				next, err := l.Reader.Peek(1)
+				if handlePeekError(err) {
+					return Illegal, op
+				}
+				if unicode.IsDigit(rune(next[0])) {
+					l.Reader.ReadRune()
+					newToken := l.ParseNumber(l.Pos)
+					return newToken.Kind, newToken.Source
+				}
+			}
 			return operator, op
 		}
 		op = op[:len(op)-1] // Parsed too much characters: backup
 	}
 	return Illegal, op
 }
-
-func (l *Lexer) ParseOperator() (TokenType, string) {
-	op := l.ParseFunc(func(r rune, s *string) {
-		switch r {
-		// Only characters in a multichar operator
-		case '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
-			*s += string(r)
-		}
-	})
-	return getOperatorType(op)
-}
 func (l *Lexer) ParseLineComment() string {
-	cmt := "/" + l.ParseFunc(func(r rune, s *string) {
+	l.Reader.ReadRune()
+	l.Pos.Col++
+	cmt := "/" + l.TokenizeFunc(func(r rune, s *string) {
 		// ParseFunc backs up one rune, so / is reparsed
 		if *s != "/" && r == '\n' {
 			return
@@ -36,11 +57,25 @@ func (l *Lexer) ParseLineComment() string {
 	return cmt
 }
 func (l *Lexer) ParseBlockComment() string {
-	cmt := "/" + l.ParseFunc(func(r rune, s *string) {
-		// ParseFunc backs up one rune, so * is reparsed
-		if *s != "*" && (*s)[len(*s)-1] == '*' && r == '/' {
+	l.Reader.ReadRune()
+	l.Pos.Col++
+	cmtLevel := 1
+	cmt := "*" + l.TokenizeFunc(func(r rune, s *string) {
+		if *s == "" && r == '/' {
 			*s += string(r)
+		}
+		// ParseFunc backs up one rune, so * is reparsed
+		if *s != "*" && len(*s) > 0 && (*s)[len(*s)-1] == '*' && r == '/' {
+			if cmtLevel == 1 {
+				return
+			}
+			*s += string(r)
+			cmtLevel--
 			return
+		}
+		// Nested comment
+		if len(*s) > 0 && (*s)[len(*s)-1] == '/' && r == '*' {
+			cmtLevel++
 		}
 		*s += string(r)
 	})
@@ -54,11 +89,8 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		isDot      bool
 		errorType  int
 	)
-	digit := l.ParseFunc(func(r rune, lit *string) {
+	digit := l.TokenizeFunc(func(r rune, lit *string) {
 		s := unicode.ToLower(r)
-		if r == '.' {
-			fmt.Printf("\033[33mNumber: %s\033[m\n", *lit)
-		}
 		if *lit == "0" {
 			switch s {
 			case 'x':
@@ -76,15 +108,6 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			default:
 				format = Decimal
 			}
-		} else if *lit == "" && r == '.' { // .3
-			format = Decimal
-			*lit += string(r)
-			return
-		}
-		if *lit == "." && !unicode.IsDigit(r) {
-			// Parsed a dot
-			l.Backup()
-			return
 		}
 		switch s {
 		case 'a', 'b', 'c', 'd', 'e', 'f':
@@ -107,19 +130,31 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			}
 		case '.':
 			switch {
-			case *lit == ".":
+			// unread-peek-check-read
+			case *lit == "": // .3
 				format = Decimal
 				*lit += string(r)
-			case format == Decimal && (*lit)[len(*lit)-1] != '.':
-				*lit += string(r)
-			case (*lit)[len(*lit)-1] == '.':
-				// An operator, not a number
-				isDot = true
+			case format != Decimal:
+				errorType = IntIncompatibleDigit
+				isIllegal = true
 				return
 			default:
-				// Double decimal point or other
-				isIllegal = true
-				errorType = IntMultipleDot
+				l.Reader.UnreadRune()
+				next, err := l.Reader.Peek(2)
+				if handlePeekError(err) {
+					// Trailing decimal point at EOF
+					l.Reader.ReadRune()
+					*lit += string(r)
+					return
+				}
+				if !unicode.IsDigit(rune(next[1])) {
+					isDot = true
+					l.Reader.ReadRune()
+					return
+				}
+				// Normal decimal point
+				l.Reader.ReadRune()
+				*lit += string(r)
 				return
 			}
 		case '_':
@@ -151,7 +186,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 	case digit == ".":
 		return NewLexerToken(pos, Dot, digit)
 	case isDot:
-		
+		// Not a number - may be 1...10
 	case digit[len(digit)-1] == '_' || digit[0] == '_':
 		isIllegal = true
 		errorType = IntIncompatibleDigit
@@ -165,8 +200,8 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		SetAttribute("error", errorType)
 }
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
-	id := l.ParseFunc(func(r rune, lit *string) {
-		if r == '_' || unicode.IsLetter(r) || unicode.IsLetter(r) {
+	id := l.TokenizeFunc(func(r rune, lit *string) {
+		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			*lit += string(r)
 		}
 	})
@@ -177,19 +212,24 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 }
 func (l *Lexer) ParseString(pos Position) *Token {
 	var (
-		isEscape bool
-		delim    rune
-		err      int
+		isEscape   bool
+		shouldStop bool
+		delim      rune
+		err        int
 	)
-	str := l.ParseFunc(func(r rune, s *string) {
+	str := l.TokenizeFunc(func(r rune, s *string) {
+		if shouldStop {
+			return
+		}
 		switch r {
 		case '"', '\'', '`':
 			if delim == 0 { // Unset
 				delim = r
 			} else if delim == r && !isEscape {
-				return
+				shouldStop = true
 			}
 			*s += string(r)
+			isEscape = false
 		case '\\':
 			isEscape = !isEscape
 		case '\n':
@@ -200,9 +240,10 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			}
 			*s += string(r)
 		default:
+			isEscape = false
 			*s += string(r)
 		}
-	}) + string(delim)
+	})
 	// Invalid if first character in string isn't the same as last (unterminated)
 	return NewLexerToken(pos, String, str).
 		SetAttribute("quoteStyle", delim).

@@ -19,7 +19,7 @@ func NewLexer(reader io.Reader) *Lexer {
 	return &Lexer{Position{1, 1}, bufio.NewReader(reader)}
 }
 
-func (l *Lexer) Parse() *Token {
+func (l *Lexer) Tokenize() *Token {
 	for {
 		pos := l.Pos
 		rune, _, err := l.Reader.ReadRune()
@@ -31,7 +31,6 @@ func (l *Lexer) Parse() *Token {
 		}
 		l.Pos.Col++
 
-		
 		switch rune {
 		case '\n':
 			l.ResetPosition()
@@ -41,20 +40,20 @@ func (l *Lexer) Parse() *Token {
 		case '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
-			// Keep going if it's a dot
-			if !(tt == Illegal && val == ".") {
-				return NewLexerToken(pos, tt, val)
-			}
 			// Skip comments, just change position
 			if tt == LineComment {
 				l.ParseLineComment()
-				continue
-				// return pos, LineComment, l.ParseLineComment()
+				//continue
+				return NewLexerToken(pos, LineComment, l.ParseLineComment())
 			}
 			if tt == BlockComment {
 				l.ParseBlockComment()
-				continue
-				// return pos, BlockComment, l.ParseBlockComment()
+				//continue
+				return NewLexerToken(pos, BlockComment, l.ParseBlockComment())
+			}
+			// Keep going if it's a dot
+			if !(tt == Illegal && val == ".") {
+				return NewLexerToken(pos, tt, val)
 			}
 		// Single-character operators
 		case '*':
@@ -82,7 +81,6 @@ func (l *Lexer) Parse() *Token {
 		case unicode.IsSpace(rune):
 			continue
 		case unicode.IsDigit(rune) || rune == '.':
-			// Also covers dot
 			return l.ParseNumber(pos)
 		case unicode.IsLetter(rune), rune == '_':
 			tt, val := l.ParseIdentifier()
@@ -103,7 +101,7 @@ func (l *Lexer) Backup() {
 	l.Pos.Col--
 }
 
-func (l *Lexer) ParseFunc(fn func(rune, *string)) (literal string) {
+func (l *Lexer) TokenizeFunc(fn func(rune, *string)) (literal string) {
 	l.Backup()
 	var oldLit string
 	for {
@@ -118,7 +116,7 @@ func (l *Lexer) ParseFunc(fn func(rune, *string)) (literal string) {
 		oldLit = literal
 		fn(rune, &literal)
 		if literal == oldLit {
-			//l.Backup()
+			l.Backup()
 			return
 		}
 	}

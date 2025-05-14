@@ -25,7 +25,12 @@ when this := scan() {
 
 a: [String] := "John"
 
+1.2
+1.toString()
 
-for i, person := 1...10 {
+for i, person := 1.2...10 {
 
 }
+
+ // This is a comment
+/* This i a comment */
