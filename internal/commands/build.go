@@ -45,6 +45,7 @@ func Build() {
 
 func buildFile(file *os.File) {
 	lexer := lxr.NewLexer(file)
+	lexer.IncludeComments = true
 
 	// Recover if the lexer panics
 	/* defer func() {
@@ -54,9 +55,6 @@ func buildFile(file *os.File) {
 	}() */
 	for {
 		token := lexer.Tokenize()
-		if token.Kind == lxr.EOF { // EOF
-			break
-		}
 		var pre, post string
 		if token.Kind == lxr.Illegal {
 			pre, post = "\033[31m", "\033[m"
@@ -74,6 +72,9 @@ func buildFile(file *os.File) {
 				lxr.TokenTypes[token.Kind],
 				token.Source, token.Position,
 			)
+		}
+		if token.Kind == lxr.EOF { // EOF
+			break
 		}
 	}
 }

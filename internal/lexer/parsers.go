@@ -6,7 +6,7 @@ import (
 )
 
 // Returns true if the error is EOF, otherwise panics
-func handlePeekError(err error) bool {
+func handleReadError(err error) bool {
 	if err != nil {
 		if err == io.EOF {
 			return true
@@ -29,7 +29,7 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 			if operator == Dot {
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(1)
-				if handlePeekError(err) {
+				if handleReadError(err) {
 					return Illegal, op
 				}
 				if unicode.IsDigit(rune(next[0])) {
@@ -45,41 +45,33 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 	return Illegal, op
 }
 func (l *Lexer) ParseLineComment() string {
-	l.Reader.ReadRune()
-	l.Pos.Col++
-	cmt := "/" + l.TokenizeFunc(func(r rune, s *string) {
-		// ParseFunc backs up one rune, so / is reparsed
-		if *s != "/" && r == '\n' {
+	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
+		// Beginning // is already parsed
+		if r == '\n' {
+			l.ResetPosition()
 			return
 		}
 		*s += string(r)
 	})
-	return cmt
+	return "//" + cmt + "\n"
 }
 func (l *Lexer) ParseBlockComment() string {
-	l.Reader.ReadRune()
-	l.Pos.Col++
 	cmtLevel := 1
-	cmt := "*" + l.TokenizeFunc(func(r rune, s *string) {
-		if *s == "" && r == '/' {
-			*s += string(r)
-		}
-		// ParseFunc backs up one rune, so * is reparsed
-		if *s != "*" && len(*s) > 0 && (*s)[len(*s)-1] == '*' && r == '/' {
-			if cmtLevel == 1 {
-				return
+	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
+		if len(*s) > 1 {
+			last := (*s)[len(*s)-1]
+			if last == '*' && r == '/' {
+				cmtLevel--
+				if cmtLevel == 0 {
+					return
+				}
+			} else if last == '/' && r == '*' {
+				cmtLevel++
 			}
-			*s += string(r)
-			cmtLevel--
-			return
-		}
-		// Nested comment
-		if len(*s) > 0 && (*s)[len(*s)-1] == '/' && r == '*' {
-			cmtLevel++
 		}
 		*s += string(r)
 	})
-	return cmt
+	return "/*" + cmt + "/"
 }
 func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (
@@ -141,7 +133,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			default:
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
-				if handlePeekError(err) {
+				if handleReadError(err) {
 					// Trailing decimal point at EOF
 					l.Reader.ReadRune()
 					*lit += string(r)
@@ -233,6 +225,7 @@ func (l *Lexer) ParseString(pos Position) *Token {
 		case '\\':
 			isEscape = !isEscape
 		case '\n':
+			l.ResetPosition()
 			if delim != '`' {
 				// Invalid newline
 				err = StrUnterminated

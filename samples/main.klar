@@ -32,5 +32,7 @@ for i, person := 1.2...10 {
 
 }
 
- // This is a comment
+// This is a comment
 /* This i a comment */
+
+TYPE

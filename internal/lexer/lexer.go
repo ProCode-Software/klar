@@ -11,23 +11,23 @@ type Position struct {
 }
 
 type Lexer struct {
-	Pos    Position
-	Reader *bufio.Reader
+	Pos             Position
+	Reader          *bufio.Reader
+	IncludeComments bool // Only for doc parsers
 }
 
 func NewLexer(reader io.Reader) *Lexer {
-	return &Lexer{Position{1, 1}, bufio.NewReader(reader)}
+	return &Lexer{
+		Position{1, 1}, bufio.NewReader(reader), false,
+	}
 }
 
 func (l *Lexer) Tokenize() *Token {
 	for {
 		pos := l.Pos
 		rune, _, err := l.Reader.ReadRune()
-		if err != nil {
-			if err == io.EOF {
-				return NewLexerToken(pos, EOF, "")
-			}
-			panic(err)
+		if handleReadError(err) {
+			return NewLexerToken(pos, EOF, "")
 		}
 		l.Pos.Col++
 
@@ -42,14 +42,18 @@ func (l *Lexer) Tokenize() *Token {
 			tt, val := l.ParseOperator()
 			// Skip comments, just change position
 			if tt == LineComment {
-				l.ParseLineComment()
-				//continue
-				return NewLexerToken(pos, LineComment, l.ParseLineComment())
+				src := l.ParseLineComment()
+				if !l.IncludeComments {
+					continue
+				}
+				return NewLexerToken(pos, LineComment, src)
 			}
 			if tt == BlockComment {
-				l.ParseBlockComment()
-				//continue
-				return NewLexerToken(pos, BlockComment, l.ParseBlockComment())
+				src := l.ParseBlockComment()
+				if !l.IncludeComments {
+					continue
+				}
+				return NewLexerToken(pos, BlockComment, src)
 			}
 			// Keep going if it's a dot
 			if !(tt == Illegal && val == ".") {
@@ -103,20 +107,23 @@ func (l *Lexer) Backup() {
 
 func (l *Lexer) TokenizeFunc(fn func(rune, *string)) (literal string) {
 	l.Backup()
+	literal = l.TokenizeFwdFunc(fn)
+	l.Backup()
+	return
+}
+
+// TokenizeFunc but doesn't backup first
+func (l *Lexer) TokenizeFwdFunc(fn func(rune, *string)) (literal string) {
 	var oldLit string
 	for {
 		rune, _, err := l.Reader.ReadRune()
-		if err != nil {
-			if err == io.EOF {
-				return literal
-			}
-			panic(err)
+		if handleReadError(err) {
+			return
 		}
 		l.Pos.Col++
 		oldLit = literal
 		fn(rune, &literal)
 		if literal == oldLit {
-			l.Backup()
 			return
 		}
 	}
