@@ -108,7 +108,6 @@ func (l *Lexer) Backup() {
 func (l *Lexer) TokenizeFunc(fn func(rune, *string)) (literal string) {
 	l.Backup()
 	literal = l.TokenizeFwdFunc(fn)
-	l.Backup()
 	return
 }
 
@@ -124,6 +123,7 @@ func (l *Lexer) TokenizeFwdFunc(fn func(rune, *string)) (literal string) {
 		oldLit = literal
 		fn(rune, &literal)
 		if literal == oldLit {
+			l.Backup()
 			return
 		}
 	}

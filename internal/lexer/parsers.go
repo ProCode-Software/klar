@@ -45,33 +45,37 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 	return Illegal, op
 }
 func (l *Lexer) ParseLineComment() string {
+	var shouldStop bool
 	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
+		if shouldStop {
+			return
+		}
 		// Beginning // is already parsed
 		if r == '\n' {
 			l.ResetPosition()
-			return
+			shouldStop = true
 		}
 		*s += string(r)
 	})
-	return "//" + cmt + "\n"
+	return "//" + cmt
 }
 func (l *Lexer) ParseBlockComment() string {
 	cmtLevel := 1
 	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
+		if cmtLevel == 0 {
+			return
+		}
 		if len(*s) > 1 {
 			last := (*s)[len(*s)-1]
 			if last == '*' && r == '/' {
 				cmtLevel--
-				if cmtLevel == 0 {
-					return
-				}
 			} else if last == '/' && r == '*' {
 				cmtLevel++
 			}
 		}
 		*s += string(r)
 	})
-	return "/*" + cmt + "/"
+	return "/*" + cmt
 }
 func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (
