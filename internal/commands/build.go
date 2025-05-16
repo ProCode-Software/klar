@@ -5,13 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/ProCode-Software/klar/internal/args"
-	lxr "github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
 func BuildError(err error) {
-	fmt.Fprintf(os.Stderr, "Build failed: %v", err)
+	fmt.Fprintf(os.Stderr, "\033[1;31m❌ Build failed\033[0;1;2m:\033[0;1m\n    %v\033[m\n", err)
 	os.Exit(1)
 }
 
@@ -23,6 +24,7 @@ func Build() {
 		panic(err)
 	}
 	cli.Parse()
+	startTime := time.Now()
 	for _, input := range cli.Args {
 		wg.Add(1)
 		go func(input string) {
@@ -40,41 +42,44 @@ func Build() {
 		}(input)
 	}
 	wg.Wait()
-	fmt.Println("Build complete!")
+	endTime := time.Since(startTime)
+	fmt.Printf(
+		"\033[1;32m✅ Build succeeded in \033[36m%dms\033[32m!\033[m\n",
+		endTime.Milliseconds(),
+	)
 }
 
 func buildFile(file *os.File) {
-	lexer := lxr.NewLexer(file)
-	lexer.IncludeComments = true
-
-	// Recover if the lexer panics
-	/* defer func() {
+	// Recover if panics
+	defer func() {
 		if err := recover(); err != nil {
-			BuildError(fmt.Errorf("%v", err))
+			BuildError(fmt.Errorf("Internal Error: %v", err))
 		}
-	}() */
+	}()
+
+	// ========================
+	// LEXER
+	// ========================
+	lex := lexer.NewLexer(file)
+	lex.IncludeComments = true
+
+	// Estimate token capacity
+	stat, err := file.Stat()
+	if err != nil {
+		panic(err)
+	}
+	byteSize := stat.Size()
+	tokens := make([]lexer.Token, 0, byteSize/4)
+
 	for {
-		token := lexer.Tokenize()
-		var pre, post string
-		if token.Kind == lxr.Illegal {
-			pre, post = "\033[31m", "\033[m"
-		}
-		if token.Attributes != nil {
-			fmt.Printf(
-				pre+"%-20s %-8q %v %+v\n"+post,
-				lxr.TokenTypes[token.Kind],
-				token.Source, token.Position,
-				token.Attributes,
-			)
-		} else {
-			fmt.Printf(
-				pre+"%-20s %-8q %v\n"+post,
-				lxr.TokenTypes[token.Kind],
-				token.Source, token.Position,
-			)
-		}
-		if token.Kind == lxr.EOF { // EOF
+		token := lex.Tokenize()
+		tokens = append(tokens, *token)
+		if token.Kind == lexer.EOF {
 			break
 		}
 	}
+
+	// ========================
+	// PARSER
+	// ========================
 }

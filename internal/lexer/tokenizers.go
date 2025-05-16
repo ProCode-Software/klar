@@ -206,12 +206,14 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 	}
 	return Identifier, id
 }
+
 func (l *Lexer) ParseString(pos Position) *Token {
 	var (
 		isEscape   bool
 		shouldStop bool
 		delim      rune
 		err        int
+		escapes    = make(map[Position]stringEscape)
 	)
 	str := l.TokenizeFunc(func(r rune, s *string) {
 		if shouldStop {
@@ -227,7 +229,10 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			*s += string(r)
 			isEscape = false
 		case '\\':
-			isEscape = !isEscape
+			if delim != '`' {
+				isEscape = !isEscape
+				escapes[l.Pos] = l.parseStringEscape(delim)
+			}
 		case '\n':
 			l.ResetPosition()
 			if delim != '`' {
