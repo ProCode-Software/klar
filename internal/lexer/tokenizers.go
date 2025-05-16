@@ -213,6 +213,7 @@ func (l *Lexer) ParseString(pos Position) *Token {
 		shouldStop bool
 		delim      rune
 		err        int
+		escapePos = make([]Position, 0)
 		escapes    = make(map[Position]stringEscape)
 	)
 	str := l.TokenizeFunc(func(r rune, s *string) {
@@ -231,7 +232,7 @@ func (l *Lexer) ParseString(pos Position) *Token {
 		case '\\':
 			if delim != '`' {
 				isEscape = !isEscape
-				escapes[l.Pos] = l.parseStringEscape(delim)
+				escapePos = append(escapePos, l.Pos)
 			}
 		case '\n':
 			l.ResetPosition()
@@ -246,8 +247,10 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			*s += string(r)
 		}
 	})
+	escapes[l.Pos] = l.parseStringEscape(delim)
 	// Invalid if first character in string isn't the same as last (unterminated)
 	return NewLexerToken(pos, String, str).
 		SetAttribute("quoteStyle", delim).
-		SetAttribute("error", err)
+		SetAttribute("error", err).
+		SetAttribute("escapes", escapes)
 }

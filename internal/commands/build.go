@@ -74,6 +74,9 @@ func buildFile(file *os.File) {
 	for {
 		token := lex.Tokenize()
 		tokens = append(tokens, *token)
+		if token.Kind == lexer.String {
+			fmt.Printf("%#v\n", token)
+		}
 		if token.Kind == lexer.EOF {
 			break
 		}

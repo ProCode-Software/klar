@@ -7,7 +7,7 @@ type Person(Other) {
 }
 
 func Person.greet(person otherPerson: String) {
-    print("Hello {otherPerson}! My name is {name}.")
+    print("Hello {otherPerson}! My name is {name}.\n")
 }
 
 people: [Person] := [
