@@ -7,5 +7,6 @@
         "editor.fontLigatures": false,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "npm.packageManager": "bun"
+    "npm.packageManager": "bun",
+    "npm.scriptRunner": "bun"
 }

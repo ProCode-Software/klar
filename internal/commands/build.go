@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,7 +9,10 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/args"
+	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/parser"
+	"github.com/sanity-io/litter"
 )
 
 func BuildError(err error) {
@@ -53,7 +57,7 @@ func buildFile(file *os.File) {
 	// Recover if panics
 	defer func() {
 		if err := recover(); err != nil {
-			BuildError(fmt.Errorf("Internal Error: %v", err))
+			errors.InternalError(err)
 		}
 	}()
 
@@ -74,9 +78,6 @@ func buildFile(file *os.File) {
 	for {
 		token := lex.Tokenize()
 		tokens = append(tokens, *token)
-		if token.Kind == lexer.String {
-			fmt.Printf("%#v\n", token)
-		}
 		if token.Kind == lexer.EOF {
 			break
 		}
@@ -85,4 +86,18 @@ func buildFile(file *os.File) {
 	// ========================
 	// PARSER
 	// ========================
+
+	// SyntaxError if the parser panics
+	defer func() {
+		if err := recover(); err != nil {
+			BuildError(fmt.Errorf("%v", err))
+		}
+	}()
+	program := parser.Parse(tokens, true)
+	litter.Dump(program)
+	jsonAST, err := json.MarshalIndent(program, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile(file.Name()+".ast.json", jsonAST, 0644)
 }

@@ -3,22 +3,25 @@ package lexer
 type TokenType int
 
 const (
-	EOF = iota
+	EOF            = iota
+	EndOfStatement // Replacement for semicolons
 	Illegal
 	Newline
 
 	// Punctuation
-	Comma            // ,
-	Dot              // .
-	LineComment      // //
-	BlockComment     // /*
-	Colon            // :
-	LeftBracket      // [
-	RightBracket     // ]
-	LeftParenthesis  // (
-	RightParenthesis // )
-	LeftCurlyBrace   // {
-	RightCurlyBrace  // }
+	Comma              // ,
+	Dot                // .
+	LineComment        // //
+	BlockComment       // /*
+	Colon              // :
+	LeftBracket        // [
+	RightBracket       // ]
+	LeftParenthesis    // (
+	RightParenthesis   // )
+	LeftCurlyBrace     // {
+	RightCurlyBrace    // }
+	HashLeftCurlyBrace // #{
+	At                 // @
 
 	Identifier
 	Numeric
@@ -74,10 +77,10 @@ const (
 )
 
 const (
-	Decimal = iota
-	Hexadecimal
-	Octal
-	Binary
+	NumberFormatDecimal = iota
+	NumberFormatHexadecimal
+	NumberFormatOctal
+	NumberFormatBinary
 )
 
 var OperatorMap = map[string]TokenType{
@@ -111,6 +114,8 @@ var OperatorMap = map[string]TokenType{
 	// Punctuation
 	":":  Colon,
 	".":  Dot,
+	"@":  At,
+	"#{": HashLeftCurlyBrace,
 	"//": LineComment,
 	"/*": BlockComment,
 }

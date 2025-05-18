@@ -1,11 +1,14 @@
 package lexer
 
-import "unicode"
+import (
+	"unicode"
+)
 
 type StringEscapeType int
 
 const (
-	CharacterEscape StringEscapeType = iota
+	_ StringEscapeType = iota
+	CharacterEscape
 	HexadecimalEscape
 	UnicodeEscape
 	StringInterpolation
@@ -15,34 +18,44 @@ type StringEscapeErrorType int
 
 const (
 	_ StringEscapeErrorType = iota
-	EscapeNotEnough
-	EscapeTooLong
-	EscapeExpectedChar
-	EscapeExpectedHexChar
-	EscapeUnknown
+	ErrEscapeNotEnough
+	ErrEscapeTooLong
+	ErrEscapeExpectedChar
+	ErrEscapeExpectedHexChar
+	ErrEscapeUnknown
 )
 
-type stringEscape struct {
+type StringEscape struct {
 	Type          StringEscapeType
 	Value         string
 	Invalid       bool
 	InvalidReason StringEscapeErrorType
 }
 
-func (l *Lexer) parseStringEscape(delim rune) stringEscape {
+// Intentionally creating a new lexer
+func (l Lexer) parseStringEscape(pos Position, delim rune) StringEscape {
 	var (
 		escType       StringEscapeType
 		isInvalid     bool
 		invalidReason StringEscapeErrorType
 		isDone        bool
-		isHex         = func(r rune) bool { return unicode.Is(unicode.ASCII_Hex_Digit, r) }
 	)
+	pos = Position{pos.Line, pos.Col - 1}
+	isHex := func(r rune) bool { return unicode.Is(unicode.ASCII_Hex_Digit, r) }
 
-	esc := l.TokenizeFunc(func(r rune, s *string) {
+	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		switch {
 		case isDone:
 			return
-		case *s == "":
+		case *s == "" && r == '{':
+			escType = StringInterpolation
+		case escType == StringInterpolation && r == '}':
+			if len(*s) == 1 {
+				isInvalid = true
+				invalidReason = ErrEscapeNotEnough
+			}
+			isDone = true
+		case *s == "\\":
 			switch r {
 			case 'u':
 				// Unicode escape \u{1234}
@@ -63,43 +76,43 @@ func (l *Lexer) parseStringEscape(delim rune) stringEscape {
 			default:
 				// Invalid escape
 				isInvalid = true
-				invalidReason = EscapeUnknown
+				invalidReason = ErrEscapeUnknown
 				isDone = true
 			}
 			*s += string(r)
 			return
-		case *s == "u" && r != '{':
+		case *s == "\\u" && r != '{':
 			isInvalid = true
-			invalidReason = EscapeExpectedChar
+			invalidReason = ErrEscapeExpectedChar
 		case escType == HexadecimalEscape:
-			if len(*s) >= 2 {
+			if len(*s) >= 3 {
 				isDone = true
 			} else if !isHex(r) {
 				isInvalid = true
-				invalidReason = EscapeExpectedHexChar
+				invalidReason = ErrEscapeExpectedHexChar
 			}
 		case escType == UnicodeEscape && r == '}':
-			if len(*s) <= 2 {
+			if len(*s) < 4 { // At least 1 digit required
 				isInvalid = true
-				invalidReason = EscapeNotEnough
+				invalidReason = ErrEscapeNotEnough
 			}
 			isDone = true
 		case escType == UnicodeEscape:
 			if !isHex(r) {
 				isInvalid = true
-				invalidReason = EscapeExpectedHexChar
+				invalidReason = ErrEscapeExpectedHexChar
 			}
 		}
 		*s += string(r)
 	})
-	if escType == UnicodeEscape && len(esc) > 9 { // u + { + 6 + }
+	if escType == UnicodeEscape && len(esc) > 10 { // \ + u + { + 6 + }
 		isInvalid = true
-		invalidReason = EscapeTooLong
+		invalidReason = ErrEscapeTooLong
 	}
-	return stringEscape{
-		Type:    escType,
-		Value:   esc,
-		Invalid: isInvalid,
+	return StringEscape{
+		Type:          escType,
+		Value:         esc,
+		Invalid:       isInvalid,
 		InvalidReason: invalidReason,
 	}
 }

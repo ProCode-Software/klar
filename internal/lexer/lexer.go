@@ -37,7 +37,7 @@ func (l *Lexer) Tokenize() *Token {
 			return NewLexerToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ParseString(pos)
-		case '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
+		case '#', '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
 			// Skip comments, just change position
@@ -60,6 +60,8 @@ func (l *Lexer) Tokenize() *Token {
 				return NewLexerToken(pos, tt, val)
 			}
 		// Single-character operators
+		case '@':
+			return NewLexerToken(pos, At, "@")
 		case '*':
 			return NewLexerToken(pos, Times, "*")
 		case '%':
@@ -84,7 +86,7 @@ func (l *Lexer) Tokenize() *Token {
 		switch {
 		case unicode.IsSpace(rune):
 			continue
-		case unicode.IsDigit(rune) || rune == '.':
+		case unicode.IsDigit(rune), rune == '.':
 			return l.ParseNumber(pos)
 		case unicode.IsLetter(rune), rune == '_':
 			tt, val := l.ParseIdentifier()
@@ -128,3 +130,11 @@ func (l *Lexer) TokenizeFwdFunc(fn func(rune, *string)) (literal string) {
 		}
 	}
 }
+
+const (
+	_ = iota
+	ErrIntMisplacedSeparator
+	ErrIntIncompatibleDigit
+	ErrIntMultipleDot
+	ErrStrUnterminated
+)

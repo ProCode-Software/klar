@@ -20,7 +20,7 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 	op := l.TokenizeFunc(func(r rune, s *string) {
 		switch r {
 		// Only characters in a multichar operator
-		case '/', '*', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
+		case '#', '/', '*', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
 			*s += string(r)
 		}
 	})
@@ -90,34 +90,34 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		if *lit == "0" {
 			switch s {
 			case 'x':
-				format = Hexadecimal
+				format = NumberFormatHexadecimal
 				*lit += string(r)
 				return
 			case 'o':
-				format = Octal
+				format = NumberFormatOctal
 				*lit += string(r)
 				return
 			case 'b':
-				format = Binary
+				format = NumberFormatBinary
 				*lit += string(r)
 				return
 			default:
-				format = Decimal
+				format = NumberFormatDecimal
 			}
 		}
 		switch s {
 		case 'a', 'b', 'c', 'd', 'e', 'f':
 			switch format {
-			case Hexadecimal:
+			case NumberFormatHexadecimal:
 				*lit += string(r)
-			case Decimal:
+			case NumberFormatDecimal:
 				if s == 'e' && !isExponent {
 					*lit += string(r)
 				}
 			default:
 				// Hex letter or e on other format
 				isIllegal = true
-				errorType = IntIncompatibleDigit
+				errorType = ErrIntIncompatibleDigit
 				*lit += string(r)
 			}
 		case '+', '-':
@@ -128,10 +128,10 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			switch {
 			// unread-peek-check-read
 			case *lit == "": // .3
-				format = Decimal
+				format = NumberFormatDecimal
 				*lit += string(r)
-			case format != Decimal:
-				errorType = IntIncompatibleDigit
+			case format != NumberFormatDecimal:
+				errorType = ErrIntIncompatibleDigit
 				isIllegal = true
 				return
 			default:
@@ -156,7 +156,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		case '_':
 			// Underscore separators: no consecutive, must be in between digits
 			if (*lit)[len(*lit)-1] == '_' {
-				errorType = IntMisplacedSeparator
+				errorType = ErrIntMisplacedSeparator
 				isIllegal = true
 			}
 			*lit += string(r)
@@ -165,16 +165,16 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				return
 			}
 			isExponent = false
-			if format == Decimal || format == Hexadecimal ||
-				(format == Binary && r <= '1') ||
-				(format == Octal && r <= '7') {
+			if format == NumberFormatDecimal || format == NumberFormatHexadecimal ||
+				(format == NumberFormatBinary && r <= '1') ||
+				(format == NumberFormatOctal && r <= '7') {
 
 				*lit += string(r)
 				return
 			}
 			// Incompatible digit
 			isIllegal = true
-			errorType = IntIncompatibleDigit
+			errorType = ErrIntIncompatibleDigit
 			*lit += string(r)
 		}
 	})
@@ -185,7 +185,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		// Not a number - may be 1...10
 	case digit[len(digit)-1] == '_' || digit[0] == '_':
 		isIllegal = true
-		errorType = IntIncompatibleDigit
+		errorType = ErrIntIncompatibleDigit
 		fallthrough
 	case isIllegal:
 		return NewLexerToken(pos, Illegal, digit)
@@ -213,9 +213,12 @@ func (l *Lexer) ParseString(pos Position) *Token {
 		shouldStop bool
 		delim      rune
 		err        int
-		escapePos = make([]Position, 0)
-		escapes    = make(map[Position]stringEscape)
+		escapePos  = make([]Position, 0, 1)
+		escapes    = make(map[Position]StringEscape)
 	)
+	insertEscape := func() {
+		escapePos = append(escapePos, l.Pos)
+	}
 	str := l.TokenizeFunc(func(r rune, s *string) {
 		if shouldStop {
 			return
@@ -229,16 +232,20 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			}
 			*s += string(r)
 			isEscape = false
+		case '{':
+			if delim == '"' {
+				insertEscape()
+			}
 		case '\\':
 			if delim != '`' {
 				isEscape = !isEscape
-				escapePos = append(escapePos, l.Pos)
+				insertEscape()
 			}
 		case '\n':
 			l.ResetPosition()
 			if delim != '`' {
 				// Invalid newline
-				err = StrUnterminated
+				err = ErrStrUnterminated
 				return
 			}
 			*s += string(r)
@@ -247,8 +254,13 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			*s += string(r)
 		}
 	})
-	escapes[l.Pos] = l.parseStringEscape(delim)
-	// Invalid if first character in string isn't the same as last (unterminated)
+	for _, p := range escapePos {
+		escapes[p] = l.parseStringEscape(p, delim)
+	}
+	// Invalid if first character in string isn't the same as last (unterminated) (due to EOF)
+	if str[0] != str[len(str)-1] {
+		err = ErrStrUnterminated
+	}
 	return NewLexerToken(pos, String, str).
 		SetAttribute("quoteStyle", delim).
 		SetAttribute("error", err).
