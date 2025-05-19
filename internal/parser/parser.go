@@ -52,17 +52,18 @@ func (p *Parser) HasTokens() bool {
 	return p.Index < len(p.Tokens) && p.CurrentTokenKind() != lexer.EOF
 }
 
-// Expect returns the next token if it is of typ, otherwise panics.
-func (p *Parser) Expect(typ lexer.TokenType) lexer.Token {
-	return p.ExpectError(typ, nil)
+// Expect advances the parser if the current token is of typ, otherwise panics.
+func (p *Parser) Expect(need lexer.TokenType) lexer.Token {
+	return p.ExpectError(need, nil)
 }
 
-func (p *Parser) ExpectError(exp lexer.TokenType, err error) lexer.Token {
+// Expect advances the parser if the current token is of typ, otherwise panics with err.
+func (p *Parser) ExpectError(need lexer.TokenType, err error) lexer.Token {
 	token := p.CurrentToken()
 	got := token.Kind
-	if got != exp {
+	if got != need {
 		if err == nil {
-			err = errors.ExpectedTokenError(exp, token, token.Position)
+			err = errors.ExpectedTokenError(need, token, token.Position)
 		}
 		panic(err)
 	}
@@ -86,25 +87,6 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 		}
 	}
 	return comments
-}
-
-func Parse(tokens []lexer.Token, continueOnErr bool) ast.Program {
-	var (
-		body     = make([]ast.ASTItem, 0, len(tokens)/2)
-		p        = New(tokens)
-		comments = p.RemoveComments() // Move comments
-	)
-	p.InsertEOS() // Add the "semicolons"
-	for p.HasTokens() {
-		func() {
-			defer p.handleSyntaxError(continueOnErr)
-			if p.CurrentTokenKind() == lexer.Illegal {
-				panic(errors.UnknownTokenError(p.CurrentToken()))
-			}
-			body = append(body, p.ParseStatement())
-		}()
-	}
-	return ast.Program{Body: body, Comments: comments}
 }
 
 func (p *Parser) handleSyntaxError(continueOnErr bool) {

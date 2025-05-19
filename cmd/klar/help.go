@@ -6,8 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
-var _helpString =
-`Klar v%s
+var _helpString = `Klar v%s
 
 Usage: klar <command> [flags]
 

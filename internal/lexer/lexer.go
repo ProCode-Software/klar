@@ -91,6 +91,8 @@ func (l *Lexer) Tokenize() *Token {
 		case unicode.IsLetter(rune), rune == '_':
 			tt, val := l.ParseIdentifier()
 			return NewLexerToken(pos, tt, val)
+		default:
+			return NewLexerToken(pos, Illegal, string(rune))
 		}
 	}
 }

@@ -22,6 +22,8 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 	token := p.Advance()
 	src := token.Source
 	switch token.Kind {
+	case lexer.Identifier:
+		return ast.Symbol{Identifier: src}
 	case lexer.Numeric:
 		if strings.Contains(src, ".") {
 			return ast.FloatLiteral{
@@ -30,7 +32,7 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 		}
 		return ast.IntegerLiteral{
 			Format: token.Attributes["format"].(int),
-			Value: int(unwrap(strconv.ParseInt(src, 0, 0))),
+			Value:  int(unwrap(strconv.ParseInt(src, 0, 0))),
 		}
 	case lexer.String:
 		if token.Attributes["err"] == lexer.ErrStrUnterminated {
@@ -39,7 +41,7 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 		escapes := parseStringEscapes(token)
 		return ast.StringLiteral{
 			QuoteStyle: token.Attributes["quoteStyle"].(rune),
-			Content:    token.Source,
+			Content:    token.Source[1 : len(token.Source)-1], // Remove quotes
 			Escapes:    escapes,
 		}
 	case lexer.Boolean:

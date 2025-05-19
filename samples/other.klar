@@ -1,1 +1,4 @@
-4 * 20 / 2
+import klar.io.{type Whatever}
+
+a: [Int] := "John"
+b := 3 * (4 + 2) + 4

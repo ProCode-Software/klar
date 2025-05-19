@@ -9,10 +9,12 @@ const (
 	DefaultBindingPower        BindingPower = iota
 	CommaBindingPower                       // ,
 	AssignBindingPower                      // :=, +=, -=, =
-	LogicalBindingPower                     // || and &&
+	TypeOptionalBindingPower                // ?
+	LogicalBindingPower                     // ||, &&, | or + in type
 	RelationalBindingPower                  // ==, >, etc.
 	AdditiveBindingPower                    // + and -
-	MultiplicativeBindingPower              // * and /
+	MultiplicativeBindingPower              // *, /, %
+	ExponentialBindingPower                 // ^
 	UnaryBindingPower
 	CallBindingPower
 	MemberBindingPower
@@ -22,10 +24,13 @@ const (
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Comma: CommaBindingPower,
 
+	lexer.Colon:      AssignBindingPower,
 	lexer.ColonEqual: AssignBindingPower,
 	lexer.EqualSign:  AssignBindingPower,
 	lexer.PlusEqual:  AssignBindingPower,
 	lexer.MinusEqual: AssignBindingPower,
+
+	lexer.Optional: TypeOptionalBindingPower,
 
 	lexer.LessThan:       RelationalBindingPower,
 	lexer.GreaterThan:    RelationalBindingPower,
@@ -40,10 +45,11 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Plus:  AdditiveBindingPower,
 	lexer.Minus: AdditiveBindingPower,
 
-	lexer.Times:    MultiplicativeBindingPower,
-	lexer.Divide:   MultiplicativeBindingPower,
-	lexer.Modulo:   MultiplicativeBindingPower,
-	lexer.Exponent: MultiplicativeBindingPower,
+	lexer.Times:  MultiplicativeBindingPower,
+	lexer.Divide: MultiplicativeBindingPower,
+	lexer.Modulo: MultiplicativeBindingPower,
+
+	lexer.Exponent: ExponentialBindingPower,
 
 	lexer.String:     PrimaryBindingPower,
 	lexer.Numeric:    PrimaryBindingPower,

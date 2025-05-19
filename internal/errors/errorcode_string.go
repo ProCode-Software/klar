@@ -16,12 +16,14 @@ func _() {
 	_ = x[ErrUnterminatedComment-6]
 	_ = x[ErrUnterminatedBrace-7]
 	_ = x[ErrStringEscape-8]
-	_ = x[ErrReservedKeyword-9]
+	_ = x[ErrExpectedSymbolAssign-9]
+	_ = x[ErrReservedKeyword-10]
+	_ = x[ErrExpectedExpression-11]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrNotEnoughEnumItemsErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrReservedKeyword"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrNotEnoughEnumItemsErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpression"
 
-var _ErrorCode_index = [...]uint8{0, 18, 34, 48, 69, 90, 112, 132, 147, 165}
+var _ErrorCode_index = [...]uint8{0, 18, 34, 48, 69, 90, 112, 132, 147, 170, 188, 209}
 
 func (i ErrorCode) String() string {
 	i -= 1

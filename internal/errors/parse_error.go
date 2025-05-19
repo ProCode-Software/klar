@@ -28,7 +28,9 @@ const (
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
 	ErrStringEscape        // Invalid string escape
 
-	ErrReservedKeyword // Reserved keyword used as an identifier
+	ErrExpectedSymbolAssign // Assignment to non-variable or property
+	ErrReservedKeyword      // Reserved keyword used as an identifier
+	ErrExpectedExpression   // Required expression but got a statement
 )
 
 type ErrorParams map[string]any
@@ -44,6 +46,16 @@ type ParseError struct {
 
 func (e ParseError) Error() string {
 	switch e.Type {
+	default:
+		return fmt.Sprintf("SyntaxError: %s, error token is '%s' (type %s)",
+			e.Type.String(),
+			e.Token.Source, lexer.TokenTypes[e.Token.Kind],
+		)
+	case ErrExpectedExpression:
+		return "SyntaxError: Expected expression, got " + e.ASTItem.Kind()
+	case ErrExpectedSymbolAssign:
+		return "SyntaxError: Can only assign to variable or property, not " +
+			e.ASTItem.Kind()
 	case ErrExpectedToken:
 		return fmt.Sprintf(
 			"SyntaxError: Expected token '%s', got '%s'",
@@ -57,15 +69,13 @@ func (e ParseError) Error() string {
 				e.Token.Source,
 				lexer.TokenTypes[e.Token.Kind],
 			)
-		case e.Token.Kind == lexer.Illegal:
-			return "SyntaxError: I don't know what token '" + e.Token.Source + "' is"
 		case e.Token.Source == ";":
 			return "SyntaxError: Semicolons don't terminate statements in Klar, use line break instead"
+		case e.Token.Kind == lexer.Illegal:
+			return "SyntaxError: I don't know what token '" + e.Token.Source + "' is"
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
-	default:
-		return fmt.Sprintf("SyntaxError: %s, error token is '%s'", e.Type.String(), e.Token.Source)
 	}
 }
 

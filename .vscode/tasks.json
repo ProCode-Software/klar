@@ -5,11 +5,32 @@
 			"label": "Watch VSCode",
 			"type": "shell",
 			"isBackground": true,
+            "group": "build",
 			"options": {
 				"cwd": "${workspaceFolder}/klar-vscode"
 			},
 			"command": "bun run watch",
 			"problemMatcher": []
-		}
+		},
+        {
+            "label": "Test other.klar",
+            "type": "shell",
+            "group": "build",
+            "command": "./run other",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test main.klar",
+            "type": "shell",
+            "group": "build",
+            "command": "./run",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
 	]
 }

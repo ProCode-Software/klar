@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
+go generate ./internal/errors
 clear
 go run ./cmd/klar build ./samples/${1:-main}.klar
