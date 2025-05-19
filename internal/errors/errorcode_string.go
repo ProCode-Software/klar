@@ -12,18 +12,21 @@ func _() {
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrExpectedEOS-3]
 	_ = x[ErrNotEnoughEnumItems-4]
-	_ = x[ErrUnterminatedString-5]
-	_ = x[ErrUnterminatedComment-6]
-	_ = x[ErrUnterminatedBrace-7]
-	_ = x[ErrStringEscape-8]
-	_ = x[ErrExpectedSymbolAssign-9]
-	_ = x[ErrReservedKeyword-10]
-	_ = x[ErrExpectedExpression-11]
+	_ = x[ErrExpectedDotInBraceImport-5]
+	_ = x[ErrAliasInUnqualifiedImport-6]
+	_ = x[ErrExpectedModuleInImport-7]
+	_ = x[ErrUnterminatedString-8]
+	_ = x[ErrUnterminatedComment-9]
+	_ = x[ErrUnterminatedBrace-10]
+	_ = x[ErrStringEscape-11]
+	_ = x[ErrExpectedSymbolAssign-12]
+	_ = x[ErrReservedKeyword-13]
+	_ = x[ErrExpectedExpression-14]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrNotEnoughEnumItemsErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpression"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrNotEnoughEnumItemsErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrExpectedModuleInImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpression"
 
-var _ErrorCode_index = [...]uint8{0, 18, 34, 48, 69, 90, 112, 132, 147, 170, 188, 209}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 69, 96, 123, 148, 169, 191, 211, 226, 249, 267, 288}
 
 func (i ErrorCode) String() string {
 	i -= 1

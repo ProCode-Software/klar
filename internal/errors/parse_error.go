@@ -23,6 +23,10 @@ const (
 	ErrExpectedEOS        // Expected end of statement (newline)
 	ErrNotEnoughEnumItems // At least two enum members required
 
+	ErrExpectedDotInBraceImport     // Dot required before brace in unqualified import
+	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
+	ErrExpectedModuleInImport   // Unqualified import without module name
+
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
@@ -62,6 +66,10 @@ func (e ParseError) Error() string {
 			lexer.TokenTypes[e.Params["expected"].(lexer.TokenType)],
 			e.Token.Source,
 		)
+	case ErrExpectedDotInBraceImport:
+		return "SyntaxError: Expected '.' before '{' in unqualified import statement"
+	case ErrExpectedModuleInImport:
+		return "SyntaxError: Expected module name before '.{' in unqualified import"
 	case ErrUnexpectedToken:
 		switch {
 		default:
@@ -93,7 +101,7 @@ func ExpectedTokenError(
 	return ParseError{
 		Position: position,
 		Token:    gotToken,
-		Type:     ErrUnexpectedToken,
+		Type:     ErrExpectedToken,
 		Params: ErrorParams{
 			"expected": expTokenKind,
 		},
@@ -116,5 +124,13 @@ func InvalidEscapeError(
 			"reason": reason,
 			"escape": esc,
 		},
+	}
+}
+
+func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
+	return ParseError{
+		Type: err,
+		Position: token.Position,
+		Token: token,
 	}
 }
