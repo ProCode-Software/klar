@@ -158,9 +158,11 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 }
 
 func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
+	for _, tok := range p.Tokens {
+		fmt.Printf("%-20s %s", lexer.TokenTypes[tok.Kind], tok.Source)
+	}
 	p.Expect(lexer.Type)
 	name := p.Expect(lexer.Identifier)
-	fmt.Println(p.CurrentToken().Source)
 	switch p.Advance().Kind {
 	case lexer.EqualSign:
 		// Type

@@ -1,8 +1,10 @@
-import klar.io.{Whatever, type Other, *}
+/* import klar.http.server
+import klar.http.*
+import http = klar.http.requests
 
-type B = String
+import klar.io.{Whatever, type Other, *} */
 
 
-/* 
-a: [Int] := "John"
+
+/* a: [Int] := "John"
 b := 3 * (4 + 2) + 4 */
