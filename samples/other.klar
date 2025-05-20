@@ -1,4 +1,8 @@
 import klar.io.{Whatever, type Other, *}
 
+type B = String
+
+
+/* 
 a: [Int] := "John"
-b := 3 * (4 + 2) + 4
+b := 3 * (4 + 2) + 4 */

@@ -11,22 +11,27 @@ func _() {
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrExpectedEOS-3]
-	_ = x[ErrNotEnoughEnumItems-4]
-	_ = x[ErrExpectedDotInBraceImport-5]
-	_ = x[ErrAliasInUnqualifiedImport-6]
-	_ = x[ErrExpectedModuleInImport-7]
-	_ = x[ErrUnterminatedString-8]
-	_ = x[ErrUnterminatedComment-9]
-	_ = x[ErrUnterminatedBrace-10]
-	_ = x[ErrStringEscape-11]
-	_ = x[ErrExpectedSymbolAssign-12]
-	_ = x[ErrReservedKeyword-13]
-	_ = x[ErrExpectedExpression-14]
+	_ = x[ErrExpectedDotInBraceImport-4]
+	_ = x[ErrAliasInUnqualifiedImport-5]
+	_ = x[ErrImportExpectedModule-6]
+	_ = x[ErrImportPrefixDot-7]
+	_ = x[ErrImportInvalidWildcard-8]
+	_ = x[ErrImportTooManyWildcard-9]
+	_ = x[ErrWildcardAndUnqImport-10]
+	_ = x[ErrUnterminatedString-11]
+	_ = x[ErrUnterminatedComment-12]
+	_ = x[ErrUnterminatedBrace-13]
+	_ = x[ErrStringEscape-14]
+	_ = x[ErrExpectedSymbolAssign-15]
+	_ = x[ErrReservedKeyword-16]
+	_ = x[ErrExpectedExpression-17]
+	_ = x[ErrNotEnoughEnumItems-18]
+	_ = x[ErrExpectedTypeAssignment-19]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrNotEnoughEnumItemsErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrExpectedModuleInImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpression"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrNotEnoughEnumItemsErrExpectedTypeAssignment"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 69, 96, 123, 148, 169, 191, 211, 226, 249, 267, 288}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 143, 167, 191, 214, 235, 257, 277, 292, 315, 333, 354, 375, 400}
 
 func (i ErrorCode) String() string {
 	i -= 1

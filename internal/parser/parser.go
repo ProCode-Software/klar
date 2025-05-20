@@ -53,17 +53,31 @@ func (p *Parser) HasTokens() bool {
 }
 
 // Expect advances the parser if the current token is of typ, otherwise panics.
-func (p *Parser) Expect(need lexer.TokenType) lexer.Token {
-	return p.ExpectError(need, nil)
+func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
+	return p.ExpectError(nil, need...)
+}
+
+// ExpectNext advances the parser if the next token is of typ, otherwise panics.
+func (p *Parser) ExpectNext(need ...lexer.TokenType) {
+	p.Advance()
+	p.Expect(need...)
+	p.Index--
 }
 
 // Expect advances the parser if the current token is of typ, otherwise panics with err.
-func (p *Parser) ExpectError(need lexer.TokenType, err error) lexer.Token {
+func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.CurrentToken()
 	got := token.Kind
-	if got != need {
+	found := false
+	for _, n := range need {
+		if got == n {
+			found = true
+			break
+		}
+	}
+	if !found {
 		if err == nil {
-			err = errors.ExpectedTokenError(need, token, token.Position)
+			err = errors.ExpectedTokenError(need[0], token, token.Position)
 		}
 		panic(err)
 	}

@@ -24,6 +24,7 @@ func runTokens(tokens []lexer.Token) {
 		arr := strings.SplitAfter(err.Error(), ": ")
 		cli.Fail(arr[0], arr[1])
 	}
+	litter.Config.StripPackageNames = true
 	litter.Dump(program)
 }
 

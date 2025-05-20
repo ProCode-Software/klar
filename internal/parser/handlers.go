@@ -63,6 +63,8 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 	// Import
 	case lexer.Import:
 		res = p.ParseImportStatement()
+	case lexer.Type:
+		res = p.ParseTypeDeclaration()
 	}
 	return res, true // TODO: add statements
 }

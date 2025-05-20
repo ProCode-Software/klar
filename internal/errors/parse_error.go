@@ -21,12 +21,17 @@ const (
 	ErrUnexpectedToken
 	ErrExpectedToken      // Expected kind of token but got different type
 	ErrExpectedEOS        // Expected end of statement (newline)
-	ErrNotEnoughEnumItems // At least two enum members required
 
+	// Import
 	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
-	ErrExpectedModuleInImport   // Unqualified import without module name
+	ErrImportExpectedModule     // Unqualified import without module name
+	ErrImportPrefixDot          // Module name beginning with .
+	ErrImportInvalidWildcard    // Wildcard must be last part of module
+	ErrImportTooManyWildcard    // More than 1 wildcard
+	ErrWildcardAndUnqImport     // Using unqualified import with wildcard
 
+	// Punctuation
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
@@ -35,6 +40,10 @@ const (
 	ErrExpectedSymbolAssign // Assignment to non-variable or property
 	ErrReservedKeyword      // Reserved keyword used as an identifier
 	ErrExpectedExpression   // Required expression but got a statement
+
+	// Type
+	ErrNotEnoughEnumItems // At least two enum members required
+	ErrExpectedTypeAssignment // Need = or { after type (maybe got EOS)
 )
 
 type ErrorParams map[string]any
@@ -56,9 +65,9 @@ func (e ParseError) Error() string {
 			e.Token.Source, lexer.TokenTypes[e.Token.Kind],
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: Expected expression, got " + e.ASTItem.Kind()
+		return "SyntaxError: I expected an expression, but got " + e.ASTItem.Kind() + "instead"
 	case ErrExpectedSymbolAssign:
-		return "SyntaxError: Can only assign to variable or property, not " +
+		return "SyntaxError: You can only assign to a variable or property, not " +
 			e.ASTItem.Kind()
 	case ErrExpectedToken:
 		return fmt.Sprintf(
@@ -66,14 +75,25 @@ func (e ParseError) Error() string {
 			lexer.TokenTypes[e.Params["expected"].(lexer.TokenType)],
 			e.Token.Source,
 		)
+	case ErrWildcardAndUnqImport:
+		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
+	case ErrImportTooManyWildcard:
+		return "SyntaxError: There can only be one '*' in module name"
 	case ErrExpectedDotInBraceImport:
-		return "SyntaxError: Expected '.' before '{' in unqualified import statement"
-	case ErrExpectedModuleInImport:
-		return "SyntaxError: Expected module name before '.{' in unqualified import"
+		return "SyntaxError: There should be a '.' before '{' in unqualified import statement"
+	case ErrImportExpectedModule:
+		return "SyntaxError: I expected a module name before '.{' in unqualified import"
+	case ErrImportInvalidWildcard:
+		return "SyntaxError: '*' should the the last part of a module"
+	case ErrImportPrefixDot:
+		return fmt.Sprintf(
+			"SyntaxError: Module '%s' in import statement can't start with '.'",
+			e.Params["module"].(string),
+		)
 	case ErrUnexpectedToken:
 		switch {
 		default:
-			return fmt.Sprintf("SyntaxError: Unexpected token '%s' (type %s)",
+			return fmt.Sprintf("SyntaxError: Unexpected token %#q (type %s)",
 				e.Token.Source,
 				lexer.TokenTypes[e.Token.Kind],
 			)
@@ -84,6 +104,11 @@ func (e ParseError) Error() string {
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
+	case ErrExpectedTypeAssignment:
+		if e.Token.Kind == lexer.EndOfStatement {
+			return "SyntaxError: Types must be assigned a value"
+		}
+		return "SyntaxError: Expected type assignment ('=', '{', or inherited type), but got '"+e.Token.Source+"' instead"
 	}
 }
 
