@@ -1,4 +1,4 @@
-package args
+package cli
 
 import (
 	"os"

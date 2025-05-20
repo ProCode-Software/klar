@@ -10,21 +10,36 @@ import (
 
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
 // not panic on a syntax error.
-func Parse(tokens []lexer.Token, continueOnErr bool) ast.Program {
+func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs []error) {
 	var (
-		body     = make([]ast.ASTItem, 0, len(tokens)/2)
-		p        = New(tokens)
-		comments = p.RemoveComments() // Move comments
+		shouldBreak bool
+		body        = make([]ast.ASTItem, 0, len(tokens)/2)
+		p           = New(tokens)
+		comments    = p.RemoveComments() // Move comments
 	)
-	continueOnErr = false
 	p.InsertEOS() // Add the "semicolons"
-	for p.HasTokens() {
+	for p.HasTokens() && !shouldBreak {
 		func() {
-			defer p.handleSyntaxError(continueOnErr)
+			defer func() {
+				if err := recover(); err != nil {
+					_, isParseErr := err.(errors.ParseError)
+					switch {
+					case isParseErr:
+						errs = append(errs, err.(errors.ParseError))
+						p.Index++
+					case !isParseErr:
+						errs = append(errs, err.(error))
+						shouldBreak = true
+					}
+					if !continueOnErr {
+						shouldBreak = true
+					}
+				}
+			}()
 			body = append(body, p.ParseStatement())
 		}()
 	}
-	return ast.Program{Body: body, Comments: comments}
+	return ast.Program{Body: body, Comments: comments}, errs
 }
 
 // For debugging purposes

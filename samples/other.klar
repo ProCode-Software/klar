@@ -1,5 +1,4 @@
-import klar.io.{type Whatever, Other, *}
-import .io.{type Whatever, Other, *}
+import klar.io.{Whatever, type Other, *}
 
 a: [Int] := "John"
 b := 3 * (4 + 2) + 4

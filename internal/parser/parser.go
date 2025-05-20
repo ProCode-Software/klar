@@ -88,17 +88,3 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 	}
 	return comments
 }
-
-func (p *Parser) handleSyntaxError(continueOnErr bool) {
-	if !continueOnErr {
-		return
-	}
-	if err := recover(); err != nil {
-		if _, isParseErr := err.(errors.ParseError); isParseErr {
-			p.Index++
-		} else {
-			// Internal error
-			errors.InternalError(err)
-		}
-	}
-}

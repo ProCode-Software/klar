@@ -64,15 +64,15 @@ func (l Lexer) parseStringEscape(pos Position, delim rune) StringEscape {
 			case 'x':
 				// Hexadecimal escape \x12
 				escType = HexadecimalEscape
+			case delim, '\\', 'b', 'e', 'f', 'n', 'r', 't':
+				// Character escape
+				isDone = true
 			case '{':
 				// Interpolation (double-quoted only)
 				if delim == '"' {
 					isDone = true
 				}
 				fallthrough
-			case delim, '\\', 'b', 'e', 'f', 'n', 'r', 't':
-				// Character escape
-				isDone = true
 			default:
 				// Invalid escape
 				isInvalid = true

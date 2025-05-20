@@ -14,3 +14,7 @@ func BuildError(err error) {
 func InternalError(err any) {
 	BuildError(fmt.Errorf("Internal Error: %v", err))
 }
+
+func PrintKlarError() {
+
+}

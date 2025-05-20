@@ -48,8 +48,8 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) ast.UnionType {
 	op := p.Advance().Kind
 	right := p.ParseType(bp, op == lexer.Alternative)
 	return ast.UnionType{
-		Left: left,
-		Right: right,
+		Left:     left,
+		Right:    right,
 		Operator: op,
 	}
 }

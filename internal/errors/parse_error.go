@@ -23,7 +23,7 @@ const (
 	ErrExpectedEOS        // Expected end of statement (newline)
 	ErrNotEnoughEnumItems // At least two enum members required
 
-	ErrExpectedDotInBraceImport     // Dot required before brace in unqualified import
+	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
 	ErrExpectedModuleInImport   // Unqualified import without module name
 
@@ -129,8 +129,8 @@ func InvalidEscapeError(
 
 func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
 	return ParseError{
-		Type: err,
+		Type:     err,
 		Position: token.Position,
-		Token: token,
+		Token:    token,
 	}
 }
