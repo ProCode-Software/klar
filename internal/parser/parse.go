@@ -48,7 +48,7 @@ func noHandlerError(p *Parser, nudOrLED string) {
 		"Unexpected token '%s' (expected %s handler for %s)\n",
 		p.CurrentToken().Source,
 		nudOrLED,
-		lexer.TokenTypes[p.CurrentTokenKind()],
+		p.CurrentTokenKind().String(),
 	))
 }
 

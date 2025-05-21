@@ -62,7 +62,7 @@ func (e ParseError) Error() string {
 	default:
 		return fmt.Sprintf("SyntaxError: %s, error token is '%s' (type %s)",
 			e.Type.String(),
-			e.Token.Source, lexer.TokenTypes[e.Token.Kind],
+			e.Token.Source, e.Token.Kind.String(),
 		)
 	case ErrExpectedExpression:
 		return "SyntaxError: I expected an expression, but got " + e.ASTItem.Kind() + "instead"
@@ -72,7 +72,7 @@ func (e ParseError) Error() string {
 	case ErrExpectedToken:
 		return fmt.Sprintf(
 			"SyntaxError: Expected token '%s', got '%s'",
-			lexer.TokenTypes[e.Params["expected"].(lexer.TokenType)],
+			e.Params["expected"].(lexer.TokenType).String(),
 			e.Token.Source,
 		)
 	case ErrWildcardAndUnqImport:
@@ -95,7 +95,7 @@ func (e ParseError) Error() string {
 		default:
 			return fmt.Sprintf("SyntaxError: Unexpected token %#q (type %s)",
 				e.Token.Source,
-				lexer.TokenTypes[e.Token.Kind],
+				e.Token.Kind.String(),
 			)
 		case e.Token.Source == ";":
 			return "SyntaxError: Semicolons don't terminate statements in Klar, use line break instead"

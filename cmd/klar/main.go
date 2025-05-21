@@ -37,7 +37,9 @@ func main() {
 		fallthrough
 	default:
 		RunFile(cmd)
-	case "repl", "test", "install", "build":
+	case "repl":
+		StartRepl()
+	case "test", "install", "build":
 		cli.Fail(fmt.Sprintf("Command '%s' is not implemented yet.", cmd), "")
 	case "help", "--help", "-h":
 		showHelp()

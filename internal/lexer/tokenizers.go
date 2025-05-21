@@ -20,7 +20,11 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 	op := l.TokenizeFunc(func(r rune, s *string) {
 		switch r {
 		// Only characters in a multichar operator
-		case '#', '/', '*', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
+		case '*':
+			if *s == "/" {
+				*s += string(r)
+			}
+		case '/', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
 			*s += string(r)
 		}
 	})

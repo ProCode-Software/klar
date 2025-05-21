@@ -65,3 +65,7 @@ var TokenTypes = map[TokenType]string{
 	Type:   "Type",
 	When:   "When",
 }
+
+func (t TokenType) String() string {
+	return TokenTypes[t]
+}

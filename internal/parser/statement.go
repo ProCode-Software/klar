@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -61,17 +60,37 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 
 func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	var (
-		module        string
+		module, alias string
 		unqualImports []ast.UnqualifiedImport
 		isWildcard    bool
 	)
 	// Skip import keyword
 	p.Expect(lexer.Import)
 
+	// Parse maybe alias
+	module = p.Expect(lexer.Identifier).Source
+	if p.CurrentTokenKind() == lexer.EqualSign {
+		alias, module = module, alias
+		p.Advance()
+	}
+
 	for p.HasTokens() && (p.CurrentTokenKind() == lexer.Identifier ||
-		p.CurrentTokenKind() == lexer.Dot ||
-		p.CurrentTokenKind() == lexer.Times) {
+		p.CurrentTokenKind() == lexer.Dot) {
 		module += p.Advance().Source
+	}
+	if p.CurrentTokenKind() == lexer.Times {
+		// Wildcard
+		module += "*"
+		isWildcard = true
+		p.Tokens = slices.Insert(p.Tokens, p.Index+1, lexer.Token{
+			Kind:   lexer.EndOfStatement,
+			Source: "\n",
+			Position: lexer.Position{
+				Line: p.CurrentToken().Position.Line,
+				Col:  p.CurrentToken().Position.Col + 1,
+			},
+		})
+		p.Advance()
 	}
 
 	// Module name begins with .
@@ -81,26 +100,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 			Params: map[string]any{"module": module},
 		})
 	}
-	wcCount := strings.Count(module, "*")
-	switch {
-	case wcCount < 1:
-	case wcCount > 1:
-		panic(errors.NewTokenError(errors.ErrImportTooManyWildcard, p.CurrentToken()))
-	// import klar.*.{
-	case strings.Index(module, "*.") == len(module)-2:
-		panic(errors.NewTokenError(errors.ErrWildcardAndUnqImport, p.CurrentToken()))
-	case strings.Index(module, ".*") != len(module)-2:
-		panic(errors.NewTokenError(errors.ErrImportInvalidWildcard, p.CurrentToken()))
-	default:
-		isWildcard = true
-		fmt.Println("WILDCARD")
-		fmt.Println(p.CurrentToken())
-		// EOS insertion doesn't add after *. We need to add it manually.
-		p.Tokens = slices.Insert(
-			p.Tokens, p.Index+1, lexer.Token{Kind: lexer.EndOfStatement},
-		)
-	}
-	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+	if !isWildcard && p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		// import .{...}
 		if module == "" || module == "." {
 			panic(errors.NewTokenError(
@@ -143,8 +143,8 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				))
 			}
 			p.Advance() // Move to comma or }
-			if p.CurrentTokenKind() == lexer.Comma {
-				continue
+			if p.CurrentTokenKind() != lexer.Comma {
+				p.Expect(lexer.Comma)
 			}
 		}
 		p.Expect(lexer.RightCurlyBrace)
@@ -152,15 +152,13 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	p.Advance()
 	return ast.ImportStatement{
 		UnqualifiedImports: unqualImports,
+		Alias:              alias,
 		Module:             module,
 		Wildcard:           isWildcard,
 	}
 }
 
 func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
-	for _, tok := range p.Tokens {
-		fmt.Printf("%-20s %s", lexer.TokenTypes[tok.Kind], tok.Source)
-	}
 	p.Expect(lexer.Type)
 	name := p.Expect(lexer.Identifier)
 	switch p.Advance().Kind {
@@ -168,7 +166,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		// Type
 		return ast.TypeAliasDeclaration{
 			Identifier: name.Source,
-			Type: p.ParseType(AssignBindingPower, false),
+			Type:       p.ParseType(AssignBindingPower, false),
 		}
 	case lexer.LeftParenthesis:
 		// Inherited struct

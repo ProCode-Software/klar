@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -11,7 +12,21 @@ import (
 )
 
 func tryPipe() {
-
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return
+	}
+	fmt.Println((stat.Mode() & os.ModeCharDevice))
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		return
+	}
+	// Is pipe
+	tokens, err := parser.TokenizeFile(os.Stdin, true)
+	if err != nil {
+		cli.InternalError(err)
+	}
+	runTokens(tokens)
+	os.Exit(0)
 }
 
 func runTokens(tokens []lexer.Token) {
@@ -37,11 +52,11 @@ func RunFile(path string) {
 		if os.IsNotExist(err) {
 			cli.FileNotFoundError(path)
 		}
-		cli.Fail("Internal Error: ", err)
+		cli.InternalError(err)
 	}
 	tokens, err := parser.TokenizeFile(file, true)
 	if err != nil {
-		cli.Fail("Internal Error: ", err.Error())
+		cli.InternalError(err)
 	}
 	runTokens(tokens)
 }
@@ -49,7 +64,7 @@ func RunFile(path string) {
 func RunString(program string) {
 	tokens, err := parser.TokenizeString(program, true)
 	if err != nil {
-		cli.Fail("Internal Error: ", err.Error())
+		cli.InternalError(err)
 	}
 	runTokens(tokens)
 }

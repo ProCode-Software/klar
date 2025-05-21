@@ -5,6 +5,7 @@
 *.dll
 *.so
 *.dylib
+/klar
 
 # Test binary, built with `go test -c`
 *.test
@@ -22,7 +23,10 @@ go.work.sum
 # env file
 .env
 
+# Packages
 node_modules
-*ast.json
 
+# VSCode extensions
 *.vsix
+
+*ast.json

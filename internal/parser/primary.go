@@ -53,7 +53,7 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 	default:
 		panic(fmt.Sprintf(
 			"Expected primary expression, got %s",
-			lexer.TokenTypes[token.Kind],
+			token.Kind.String(),
 		))
 	}
 }
