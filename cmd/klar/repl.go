@@ -20,7 +20,7 @@ Type %[4]s'help'%[5]s for more information, or %[4]sCtrl+D%[5]s or %[4]s'exit'%[
 	)
 	r := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print(cli.ANSIGreen+"> "+cli.ANSIReset)
+		fmt.Print(cli.ANSIGreen + "> " + cli.ANSIReset)
 		input, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {

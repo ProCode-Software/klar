@@ -19,8 +19,8 @@ const (
 	_ ErrorCode = iota
 
 	ErrUnexpectedToken
-	ErrExpectedToken      // Expected kind of token but got different type
-	ErrExpectedEOS        // Expected end of statement (newline)
+	ErrExpectedToken // Expected kind of token but got different type
+	ErrExpectedEOS   // Expected end of statement (newline)
 
 	// Import
 	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
@@ -42,7 +42,7 @@ const (
 	ErrExpectedExpression   // Required expression but got a statement
 
 	// Type
-	ErrNotEnoughEnumItems // At least two enum members required
+	ErrNotEnoughEnumItems     // At least two enum members required
 	ErrExpectedTypeAssignment // Need = or { after type (maybe got EOS)
 )
 
@@ -108,7 +108,7 @@ func (e ParseError) Error() string {
 		if e.Token.Kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: Expected type assignment ('=', '{', or inherited type), but got '"+e.Token.Source+"' instead"
+		return "SyntaxError: Expected type assignment ('=', '{', or inherited type), but got '" + e.Token.Source + "' instead"
 	}
 }
 

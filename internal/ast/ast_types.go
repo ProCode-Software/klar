@@ -213,7 +213,7 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 type ImportStatement struct {
 	Module             string
 	Alias              string // Only if there are no unqualified imports
-	Wildcard bool
+	Wildcard           bool
 	UnqualifiedImports []UnqualifiedImport
 }
 
@@ -230,14 +230,14 @@ type TypeDeclaration interface {
 }
 
 type StructDeclaration struct {
-	Identifier string
+	Identifier     string
 	InheritedTypes []TypeAlias
-	Fields []TypePair
+	Fields         []TypePair
 }
 
 type EnumDeclaration struct {
 	Identifier string
-	Values []string
+	Values     []string
 }
 
 type TypeAliasDeclaration struct {

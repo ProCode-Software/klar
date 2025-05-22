@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -16,7 +15,6 @@ func tryPipe() {
 	if err != nil {
 		return
 	}
-	fmt.Println((stat.Mode() & os.ModeCharDevice))
 	if (stat.Mode() & os.ModeCharDevice) != 0 {
 		return
 	}
