@@ -10,12 +10,12 @@ import (
 
 func showHelp() {
 	fmt.Fprint(os.Stderr, HelpString)
-	os.Exit(2)
 }
 
 func main() {
 	var strProg string
 	flag.StringVar(&strProg, "c", "", "Program passed as string")
+	flag.Usage = showHelp
 	flag.Parse()
 	if strProg != "" {
 		RunString(strProg)
@@ -25,12 +25,13 @@ func main() {
 	if len(args) <= 1 {
 		tryPipe()
 		showHelp()
+		os.Exit(2)
 	}
 	cmd := args[1]
 	switch cmd {
 	case "run":
 		if len(args) <= 2 {
-			fmt.Fprintln(os.Stderr, "Error: No file specified")
+			cli.Fail("No file to run specified")
 			os.Exit(2)
 		}
 		cmd = args[2]

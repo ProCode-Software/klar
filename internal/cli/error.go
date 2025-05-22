@@ -5,16 +5,16 @@ import (
 	"os"
 )
 
-func PrintError(msg string, detail any) {
+func PrintError(msg string, detail ...any) {
 	str := ANSIBoldRed + "Error" + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
-	if detail != nil && detail != "" {
-		str += fmt.Sprintf("%v", detail)
+	if detail != nil && len(detail) > 0 {
+		str += fmt.Sprintf("%v", detail...)
 	}
-	fmt.Println(str)
+	fmt.Fprintln(os.Stderr, str)
 }
 
-func Fail(msg string, detail any) {
-	PrintError(msg, detail)
+func Fail(msg string, detail ...any) {
+	PrintError(msg, detail...)
 	os.Exit(1)
 }
 

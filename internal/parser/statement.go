@@ -92,7 +92,6 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		})
 		p.Advance()
 	}
-
 	// Module name begins with .
 	if module[0] == '.' {
 		panic(errors.ParseError{
@@ -100,13 +99,10 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 			Params: map[string]any{"module": module},
 		})
 	}
+
+	// Unqualified import
 	if !isWildcard && p.CurrentTokenKind() == lexer.LeftCurlyBrace {
-		// import .{...}
-		if module == "" || module == "." {
-			panic(errors.NewTokenError(
-				errors.ErrImportExpectedModule, p.CurrentToken(),
-			))
-		}
+		p.Expect(lexer.LeftCurlyBrace)
 		// import module{...} instead of module.{...}
 		if module[len(module)-1] != '.' {
 			panic(errors.NewTokenError(
@@ -114,16 +110,12 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 			))
 		}
 		module = module[:len(module)-1]
-		// Unqualified Import
+
 		isTypeImport := false
-		for p.CurrentTokenKind() != lexer.RightCurlyBrace {
-			p.Advance() // Skip curly brace or comma
+		for p.HasTokens() && p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			switch p.CurrentTokenKind() {
-			case lexer.RightCurlyBrace:
-				break // Traling comma
 			case lexer.Type:
 				isTypeImport = true
-				p.ExpectNext(lexer.Identifier, lexer.Times)
 			case lexer.Identifier:
 				unqualImports = append(unqualImports, ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
@@ -143,13 +135,12 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				))
 			}
 			p.Advance() // Move to comma or }
-			if p.CurrentTokenKind() != lexer.Comma {
+			if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 				p.Expect(lexer.Comma)
 			}
 		}
 		p.Expect(lexer.RightCurlyBrace)
 	}
-	p.Advance()
 	return ast.ImportStatement{
 		UnqualifiedImports: unqualImports,
 		Alias:              alias,

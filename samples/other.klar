@@ -6,7 +6,8 @@ import klar.http.server
 
 import re = klar.regex
 
-import klar.io.{Whatever, type Other, *}
+import klar.io.{stdio}
+//import klar.io.{Whatever, type Other, *}
 
 /* 
     a: [Int] := "John"

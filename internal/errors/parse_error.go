@@ -98,7 +98,7 @@ func (e ParseError) Error() string {
 				e.Token.Kind.String(),
 			)
 		case e.Token.Source == ";":
-			return "SyntaxError: Semicolons don't terminate statements in Klar, use line break instead"
+			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		case e.Token.Kind == lexer.Illegal:
 			return "SyntaxError: I don't know what token '" + e.Token.Source + "' is"
 		}
