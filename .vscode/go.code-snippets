@@ -1,0 +1,23 @@
+{
+    "led": {
+        "scope": "go",
+        "prefix": "led",
+        "body": [
+            "func (p *Parser) Parse$1(left ast.Type, bp BindingPower) ast.$2 {",
+            "\t$0",
+            "}"
+        ],
+        "description": "New LED handler"
+    },
+    "nud": {
+        "scope": "go",
+        "prefix": "nud",
+        "body": [
+            "func (p *Parser) Parse$1() ast.$2 {",
+            "\tp.Expect(lexer.$3)",
+            "\t$0",
+            "}"
+        ],
+        "description": "New NUD handler"
+    }
+}

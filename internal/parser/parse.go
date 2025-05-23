@@ -28,7 +28,11 @@ func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs 
 						errs = append(errs, err.(errors.ParseError))
 						p.Index++
 					case !isParseErr:
-						errs = append(errs, err.(error))
+						if _, ok := err.(error); !ok {
+							errs = append(errs, fmt.Errorf("%v", err))
+						} else {
+							errs = append(errs, err.(error))
+						}
 						shouldBreak = true
 					}
 					if !continueOnErr {
@@ -45,7 +49,7 @@ func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs 
 // For debugging purposes
 func noHandlerError(p *Parser, nudOrLED string) {
 	panic(fmt.Sprintf(
-		"Unexpected token '%s' (expected %s handler for %s)\n",
+		"Unexpected token '%s' (need %s handler for %s)\n",
 		p.CurrentToken().Source,
 		nudOrLED,
 		p.CurrentTokenKind().String(),
@@ -87,6 +91,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	kind := p.CurrentTokenKind()
 	result, handled := p.handleStatement(kind)
 	if handled {
+		p.Expect(lexer.EndOfStatement)
 		return result
 	}
 

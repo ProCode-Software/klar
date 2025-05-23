@@ -1,10 +1,11 @@
 package lexer
 
+//go:generate stringer -type=TokenType
 type TokenType int
 
 const (
-	EOF            = iota
-	EndOfStatement // Replacement for semicolons
+	EOF            TokenType = iota
+	EndOfStatement           // Replacement for semicolons
 	Illegal
 	Newline
 
@@ -28,38 +29,38 @@ const (
 	Boolean
 	Nil
 	String
-	Discard // _
+	Underscore // _
 
 	// Binary
 	Plus     // +
 	Minus    // -
-	Times    // *
-	Divide   // /
-	Modulo   // %
-	Exponent // ^
+	Asterisk // *
+	Slash    // /
+	Percent  // %
+	Caret    // ^
 
 	// Assignment
-	EqualSign  // =
+	Equal      // =
 	ColonEqual // :=
 	PlusEqual  // +=
 	MinusEqual // -=
-	Increment  // ++
-	Decrement  // --
+	PlusPlus   // ++
+	MinusMinus // --
 
 	// Comparison
-	Equals         // ==
+	EqualEqual     // ==
 	NotEqual       // !=
 	GreaterThan    // >
 	LessThan       // <
 	GreaterEqualTo // >=
 	LessEqualTo    // <=
-	LogicalAnd     // &&
-	LogicalOr      // ||
-	LogicalNot     // !
+	AndAnd         // &&
+	OrOr           // ||
+	Not            // !
 
 	// Types
-	Alternative // |
-	Optional    // ?
+	Stroke   // |
+	Question // ?
 
 	// Misc
 	Spread   // ...
@@ -84,31 +85,31 @@ const (
 )
 
 var OperatorMap = map[string]TokenType{
-	"++":  Increment,
-	"--":  Decrement,
+	"++":  PlusPlus,
+	"--":  MinusMinus,
 	"...": Spread,
 	":=":  ColonEqual,
 	"+=":  PlusEqual,
 	"-=":  MinusEqual,
-	"==":  Equals,
+	"==":  EqualEqual,
 	"!=":  NotEqual,
 	">=":  GreaterEqualTo,
 	"<=":  LessEqualTo,
-	"||":  LogicalOr,
-	"&&":  LogicalAnd,
+	"||":  OrOr,
+	"&&":  AndAnd,
 	"->":  Arrow,
-	"=":   EqualSign,
+	"=":   Equal,
 	"+":   Plus,
 	"-":   Minus,
-	"*":   Times,
-	"/":   Divide,
-	"%":   Modulo,
-	"^":   Exponent,
-	"!":   LogicalNot,
+	"*":   Asterisk,
+	"/":   Slash,
+	"%":   Percent,
+	"^":   Caret,
+	"!":   Not,
 	">":   GreaterThan,
 	"<":   LessThan,
-	"|":   Alternative,
-	"?":   Optional,
+	"|":   Stroke,
+	"?":   Question,
 	"|>":  Pipeline,
 
 	// Punctuation
@@ -128,7 +129,7 @@ var KeywordMap = map[string]TokenType{
 	"return": Return,
 	"type":   Type,
 	"when":   When,
-	"_":      Discard,
+	"_":      Underscore,
 	"true":   Boolean,
 	"false":  Boolean,
 	"nil":    Nil,

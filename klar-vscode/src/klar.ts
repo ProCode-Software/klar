@@ -188,7 +188,7 @@ const repository: Repository = {
             {
                 match: `(?<=^|[(,])\\s*(\\b${Identifier.source}\\b)?\\s*(${Identifier.source})\\s*(:)\\s*${Type}`,
                 captures: [
-                    { name: 'variable.parameter.klar' },
+                    { name: 'entity.other.attribute-name.klar' },
                     { name: 'variable.other.klar' },
                     { name: Punctuation.colonType },
                     ...IncludeType,
@@ -216,10 +216,10 @@ const repository: Repository = {
     variables: {
         patterns: [
             match(/\b(self)\b/, 'variable.language.self.klar'),
-            match(/_?[\p{Lu}_][\p{Lu}\d_]*/u, 'variable.other.constant.klar'),
+            match(/\b_?[\p{Lu}_][\p{Lu}\d_]*\b/u, 'variable.other.constant.klar'),
             match(Identifier, 'variable.other.readwrite.klar'),
             {
-                match: merge(/(\B\.)/, IdCapture),
+                match: merge(/(\B\.)/, IdCapture, /\b(?![(.])/),
                 captures: [
                     { name: 'punctuation.definition.enum.klar' },
                     { name: 'variable.other.enummember.klar' },
@@ -230,7 +230,7 @@ const repository: Repository = {
     labels: {
         match: merge(/(?<=^|[(,])\s*/, IdCapture, /\s*(:)/),
         captures: [
-            { name: 'variable.parameter.klar' },
+            { name: 'entity.other.attribute-name.klar' },
             { name: 'punctuation.separator.label.parameter.klar' },
         ],
     },
@@ -260,13 +260,14 @@ const repository: Repository = {
                         match: merge(
                             `(?:(${Identifier.source})\\s*(:)\\s*)?`,
                             /\b(type)\b\s*/,
-                            IdCapture
+                            `(?:${IdCapture}|(\\*))`
                         ),
                         captures: [
                             { name: 'entity.name.type.klar' },
                             { name: 'keyword.operator.import-as.klar' },
                             { name: 'keyword.control.type.klar' },
                             { name: 'entity.name.type.klar' },
+                            { name: 'keyword.operator.wildcard.klar' },
                         ],
                     },
                     Punctuation.comma,
@@ -275,7 +276,7 @@ const repository: Repository = {
                 ],
             },
             match(/\./, 'punctuation.accessor.namespace.klar'), // keyword.operator.namespace.klar
-            match(/:/, 'keyword.operator.import-as.klar'),
+            match(/=/, 'keyword.operator.import-alias.klar'),
             match(/\*/, 'keyword.operator.wildcard.klar'),
         ],
     },
@@ -294,13 +295,17 @@ const repository: Repository = {
         begin: merge(
             /(?<=\btype\b)\s*/,
             IdCapture,
-            String.raw`\s*(?:\(${Type}\))?`,
+            String.raw`\s*(?:(:)\s*${IdCapture})?`,
             /\s*({)/
         ),
         end: /}/,
         beginCaptures: [
             { name: 'entity.name.type.struct.klar' },
-            { name: 'entity.other.inherited-type.klar', patterns: [include('types')] },
+            { name: Punctuation.colonType },
+            {
+                name: 'entity.name.type.struct entity.other.inherited-type.klar',
+                patterns: [include('types')],
+            },
             undefined,
             { name: Punctuation.brace.begin },
         ],

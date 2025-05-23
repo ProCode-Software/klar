@@ -9,7 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// A Parser parses lexer tokens into an abstract syntax tree (AST)
+// A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
 	Tokens []lexer.Token
 	Index  int
@@ -57,25 +57,21 @@ func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
 
-// ExpectNext advances the parser if the next token is of typ, otherwise panics.
-func (p *Parser) ExpectNext(need ...lexer.TokenType) {
-	p.Advance()
-	p.Expect(need...)
-	p.Index--
+// IsNot reports whether the current token kind is not kind and the parser is not at EOF.
+func (p *Parser) IsNot(kind lexer.TokenType) bool {
+	return p.HasTokens() && p.CurrentTokenKind() != kind
+}
+
+// IsCurrently reports whether the current token is one of kinds.
+func (p *Parser) IsCurrently(kinds ...lexer.TokenType) bool {
+	return slices.Contains(kinds, p.CurrentTokenKind())
 }
 
 // Expect advances the parser if the current token is of typ, otherwise panics with err.
 func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.CurrentToken()
 	got := token.Kind
-	found := false
-	for _, n := range need {
-		if got == n {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !slices.Contains(need, got) {
 		if err == nil {
 			err = errors.ExpectedTokenError(need[0], token, token.Position)
 		}
@@ -86,7 +82,8 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
 func (p *Parser) RemoveComments() (comments []ast.Comment) {
-	for i, tok := range p.Tokens {
+	for i := 0; i < len(p.Tokens); i++ {
+		tok := p.Tokens[i]
 		if tok.Kind == lexer.BlockComment || tok.Kind == lexer.LineComment {
 			comments = append(comments, ast.Comment{
 				Begin: tok.Position,
@@ -95,7 +92,7 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 					Col:  tok.Position.Col + len(tok.Source),
 				},
 				Value: tok.Source,
-				Type:  ast.CommentType(tok.Kind - 6), // Line: 6, Block: 7
+				Type:  tok.Kind,
 			})
 			p.Tokens = slices.Delete(p.Tokens, i, i+1)
 		}

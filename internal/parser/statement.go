@@ -58,6 +58,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 }
 
+// TODO: unqualified aliases
 func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	var (
 		module, alias string
@@ -69,16 +70,15 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 
 	// Parse maybe alias
 	module = p.Expect(lexer.Identifier).Source
-	if p.CurrentTokenKind() == lexer.EqualSign {
+	if p.CurrentTokenKind() == lexer.Equal {
 		alias, module = module, alias
 		p.Advance()
 	}
 
-	for p.HasTokens() && (p.CurrentTokenKind() == lexer.Identifier ||
-		p.CurrentTokenKind() == lexer.Dot) {
+	for p.HasTokens() && p.IsCurrently(lexer.Identifier, lexer.Dot) {
 		module += p.Advance().Source
 	}
-	if p.CurrentTokenKind() == lexer.Times {
+	if p.CurrentTokenKind() == lexer.Asterisk {
 		// Wildcard
 		module += "*"
 		isWildcard = true
@@ -111,17 +111,23 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		}
 		module = module[:len(module)-1]
 
-		isTypeImport := false
-		for p.HasTokens() && p.CurrentTokenKind() != lexer.RightCurlyBrace {
+		var wasTypeKw, isTypeImport bool
+		for p.IsNot(lexer.RightCurlyBrace) {
+			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
+				panic(errors.NewTokenError(
+					errors.ErrImportExpectedIdentAfterType, p.CurrentToken(),
+				))
+			}
+			wasTypeKw = false
 			switch p.CurrentTokenKind() {
 			case lexer.Type:
-				isTypeImport = true
+				isTypeImport, wasTypeKw = true, true
 			case lexer.Identifier:
 				unqualImports = append(unqualImports, ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
 					Identifier: p.CurrentToken().Source,
 				})
-			case lexer.Times:
+			case lexer.Asterisk:
 				unqualImports = append(unqualImports, ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
 					Wildcard:   true,
@@ -135,7 +141,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				))
 			}
 			p.Advance() // Move to comma or }
-			if p.CurrentTokenKind() != lexer.RightCurlyBrace {
+			if !wasTypeKw && p.CurrentTokenKind() != lexer.RightCurlyBrace {
 				p.Expect(lexer.Comma)
 			}
 		}
@@ -147,26 +153,4 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		Module:             module,
 		Wildcard:           isWildcard,
 	}
-}
-
-func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
-	p.Expect(lexer.Type)
-	name := p.Expect(lexer.Identifier)
-	switch p.Advance().Kind {
-	case lexer.EqualSign:
-		// Type
-		return ast.TypeAliasDeclaration{
-			Identifier: name.Source,
-			Type:       p.ParseType(AssignBindingPower, false),
-		}
-	case lexer.LeftParenthesis:
-		// Inherited struct
-		panic("TODO")
-	case lexer.LeftCurlyBrace:
-		// Struct or enum
-	default:
-		// Some other token or unassigned type (if EOS)
-		panic(errors.NewTokenError(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
-	}
-	return nil
 }

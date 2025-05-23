@@ -1,15 +1,23 @@
 import klar.http.*
-
 import what
-
 import klar.http.server
-
 import re = klar.regex
-
 import klar.io.{stdio}
-//import klar.io.{Whatever, type Other, *}
+import klar.io.{Whatever, type Other, *}
 
-/* 
-    a: [Int] := "John"
-b := 3 * (4 + 2) + 4 
-*/
+type A = [String]
+
+a: [Int] := "John"
+b := 3 * (4 + 2) + 4
+
+type Bus: Vehicle {
+    fuel: Int
+}
+
+type Whatever = #{
+    name: String,
+    age: Int
+    This() -> Thing,
+}
+
+type LEDHandler = (Declaration, BindingPower) -> ASTItem

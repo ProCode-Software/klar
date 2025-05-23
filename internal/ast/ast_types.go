@@ -62,13 +62,8 @@ type Comment struct {
 	Value      string
 }
 
-// The type of a Comment is one of these.
-type CommentType int
-
-const (
-	LineComment CommentType = iota
-	BlockComment
-)
+// lexer.LineComment or lexer.BlockComment
+type CommentType = lexer.TokenType
 
 type BinaryExpression struct {
 	Left, Right ASTItem
@@ -232,12 +227,22 @@ type TypeDeclaration interface {
 type StructDeclaration struct {
 	Identifier     string
 	InheritedTypes []TypeAlias
-	Fields         []TypePair
+	Fields         []StructField
+}
+type StructField struct {
+	Identifier string
+	Type       Type
+	Constant   bool
+	Value      Expression
 }
 
 type EnumDeclaration struct {
 	Identifier string
-	Values     []string
+	Values     []EnumItem
+}
+type EnumItem struct {
+	Identifier string
+	Value      Expression
 }
 
 type TypeAliasDeclaration struct {

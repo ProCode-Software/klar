@@ -14,24 +14,25 @@ func _() {
 	_ = x[ErrExpectedDotInBraceImport-4]
 	_ = x[ErrAliasInUnqualifiedImport-5]
 	_ = x[ErrImportExpectedModule-6]
-	_ = x[ErrImportPrefixDot-7]
-	_ = x[ErrImportInvalidWildcard-8]
-	_ = x[ErrImportTooManyWildcard-9]
-	_ = x[ErrWildcardAndUnqImport-10]
-	_ = x[ErrUnterminatedString-11]
-	_ = x[ErrUnterminatedComment-12]
-	_ = x[ErrUnterminatedBrace-13]
-	_ = x[ErrStringEscape-14]
-	_ = x[ErrExpectedSymbolAssign-15]
-	_ = x[ErrReservedKeyword-16]
-	_ = x[ErrExpectedExpression-17]
-	_ = x[ErrNotEnoughEnumItems-18]
-	_ = x[ErrExpectedTypeAssignment-19]
+	_ = x[ErrImportExpectedIdentAfterType-7]
+	_ = x[ErrImportPrefixDot-8]
+	_ = x[ErrImportInvalidWildcard-9]
+	_ = x[ErrImportTooManyWildcard-10]
+	_ = x[ErrWildcardAndUnqImport-11]
+	_ = x[ErrUnterminatedString-12]
+	_ = x[ErrUnterminatedComment-13]
+	_ = x[ErrUnterminatedBrace-14]
+	_ = x[ErrStringEscape-15]
+	_ = x[ErrExpectedSymbolAssign-16]
+	_ = x[ErrReservedKeyword-17]
+	_ = x[ErrExpectedExpression-18]
+	_ = x[ErrNotEnoughEnumItems-19]
+	_ = x[ErrExpectedTypeAssignment-20]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrNotEnoughEnumItemsErrExpectedTypeAssignment"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrNotEnoughEnumItemsErrExpectedTypeAssignment"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 143, 167, 191, 214, 235, 257, 277, 292, 315, 333, 354, 375, 400}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 323, 346, 364, 385, 406, 431}
 
 func (i ErrorCode) String() string {
 	i -= 1

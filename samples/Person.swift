@@ -15,3 +15,4 @@ var people: [Person] = [
     Person(name: "Jane", age: 32, gender: .female),
 ]
 print(people)
+people[0].greet(person: "Lucy")

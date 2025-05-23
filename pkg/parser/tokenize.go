@@ -21,9 +21,9 @@ func TokenizeFile(file *os.File, includeComments bool) ([]lexer.Token, error) {
 }
 
 // Tokenize reads from reader and converts it into lexer tokens.
-func Tokenize(
-	reader io.Reader, includeComments bool, sizeEstimate int64,
-) (tokens []lexer.Token, err error) {
+func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
+	tokens []lexer.Token, err error,
+) {
 	lex := lexer.NewLexer(reader)
 	lex.IncludeComments = includeComments
 	tokens = make([]lexer.Token, 0, sizeEstimate)

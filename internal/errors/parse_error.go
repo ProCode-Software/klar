@@ -10,7 +10,6 @@ import (
 // An ErrorCode is a type of syntax or type error.
 //
 //go:generate stringer -type=ErrorCode
-type ErrorCode int
 
 // ==================
 // SYNTAX ERRORS
@@ -23,13 +22,14 @@ const (
 	ErrExpectedEOS   // Expected end of statement (newline)
 
 	// Import
-	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
-	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
-	ErrImportExpectedModule     // Unqualified import without module name
-	ErrImportPrefixDot          // Module name beginning with .
-	ErrImportInvalidWildcard    // Wildcard must be last part of module
-	ErrImportTooManyWildcard    // More than 1 wildcard
-	ErrWildcardAndUnqImport     // Using unqualified import with wildcard
+	ErrExpectedDotInBraceImport     // Dot required before brace in unqualified import
+	ErrAliasInUnqualifiedImport     // Alias is not allowed before unqualified import
+	ErrImportExpectedModule         // Unqualified import without module name
+	ErrImportExpectedIdentAfterType // type TypeName or type *
+	ErrImportPrefixDot              // Module name beginning with .
+	ErrImportInvalidWildcard        // Wildcard must be last part of module
+	ErrImportTooManyWildcard        // More than 1 wildcard
+	ErrWildcardAndUnqImport         // Using unqualified import with wildcard
 
 	// Punctuation
 	ErrUnterminatedString  // A string that was left open
@@ -60,7 +60,7 @@ type ParseError struct {
 func (e ParseError) Error() string {
 	switch e.Type {
 	default:
-		return fmt.Sprintf("SyntaxError: %s, error token is '%s' (type %s)",
+		return fmt.Sprintf("SyntaxError: %s: '%s' (type %s)",
 			e.Type.String(),
 			e.Token.Source, e.Token.Kind.String(),
 		)
@@ -70,8 +70,9 @@ func (e ParseError) Error() string {
 		return "SyntaxError: You can only assign to a variable or property, not " +
 			e.ASTItem.Kind()
 	case ErrExpectedToken:
+		fmt.Println(e.Position, e.Token.Position)
 		return fmt.Sprintf(
-			"SyntaxError: Expected token '%s', got '%s'",
+			"SyntaxError: Expected token '%s', but got '%s' instead",
 			e.Params["expected"].(lexer.TokenType).String(),
 			e.Token.Source,
 		)
@@ -84,7 +85,7 @@ func (e ParseError) Error() string {
 	case ErrImportExpectedModule:
 		return "SyntaxError: I expected a module name before '.{' in unqualified import"
 	case ErrImportInvalidWildcard:
-		return "SyntaxError: '*' should the the last part of a module"
+		return "SyntaxError: '*' should the the last sub-namespace of a module"
 	case ErrImportPrefixDot:
 		return fmt.Sprintf(
 			"SyntaxError: Module '%s' in import statement can't start with '.'",
@@ -105,10 +106,10 @@ func (e ParseError) Error() string {
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
 	case ErrExpectedTypeAssignment:
-		if e.Token.Kind == lexer.EndOfStatement {
+		if e.Token.Kind == lexer.EndOfStatement || e.Token.Kind == lexer.EOF {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: Expected type assignment ('=', '{', or inherited type), but got '" + e.Token.Source + "' instead"
+		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got '" + e.Token.Source + "' instead"
 	}
 }
 

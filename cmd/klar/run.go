@@ -12,10 +12,7 @@ import (
 
 func tryPipe() {
 	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return
-	}
-	if (stat.Mode() & os.ModeCharDevice) != 0 {
+	if err != nil || (stat.Mode()&os.ModeCharDevice) != 0 {
 		return
 	}
 	// Is pipe
@@ -27,6 +24,15 @@ func tryPipe() {
 	os.Exit(0)
 }
 
+// This is here because Go doesn't let you use []string as []any
+func collect(items []string) []any {
+	var result []any
+	for _, item := range items {
+		result = append(result, item)
+	}
+	return result
+}
+
 func runTokens(tokens []lexer.Token) {
 	program, errs := parser.ParseTokens(tokens, false)
 	if len(errs) > 0 {
@@ -35,7 +41,12 @@ func runTokens(tokens []lexer.Token) {
 			cli.Fail("Internal Error: ", err)
 		}
 		arr := strings.SplitAfter(err.Error(), ": ")
-		cli.Fail(arr[0], arr[1])
+		first := arr[0]
+		if len(arr) < 2 {
+			cli.Fail(first)
+		}
+		errName := first[:len(first)-2]
+		cli.CustomFailure(errName, arr[1], collect(arr[2:])...)
 	}
 	litter.Config.StripPackageNames = true
 	litter.Dump(program)
@@ -48,7 +59,7 @@ func RunFile(path string) {
 	}
 	if err != nil {
 		if os.IsNotExist(err) {
-			cli.FileNotFoundError(path)
+			cli.FileNotFound(path)
 		}
 		cli.InternalError(err)
 	}

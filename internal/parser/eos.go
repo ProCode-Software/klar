@@ -24,9 +24,10 @@ func (p *Parser) InsertEOS() {
 		)
 		if tok.Kind == lexer.EOF && p.Tokens[i-1].Kind != lexer.EndOfStatement {
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
-				Kind: lexer.EndOfStatement,
+				Kind:     lexer.EndOfStatement,
+				Position: tok.Position,
 			})
-			continue
+			break
 		}
 		if tok.Kind != lexer.Newline {
 			continue
@@ -37,11 +38,11 @@ func (p *Parser) InsertEOS() {
 			switch p.Tokens[i-1].Kind {
 			case
 				// Assignment
-				lexer.EqualSign, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
+				lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 				// Punctuation
 				lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
 				lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
-				lexer.Newline,
+				lexer.HashLeftCurlyBrace, lexer.Newline,
 				// Keywords
 				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type:
 				insertEOS = false
@@ -75,16 +76,16 @@ func canGoOnNewline(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Arithmetic
-		lexer.Plus, lexer.Minus, lexer.Times, lexer.Divide, lexer.Exponent,
-		lexer.Modulo,
+		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
+		lexer.Percent,
 		// Punctuation
 		lexer.Dot,
 		// Operators
-		lexer.Alternative, lexer.Pipeline, lexer.Arrow,
+		lexer.Stroke, lexer.Pipeline, lexer.Arrow,
 		// Comparison
-		lexer.GreaterThan, lexer.LessThan, lexer.Equals, lexer.GreaterEqualTo,
-		lexer.LessEqualTo, lexer.NotEqual, lexer.LogicalNot, lexer.LogicalAnd,
-		lexer.LogicalOr,
+		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
+		lexer.LessEqualTo, lexer.NotEqual, lexer.Not, lexer.AndAnd,
+		lexer.OrOr,
 		// Whitespace
 		lexer.Newline:
 		return true

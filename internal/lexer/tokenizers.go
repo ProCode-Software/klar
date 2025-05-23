@@ -69,6 +69,9 @@ func (l *Lexer) ParseBlockComment() string {
 		if cmtLevel == 0 {
 			return
 		}
+		if r == '\n' {
+			l.ResetPosition()
+		}
 		if len(*s) > 1 {
 			last := (*s)[len(*s)-1]
 			if last == '*' && r == '/' {

@@ -5,16 +5,29 @@ import (
 	"os"
 )
 
-func PrintError(msg string, detail ...any) {
-	str := ANSIBoldRed + "Error" + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
+func Print(msg string, detail ...any) {
+	Custom("Error", msg, detail...)
+}
+
+// Custom prints an error to [os.Stderr] with a custom title
+func Custom(errorType string, msg string, detail ...any) {
+	str := ANSIBoldRed + errorType + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
 	if detail != nil && len(detail) > 0 {
 		str += fmt.Sprintf("%v", detail...)
 	}
 	fmt.Fprintln(os.Stderr, str)
 }
 
+// CustomError prints an error to [os.Stderr] with a custom title, followed by a call to
+// [os.Exit](1).
+func CustomFailure(errorType string, msg string, detail ...any) {
+	Custom(errorType, msg, detail...)
+	os.Exit(1)
+}
+
+// Fail prints an error to [os.Stderr], followed by a call to [os.Exit](1).
 func Fail(msg string, detail ...any) {
-	PrintError(msg, detail...)
+	Print(msg, detail...)
 	os.Exit(1)
 }
 
@@ -23,10 +36,10 @@ func InternalError(err any) {
 }
 
 func InvalidUsage(usage string) {
-	PrintError("Invalid usage", "Usage: "+usage)
+	Print("Invalid usage", "Usage: "+usage)
 	os.Exit(2)
 }
 
-func FileNotFoundError(path string) {
+func FileNotFound(path string) {
 	Fail("File not found: ", path)
 }

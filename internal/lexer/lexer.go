@@ -37,7 +37,7 @@ func (l *Lexer) Tokenize() *Token {
 			return NewLexerToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ParseString(pos)
-		case '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
+		case '!', '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
 			// Skip comments, just change position
@@ -63,13 +63,11 @@ func (l *Lexer) Tokenize() *Token {
 		case '@':
 			return NewLexerToken(pos, At, "@")
 		case '*':
-			return NewLexerToken(pos, Times, "*")
+			return NewLexerToken(pos, Asterisk, "*")
 		case '%':
-			return NewLexerToken(pos, Modulo, "%")
+			return NewLexerToken(pos, Percent, "%")
 		case '^':
-			return NewLexerToken(pos, Exponent, "^")
-		case '!':
-			return NewLexerToken(pos, LogicalNot, "!")
+			return NewLexerToken(pos, Caret, "^")
 		case '(':
 			return NewLexerToken(pos, LeftParenthesis, "(")
 		case ')':
@@ -82,6 +80,10 @@ func (l *Lexer) Tokenize() *Token {
 			return NewLexerToken(pos, LeftBracket, "[")
 		case ']':
 			return NewLexerToken(pos, RightBracket, "]")
+		case ',':
+			return NewLexerToken(pos, Comma, ",")
+		case '?':
+			return NewLexerToken(pos, Question, "?")
 		case '#':
 			next, err := l.Reader.Peek(1)
 			if handleReadError(err) || next[0] != '{' {
