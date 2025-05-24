@@ -154,3 +154,10 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		Wildcard:           isWildcard,
 	}
 }
+
+func (p *Parser) ParseReturnStatement() ast.ReturnStatement {
+	p.Expect(lexer.Return)
+	return ast.ReturnStatement{
+		Value: p.ParseExpression(DefaultBindingPower),
+	}
+}

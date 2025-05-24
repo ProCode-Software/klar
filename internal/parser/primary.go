@@ -48,6 +48,8 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 		return ast.BooleanLiteral{
 			Value: unwrap(strconv.ParseBool(src)),
 		}
+	case lexer.HashLeftCurlyBrace:
+		return p.ParseMap()
 	case lexer.Nil:
 		return ast.NilLiteral{}
 	default:

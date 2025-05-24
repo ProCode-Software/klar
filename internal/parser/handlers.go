@@ -56,17 +56,28 @@ func (p *Parser) handleLED(
 	return res, true
 }
 
+// handleStatement covers all keywords
 func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
 	switch kind {
 	default:
 		return nil, false
-	// Import
 	case lexer.Import:
 		res = p.ParseImportStatement()
 	case lexer.Type:
 		res = p.ParseTypeDeclaration()
+	case lexer.Func:
+		res = p.ParseFuncDeclaration()
+	case lexer.Return:
+		res = p.ParseReturnStatement()
+	case lexer.When:
+		panic("TODO")
+	case lexer.For:
+		panic("TODO")
+	case lexer.Next:
+		res = ast.NextStatement{}
+		p.Advance()
 	}
-	return res, true // TODO: add statements
+	return res, true
 }
 
 // =================
@@ -83,7 +94,6 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseInterfaceType()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
-	// TODO: map and tuple/func
 	default:
 		return nil, false
 	}

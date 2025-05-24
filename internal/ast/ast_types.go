@@ -26,7 +26,7 @@ type Expression interface {
 // A Program is a parsed Klar file. Body contains the parsed statements in the program,
 // and all comments are moved to Comments.
 type Program struct {
-	Body     []ASTItem
+	Body     []Statement
 	Comments []Comment `json:"Comments,omitempty"`
 }
 
@@ -114,6 +114,10 @@ type AssignmentStatement struct {
 	Assignee Expression
 	Operator lexer.TokenType
 	Value    Expression
+}
+
+type Pair struct {
+	Key, Value Expression
 }
 
 // ReservedKeywords is the set of keywords that cannot be used as variables
@@ -249,3 +253,34 @@ type TypeAliasDeclaration struct {
 	Identifier string
 	Type       Type
 }
+
+type MapLiteral struct {
+	Entries []Pair
+}
+
+type TupleLiteral struct {
+	Values []Expression
+}
+
+type ReturnStatement struct {
+	Value Expression // Can be nil
+}
+
+// A FunctionDeclaration is a basic Klar function or method declaration.
+type FunctionDeclaration struct {
+	Identifier    string
+	Struct        TypeAlias
+	GenericParams []string // Can be nil
+	Parameters    []FunctionParam
+	ReturnType    SimpleType // Can be nil
+	Body          []Statement
+}
+
+type FunctionParam struct {
+	Identifier,
+	Label string
+	Type    SimpleType
+	Default Expression
+}
+
+type NextStatement struct{}

@@ -13,7 +13,7 @@ import (
 func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs []error) {
 	var (
 		shouldBreak bool
-		body        = make([]ast.ASTItem, 0, len(tokens)/2)
+		body        = make([]ast.Statement, 0, len(tokens)/2)
 		p           = New(tokens)
 		comments    = p.RemoveComments() // Move comments
 	)

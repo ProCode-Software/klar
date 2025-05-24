@@ -31,8 +31,18 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 	next := p.CurrentToken()
 	switch next.Kind {
 	case lexer.Comma:
-		// Tuple
-		panic("TODO")
+		// Tuple (requires at least one comma)
+		tuple := ast.TupleLiteral{}
+		tuple.Values = append(tuple.Values, expr)
+		p.Advance()
+		for p.IsNot(lexer.RightParenthesis) {
+			tuple.Values = append(tuple.Values, p.ParseExpression(LogicalBindingPower))
+			if p.CurrentTokenKind() != lexer.RightParenthesis {
+				p.Expect(lexer.Comma)
+			}
+		}
+		p.Expect(lexer.RightParenthesis)
+		return tuple
 	case lexer.RightParenthesis:
 		// Grouped expression
 		p.Advance()
@@ -42,9 +52,20 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 	}
 }
 
-func (p *Parser) ParseTuple() ast.Expression {
-	p.Advance() // (
-	expr := p.ParseExpression(DefaultBindingPower)
-	p.Expect(lexer.RightParenthesis)
-	return expr
+func (p *Parser) ParseMap() ast.MapLiteral {
+	p.Expect(lexer.HashLeftCurlyBrace)
+	entries := []ast.Pair{}
+	for p.IsNot(lexer.RightCurlyBrace) {
+		entry := ast.Pair{
+			Key: p.ParseExpression(LogicalBindingPower),
+		}
+		p.Expect(lexer.Colon)
+		entry.Value = p.ParseExpression(LogicalBindingPower)
+		entries = append(entries, entry)
+		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
+			p.Expect(lexer.EndOfStatement, lexer.Comma)
+		}
+	}
+	p.Expect(lexer.RightCurlyBrace)
+	return ast.MapLiteral{Entries: entries}
 }

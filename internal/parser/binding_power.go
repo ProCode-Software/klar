@@ -1,7 +1,6 @@
 package parser
 
 import "github.com/ProCode-Software/klar/internal/lexer"
-import goast "go/parser"
 
 // BindingPower represents the operator precedence for a type of operator.
 type BindingPower int
@@ -18,7 +17,7 @@ const (
 	AdditiveBindingPower                    // + and -
 	MultiplicativeBindingPower              // *, /, %
 	ExponentialBindingPower                 // ^
-	UnaryBindingPower                       // Prefix/Suffix: + - ...
+	UnaryBindingPower                       // Prefix/Suffix: + -
 	CallBindingPower                        // Call: (
 	MemberBindingPower                      // Index: . [
 	PrimaryBindingPower                     // Primary expressions, such as literals
@@ -39,6 +38,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.GreaterEqualTo: RelationalBindingPower,
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
+	lexer.Spread:         RelationalBindingPower, // Infix only: 1...10
 
 	lexer.AndAnd: LogicalBindingPower,
 	lexer.OrOr:   LogicalBindingPower,
@@ -55,8 +55,8 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 
 	lexer.LeftParenthesis: CallBindingPower,
 
-	lexer.Dot:             MemberBindingPower,
-	lexer.LeftBracket:     MemberBindingPower,
+	lexer.Dot:         MemberBindingPower,
+	lexer.LeftBracket: MemberBindingPower,
 
 	lexer.String:     PrimaryBindingPower,
 	lexer.Numeric:    PrimaryBindingPower,

@@ -18,6 +18,11 @@ func (TypeAnnotation) Kind() string       { return "TypeAnnotation" }
 func (EnumDeclaration) Kind() string      { return "EnumDeclaration" }
 func (StructDeclaration) Kind() string    { return "StructDeclaration" }
 func (TypeAliasDeclaration) Kind() string { return "TypeAliasDeclaration" }
+func (MapLiteral) Kind() string           { return "MapLiteral" }
+func (TupleLiteral) Kind() string         { return "TupleLiteral" }
+func (ReturnStatement) Kind() string      { return "ReturnStatement" }
+func (FunctionDeclaration) Kind() string  { return "FunctionDeclaration" }
+func (NextStatement) Kind() string        { return "NextStatement" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -35,6 +40,8 @@ func (FloatLiteral) Expression()     {}
 func (BooleanLiteral) Expression()   {}
 func (Symbol) Expression()           {}
 func (TypeAnnotation) Expression()   {}
+func (MapLiteral) Expression()       {}
+func (TupleLiteral) Expression()     {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}
@@ -44,6 +51,9 @@ func (ImportStatement) Statement()      {}
 func (EnumDeclaration) Statement()      {}
 func (StructDeclaration) Statement()    {}
 func (TypeAliasDeclaration) Statement() {}
+func (ReturnStatement) Statement()      {}
+func (FunctionDeclaration) Statement()  {}
+func (NextStatement) Statement()        {}
 
 // Type
 func (PrimitiveType) Type() {}

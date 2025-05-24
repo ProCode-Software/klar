@@ -65,14 +65,14 @@ func (e ParseError) Error() string {
 			e.Token.Source, e.Token.Kind.String(),
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: I expected an expression, but got " + e.ASTItem.Kind() + "instead"
+		return "SyntaxError: I expected an expression, but got " + e.ASTItem.Kind() + " instead"
 	case ErrExpectedSymbolAssign:
 		return "SyntaxError: You can only assign to a variable or property, not " +
 			e.ASTItem.Kind()
 	case ErrExpectedToken:
 		fmt.Println(e.Position, e.Token.Position)
 		return fmt.Sprintf(
-			"SyntaxError: Expected token '%s', but got '%s' instead",
+			"SyntaxError: Expected token %s, but got '%s' instead",
 			e.Params["expected"].(lexer.TokenType).String(),
 			e.Token.Source,
 		)

@@ -20,4 +20,11 @@ type Whatever = #{
     This() -> Thing,
 }
 
-type LEDHandler = (Declaration, BindingPower) -> ASTItem
+// type LEDHandler = (Declaration, BindingPower) -> ASTItem
+func Person.greet(person other: Person = 1) -> String {
+    a := 1
+    return a
+}
+
+/* @external(js: "./date.js", name: "now")
+func now() -> Date */

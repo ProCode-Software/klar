@@ -7,7 +7,10 @@ const (
 	ANSIBold         = "\033[1m"
 	ANSIDim          = "\033[2m"
 	ANSIYellow       = "\033[33m"
+	ANSIBlue         = "\033[34m"
+	ANSIRed          = "\033[31m"
 	ANSICyan         = "\033[36m"
+	ANSIMagenta      = "\033[35m"
 	ANSIGreen        = "\033[32m"
 	ANSIResetBold    = ANSIReset + ANSIBold
 	ANSIResetBoldDim = ANSIReset + ANSIBoldDim
