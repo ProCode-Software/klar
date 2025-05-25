@@ -65,7 +65,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 }
 
 const (
-	_ BindingPower = iota
+	_ BindingPower = iota + AssignBindingPower
 	DefaultTypeBindingPower
 	FunctionTypeBindingPower
 	UnionTypeBindingPower

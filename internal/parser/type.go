@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseType(bp BindingPower, simple bool) ast.Type {
+func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
@@ -19,13 +19,20 @@ func (p *Parser) ParseType(bp BindingPower, simple bool) ast.Type {
 			noHandlerError(p, "TypeLED")
 		}
 	}
-	return left
+	return left.(ast.SimpleType)
+}
+
+func (p *Parser) ParseComplexType(bp BindingPower) ast.Type {
+	if p.CurrentTokenKind() == lexer.HashLeftCurlyBrace {
+		return p.ParseInterfaceType()
+	}
+	return p.ParseType(bp)
 }
 
 func (p *Parser) ParseListType() ast.ListType {
 	// Skip the [
 	p.Advance()
-	typ := p.ParseType(DefaultBindingPower, true)
+	typ := p.ParseType(DefaultTypeBindingPower)
 	p.Expect(lexer.RightBracket)
 	return ast.ListType{Value: typ}
 }
@@ -47,7 +54,12 @@ func (p *Parser) ParseOptionalType(left ast.Type, bp BindingPower) ast.OptionalT
 // Either + or |
 func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) ast.UnionType {
 	op := p.Advance().Kind
-	right := p.ParseType(bp, op == lexer.Stroke)
+	var right ast.Type
+	if op == lexer.Stroke {
+		right = p.ParseType(bp)
+	} else {
+		right = p.ParseComplexType(bp)
+	}
 	return ast.UnionType{
 		Left:     left,
 		Right:    right,
@@ -62,16 +74,20 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 	fields := []ast.TypePair{}
 	p.Advance() // #{
-	for p.IsNot(lexer.RightCurlyBrace) {
+	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
+		if !p.isMapIdentifier() {
+			errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken())
+		}
 		field := ast.TypePair{
-			Key: p.Expect(lexer.Identifier).Source,
+			Key: p.Advance().Source,
+			// If not ident, then it is unmatched
 		}
 		if p.CurrentTokenKind() == lexer.LeftParenthesis {
 			// Parse function: #{ Kind() -> string }
 			fn := ast.FunctionType{}
 			p.Advance()
-			for p.IsNot(lexer.RightParenthesis) {
-				fn.Parameters = append(fn.Parameters, p.ParseType(CallBindingPower, true))
+			for p.WhileNot(lexer.RightParenthesis) {
+				fn.Parameters = append(fn.Parameters, p.ParseType(CallBindingPower))
 				if p.CurrentTokenKind() != lexer.RightParenthesis {
 					p.Expect(lexer.Comma)
 				}
@@ -79,12 +95,12 @@ func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 			p.Expect(lexer.RightParenthesis)
 			if p.CurrentTokenKind() == lexer.Arrow {
 				p.Advance()
-				fn.ReturnType = p.ParseType(DefaultTypeBindingPower, true)
+				fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
 			}
 			field.Value = fn
 		} else {
 			p.Expect(lexer.Colon)
-			field.Value = p.ParseType(AssignBindingPower, false)
+			field.Value = p.ParseType(AssignBindingPower)
 		}
 		fields = append(fields, field)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
@@ -99,20 +115,20 @@ func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 
 func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) ast.FunctionType {
 	if _, ok := left.(ast.TupleType); !ok {
-		panic(errors.UnknownTokenError(p.CurrentToken()))
+		panic(errors.UnexpectedTokenError(p.CurrentToken()))
 	}
 	p.Expect(lexer.Arrow)
 	return ast.FunctionType{
 		Parameters: left.(ast.TupleType).Values,
-		ReturnType: p.ParseType(DefaultTypeBindingPower, false),
+		ReturnType: p.ParseType(DefaultTypeBindingPower),
 	}
 }
 func (p *Parser) ParseTupleType() ast.TupleType {
 	params := []ast.Type{}
 	p.Advance() // (
-	for p.IsNot(lexer.RightParenthesis) {
-		params = append(params, p.ParseType(DefaultTypeBindingPower, true))
-		if p.CurrentTokenKind() != lexer.RightParenthesis {
+	for p.WhileNotEndOr(lexer.RightParenthesis) {
+		params = append(params, p.ParseType(DefaultTypeBindingPower))
+		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
 		}
 	}

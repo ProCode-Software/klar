@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+func isREPL() bool {
+	return os.Getenv("KLAR_REPL") == "1"
+}
+
 func Print(msg string, detail ...any) {
 	Custom("Error", msg, detail...)
 }
@@ -22,13 +26,17 @@ func Custom(errorType string, msg string, detail ...any) {
 // [os.Exit](1).
 func CustomFailure(errorType string, msg string, detail ...any) {
 	Custom(errorType, msg, detail...)
-	os.Exit(1)
+	if !isREPL() {
+		os.Exit(1)
+	}
 }
 
 // Fail prints an error to [os.Stderr], followed by a call to [os.Exit](1).
 func Fail(msg string, detail ...any) {
 	Print(msg, detail...)
-	os.Exit(1)
+	if !isREPL() {
+		os.Exit(1)
+	}
 }
 
 func InternalError(err any) {

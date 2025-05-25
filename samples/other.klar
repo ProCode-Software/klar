@@ -15,9 +15,9 @@ type Bus: Vehicle {
 }
 
 type Whatever = #{
-    name: String,
+    name: String
     age: Int
-    This() -> Thing,
+    This() -> Thing
 }
 
 // type LEDHandler = (Declaration, BindingPower) -> ASTItem
@@ -28,3 +28,16 @@ func Person.greet(person other: Person = 1) -> String {
 
 /* @external(js: "./date.js", name: "now")
 func now() -> Date */
+
+
+function.this(1, 2, value: 3, :person)
+
+type Color {
+    | red
+    | orange
+    | yellow
+    | green
+}
+type Person {
+    name: String
+    age: Int

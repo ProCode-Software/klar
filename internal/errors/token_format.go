@@ -1,0 +1,68 @@
+package errors
+
+import (
+	"strings"
+
+	"github.com/ProCode-Software/klar/internal/lexer"
+)
+
+// Quotes add quotes around source code. By default, Quote uses single quotes for source code, or backticks if the source contains single quotes.
+func Quote(tok lexer.Token) string {
+	switch {
+	default:
+		return "'" + tok.Source + "'"
+	case strings.Contains(tok.Source, "'"):
+		return "`" + tok.Source + "`"
+	case tok.Kind == lexer.EndOfStatement:
+		return "a newline"
+	case tok.Kind == lexer.EOF:
+		return "end of file"
+	}
+}
+
+// QuoteToken returns 'token X', where X is the quoted source code, or 'end of statement' if EOS.
+func QuoteToken(tok lexer.Token) string {
+	switch tok.Kind {
+	default:
+		return "token " + Quote(tok)
+	case lexer.EndOfStatement:
+		return "a newline"
+	case lexer.EOF:
+		return "end of file"
+	case lexer.Comma:
+		return "a comma"
+	case lexer.Colon:
+		return "a colon"
+	case lexer.Dot:
+		return "a period"
+	}
+}
+
+func QuoteTokenThis(tok lexer.Token) string {
+	return strings.Replace(QuoteToken(tok), "a ", "this ", 1)
+}
+
+var vowels = map[byte]bool{
+	'A': true, 'E': true, 'I': true, 'O': true, 'U': true,
+	'a': true, 'e': true, 'i': true, 'o': true, 'u': true,
+}
+
+func FormatTokenType(tok lexer.TokenType) string {
+	switch tok {
+	default:
+		if vowels[tok.String()[0]] {
+			return "an " + tok.String()
+		}
+		return "a " + tok.String()
+	case lexer.EndOfStatement:
+		return "a newline"
+	case lexer.EOF:
+		return "end of file"
+	case lexer.Comma:
+		return "a comma"
+	case lexer.Colon:
+		return "a colon"
+	case lexer.Dot:
+		return "a period"
+	}
+}

@@ -103,6 +103,10 @@ type Symbol struct {
 	Identifier string
 }
 
+type Assignable interface {
+	Assignable()
+}
+
 type VariableDeclaration struct {
 	Identifier   string
 	Value        Expression
@@ -131,6 +135,18 @@ var ReservedKeywords = map[lexer.TokenType]bool{
 	lexer.Type:    true,
 	lexer.Boolean: true,
 	lexer.Nil:     true,
+}
+
+var Keywords = []lexer.TokenType{
+	lexer.Import,
+	lexer.Func,
+	lexer.When,
+	lexer.Return,
+	lexer.For,
+	lexer.Next,
+	lexer.Type,
+	lexer.Boolean,
+	lexer.Nil,
 }
 
 type Type interface {
@@ -230,7 +246,7 @@ type TypeDeclaration interface {
 
 type StructDeclaration struct {
 	Identifier     string
-	InheritedTypes []TypeAlias
+	InheritedTypes []Type // Type alias or primitive
 	Fields         []StructField
 }
 type StructField struct {
@@ -269,10 +285,10 @@ type ReturnStatement struct {
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
 	Identifier    string
-	Struct        TypeAlias
-	GenericParams []string // Can be nil
+	Struct        Type
+	GenericParams []string
 	Parameters    []FunctionParam
-	ReturnType    SimpleType // Can be nil
+	ReturnType    SimpleType
 	Body          []Statement
 }
 
@@ -284,3 +300,26 @@ type FunctionParam struct {
 }
 
 type NextStatement struct{}
+
+type ListLiteral struct {
+	Items []Expression
+}
+
+type IndexExpression struct {
+	Target, Field ASTItem
+	Computed      bool // If square bracket [
+}
+
+type EnumValue struct {
+	Name string
+}
+
+type CallParam struct {
+	Label string
+	Value Expression
+}
+
+type CallExpression struct {
+	Callee ASTItem
+	Args   []CallParam
+}

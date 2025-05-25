@@ -3,7 +3,7 @@
         "scope": "go",
         "prefix": "led",
         "body": [
-            "func (p *Parser) Parse$1(left ast.Type, bp BindingPower) ast.$2 {",
+            "func (p *Parser) Parse$1(left ast.ASTItem, bp BindingPower) ast.$2 {",
             "\t$0",
             "}"
         ],
@@ -19,5 +19,15 @@
             "}"
         ],
         "description": "New NUD handler"
+    },
+    "printtok": {
+        "scope": "go",
+        "prefix": "printtok",
+        "body": [
+            "for _, tok := range p.Tokens {",
+            "\tfmt.Printf(\"%-20s %-2v %#q\\n\", tok.Kind, tok.Position, tok.Source)",
+            "}"
+        ],
+        "description": "Print all tokens"
     }
 }

@@ -26,13 +26,15 @@ func _() {
 	_ = x[ErrExpectedSymbolAssign-16]
 	_ = x[ErrReservedKeyword-17]
 	_ = x[ErrExpectedExpression-18]
-	_ = x[ErrNotEnoughEnumItems-19]
-	_ = x[ErrExpectedTypeAssignment-20]
+	_ = x[ErrInvalidLabelShorthand-19]
+	_ = x[ErrNotEnoughEnumItems-20]
+	_ = x[ErrExpectedTypeAssignment-21]
+	_ = x[ErrRequiredStructFieldType-22]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrNotEnoughEnumItemsErrExpectedTypeAssignment"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldType"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 323, 346, 364, 385, 406, 431}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 323, 346, 364, 385, 409, 430, 455, 481}
 
 func (i ErrorCode) String() string {
 	i -= 1

@@ -5,10 +5,13 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/sanity-io/litter"
 )
+
+const INCLUDE_COMMENTS = false
 
 func tryPipe() {
 	stat, err := os.Stdin.Stat()
@@ -16,7 +19,7 @@ func tryPipe() {
 		return
 	}
 	// Is pipe
-	tokens, err := parser.TokenizeFile(os.Stdin, true)
+	tokens, err := parser.TokenizeFile(os.Stdin, INCLUDE_COMMENTS)
 	if err != nil {
 		cli.InternalError(err)
 	}
@@ -33,20 +36,32 @@ func collect(items []string) []any {
 	return result
 }
 
+var printOptions = errors.PrintOptions{
+	Color: true,
+	MaxLines: 5,
+	Semantic: true,
+}
+
+func throw(err error) {
+	if !parser.IsKlarError(err) {
+		panic(err) // Trace needed
+		// cli.Fail("Internal Error: ", err)
+	}
+	arr := strings.SplitAfter(err.Error(), ": ")
+	first := arr[0]
+	errors.PrintError(err.(errors.KlarError), printOptions)
+	if len(arr) < 2 {
+		cli.Fail(first)
+	}
+	errName := first[:len(first)-2]
+	cli.CustomFailure(errName, arr[1], collect(arr[2:])...)
+}
+
 func runTokens(tokens []lexer.Token) {
+	printOptions.Tokens = tokens
 	program, errs := parser.ParseTokens(tokens, false)
 	if len(errs) > 0 {
-		err := errs[len(errs)-1]
-		if !parser.IsKlarError(err) {
-			cli.Fail("Internal Error: ", err)
-		}
-		arr := strings.SplitAfter(err.Error(), ": ")
-		first := arr[0]
-		if len(arr) < 2 {
-			cli.Fail(first)
-		}
-		errName := first[:len(first)-2]
-		cli.CustomFailure(errName, arr[1], collect(arr[2:])...)
+		throw(errs[0])
 	}
 	litter.Config.StripPackageNames = true
 	litter.Dump(program)
@@ -63,7 +78,7 @@ func RunFile(path string) {
 		}
 		cli.InternalError(err)
 	}
-	tokens, err := parser.TokenizeFile(file, true)
+	tokens, err := parser.TokenizeFile(file, INCLUDE_COMMENTS)
 	if err != nil {
 		cli.InternalError(err)
 	}
@@ -71,7 +86,7 @@ func RunFile(path string) {
 }
 
 func RunString(program string) {
-	tokens, err := parser.TokenizeString(program, true)
+	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
 	if err != nil {
 		cli.InternalError(err)
 	}

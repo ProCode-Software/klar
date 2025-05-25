@@ -46,6 +46,7 @@ func (p *Parser) InsertEOS() {
 				// Keywords
 				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type:
 				insertEOS = false
+			case lexer.RightParenthesis, lexer.RightBracket:
 			default:
 				insertEOS = !canGoOnNewline(p.Tokens[i-1].Kind)
 			}
@@ -70,7 +71,7 @@ func (p *Parser) InsertEOS() {
 //	[1, 2, 3]
 //		.sort()
 //
-// If a newline before is a bad practice (such as before left parenthesis), then it will not be here.
+// If a newline before is a bad practice (such as equal sign or parenthesis), then it will not be here.
 // Tokens that begin statements (such as keywords) aren't here either.
 func canGoOnNewline(t lexer.TokenType) bool {
 	switch t {
@@ -79,7 +80,7 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
 		lexer.Percent,
 		// Punctuation
-		lexer.Dot,
+		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis,
 		// Operators
 		lexer.Stroke, lexer.Pipeline, lexer.Arrow,
 		// Comparison

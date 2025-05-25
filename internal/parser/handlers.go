@@ -19,6 +19,10 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.ASTItem, handled bool)
 	// Group or tuple
 	case lexer.LeftParenthesis:
 		res = p.ParseGroupOrTuple()
+	case lexer.HashLeftCurlyBrace:
+		res = p.ParseMap()
+	case lexer.LeftBracket:
+		res = p.ParseList()
 	}
 	return res, true
 }
@@ -26,21 +30,30 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.ASTItem, handled bool)
 func (p *Parser) handleLED(
 	kind lexer.TokenType, left ast.ASTItem, bp BindingPower,
 ) (res ast.ASTItem, handled bool) {
+	currentBP := BindingPowerMap[p.CurrentTokenKind()]
 	switch kind {
 	default:
 		return nil, false
 
 	// Arithmetic
 	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent:
-		res = p.ParseBinaryExpression(left, BindingPowerMap[p.CurrentTokenKind()])
+		res = p.ParseBinaryExpression(left, currentBP)
 
 	// Exponent (right-associative)
 	case lexer.Caret:
-		res = p.ParseBinaryExpression(left, BindingPowerMap[p.CurrentTokenKind()]-1)
+		res = p.ParseBinaryExpression(left, currentBP-1)
 
 	// Type annotation
 	case lexer.Colon:
-		res = p.ParseVarTypeAnnotation(left, BindingPowerMap[p.CurrentTokenKind()])
+		res = p.ParseVarTypeAnnotation(left, currentBP)
+
+	// Index
+	case lexer.Dot, lexer.LeftBracket:
+		res = p.ParseIndexExpression(left, bp)
+
+	// Call
+	case lexer.LeftParenthesis:
+		res = p.ParseCallExpression(left, bp)
 
 	// Assignment
 	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
@@ -90,8 +103,6 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseListType()
 	case lexer.Identifier:
 		res = p.ParseTypeAlias()
-	case lexer.HashLeftCurlyBrace:
-		res = p.ParseInterfaceType()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
 	default:

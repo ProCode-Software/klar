@@ -49,11 +49,11 @@ func (l *Lexer) Tokenize() *Token {
 				return NewLexerToken(pos, LineComment, src)
 			}
 			if tt == BlockComment {
-				src := l.ParseBlockComment()
+				src, endPos := l.ParseBlockComment()
 				if !l.IncludeComments {
 					continue
 				}
-				return NewLexerToken(pos, BlockComment, src)
+				return NewLexerToken(pos, BlockComment, src).SetAttribute("end", endPos)
 			}
 			// Keep going if it's a dot
 			if !(tt == Illegal && val == ".") {

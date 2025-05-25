@@ -63,10 +63,12 @@ func (l *Lexer) ParseLineComment() string {
 	})
 	return "//" + cmt
 }
-func (l *Lexer) ParseBlockComment() string {
+func (l *Lexer) ParseBlockComment() (string, Position) {
 	cmtLevel := 1
+	var endPos Position
 	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
 		if cmtLevel == 0 {
+			endPos = l.Pos
 			return
 		}
 		if r == '\n' {
@@ -82,7 +84,7 @@ func (l *Lexer) ParseBlockComment() string {
 		}
 		*s += string(r)
 	})
-	return "/*" + cmt
+	return "/*" + cmt, endPos
 }
 func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (

@@ -11,7 +11,7 @@ func (ExpressionStatement) Kind() string  { return "ExpressionStatement" }
 func (BinaryExpression) Kind() string     { return "BinaryExpression" }
 func (VariableDeclaration) Kind() string  { return "VariableDeclaration" }
 func (AssignmentStatement) Kind() string  { return "AssignmentStatement" }
-func (UnaryExpression) Kind() string      { return "AssignmentStatement" }
+func (UnaryExpression) Kind() string      { return "UnaryExpression" }
 func (Symbol) Kind() string               { return "Symbol" }
 func (ImportStatement) Kind() string      { return "ImportStatement" }
 func (TypeAnnotation) Kind() string       { return "TypeAnnotation" }
@@ -23,6 +23,10 @@ func (TupleLiteral) Kind() string         { return "TupleLiteral" }
 func (ReturnStatement) Kind() string      { return "ReturnStatement" }
 func (FunctionDeclaration) Kind() string  { return "FunctionDeclaration" }
 func (NextStatement) Kind() string        { return "NextStatement" }
+func (ListLiteral) Kind() string          { return "ListLiteral" }
+func (IndexExpression) Kind() string      { return "IndexExpression" }
+func (CallExpression) Kind() string       { return "CallExpression" }
+func (EnumValue) Kind() string            { return "EnumValue" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -42,6 +46,10 @@ func (Symbol) Expression()           {}
 func (TypeAnnotation) Expression()   {}
 func (MapLiteral) Expression()       {}
 func (TupleLiteral) Expression()     {}
+func (ListLiteral) Expression()      {}
+func (IndexExpression) Expression()  {}
+func (CallExpression) Expression()   {}
+func (EnumValue) Expression()        {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}
@@ -83,3 +91,7 @@ func (UnionType) SimpleType()     {}
 func (TypeAliasDeclaration) TypeDeclaration() {}
 func (StructDeclaration) TypeDeclaration()    {}
 func (EnumDeclaration) TypeDeclaration()      {}
+
+// Assignable types
+func (Symbol) Assignable() {}
+func (IndexExpression) Assignable() {}

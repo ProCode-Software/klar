@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -20,30 +21,34 @@ func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs 
 	p.InsertEOS() // Add the "semicolons"
 	for p.HasTokens() && !shouldBreak {
 		func() {
-			defer func() {
-				if err := recover(); err != nil {
-					_, isParseErr := err.(errors.ParseError)
-					switch {
-					case isParseErr:
-						errs = append(errs, err.(errors.ParseError))
-						p.Index++
-					case !isParseErr:
-						if _, ok := err.(error); !ok {
-							errs = append(errs, fmt.Errorf("%v", err))
-						} else {
-							errs = append(errs, err.(error))
-						}
-						shouldBreak = true
-					}
-					if !continueOnErr {
-						shouldBreak = true
-					}
-				}
-			}()
+			defer p.handleError(continueOnErr, &errs, &shouldBreak)
 			body = append(body, p.ParseStatement())
 		}()
 	}
 	return ast.Program{Body: body, Comments: comments}, errs
+}
+
+func (p *Parser) handleError(continueOnErr bool, errs *[]error, shouldBreak *bool) {
+	unshift := func(err error) {
+		*errs = slices.Insert(*errs, 0, err)
+	}
+	if err := recover(); err != nil {
+		switch err := err.(type) {
+		case errors.ParseError:
+			unshift(err)
+			if !continueOnErr {
+				*shouldBreak = true
+				return
+			}
+			p.Index++
+		case error:
+			unshift(err)
+			*shouldBreak = true
+		default:
+			unshift(fmt.Errorf("%v", err))
+			*shouldBreak = true
+		}
+	}
 }
 
 // For debugging purposes
@@ -57,7 +62,7 @@ func noHandlerError(p *Parser, nudOrLED string) {
 }
 
 func (p *Parser) unknownTokenErr() {
-	panic(errors.UnknownTokenError(p.CurrentToken()))
+	panic(errors.UnexpectedTokenError(p.CurrentToken()))
 }
 
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
@@ -97,14 +102,14 @@ func (p *Parser) ParseStatement() ast.Statement {
 
 	res := p.ParseLED(DefaultBindingPower)
 	p.Expect(lexer.EndOfStatement)
-	switch res.(type) {
+	switch res := res.(type) {
 	// Left-denoted statement
 	case ast.Statement:
-		return res.(ast.Statement)
+		return res
 
 	// Then it is an expression
 	case ast.Expression:
-		return ast.ExpressionStatement{Expression: res.(ast.Expression)}
+		return ast.ExpressionStatement{Expression: res}
 
 	// I don't know what this is
 	default:

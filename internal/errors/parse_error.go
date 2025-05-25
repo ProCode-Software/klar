@@ -11,9 +11,6 @@ import (
 //
 //go:generate stringer -type=ErrorCode
 
-// ==================
-// SYNTAX ERRORS
-// ==================
 const (
 	_ ErrorCode = iota
 
@@ -37,13 +34,15 @@ const (
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
 	ErrStringEscape        // Invalid string escape
 
-	ErrExpectedSymbolAssign // Assignment to non-variable or property
-	ErrReservedKeyword      // Reserved keyword used as an identifier
-	ErrExpectedExpression   // Required expression but got a statement
+	ErrExpectedSymbolAssign  // Assignment to non-variable or property
+	ErrReservedKeyword       // Reserved keyword used as an identifier
+	ErrExpectedExpression    // Required expression but got a statement
+	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 
 	// Type
-	ErrNotEnoughEnumItems     // At least two enum members required
-	ErrExpectedTypeAssignment // Need = or { after type (maybe got EOS)
+	ErrNotEnoughEnumItems      // At least two enum members required
+	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
+	ErrRequiredStructFieldType // Struct fields need an explicit type
 )
 
 type ErrorParams map[string]any
@@ -60,21 +59,20 @@ type ParseError struct {
 func (e ParseError) Error() string {
 	switch e.Type {
 	default:
-		return fmt.Sprintf("SyntaxError: %s: '%s' (type %s)",
-			e.Type.String(),
-			e.Token.Source, e.Token.Kind.String(),
+		return fmt.Sprintf("SyntaxError: %s: %s (%s)",
+			e.Type.String(), Quote(e.Token), FormatTokenType(e.Token.Kind),
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: I expected an expression, but got " + e.ASTItem.Kind() + " instead"
+		return "SyntaxError: I expected an expression, but got " +
+			FormatTokenType(e.Token.Kind) + " instead"
 	case ErrExpectedSymbolAssign:
 		return "SyntaxError: You can only assign to a variable or property, not " +
 			e.ASTItem.Kind()
 	case ErrExpectedToken:
-		fmt.Println(e.Position, e.Token.Position)
 		return fmt.Sprintf(
-			"SyntaxError: Expected token %s, but got '%s' instead",
-			e.Params["expected"].(lexer.TokenType).String(),
-			e.Token.Source,
+			"SyntaxError: I expected %s, but got %s instead",
+			FormatTokenType(e.Params["expected"].(lexer.TokenType)),
+			Quote(e.Token),
 		)
 	case ErrWildcardAndUnqImport:
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
@@ -87,21 +85,18 @@ func (e ParseError) Error() string {
 	case ErrImportInvalidWildcard:
 		return "SyntaxError: '*' should the the last sub-namespace of a module"
 	case ErrImportPrefixDot:
-		return fmt.Sprintf(
-			"SyntaxError: Module '%s' in import statement can't start with '.'",
-			e.Params["module"].(string),
-		)
+		return "SyntaxError: Module name import statement can't start with '.'"
 	case ErrUnexpectedToken:
 		switch {
 		default:
-			return fmt.Sprintf("SyntaxError: Unexpected token %#q (type %s)",
-				e.Token.Source,
-				e.Token.Kind.String(),
+			return fmt.Sprintf("SyntaxError: I don't know what to do with %s (%s)",
+				QuoteToken(e.Token),
+				FormatTokenType(e.Token.Kind),
 			)
 		case e.Token.Source == ";":
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		case e.Token.Kind == lexer.Illegal:
-			return "SyntaxError: I don't know what token '" + e.Token.Source + "' is"
+			return "SyntaxError: I didn't expect this " + Quote(e.Token)
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
@@ -109,11 +104,15 @@ func (e ParseError) Error() string {
 		if e.Token.Kind == lexer.EndOfStatement || e.Token.Kind == lexer.EOF {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got '" + e.Token.Source + "' instead"
+		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got " + Quote(e.Token) + " instead"
+	case ErrRequiredStructFieldType:
+		return "SyntaxError: Struct fields need an explicit type"
+	case ErrNotEnoughEnumItems:
+		return "SyntaxError: This enum must have at least 2 items, but it has only 1"
 	}
 }
 
-func UnknownTokenError(token lexer.Token) ParseError {
+func UnexpectedTokenError(token lexer.Token) ParseError {
 	return ParseError{
 		Position: token.Position,
 		Token:    token,
@@ -122,10 +121,10 @@ func UnknownTokenError(token lexer.Token) ParseError {
 }
 
 func ExpectedTokenError(
-	expTokenKind lexer.TokenType, gotToken lexer.Token, position lexer.Position,
+	expTokenKind lexer.TokenType, gotToken lexer.Token,
 ) ParseError {
 	return ParseError{
-		Position: position,
+		Position: gotToken.Position,
 		Token:    gotToken,
 		Type:     ErrExpectedToken,
 		Params: ErrorParams{
@@ -158,5 +157,12 @@ func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
 		Type:     err,
 		Position: token.Position,
 		Token:    token,
+	}
+}
+
+func NewASTItemError(err ErrorCode, node ast.ASTItem) ParseError {
+	return ParseError{
+		Type:    err,
+		ASTItem: node,
 	}
 }

@@ -10,8 +10,8 @@ import (
 )
 
 func (p *Parser) ParseVarTypeAnnotation(left ast.ASTItem, bp BindingPower) ast.TypeAnnotation {
-	// LHS must be a Symbol
-	if _, ok := left.(ast.Symbol); !ok {
+	// LHS must be a Symbol or index
+	if _, ok := left.(ast.Assignable); !ok {
 		panic(errors.ParseError{
 			Type:    errors.ErrExpectedSymbolAssign,
 			ASTItem: left,
@@ -19,7 +19,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.ASTItem, bp BindingPower) ast.T
 	}
 	// Skip the :
 	p.Advance()
-	typ := p.ParseType(bp, true).(ast.SimpleType)
+	typ := p.ParseType(bp)
 
 	return ast.TypeAnnotation{
 		Variable: left.(ast.Symbol),
@@ -37,7 +37,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		if annot, is := left.(ast.TypeAnnotation); is {
 			explicitType = annot.Type
 			left = annot.Variable
-		} else if _, ok := left.(ast.Symbol); !ok {
+		} else if _, ok := left.(ast.Assignable); !ok {
 			panic(errors.ParseError{
 				Type:    errors.ErrExpectedSymbolAssign,
 				ASTItem: left,
@@ -112,7 +112,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		module = module[:len(module)-1]
 
 		var wasTypeKw, isTypeImport bool
-		for p.IsNot(lexer.RightCurlyBrace) {
+		for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
 				panic(errors.NewTokenError(
 					errors.ErrImportExpectedIdentAfterType, p.CurrentToken(),
@@ -137,11 +137,14 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				panic(errors.ExpectedTokenError(
 					lexer.Identifier,
 					p.CurrentToken(),
-					p.CurrentToken().Position,
 				))
 			}
 			p.Advance() // Move to comma or }
-			if !wasTypeKw && p.CurrentTokenKind() != lexer.RightCurlyBrace {
+			if p.CurrentTokenKind() == lexer.EndOfStatement {
+				p.Advance()
+				continue
+			}
+			if !wasTypeKw && p.IsNotCurrentlyEndOr(lexer.RightCurlyBrace) {
 				p.Expect(lexer.Comma)
 			}
 		}

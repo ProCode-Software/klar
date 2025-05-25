@@ -57,14 +57,32 @@ func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
 
-// IsNot reports whether the current token kind is not kind and the parser is not at EOF.
-func (p *Parser) IsNot(kind lexer.TokenType) bool {
+// WhileNot reports whether the current token kind is not kind and the parser is not at EOF.
+func (p *Parser) WhileNot(kind lexer.TokenType) bool {
 	return p.HasTokens() && p.CurrentTokenKind() != kind
+}
+
+// WhileNotEndOr reports whether the current token kind is not kind and the parser is
+// not at EOF or EOS.
+func (p *Parser) WhileNotEndOr(kind lexer.TokenType) bool {
+	return p.HasTokens() &&
+		p.CurrentTokenKind() != lexer.EndOfStatement &&
+		p.CurrentTokenKind() != kind
 }
 
 // IsCurrently reports whether the current token is one of kinds.
 func (p *Parser) IsCurrently(kinds ...lexer.TokenType) bool {
 	return slices.Contains(kinds, p.CurrentTokenKind())
+}
+
+// IsNotCurrentlyEndOr returns true if the current token is not EOF, EOS. or kind.
+func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
+	curr := p.CurrentTokenKind()
+	return p.HasTokens() && curr != lexer.EndOfStatement && curr != kind
+}
+
+func (p *Parser) isMapIdentifier() bool {
+	return p.IsCurrently(lexer.Identifier, lexer.Numeric) || p.IsCurrently(ast.Keywords...)
 }
 
 // Expect advances the parser if the current token is of typ, otherwise panics with err.
@@ -73,7 +91,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	got := token.Kind
 	if !slices.Contains(need, got) {
 		if err == nil {
-			err = errors.ExpectedTokenError(need[0], token, token.Position)
+			err = errors.ExpectedTokenError(need[0], token)
 		}
 		panic(err)
 	}
@@ -85,12 +103,16 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
 		tok := p.Tokens[i]
 		if tok.Kind == lexer.BlockComment || tok.Kind == lexer.LineComment {
+			endPos := lexer.Position{
+				Line: tok.Position.Line,
+				Col:  tok.Position.Col + len(tok.Source),
+			}
+			if tok.Kind == lexer.BlockComment {
+				endPos = tok.Attributes["end"].(lexer.Position)
+			}
 			comments = append(comments, ast.Comment{
 				Begin: tok.Position,
-				End: lexer.Position{
-					Line: tok.Position.Line,
-					Col:  tok.Position.Col + len(tok.Source),
-				},
+				End:   endPos,
 				Value: tok.Source,
 				Type:  tok.Kind,
 			})
