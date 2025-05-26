@@ -32,7 +32,16 @@ const (
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
-	ErrStringEscape        // Invalid string escape
+
+	// Literal
+	ErrInvalidNumber  // Invalid number format
+	ErrStringEscape   // Invalid string escape
+	ErrConsecutiveSep // Number has consecutive _
+	ErrMisplacedSep   // Number has misplaced _
+	ErrExpectedHex    // Expected hex digit
+	ErrExpectedOctal
+	ErrExpectedBinary
+	ErrExpectedDecimal
 
 	ErrExpectedSymbolAssign  // Assignment to non-variable or property
 	ErrReservedKeyword       // Reserved keyword used as an identifier
@@ -57,22 +66,30 @@ type ParseError struct {
 }
 
 func (e ParseError) Error() string {
+	var (
+		tok  = e.Token
+		kind = tok.Kind
+		src  = tok.Source
+	)
 	switch e.Type {
 	default:
 		return fmt.Sprintf("SyntaxError: %s: %s (%s)",
-			e.Type.String(), Quote(e.Token), FormatTokenType(e.Token.Kind),
+			e.Type.String(), Quote(tok), FormatTokenType(kind),
 		)
 	case ErrExpectedExpression:
 		return "SyntaxError: I expected an expression, but got " +
-			FormatTokenType(e.Token.Kind) + " instead"
+			FormatTokenType(kind) + " instead"
 	case ErrExpectedSymbolAssign:
 		return "SyntaxError: You can only assign to a variable or property, not " +
 			e.ASTItem.Kind()
 	case ErrExpectedToken:
+		if src == ";" {
+			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+		}
 		return fmt.Sprintf(
 			"SyntaxError: I expected %s, but got %s instead",
 			FormatTokenType(e.Params["expected"].(lexer.TokenType)),
-			Quote(e.Token),
+			Quote(tok),
 		)
 	case ErrWildcardAndUnqImport:
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
@@ -88,27 +105,26 @@ func (e ParseError) Error() string {
 		return "SyntaxError: Module name import statement can't start with '.'"
 	case ErrUnexpectedToken:
 		switch {
-		default:
-			return fmt.Sprintf("SyntaxError: I don't know what to do with %s (%s)",
-				QuoteToken(e.Token),
-				FormatTokenType(e.Token.Kind),
-			)
-		case e.Token.Source == ";":
+		case kind == lexer.Illegal:
+			return "SyntaxError: I don't know what to do with this " + Quote(tok)
+		case src == ";":
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
-		case e.Token.Kind == lexer.Illegal:
-			return "SyntaxError: I didn't expect this " + Quote(e.Token)
+		default:
+			return "SyntaxError: I didn't expect this " + QuoteWithoutA(tok)
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
 	case ErrExpectedTypeAssignment:
-		if e.Token.Kind == lexer.EndOfStatement || e.Token.Kind == lexer.EOF {
+		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got " + Quote(e.Token) + " instead"
+		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got " + Quote(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
 		return "SyntaxError: This enum must have at least 2 items, but it has only 1"
+	case ErrMisplacedSep:
+		return ""
 	}
 }
 
@@ -133,10 +149,7 @@ func ExpectedTokenError(
 	}
 }
 func UnterminatedStringError(startPos lexer.Position) ParseError {
-	return ParseError{
-		Position: startPos,
-		Type:     ErrUnterminatedString,
-	}
+	return ParseError{Position: startPos, Type: ErrUnterminatedString}
 }
 
 func InvalidEscapeError(
@@ -161,8 +174,13 @@ func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
 }
 
 func NewASTItemError(err ErrorCode, node ast.ASTItem) ParseError {
-	return ParseError{
-		Type:    err,
-		ASTItem: node,
-	}
+	return ParseError{Type: err, ASTItem: node}
+}
+
+func NewPositionError(err ErrorCode, pos lexer.Position) ParseError {
+	return ParseError{Type: err, Position: pos}
+}
+
+func NewTokenPosError(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {
+	return ParseError{Type: err, Position: pos, Token: tok}
 }

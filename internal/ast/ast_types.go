@@ -5,19 +5,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// ASTItem is implemented by any Klar AST token that has a Kind method returning the
-// type of the token.
+// All AST tokens implement the ASTItem interface.
 type ASTItem interface {
 	Kind() string
 }
 
-// Statement is an [ASTItem] that is a type of EOS-terminated statement in Klar.
+// All EOS-terminated statement AST tokens implement the Statement interface.
 type Statement interface {
 	ASTItem
 	Statement()
 }
 
-// Expression is an [ASTItem] that is a type of expression in Klar.
+// All expression AST tokens implement the Expression interface.
 type Expression interface {
 	ASTItem
 	Expression()
@@ -27,11 +26,10 @@ type Expression interface {
 // and all comments are moved to Comments.
 type Program struct {
 	Body     []Statement
-	Comments []Comment `json:"Comments,omitempty"`
+	Comments []Comment
 }
 
-// An ExpressionStatement is an expression used as a statement. These kind of expressions
-// are considered as unused values.
+// An ExpressionStatement is an expression used as a statement.
 type ExpressionStatement struct {
 	Expression ASTItem
 }

@@ -22,19 +22,26 @@ func _() {
 	_ = x[ErrUnterminatedString-12]
 	_ = x[ErrUnterminatedComment-13]
 	_ = x[ErrUnterminatedBrace-14]
-	_ = x[ErrStringEscape-15]
-	_ = x[ErrExpectedSymbolAssign-16]
-	_ = x[ErrReservedKeyword-17]
-	_ = x[ErrExpectedExpression-18]
-	_ = x[ErrInvalidLabelShorthand-19]
-	_ = x[ErrNotEnoughEnumItems-20]
-	_ = x[ErrExpectedTypeAssignment-21]
-	_ = x[ErrRequiredStructFieldType-22]
+	_ = x[ErrInvalidNumber-15]
+	_ = x[ErrStringEscape-16]
+	_ = x[ErrConsecutiveSep-17]
+	_ = x[ErrMisplacedSep-18]
+	_ = x[ErrExpectedHex-19]
+	_ = x[ErrExpectedOctal-20]
+	_ = x[ErrExpectedBinary-21]
+	_ = x[ErrExpectedDecimal-22]
+	_ = x[ErrExpectedSymbolAssign-23]
+	_ = x[ErrReservedKeyword-24]
+	_ = x[ErrExpectedExpression-25]
+	_ = x[ErrInvalidLabelShorthand-26]
+	_ = x[ErrNotEnoughEnumItems-27]
+	_ = x[ErrExpectedTypeAssignment-28]
+	_ = x[ErrRequiredStructFieldType-29]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrStringEscapeErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldType"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldType"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 323, 346, 364, 385, 409, 430, 455, 481}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 459, 477, 498, 522, 543, 568, 594}
 
 func (i ErrorCode) String() string {
 	i -= 1

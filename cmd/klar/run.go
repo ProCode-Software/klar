@@ -20,9 +20,7 @@ func tryPipe() {
 	}
 	// Is pipe
 	tokens, err := parser.TokenizeFile(os.Stdin, INCLUDE_COMMENTS)
-	if err != nil {
-		cli.InternalError(err)
-	}
+	handleError(err)
 	runTokens(tokens)
 	os.Exit(0)
 }
@@ -44,17 +42,20 @@ var printOptions = errors.PrintOptions{
 
 func throw(err error) {
 	if !parser.IsKlarError(err) {
-		panic(err) // Trace needed
-		// cli.Fail("Internal Error: ", err)
+		panic(err)
 	}
-	arr := strings.SplitAfter(err.Error(), ": ")
+	arr := strings.SplitAfterN(err.Error(), ": ", 3)
 	first := arr[0]
 	errors.PrintError(err.(errors.KlarError), printOptions)
 	if len(arr) < 2 {
 		cli.Fail(first)
 	}
-	errName := first[:len(first)-2]
-	cli.CustomFailure(errName, arr[1], collect(arr[2:])...)
+	errName := strings.TrimSuffix(first, ": ")
+	if len(arr) < 3 {
+		cli.CustomFailure(errName, arr[1])
+	} else {
+		cli.CustomFailure(errName, arr[1], arr[2])
+	}
 }
 
 func runTokens(tokens []lexer.Token) {
@@ -85,10 +86,14 @@ func RunFile(path string) {
 	runTokens(tokens)
 }
 
-func RunString(program string) {
-	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
+func handleError(err error) {
 	if err != nil {
 		cli.InternalError(err)
 	}
+}
+
+func RunString(program string) {
+	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
+	handleError(err)
 	runTokens(tokens)
 }

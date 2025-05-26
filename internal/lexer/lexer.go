@@ -25,19 +25,19 @@ func NewLexer(reader io.Reader) *Lexer {
 func (l *Lexer) Tokenize() *Token {
 	for {
 		pos := l.Pos
-		rune, _, err := l.Reader.ReadRune()
+		r, _, err := l.Reader.ReadRune()
 		if handleReadError(err) {
 			return NewLexerToken(pos, EOF, "")
 		}
 		l.Pos.Col++
 
-		switch rune {
+		switch r {
 		case '\n':
 			l.ResetPosition()
 			return NewLexerToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ParseString(pos)
-		case '!', '+', ':', '-', '.', '&', '|', '=', '>', '<', '/':
+		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
 			// Skip comments, just change position
@@ -92,17 +92,42 @@ func (l *Lexer) Tokenize() *Token {
 			l.Reader.ReadRune()
 			l.Pos.Col++
 			return NewLexerToken(pos, HashLeftCurlyBrace, "#{")
+		case '.':
+			if err := l.Reader.UnreadRune(); err != nil {
+				panic(err)
+			}
+			next, err := l.Reader.Peek(2)
+			l.Reader.ReadRune()
+			if handleReadError(err) {
+				return NewLexerToken(pos, Dot, ".")
+			}
+			if unicode.IsDigit(rune(next[1])) {
+				return l.ParseNumber(pos)
+			}
+			if next[1] == '.' {
+				l.Reader.ReadRune()
+				l.Pos.Col++
+				next, err = l.Reader.Peek(1)
+				if handleReadError(err) || next[0] != '.' {
+					return NewLexerToken(pos, Illegal, "..")
+				} else {
+					l.Reader.ReadRune()
+					l.Pos.Col++
+					return NewLexerToken(pos, Spread, "...")
+				}
+			}
+			return NewLexerToken(pos, Dot, ".")
 		}
 		switch {
-		case unicode.IsSpace(rune):
+		case unicode.IsSpace(r):
 			continue
-		case unicode.IsDigit(rune), rune == '.':
+		case unicode.IsDigit(r):
 			return l.ParseNumber(pos)
-		case unicode.IsLetter(rune), rune == '_':
+		case unicode.IsLetter(r), r == '_':
 			tt, val := l.ParseIdentifier()
 			return NewLexerToken(pos, tt, val)
 		default:
-			return NewLexerToken(pos, Illegal, string(rune))
+			return NewLexerToken(pos, Illegal, string(r))
 		}
 	}
 }
@@ -142,11 +167,3 @@ func (l *Lexer) TokenizeFwdFunc(fn func(rune, *string)) (literal string) {
 		}
 	}
 }
-
-const (
-	_ = iota
-	ErrIntMisplacedSeparator
-	ErrIntIncompatibleDigit
-	ErrIntMultipleDot
-	ErrStrUnterminated
-)

@@ -36,7 +36,9 @@ func (p *Parser) handleLED(
 		return nil, false
 
 	// Arithmetic
-	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent:
+	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent,
+	lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
+	lexer.EqualEqual, lexer.NotEqual:
 		res = p.ParseBinaryExpression(left, currentBP)
 
 	// Exponent (right-associative)

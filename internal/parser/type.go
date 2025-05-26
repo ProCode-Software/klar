@@ -12,7 +12,7 @@ func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 	if !handled {
 		noHandlerError(p, "TypeNUD")
 	}
-	for BindingPowerMap[p.CurrentTokenKind()] > bp {
+	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
 		left, handled = p.handleTypeLED(kind, left, bp)
 		if !handled {

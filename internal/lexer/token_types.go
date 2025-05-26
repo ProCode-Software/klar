@@ -79,7 +79,7 @@ const (
 
 const (
 	NumberFormatDecimal = iota
-	NumberFormatHexadecimal
+	NumberFormatHex
 	NumberFormatOctal
 	NumberFormatBinary
 )

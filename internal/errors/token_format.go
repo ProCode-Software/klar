@@ -20,6 +20,10 @@ func Quote(tok lexer.Token) string {
 	}
 }
 
+func QuoteWithoutA(tok lexer.Token) string {
+	return strings.TrimPrefix(Quote(tok), "a ")
+}
+
 // QuoteToken returns 'token X', where X is the quoted source code, or 'end of statement' if EOS.
 func QuoteToken(tok lexer.Token) string {
 	switch tok.Kind {

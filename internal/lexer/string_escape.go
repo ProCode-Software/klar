@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"bufio"
+	"strings"
 	"unicode"
 )
 
@@ -30,6 +32,16 @@ type StringEscape struct {
 	Value         string
 	Invalid       bool
 	InvalidReason StringEscapeErrorType
+}
+
+// No need to handle multiline because multiline string doesn't support escapes
+func parseStringEscapes(str string, indexes []int) map[Position]StringEscape {
+	escapes := make(map[Position]StringEscape)
+	for _, i := range indexes {
+		reader := strings.NewReader(str[i:])
+		
+	}
+	return escapes
 }
 
 // Intentionally creating a new lexer

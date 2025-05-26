@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -13,7 +14,7 @@ import (
 const (
 	tokenColorKeyword     = cli.ANSIRed
 	tokenColorOperator    = cli.ANSIRed
-	tokenColorIllegal     = "\x1B[1;3;31m" // Subject to change
+	tokenColorIllegal     = "\x1B[1;3;31m"
 	tokenColorStorage     = cli.ANSIBlue
 	tokenColorNumber      = cli.ANSIYellow
 	tokenColorBoolNil     = tokenColorNumber
@@ -43,6 +44,7 @@ var TokenColors = TokenColorMap{
 	lexer.Numeric:      tokenColorNumber,
 	lexer.Boolean:      tokenColorBoolNil,
 	lexer.Nil:          tokenColorBoolNil,
+	lexer.Illegal:      tokenColorIllegal,
 
 	// Punctuation
 	lexer.Dot:                tokenColorPunc,
@@ -96,6 +98,11 @@ func semanticFunc(tok lexer.Token) string {
 	return ansi(tokenColorFunc, tok.Source)
 }
 
+func isPrimitiveType(name string) bool {
+	_, isBuiltin := BuiltinTypes[name]
+	return isBuiltin
+}
+
 func semanticType(tok lexer.Token) string {
 	if _, isBuiltin := BuiltinTypes[tok.Source]; isBuiltin {
 		return ansi(tokenColorTypeBuiltin, tok.Source)
@@ -143,15 +150,17 @@ func PrintError(err KlarError, options PrintOptions) {
 			fallthrough
 		default:
 			add = colorize(tok)
+		case isPrimitiveType(tok.Source):
+			add = ansi(tokenColorTypeBuiltin, tok.Source)
 		case nextIs(lexer.LeftParenthesis):
 			add = semanticFunc(tok)
-		case prevIs(lexer.Type):
+		case prevIs(lexer.Type), prevIs(lexer.Func) && nextIs(lexer.Dot):
 			add = semanticType(tok)
 		}
 		out += addSpace(tok.Col-currCol) + add
 		currCol = tok.Col + len(tok.Source)
 	}
-	out += fmt.Sprintf("\n       %[1]*s", errPos.Col-1, ansi(cli.ANSIRed, "^"))
-	out, _ = strings.CutPrefix(out, "\n")
-	fmt.Println(out)
+	out += fmt.Sprintf("\n%7[3]s%[1]*s", errPos.Col-1, ansi(cli.ANSIBoldRed, "^"), " ")
+	out = strings.TrimPrefix(out, "\n")
+	fmt.Fprintln(os.Stderr, out)
 }

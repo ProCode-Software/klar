@@ -20,7 +20,7 @@ type Whatever = #{
     This() -> Thing
 }
 
-// type LEDHandler = (Declaration, BindingPower) -> ASTItem
+type LEDHandler = (Declaration, BindingPower) -> ASTItem
 func Person.greet(person other: Person = 1) -> String {
     a := 1
     return a
@@ -41,3 +41,4 @@ type Color {
 type Person {
     name: String
     age: Int
+}

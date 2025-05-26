@@ -31,6 +31,9 @@ func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
 	// Recover if panics
 	defer func() {
 		if err2 := recover(); err2 != nil {
+			if err2, ok := err2.(error); ok {
+				err = err2
+			}
 			err = fmt.Errorf("%v", err2)
 		}
 	}()

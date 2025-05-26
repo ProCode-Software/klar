@@ -13,6 +13,7 @@ func showHelp() {
 }
 
 func main() {
+	os.Setenv("KLAR_REPL", "0")
 	var strProg string
 	flag.StringVar(&strProg, "c", "", "Program passed as string")
 	flag.Usage = showHelp

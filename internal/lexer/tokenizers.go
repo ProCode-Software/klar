@@ -24,24 +24,12 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 			if *s == "/" {
 				*s += string(r)
 			}
-		case '/', '+', '-', '.', ':', '=', '!', '>', '<', '|', '&':
+		case '/', '+', '-', ':', '=', '!', '>', '<', '|', '&':
 			*s += string(r)
 		}
 	})
 	for len(op) >= 1 {
 		if operator, is := OperatorMap[op]; is {
-			if operator == Dot {
-				l.Reader.UnreadRune()
-				next, err := l.Reader.Peek(1)
-				if handleReadError(err) {
-					return Illegal, op
-				}
-				if unicode.IsDigit(rune(next[0])) {
-					l.Reader.ReadRune()
-					newToken := l.ParseNumber(l.Pos)
-					return newToken.Kind, newToken.Source
-				}
-			}
 			return operator, op
 		}
 		op = op[:len(op)-1] // Parsed too much characters: backup
@@ -86,20 +74,32 @@ func (l *Lexer) ParseBlockComment() (string, Position) {
 	})
 	return "/*" + cmt, endPos
 }
+
+const (
+	_ = iota
+	ErrIntMisplacedSeparator
+	ErrIntIncompatibleDigit
+	ErrIntIllegalExponent
+	ErrIntMultipleDot
+	ErrStrUnterminated
+)
+
 func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (
-		format     int
-		isExponent bool
-		isIllegal  bool
-		isDot      bool
-		errorType  int
+		format, errorType, errPos   int
+		isExp, isIllegal, isDecimal bool
 	)
+	newError := func(code int, lit *string) {
+		errorType = code
+		errPos = len(*lit)
+		isIllegal = true
+	}
 	digit := l.TokenizeFunc(func(r rune, lit *string) {
-		s := unicode.ToLower(r)
+		lower := unicode.ToLower(r)
 		if *lit == "0" {
-			switch s {
+			switch lower {
 			case 'x':
-				format = NumberFormatHexadecimal
+				format = NumberFormatHex
 				*lit += string(r)
 				return
 			case 'o':
@@ -114,94 +114,77 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				format = NumberFormatDecimal
 			}
 		}
-		switch s {
-		case 'a', 'b', 'c', 'd', 'e', 'f':
-			switch format {
-			case NumberFormatHexadecimal:
+		switch lower {
+		case 'e':
+			if format == NumberFormatDecimal && !isExp {
 				*lit += string(r)
-			case NumberFormatDecimal:
-				if s == 'e' && !isExponent {
-					*lit += string(r)
-				}
+				isExp = true
+			}
+			fallthrough
+		case 'a', 'b', 'c', 'd', 'f':
+			switch format {
+			case NumberFormatHex:
+				*lit += string(r)
 			default:
 				// Hex letter or e on other format
-				isIllegal = true
-				errorType = ErrIntIncompatibleDigit
+				newError(ErrIntIncompatibleDigit, lit)
 				*lit += string(r)
 			}
 		case '+', '-':
-			if isExponent {
+			if isExp {
 				*lit += string(r)
 			}
 		case '.':
 			switch {
-			// unread-peek-check-read
+			case isDecimal:
+				return
 			case *lit == "": // .3
 				format = NumberFormatDecimal
 				*lit += string(r)
+				isDecimal = true
 			case format != NumberFormatDecimal:
-				errorType = ErrIntIncompatibleDigit
-				isIllegal = true
-				return
+				newError(ErrIntIncompatibleDigit, lit)
+				fallthrough
 			default:
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
-				if handleReadError(err) {
+				l.Reader.ReadRune()
+				if handleReadError(err) || unicode.IsDigit(rune(next[1])) {
 					// Trailing decimal point at EOF
-					l.Reader.ReadRune()
+					isDecimal = true
 					*lit += string(r)
 					return
 				}
-				if !unicode.IsDigit(rune(next[1])) {
-					isDot = true
-					l.Reader.ReadRune()
-					return
-				}
-				// Normal decimal point
-				l.Reader.ReadRune()
-				*lit += string(r)
-				return
 			}
 		case '_':
 			// Underscore separators: no consecutive, must be in between digits
 			if (*lit)[len(*lit)-1] == '_' {
-				errorType = ErrIntMisplacedSeparator
-				isIllegal = true
+				newError(ErrIntMisplacedSeparator, lit)
 			}
 			*lit += string(r)
 		default:
-			if !unicode.IsDigit(r) {
+			switch {
+			case !unicode.IsDigit(r):
 				return
-			}
-			isExponent = false
-			if format == NumberFormatDecimal || format == NumberFormatHexadecimal ||
-				(format == NumberFormatBinary && r <= '1') ||
-				(format == NumberFormatOctal && r <= '7') {
-
+			case format == NumberFormatDecimal, format == NumberFormatHex,
+				(format == NumberFormatBinary && r <= '1'),
+				(format == NumberFormatOctal && r <= '7'):
 				*lit += string(r)
-				return
+			default:
+				newError(ErrIntIncompatibleDigit, lit)
+				*lit += string(r)
 			}
-			// Incompatible digit
-			isIllegal = true
-			errorType = ErrIntIncompatibleDigit
-			*lit += string(r)
 		}
 	})
-	switch {
-	case digit == ".":
-		return NewLexerToken(pos, Dot, digit)
-	case isDot:
-		// Not a number - may be 1...10
-	case digit[len(digit)-1] == '_' || digit[0] == '_':
-		isIllegal = true
-		errorType = ErrIntIncompatibleDigit
-		fallthrough
-	case isIllegal:
-		return NewLexerToken(pos, Illegal, digit)
+	// Last digit is separator
+	if digit[len(digit)-1] == '_' {
+		newError(ErrIntMisplacedSeparator, &digit)
+		errPos = len(digit) - 1
 	}
 	return NewLexerToken(pos, Numeric, digit).
 		SetAttribute("format", format).
 		SetAttribute("invalid", isIllegal).
+		SetAttribute("errorPos", errPos).
 		SetAttribute("error", errorType)
 }
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
@@ -222,11 +205,11 @@ func (l *Lexer) ParseString(pos Position) *Token {
 		shouldStop bool
 		delim      rune
 		err        int
-		escapePos  = make([]Position, 0, 1)
-		escapes    = make(map[Position]StringEscape)
+		escapeInd  []int
+		escapes    map[Position]StringEscape
 	)
-	insertEscape := func() {
-		escapePos = append(escapePos, l.Pos)
+	insertEscape := func(s *string) {
+		escapeInd = append(escapeInd, len(*s)+1)
 	}
 	str := l.TokenizeFunc(func(r rune, s *string) {
 		if shouldStop {
@@ -243,13 +226,15 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			isEscape = false
 		case '{':
 			if delim == '"' {
-				insertEscape()
+				insertEscape(s)
 			}
+			*s += string(r)
 		case '\\':
 			if delim != '`' {
 				isEscape = !isEscape
-				insertEscape()
+				insertEscape(s)
 			}
+			*s += string(r)
 		case '\n':
 			l.ResetPosition()
 			if delim != '`' {
@@ -263,9 +248,7 @@ func (l *Lexer) ParseString(pos Position) *Token {
 			*s += string(r)
 		}
 	})
-	for _, p := range escapePos {
-		escapes[p] = l.parseStringEscape(p, delim)
-	}
+	escapes = parseStringEscapes(str, escapeInd)
 	// Invalid if first character in string isn't the same as last (unterminated) (due to EOF)
 	if str[0] != str[len(str)-1] {
 		err = ErrStrUnterminated
