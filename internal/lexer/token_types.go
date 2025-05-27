@@ -135,7 +135,7 @@ var KeywordMap = map[string]TokenType{
 	"nil":    Nil,
 }
 
-func NewLexerToken(pos Position, kind TokenType, src string) *Token {
+func NewToken(pos Position, kind TokenType, src string) *Token {
 	return &Token{pos, kind, src, nil}
 }
 

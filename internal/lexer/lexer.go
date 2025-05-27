@@ -27,16 +27,16 @@ func (l *Lexer) Tokenize() *Token {
 		pos := l.Pos
 		r, _, err := l.Reader.ReadRune()
 		if handleReadError(err) {
-			return NewLexerToken(pos, EOF, "")
+			return NewToken(pos, EOF, "")
 		}
 		l.Pos.Col++
 
 		switch r {
 		case '\n':
 			l.ResetPosition()
-			return NewLexerToken(pos, Newline, "\n")
+			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
-			return l.ParseString(pos)
+			return l.ParseString(pos, r)
 		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
@@ -46,52 +46,52 @@ func (l *Lexer) Tokenize() *Token {
 				if !l.IncludeComments {
 					continue
 				}
-				return NewLexerToken(pos, LineComment, src)
+				return NewToken(pos, LineComment, src)
 			}
 			if tt == BlockComment {
 				src, endPos := l.ParseBlockComment()
 				if !l.IncludeComments {
 					continue
 				}
-				return NewLexerToken(pos, BlockComment, src).SetAttribute("end", endPos)
+				return NewToken(pos, BlockComment, src).SetAttribute("end", endPos)
 			}
 			// Keep going if it's a dot
 			if !(tt == Illegal && val == ".") {
-				return NewLexerToken(pos, tt, val)
+				return NewToken(pos, tt, val)
 			}
 		// Single-character operators
 		case '@':
-			return NewLexerToken(pos, At, "@")
+			return NewToken(pos, At, "@")
 		case '*':
-			return NewLexerToken(pos, Asterisk, "*")
+			return NewToken(pos, Asterisk, "*")
 		case '%':
-			return NewLexerToken(pos, Percent, "%")
+			return NewToken(pos, Percent, "%")
 		case '^':
-			return NewLexerToken(pos, Caret, "^")
+			return NewToken(pos, Caret, "^")
 		case '(':
-			return NewLexerToken(pos, LeftParenthesis, "(")
+			return NewToken(pos, LeftParenthesis, "(")
 		case ')':
-			return NewLexerToken(pos, RightParenthesis, ")")
+			return NewToken(pos, RightParenthesis, ")")
 		case '{':
-			return NewLexerToken(pos, LeftCurlyBrace, "{")
+			return NewToken(pos, LeftCurlyBrace, "{")
 		case '}':
-			return NewLexerToken(pos, RightCurlyBrace, "}")
+			return NewToken(pos, RightCurlyBrace, "}")
 		case '[':
-			return NewLexerToken(pos, LeftBracket, "[")
+			return NewToken(pos, LeftBracket, "[")
 		case ']':
-			return NewLexerToken(pos, RightBracket, "]")
+			return NewToken(pos, RightBracket, "]")
 		case ',':
-			return NewLexerToken(pos, Comma, ",")
+			return NewToken(pos, Comma, ",")
 		case '?':
-			return NewLexerToken(pos, Question, "?")
+			return NewToken(pos, Question, "?")
 		case '#':
 			next, err := l.Reader.Peek(1)
 			if handleReadError(err) || next[0] != '{' {
-				return NewLexerToken(pos, Illegal, "#")
+				return NewToken(pos, Illegal, "#")
 			}
 			l.Reader.ReadRune()
 			l.Pos.Col++
-			return NewLexerToken(pos, HashLeftCurlyBrace, "#{")
+			return NewToken(pos, HashLeftCurlyBrace, "#{")
 		case '.':
 			if err := l.Reader.UnreadRune(); err != nil {
 				panic(err)
@@ -99,7 +99,7 @@ func (l *Lexer) Tokenize() *Token {
 			next, err := l.Reader.Peek(2)
 			l.Reader.ReadRune()
 			if handleReadError(err) {
-				return NewLexerToken(pos, Dot, ".")
+				return NewToken(pos, Dot, ".")
 			}
 			if unicode.IsDigit(rune(next[1])) {
 				return l.ParseNumber(pos)
@@ -109,14 +109,14 @@ func (l *Lexer) Tokenize() *Token {
 				l.Pos.Col++
 				next, err = l.Reader.Peek(1)
 				if handleReadError(err) || next[0] != '.' {
-					return NewLexerToken(pos, Illegal, "..")
+					return NewToken(pos, Illegal, "..")
 				} else {
 					l.Reader.ReadRune()
 					l.Pos.Col++
-					return NewLexerToken(pos, Spread, "...")
+					return NewToken(pos, Spread, "...")
 				}
 			}
-			return NewLexerToken(pos, Dot, ".")
+			return NewToken(pos, Dot, ".")
 		}
 		switch {
 		case unicode.IsSpace(r):
@@ -125,9 +125,9 @@ func (l *Lexer) Tokenize() *Token {
 			return l.ParseNumber(pos)
 		case unicode.IsLetter(r), r == '_':
 			tt, val := l.ParseIdentifier()
-			return NewLexerToken(pos, tt, val)
+			return NewToken(pos, tt, val)
 		default:
-			return NewLexerToken(pos, Illegal, string(r))
+			return NewToken(pos, Illegal, string(r))
 		}
 	}
 }

@@ -181,7 +181,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		newError(ErrIntMisplacedSeparator, &digit)
 		errPos = len(digit) - 1
 	}
-	return NewLexerToken(pos, Numeric, digit).
+	return NewToken(pos, Numeric, digit).
 		SetAttribute("format", format).
 		SetAttribute("invalid", isIllegal).
 		SetAttribute("errorPos", errPos).
@@ -197,64 +197,4 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 		return keyword, id
 	}
 	return Identifier, id
-}
-
-func (l *Lexer) ParseString(pos Position) *Token {
-	var (
-		isEscape   bool
-		shouldStop bool
-		delim      rune
-		err        int
-		escapeInd  []int
-		escapes    map[Position]StringEscape
-	)
-	insertEscape := func(s *string) {
-		escapeInd = append(escapeInd, len(*s)+1)
-	}
-	str := l.TokenizeFunc(func(r rune, s *string) {
-		if shouldStop {
-			return
-		}
-		switch r {
-		case '"', '\'', '`':
-			if delim == 0 { // Unset
-				delim = r
-			} else if delim == r && !isEscape {
-				shouldStop = true
-			}
-			*s += string(r)
-			isEscape = false
-		case '{':
-			if delim == '"' {
-				insertEscape(s)
-			}
-			*s += string(r)
-		case '\\':
-			if delim != '`' {
-				isEscape = !isEscape
-				insertEscape(s)
-			}
-			*s += string(r)
-		case '\n':
-			l.ResetPosition()
-			if delim != '`' {
-				// Invalid newline
-				err = ErrStrUnterminated
-				return
-			}
-			*s += string(r)
-		default:
-			isEscape = false
-			*s += string(r)
-		}
-	})
-	escapes = parseStringEscapes(str, escapeInd)
-	// Invalid if first character in string isn't the same as last (unterminated) (due to EOF)
-	if str[0] != str[len(str)-1] {
-		err = ErrStrUnterminated
-	}
-	return NewLexerToken(pos, String, str).
-		SetAttribute("quoteStyle", delim).
-		SetAttribute("error", err).
-		SetAttribute("escapes", escapes)
 }
