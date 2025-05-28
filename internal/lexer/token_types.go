@@ -1,5 +1,7 @@
 package lexer
 
+import "io"
+
 //go:generate stringer -type=TokenType
 type TokenType int
 
@@ -72,6 +74,7 @@ const (
 	Func
 	Import
 	Next
+	Public
 	Return
 	Type
 	When
@@ -126,6 +129,7 @@ var KeywordMap = map[string]TokenType{
 	"func":   Func,
 	"import": Import,
 	"next":   Next,
+	"public": Public,
 	"return": Return,
 	"type":   Type,
 	"when":   When,
@@ -152,4 +156,8 @@ func (t *Token) SetAttribute(key string, value any) *Token {
 	}
 	t.Attributes[key] = value
 	return t
+}
+
+func (t TokenType) LitterDump(w io.Writer) {
+	w.Write([]byte("{" + t.String() + "}"))
 }

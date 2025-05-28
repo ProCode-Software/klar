@@ -37,11 +37,13 @@ func _() {
 	_ = x[ErrNotEnoughEnumItems-27]
 	_ = x[ErrExpectedTypeAssignment-28]
 	_ = x[ErrRequiredStructFieldType-29]
+	_ = x[ErrExpectedParamInGeneric-30]
+	_ = x[ErrForInvalidCondition-31]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldType"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrForInvalidCondition"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 459, 477, 498, 522, 543, 568, 594}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 459, 477, 498, 522, 543, 568, 594, 619, 641}
 
 func (i ErrorCode) String() string {
 	i -= 1

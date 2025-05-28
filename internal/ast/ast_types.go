@@ -5,20 +5,20 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// All AST tokens implement the ASTItem interface.
-type ASTItem interface {
+// All AST tokens implement the Node interface.
+type Node interface {
 	Kind() string
 }
 
 // All EOS-terminated statement AST tokens implement the Statement interface.
 type Statement interface {
-	ASTItem
+	Node
 	Statement()
 }
 
 // All expression AST tokens implement the Expression interface.
 type Expression interface {
-	ASTItem
+	Node
 	Expression()
 }
 
@@ -31,7 +31,7 @@ type Program struct {
 
 // An ExpressionStatement is an expression used as a statement.
 type ExpressionStatement struct {
-	Expression ASTItem
+	Expression Expression
 }
 
 type StringLiteral struct {
@@ -64,19 +64,19 @@ type Comment struct {
 type CommentType = lexer.TokenType
 
 type BinaryExpression struct {
-	Left, Right ASTItem
+	Left, Right Node
 	Operator    lexer.TokenType
 }
 
 type UnaryExpression struct {
 	Operator lexer.TokenType
-	Right    ASTItem
+	Right    Node
 }
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
 type StringEscape struct {
-	Type  lexer.StringEscapeType
-	Index lexer.Position
+	Type  lexer.EscapeType
+	Index int
 	Value StringEscapeValue
 }
 
@@ -94,12 +94,14 @@ type HexadecimalEscape struct {
 	Hex int32
 }
 type StringInterpolation struct {
-	Expression ASTItem
+	Expression Node
 }
 
 type Symbol struct {
 	Identifier string
 }
+
+type Discard struct{} // _
 
 type Assignable interface {
 	Assignable()
@@ -113,7 +115,7 @@ type VariableDeclaration struct {
 }
 
 type AssignmentStatement struct {
-	Assignee Expression
+	Assignee Assignable
 	Operator lexer.TokenType
 	Value    Expression
 }
@@ -122,20 +124,8 @@ type Pair struct {
 	Key, Value Expression
 }
 
-// ReservedKeywords is the set of keywords that cannot be used as variables
-var ReservedKeywords = map[lexer.TokenType]bool{
-	lexer.Import:  true,
-	lexer.Func:    true,
-	lexer.When:    true,
-	lexer.Return:  true,
-	lexer.For:     true,
-	lexer.Next:    true,
-	lexer.Type:    true,
-	lexer.Boolean: true,
-	lexer.Nil:     true,
-}
-
-var Keywords = []lexer.TokenType{
+// ReservedIdent is the set of keywords that cannot be used as variables
+var ReservedIdent = []lexer.TokenType{
 	lexer.Import,
 	lexer.Func,
 	lexer.When,
@@ -143,6 +133,7 @@ var Keywords = []lexer.TokenType{
 	lexer.For,
 	lexer.Next,
 	lexer.Type,
+	lexer.Public,
 	lexer.Boolean,
 	lexer.Nil,
 }
@@ -175,7 +166,7 @@ type FunctionType struct {
 }
 type GenericType struct {
 	Name       Type
-	Parameters []Type
+	Parameters []SimpleType
 }
 type TypePair struct {
 	Key   string
@@ -288,6 +279,7 @@ type FunctionDeclaration struct {
 	Parameters    []FunctionParam
 	ReturnType    SimpleType
 	Body          []Statement
+	Expression
 }
 
 type FunctionParam struct {
@@ -304,13 +296,11 @@ type ListLiteral struct {
 }
 
 type IndexExpression struct {
-	Target, Field ASTItem
-	Computed      bool // If square bracket [
+	Object, Property Node
+	Computed         bool // If square bracket [
 }
 
-type EnumValue struct {
-	Name string
-}
+type EnumLiteral struct{ Name string }
 
 type CallParam struct {
 	Label string
@@ -318,6 +308,46 @@ type CallParam struct {
 }
 
 type CallExpression struct {
-	Callee ASTItem
+	Callee Node
 	Args   []CallParam
+}
+
+type TypeCastSymbol struct {
+	Type SimpleType
+}
+
+// An UpdateStatement is a decrement or increment statement. These statements end in
+// ++ or --. Unlike other languages such as C, Klar's increment/decrement operators
+// are statements rather than expressions.
+type UpdateStatement struct {
+	Left     Expression
+	Operator lexer.TokenType
+}
+
+type ForStatement struct {
+	Infinite   bool       // or
+	Condition  Expression // or
+	Variables  []Symbol
+	Assignment Expression
+
+	Body []Statement
+}
+
+type WhenBlock struct {
+	IsExpression bool
+	Subjects     []Expression
+	Cases        []WhenCase
+}
+
+type WhenCase struct {
+}
+
+type ParamTuple struct {
+	Params []TypePair
+}
+
+type LambdaExpression struct {
+	Params     []TypePair
+	Body       []Statement
+	ExprBody   Expression
 }

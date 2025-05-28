@@ -25,15 +25,6 @@ func tryPipe() {
 	os.Exit(0)
 }
 
-// This is here because Go doesn't let you use []string as []any
-func collect(items []string) []any {
-	var result []any
-	for _, item := range items {
-		result = append(result, item)
-	}
-	return result
-}
-
 var printOptions = errors.PrintOptions{
 	Color: true,
 	MaxLines: 5,

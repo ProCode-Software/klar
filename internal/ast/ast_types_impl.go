@@ -26,7 +26,13 @@ func (NextStatement) Kind() string        { return "NextStatement" }
 func (ListLiteral) Kind() string          { return "ListLiteral" }
 func (IndexExpression) Kind() string      { return "IndexExpression" }
 func (CallExpression) Kind() string       { return "CallExpression" }
-func (EnumValue) Kind() string            { return "EnumValue" }
+func (EnumLiteral) Kind() string          { return "EnumValue" }
+func (ForStatement) Kind() string         { return "ForStatement" }
+func (UpdateStatement) Kind() string      { return "UpdateStatement" }
+func (Discard) Kind() string              { return "Discard" }
+func (WhenBlock) Kind() string            { return "WhenBlock" }
+func (LambdaExpression) Kind() string     { return "LambdaExpression" }
+func (ParamTuple) Kind() string           { return "ParamTuple" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -49,10 +55,16 @@ func (TupleLiteral) Expression()     {}
 func (ListLiteral) Expression()      {}
 func (IndexExpression) Expression()  {}
 func (CallExpression) Expression()   {}
-func (EnumValue) Expression()        {}
+func (EnumLiteral) Expression()      {}
+func (Discard) Expression()          {}
+func (WhenBlock) Expression()        {}
+func (ParamTuple) Expression()       {}
+func (LambdaExpression) Expression() {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}
+func (UpdateStatement) Statement()      {}
+func (ForStatement) Statement()         {}
 func (AssignmentStatement) Statement()  {}
 func (ExpressionStatement) Statement()  {}
 func (ImportStatement) Statement()      {}
@@ -62,6 +74,7 @@ func (TypeAliasDeclaration) Statement() {}
 func (ReturnStatement) Statement()      {}
 func (FunctionDeclaration) Statement()  {}
 func (NextStatement) Statement()        {}
+func (WhenBlock) Statement()            {}
 
 // Type
 func (PrimitiveType) Type() {}
@@ -93,5 +106,6 @@ func (StructDeclaration) TypeDeclaration()    {}
 func (EnumDeclaration) TypeDeclaration()      {}
 
 // Assignable types
-func (Symbol) Assignable() {}
+func (Symbol) Assignable()          {}
 func (IndexExpression) Assignable() {}
+func (TupleLiteral) Assignable()    {}

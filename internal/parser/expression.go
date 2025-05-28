@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseBinaryExpression(left ast.ASTItem, bp BindingPower) ast.BinaryExpression {
+func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) ast.BinaryExpression {
 	op := p.Advance()
 	right := p.ParseExpression(bp)
 	return ast.BinaryExpression{
@@ -19,10 +19,7 @@ func (p *Parser) ParseBinaryExpression(left ast.ASTItem, bp BindingPower) ast.Bi
 func (p *Parser) ParseUnaryExpression() ast.UnaryExpression {
 	op := p.Advance().Kind
 	right := p.ParseExpression(UnaryBindingPower)
-	return ast.UnaryExpression{
-		Operator: op,
-		Right:    right,
-	}
+	return ast.UnaryExpression{Operator: op, Right: right}
 }
 
 func (p *Parser) ParseGroupOrTuple() ast.Expression {
@@ -88,7 +85,7 @@ func (p *Parser) ParseList() ast.ListLiteral {
 	return ast.ListLiteral{Items: items}
 }
 
-func (p *Parser) ParseIndexExpression(left ast.ASTItem, bp BindingPower) ast.IndexExpression {
+func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.IndexExpression {
 	computed := p.Advance().Kind == lexer.LeftBracket
 	var item ast.Expression
 	if !computed {
@@ -102,13 +99,13 @@ func (p *Parser) ParseIndexExpression(left ast.ASTItem, bp BindingPower) ast.Ind
 		p.Expect(lexer.RightBracket)
 	}
 	return ast.IndexExpression{
-		Target:   left,
-		Field:    item,
+		Object:   left,
+		Property: item,
 		Computed: computed,
 	}
 }
 
-func (p *Parser) ParseCallExpression(left ast.ASTItem, bp BindingPower) ast.CallExpression {
+func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExpression {
 	p.Expect(lexer.LeftParenthesis)
 	args := []ast.CallParam{}
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
@@ -127,14 +124,14 @@ func (p *Parser) ParseCallExpression(left ast.ASTItem, bp BindingPower) ast.Call
 				arg.Value = sym
 				isOk = true
 			case ast.IndexExpression:
-				if prop, ok := sym.Field.(ast.Symbol); ok {
+				if prop, ok := sym.Property.(ast.Symbol); ok {
 					arg.Label = prop.Identifier
 					arg.Value = sym
 					isOk = true
 				}
 			}
 			if !isOk {
-				panic(errors.NewASTItemError(errors.ErrInvalidLabelShorthand, sym))
+				panic(errors.NewNodeError(errors.ErrInvalidLabelShorthand, sym))
 			}
 		} else {
 			expr := p.ParseExpression(LogicalBindingPower)
@@ -152,8 +149,38 @@ func (p *Parser) ParseCallExpression(left ast.ASTItem, bp BindingPower) ast.Call
 		}
 	}
 	p.Expect(lexer.RightParenthesis)
-	return ast.CallExpression{
-		Callee: left,
-		Args:   args,
+	return ast.CallExpression{Callee: left, Args: args}
+}
+
+func (p *Parser) ParseEnumLiteral() ast.EnumLiteral {
+	p.Expect(lexer.Dot)
+	return ast.EnumLiteral{Name: p.Expect(lexer.Identifier).Source}
+}
+
+func (p *Parser) ParseLambdaExpression(left ast.Node, bp BindingPower) ast.LambdaExpression {
+	p.Expect(lexer.Arrow)
+	l := ast.LambdaExpression{}
+	switch left := left.(type) {
+	case ast.Symbol:
+		l.Params = append(l.Params, ast.TypePair{Key: left.Identifier})
+	case ast.ParamTuple:
+		l.Params = left.Params
+	case ast.TupleLiteral:
+		for _, param := range left.Values {
+			if _, ok := param.(ast.Symbol); !ok {
+				panic(errors.NewNodeError(errors.ErrExpectedParamInLambda, param))
+			}
+			l.Params = append(l.Params, ast.TypePair{
+				Key: param.(ast.Symbol).Identifier,
+			})
+		}
+	default:
+		panic(errors.NewNodeError(errors.ErrExpectedParamInLambda, left))
 	}
+	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+		l.Body = p.ParseBlock()
+	} else {
+		l.ExprBody = p.ParseExpression(CommaBindingPower)
+	}
+	return l
 }

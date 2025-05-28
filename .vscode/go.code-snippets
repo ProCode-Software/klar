@@ -3,7 +3,7 @@
         "scope": "go",
         "prefix": "led",
         "body": [
-            "func (p *Parser) Parse$1(left ast.ASTItem, bp BindingPower) ast.$2 {",
+            "func (p *Parser) Parse$1(left ast.Node, bp BindingPower) ast.$2 {",
             "\t$0",
             "}"
         ],

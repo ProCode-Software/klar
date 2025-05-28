@@ -16,8 +16,8 @@ const (
 	RelationalBindingPower                  // ==, >, etc.
 	AdditiveBindingPower                    // + and -
 	MultiplicativeBindingPower              // *, /, %
-	ExponentialBindingPower                 // ^
 	UnaryBindingPower                       // Prefix/Suffix: + -
+	ExponentiationBindingPower              // ^
 	CallBindingPower                        // Call: (
 	MemberBindingPower                      // Index: . [
 	PrimaryBindingPower                     // Primary expressions, such as literals
@@ -51,7 +51,10 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Slash:    MultiplicativeBindingPower,
 	lexer.Percent:  MultiplicativeBindingPower,
 
-	lexer.Caret: ExponentialBindingPower,
+	lexer.PlusPlus:   UnaryBindingPower,
+	lexer.MinusMinus: UnaryBindingPower,
+
+	lexer.Caret: ExponentiationBindingPower,
 
 	lexer.LeftParenthesis: CallBindingPower,
 
@@ -62,6 +65,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Numeric:    PrimaryBindingPower,
 	lexer.Boolean:    PrimaryBindingPower,
 	lexer.Identifier: PrimaryBindingPower,
+	lexer.Nil:        PrimaryBindingPower,
 }
 
 const (
@@ -74,13 +78,14 @@ const (
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
-	lexer.Arrow:      FunctionTypeBindingPower,
-	lexer.Stroke:     UnionTypeBindingPower,
-	lexer.Plus:       UnionTypeBindingPower,
-	lexer.Question:   OptionalTypeBindingPower,
-	lexer.String:     PrimaryTypeBindingPower,
-	lexer.Numeric:    PrimaryTypeBindingPower,
-	lexer.Boolean:    PrimaryTypeBindingPower,
-	lexer.Identifier: PrimaryTypeBindingPower,
-	lexer.Spread:     PrimaryTypeBindingPower,
+	lexer.Arrow:       FunctionTypeBindingPower,
+	lexer.Stroke:      UnionTypeBindingPower,
+	lexer.Plus:        UnionTypeBindingPower,
+	lexer.Question:    OptionalTypeBindingPower,
+	lexer.String:      PrimaryTypeBindingPower,
+	lexer.Numeric:     PrimaryTypeBindingPower,
+	lexer.Boolean:     PrimaryTypeBindingPower,
+	lexer.Identifier:  PrimaryTypeBindingPower,
+	lexer.Spread:      PrimaryTypeBindingPower,
+	lexer.LessEqualTo: PrimaryTypeBindingPower,
 }

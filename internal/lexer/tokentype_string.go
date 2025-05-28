@@ -61,14 +61,15 @@ func _() {
 	_ = x[Func-50]
 	_ = x[Import-51]
 	_ = x[Next-52]
-	_ = x[Return-53]
-	_ = x[Type-54]
-	_ = x[When-55]
+	_ = x[Public-53]
+	_ = x[Return-54]
+	_ = x[Type-55]
+	_ = x[When-56]
 }
 
-const _TokenType_name = "EOFEndOfStatementIllegalNewlineCommaDotLineCommentBlockCommentColonLeftBracketRightBracketLeftParenthesisRightParenthesisLeftCurlyBraceRightCurlyBraceHashLeftCurlyBraceAtIdentifierNumericBooleanNilStringUnderscorePlusMinusTimesDivideModuloExponentEqualColonEqualPlusEqualMinusEqualPlusPlusMinusMinusEqualEqualNotEqualGreaterThanLessThanGreaterEqualToLessEqualToAndAndOrOrNotStrokeQuestionSpreadArrowPipelineForFuncImportNextReturnTypeWhen"
+const _TokenType_name = "EOFEndOfStatementIllegalNewlineCommaDotLineCommentBlockCommentColonLeftBracketRightBracketLeftParenthesisRightParenthesisLeftCurlyBraceRightCurlyBraceHashLeftCurlyBraceAtIdentifierNumericBooleanNilStringUnderscorePlusMinusAsteriskSlashPercentCaretEqualColonEqualPlusEqualMinusEqualPlusPlusMinusMinusEqualEqualNotEqualGreaterThanLessThanGreaterEqualToLessEqualToAndAndOrOrNotStrokeQuestionSpreadArrowPipelineForFuncImportNextPublicReturnTypeWhen"
 
-var _TokenType_index = [...]uint16{0, 3, 17, 24, 31, 36, 39, 50, 62, 67, 78, 90, 105, 121, 135, 150, 168, 170, 180, 187, 194, 197, 203, 213, 217, 222, 227, 233, 239, 247, 252, 262, 271, 281, 289, 299, 309, 317, 328, 336, 350, 361, 367, 371, 374, 380, 388, 394, 399, 407, 410, 414, 420, 424, 430, 434, 438}
+var _TokenType_index = [...]uint16{0, 3, 17, 24, 31, 36, 39, 50, 62, 67, 78, 90, 105, 121, 135, 150, 168, 170, 180, 187, 194, 197, 203, 213, 217, 222, 230, 235, 242, 247, 252, 262, 271, 281, 289, 299, 309, 317, 328, 336, 350, 361, 367, 371, 374, 380, 388, 394, 399, 407, 410, 414, 420, 424, 430, 436, 440, 444}
 
 func (i TokenType) String() string {
 	if i < 0 || i >= TokenType(len(_TokenType_index)-1) {

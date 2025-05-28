@@ -82,7 +82,7 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 }
 
 func (p *Parser) isMapIdentifier() bool {
-	return p.IsCurrently(lexer.Identifier, lexer.Numeric) || p.IsCurrently(ast.Keywords...)
+	return p.IsCurrently(lexer.Identifier, lexer.Numeric) || p.IsCurrently(ast.ReservedIdent...)
 }
 
 // Expect advances the parser if the current token is of typ, otherwise panics with err.

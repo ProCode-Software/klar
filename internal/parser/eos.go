@@ -37,14 +37,12 @@ func (p *Parser) InsertEOS() {
 			// another token after:
 			switch p.Tokens[i-1].Kind {
 			case
-				// Assignment
-				lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 				// Punctuation
 				lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
 				lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
 				lexer.HashLeftCurlyBrace, lexer.Newline,
 				// Keywords
-				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type:
+				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type, lexer.Public:
 				insertEOS = false
 			case lexer.RightParenthesis, lexer.RightBracket:
 			default:
@@ -76,6 +74,8 @@ func (p *Parser) InsertEOS() {
 func canGoOnNewline(t lexer.TokenType) bool {
 	switch t {
 	case
+		// Assignment
+		lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 		// Arithmetic
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
 		lexer.Percent,

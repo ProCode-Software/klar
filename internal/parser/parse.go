@@ -69,14 +69,14 @@ func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	expr := p.ParseLED(bp)
 	if _, ok := expr.(ast.Expression); !ok {
 		panic(errors.ParseError{
-			Type:    errors.ErrExpectedExpression,
-			ASTItem: expr,
+			Type: errors.ErrExpectedExpression,
+			Node: expr,
 		})
 	}
 	return expr.(ast.Expression)
 }
 
-func (p *Parser) ParseLED(bp BindingPower) ast.ASTItem {
+func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleNUD(kind)
 	if !handled {
@@ -84,7 +84,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.ASTItem {
 	}
 	for BindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
-		left, handled = p.handleLED(kind, left, bp)
+		left, handled = p.handleLED(kind, left, BindingPowerMap[p.CurrentTokenKind()])
 		if !handled {
 			p.unknownTokenErr()
 		}

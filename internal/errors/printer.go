@@ -39,6 +39,7 @@ var TokenColors = TokenColorMap{
 	lexer.Func:         tokenColorStorage,
 	lexer.Next:         tokenColorKeyword,
 	lexer.When:         tokenColorKeyword,
+	lexer.Public:       tokenColorKeyword,
 	lexer.Import:       tokenColorKeyword,
 	lexer.String:       cli.ANSIGreen,
 	lexer.Numeric:      tokenColorNumber,
@@ -121,7 +122,6 @@ func PrintError(err KlarError, options PrintOptions) {
 		currLine, currCol int
 		out               string
 	)
-
 	for i, tok := range options.Tokens {
 		if tok.Position.Line > errPos.Line {
 			break
@@ -160,7 +160,12 @@ func PrintError(err KlarError, options PrintOptions) {
 		out += addSpace(tok.Col-currCol) + add
 		currCol = tok.Col + len(tok.Source)
 	}
-	out += fmt.Sprintf("\n%7[3]s%[1]*s", errPos.Col-1, ansi(cli.ANSIBoldRed, "^"), " ")
+	line := ansi(cli.ANSIBoldRed, "^")
+	if err, ok := err.(ParseError); ok &&
+		errPos == err.Position && len(err.Token.Source) > 1 {
+		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len(err.Token.Source))
+	}
+	out += fmt.Sprintf("\n%[1]*[2]s"+line, 7+errPos.Col-1, " ")
 	out = strings.TrimPrefix(out, "\n")
 	fmt.Fprintln(os.Stderr, out)
 }

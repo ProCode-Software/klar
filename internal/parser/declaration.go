@@ -71,12 +71,13 @@ func (p *Parser) ParseEnum(typeName, firstItem string) ast.EnumDeclaration {
 		isFirst = true
 		items   []ast.EnumItem
 	)
-	for p.IsNotCurrentlyEndOr(lexer.RightCurlyBrace) {
+	for p.WhileNot(lexer.RightCurlyBrace) {
 		var item ast.EnumItem
 		if isFirst {
 			item = ast.EnumItem{Identifier: firstItem}
 			isFirst = false
 			if p.CurrentTokenKind() == lexer.Stroke {
+				items = append(items, item)
 				p.Advance()
 				continue
 			}
@@ -104,7 +105,7 @@ func (p *Parser) ParseStruct(typeName, firstField string, inherited []ast.Type) 
 		isFirst = true
 		fields  []ast.StructField
 	)
-	for p.IsNotCurrentlyEndOr(lexer.RightCurlyBrace) {
+	for p.WhileNot(lexer.RightCurlyBrace) {
 		var field ast.StructField
 		if isFirst {
 			// First is currently at colon
@@ -168,7 +169,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	}
 	// Params
 	p.Expect(lexer.LeftParenthesis)
-	for p.WhileNot(lexer.RightParenthesis) {
+	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		param := ast.FunctionParam{
 			Identifier: p.Expect(lexer.Identifier).Source,
 		}
@@ -191,7 +192,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		}
 
 		f.Parameters = append(f.Parameters, param)
-		if p.CurrentTokenKind() != lexer.RightParenthesis {
+		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
 		}
 	}
@@ -200,18 +201,17 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	// Return type: the arrow. Can be inferred
 	if p.CurrentTokenKind() == lexer.Arrow {
 		p.Advance()
-		f.ReturnType = p.ParseType(DefaultBindingPower)
+		f.ReturnType = p.ParseType(DefaultTypeBindingPower)
 	}
 
 	// Body: Externally implemented functions may not have a body
 	//	@external(js: "./date.js", name: "now")
 	// 	func Date.now() -> Date
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+		f.Body = p.ParseBlock()
+	} else if p.CurrentTokenKind() == lexer.Equal {
 		p.Advance()
-		for p.WhileNot(lexer.RightCurlyBrace) {
-			f.Body = append(f.Body, p.ParseStatement())
-		}
-		p.Expect(lexer.RightCurlyBrace)
+		f.Expression = p.ParseExpression(DefaultBindingPower)
 	}
 	return f
 }

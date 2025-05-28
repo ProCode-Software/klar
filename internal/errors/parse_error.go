@@ -42,6 +42,7 @@ const (
 	ErrExpectedOctal
 	ErrExpectedBinary
 	ErrExpectedDecimal
+	ErrExpectedParamInLambda
 
 	ErrExpectedSymbolAssign  // Assignment to non-variable or property
 	ErrReservedKeyword       // Reserved keyword used as an identifier
@@ -52,6 +53,9 @@ const (
 	ErrNotEnoughEnumItems      // At least two enum members required
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
+	ErrExpectedParamInGeneric  // At least one parameter requried in generic
+
+	ErrForInvalidCondition // Expected assignment or expression in for loop
 )
 
 type ErrorParams map[string]any
@@ -61,7 +65,7 @@ type ParseError struct {
 	Position lexer.Position
 	Type     ErrorCode
 	Token    lexer.Token
-	ASTItem  ast.ASTItem
+	Node     ast.Node
 	Params   map[string]any
 }
 
@@ -81,7 +85,7 @@ func (e ParseError) Error() string {
 			FormatTokenType(kind) + " instead"
 	case ErrExpectedSymbolAssign:
 		return "SyntaxError: You can only assign to a variable or property, not " +
-			e.ASTItem.Kind()
+			e.Node.Kind()
 	case ErrExpectedToken:
 		if src == ";" {
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
@@ -102,7 +106,7 @@ func (e ParseError) Error() string {
 	case ErrImportInvalidWildcard:
 		return "SyntaxError: '*' should the the last sub-namespace of a module"
 	case ErrImportPrefixDot:
-		return "SyntaxError: Module name import statement can't start with '.'"
+		return "SyntaxError: A module name can't start with '.'"
 	case ErrUnexpectedToken:
 		switch {
 		case kind == lexer.Illegal:
@@ -118,27 +122,40 @@ func (e ParseError) Error() string {
 		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment ('=', '{', or inherited type), but got " + Quote(tok) + " instead"
+		return "SyntaxError: I expected a type assignment, but got " + Quote(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
 		return "SyntaxError: This enum must have at least 2 items, but it has only 1"
-	case ErrMisplacedSep:
-		return ""
+	case ErrStringEscape:
+		reason := e.Params["reason"].(lexer.EscapeError)
+		kind := e.Params["type"].(lexer.EscapeType)
+		switch reason {
+		case lexer.ErrEscapeExpHex:
+			return "SyntaxError: I expected a hexadecimal digit (0-9, a-f or A-F)"
+		case lexer.ErrEscapeUnknown:
+			return "SyntaxError: I don't understand this escape code"
+		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
+			if kind == lexer.EscUnicode {
+				return "SyntaxError: Expected between 1-6 hex digits in Unicode escape"
+			} else {
+				return "SyntaxError: I expected an expression"
+			}
+		default:
+			return "SyntaxError: Invalid string escape"
+		}
+	case ErrForInvalidCondition:
+		return "Expected an assignment or expression in for condition"
+	case ErrExpectedParamInGeneric:
+		return "At least 1 type parameter is required in generic"
 	}
 }
 
 func UnexpectedTokenError(token lexer.Token) ParseError {
-	return ParseError{
-		Position: token.Position,
-		Token:    token,
-		Type:     ErrUnexpectedToken,
-	}
+	return ParseError{Position: token.Position, Token: token, Type: ErrUnexpectedToken}
 }
 
-func ExpectedTokenError(
-	expTokenKind lexer.TokenType, gotToken lexer.Token,
-) ParseError {
+func ExpectedTokenError(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseError {
 	return ParseError{
 		Position: gotToken.Position,
 		Token:    gotToken,
@@ -152,29 +169,24 @@ func UnterminatedStringError(startPos lexer.Position) ParseError {
 	return ParseError{Position: startPos, Type: ErrUnterminatedString}
 }
 
-func InvalidEscapeError(
-	reason lexer.StringEscapeErrorType, pos lexer.Position, esc string,
-) ParseError {
+func InvalidEscapeError(e lexer.StringEscape, pos lexer.Position) ParseError {
 	return ParseError{
 		Position: pos,
 		Type:     ErrStringEscape,
 		Params: ErrorParams{
-			"reason": reason,
-			"escape": esc,
+			"reason": e.Invalid,
+			"type":   e.Type,
+			"escape": e.Value,
 		},
 	}
 }
 
 func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
-	return ParseError{
-		Type:     err,
-		Position: token.Position,
-		Token:    token,
-	}
+	return ParseError{Type: err, Position: token.Position, Token: token}
 }
 
-func NewASTItemError(err ErrorCode, node ast.ASTItem) ParseError {
-	return ParseError{Type: err, ASTItem: node}
+func NewNodeError(err ErrorCode, node ast.Node) ParseError {
+	return ParseError{Type: err, Node: node}
 }
 
 func NewPositionError(err ErrorCode, pos lexer.Position) ParseError {

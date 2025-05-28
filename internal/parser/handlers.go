@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.ASTItem, handled bool) {
+func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	switch kind {
 	default:
 		return nil, false
@@ -23,52 +23,54 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.ASTItem, handled bool)
 		res = p.ParseMap()
 	case lexer.LeftBracket:
 		res = p.ParseList()
+	case lexer.Dot:
+		res = p.ParseEnumLiteral()
 	}
 	return res, true
 }
 
 func (p *Parser) handleLED(
-	kind lexer.TokenType, left ast.ASTItem, bp BindingPower,
-) (res ast.ASTItem, handled bool) {
-	currentBP := BindingPowerMap[p.CurrentTokenKind()]
+	kind lexer.TokenType, left ast.Node, bp BindingPower,
+) (res ast.Node, handled bool) {
+	// currentBP := BindingPowerMap[p.CurrentTokenKind()]
 	switch kind {
 	default:
 		return nil, false
 
 	// Arithmetic
-	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent,
-	lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
-	lexer.EqualEqual, lexer.NotEqual:
-		res = p.ParseBinaryExpression(left, currentBP)
-
-	// Exponent (right-associative)
-	case lexer.Caret:
-		res = p.ParseBinaryExpression(left, currentBP-1)
-
+	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
+		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
+		lexer.EqualEqual, lexer.NotEqual:
+		res = p.ParseBinaryExpression(left, bp)
 	// Type annotation
 	case lexer.Colon:
-		res = p.ParseVarTypeAnnotation(left, currentBP)
-
+		res = p.ParseVarTypeAnnotation(left, bp)
 	// Index
 	case lexer.Dot, lexer.LeftBracket:
 		res = p.ParseIndexExpression(left, bp)
-
 	// Call
 	case lexer.LeftParenthesis:
 		res = p.ParseCallExpression(left, bp)
-
 	// Assignment
 	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
-		// Left must be an expression
-		if _, ok := left.(ast.Expression); !ok {
-			panic(errors.ParseError{
-				Type:    errors.ErrExpectedSymbolAssign,
-				ASTItem: left,
-			})
-		}
 		res = p.ParseAssignment(left.(ast.Expression), bp)
+	// Increment/decrement (statements, not expressions)
+	case lexer.PlusPlus, lexer.MinusMinus:
+		validateAssignable(left)
+		res = p.ParsePostfix(left.(ast.Expression))
+	case lexer.Arrow:
+		res = p.ParseLambdaExpression(left, bp)
 	}
 	return res, true
+}
+
+func validateAssignable(left ast.Node) {
+	if _, ok := left.(ast.Assignable); !ok {
+		panic(errors.ParseError{
+			Type: errors.ErrExpectedSymbolAssign,
+			Node: left,
+		})
+	}
 }
 
 // handleStatement covers all keywords
@@ -86,8 +88,10 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = p.ParseReturnStatement()
 	case lexer.When:
 		panic("TODO")
-	case lexer.For:
+	case lexer.Public:
 		panic("TODO")
+	case lexer.For:
+		res = p.ParseForStatement()
 	case lexer.Next:
 		res = ast.NextStatement{}
 		p.Advance()

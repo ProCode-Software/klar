@@ -36,6 +36,7 @@ func (l *Lexer) ParseOperator() (TokenType, string) {
 	}
 	return Illegal, op
 }
+
 func (l *Lexer) ParseLineComment() string {
 	var shouldStop bool
 	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
@@ -51,18 +52,18 @@ func (l *Lexer) ParseLineComment() string {
 	})
 	return "//" + cmt
 }
+
 func (l *Lexer) ParseBlockComment() (string, Position) {
 	cmtLevel := 1
 	var endPos Position
 	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
-		if cmtLevel == 0 {
+		switch {
+		case cmtLevel == 0:
 			endPos = l.Pos
 			return
-		}
-		if r == '\n' {
+		case r == '\n':
 			l.ResetPosition()
-		}
-		if len(*s) > 1 {
+		case len(*s) > 1:
 			last := (*s)[len(*s)-1]
 			if last == '*' && r == '/' {
 				cmtLevel--
@@ -80,7 +81,6 @@ const (
 	ErrIntMisplacedSeparator
 	ErrIntIncompatibleDigit
 	ErrIntIllegalExponent
-	ErrIntMultipleDot
 	ErrStrUnterminated
 )
 
@@ -187,6 +187,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		SetAttribute("errorPos", errPos).
 		SetAttribute("error", errorType)
 }
+
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
 	id := l.TokenizeFunc(func(r rune, lit *string) {
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {

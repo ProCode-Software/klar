@@ -1,32 +1,34 @@
 package lexer
 
-import "unicode"
+import (
+	"unicode"
+)
 
-type StringEscapeType int
+type EscapeType int
 
 const (
-	_ StringEscapeType = iota
+	_ EscapeType = iota
 	EscCharacter
-	HexadecimalEscape
+	EscHex
 	EscUnicode
 	EscInterpolation
 )
 
-type StringEscapeErrorType int
+type EscapeError int
 
 const (
-	_ StringEscapeErrorType = iota // Not invalid
-	ErrEscapeNotEnough
+	_ EscapeError = iota
+	ErrEscapeTooShort
 	ErrEscapeTooLong
-	ErrEscapeExpectedChar
-	ErrEscapeExpectedHexChar
+	ErrEscapeUnterm
+	ErrEscapeExpHex
 	ErrEscapeUnknown
 )
 
 type StringEscape struct {
-	Type          StringEscapeType
+	Type          EscapeType
 	Value         string
-	Invalid       StringEscapeErrorType
+	Invalid       EscapeError
 	ErrorPosition int
 }
 
@@ -36,13 +38,12 @@ func isHex(r rune) bool {
 
 func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	var (
-		err    StringEscapeErrorType
+		err    EscapeError
 		errPos int
 	)
-	invalid := func(l int, reason StringEscapeErrorType) {
-		err, errPos = ErrEscapeExpectedHexChar, l+2
+	invalid := func(l int, reason EscapeError) {
+		err, errPos = reason, l+2
 	}
-
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
 		switch {
@@ -53,30 +54,30 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 		case l > 6 && r != '}':
 			invalid(l, ErrEscapeTooLong)
 		case l < 2 && r == '}':
-			invalid(l, ErrEscapeNotEnough)
+			invalid(l+1, ErrEscapeTooShort)
 			*s += string(r)
-		case r == '{', isHex(r):
+		case r == '}', isHex(r):
 			*s += string(r)
 		case r == delim:
-			invalid(l, ErrEscapeExpectedChar)
+			invalid(l, ErrEscapeUnterm)
 		default:
-			invalid(l, ErrEscapeExpectedHexChar)
+			invalid(l, ErrEscapeExpHex)
 		}
 	})
 	// TODO: check length and closing due to EOF
 	return StringEscape{
 		Type:          EscUnicode,
-		Value:         "\\u" + esc,
+		Value:         `\u` + esc,
 		Invalid:       err,
 		ErrorPosition: errPos,
 	}
 }
 func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	var (
-		err    StringEscapeErrorType
-		errPos int
+		err     EscapeError
+		errPos  int
+		invalid = func(l int) { err, errPos = ErrEscapeExpHex, l+2 }
 	)
-	invalid := func(l int) { err, errPos = ErrEscapeExpectedHexChar, l+2 }
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
 		switch {
@@ -94,28 +95,26 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	})
 	// TODO: check length and closing due to EOF
 	return StringEscape{
-		Type:          EscUnicode,
-		Value:         "\\x" + esc,
+		Type:          EscHex,
+		Value:         `\x` + esc,
 		Invalid:       err,
 		ErrorPosition: errPos,
 	}
 }
 func (l *Lexer) parseStrInterp(delim rune) StringEscape {
 	var (
-		err    StringEscapeErrorType
-		errPos int
+		err     EscapeError
+		errPos  int
+		invalid = func(code EscapeError, l int) { err, errPos = code, l+2 }
 	)
-	invalid := func(code StringEscapeErrorType, l int) {
-		err, errPos = code, l+2
-	}
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
 		switch {
 		case l == 0 && r == '}':
-			invalid(ErrEscapeNotEnough, l)
+			invalid(ErrEscapeTooShort, l)
 		case r == delim:
-			invalid(ErrEscapeExpectedChar, l)
-		case (*s)[l-1] == '}':
+			invalid(ErrEscapeUnterm, l)
+		case l > 0 && (*s)[l-1] == '}':
 			return
 		default:
 			*s += string(r)
@@ -123,7 +122,7 @@ func (l *Lexer) parseStrInterp(delim rune) StringEscape {
 	})
 	// TODO: check length and closing due to EOF
 	return StringEscape{
-		Type:          EscUnicode,
+		Type:          EscInterpolation,
 		Value:         "{" + esc,
 		Invalid:       err,
 		ErrorPosition: errPos,
@@ -138,18 +137,23 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 		escapes          = make(map[int]StringEscape)
 		escStart         int
 	)
-	escape := func(typ StringEscapeType, err StringEscapeErrorType) {
-		e := StringEscape{Type: typ, Value: esc, Invalid: err}
+	escape := func(typ EscapeType, err EscapeError) {
+		e := StringEscape{Type: typ, Value: `\` + esc, Invalid: err}
 		if err > 0 {
 			e.ErrorPosition = len(str) + 1
 		}
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
+	parsedEscape := func(e StringEscape, p rune) {
+		str += string(p) + e.Value[2:]
+		escapes[escStart], isEscape, esc = e, false, ""
+	}
+loop:
 	for {
 		r, _, err := l.Reader.ReadRune()
 		if handleReadError(err) {
 			unterm = true
-			break
+			break loop
 		}
 		l.Pos.Col++
 		if isEscape {
@@ -161,7 +165,7 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 				escape(EscCharacter, 0)
 			} else {
 				str += string(r)
-				break
+				break loop
 			}
 		case '\\':
 			if isEscape {
@@ -170,29 +174,39 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 				isEscape, escStart = true, len(str)+1
 			}
 		case '{':
-			if delim == '"' && !isEscape {
+			// TODO
+			str += string(r)
+			continue
+			if isEscape {
+				if delim == '"' {
+					escape(EscCharacter, 0)
+				} else {
+					escape(EscCharacter, ErrEscapeUnknown)
+				}
+			} else if delim == '"' {
 				escapes[len(str)+1] = l.parseStrInterp(delim)
-			} else if isEscape {
-				escape(EscCharacter, ErrEscapeUnknown)
-			}
+			} // "
 		case 'b', 'e', 'f', 'n', 'r', 't':
-			if isEscape && esc == `\` {
-				isEscape = false
+			if isEscape {
 				escape(EscCharacter, 0)
 			}
 		case 'x':
-			escapes[escStart] = l.parseHexEsc(delim)
-			isEscape = false
+			if isEscape {
+				parsedEscape(l.parseHexEsc(delim), 'x')
+				continue loop
+			}
 		case 'u':
-			escapes[escStart] = l.parseUnicodeEsc(delim)
-			isEscape = false
+			if isEscape {
+				parsedEscape(l.parseUnicodeEsc(delim), 'u')
+				continue loop
+			}
 		case '\n':
 			l.ResetPosition()
 			if delim != '`' {
 				// Invalid newline, just stop parsing
 				unterm = true
 				str += string(r)
-				break
+				break loop
 			}
 		default:
 			if isEscape {
@@ -202,7 +216,7 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 		str += string(r)
 	}
 	// TODO: check if closes due to EOF
-	return NewToken(pos, String, str).
+	return NewToken(pos, String, string(delim)+str).
 		SetAttribute("escapes", escapes).
 		SetAttribute("quoteStyle", delim).
 		SetAttribute("unterminated", unterm)

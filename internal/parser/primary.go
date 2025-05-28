@@ -46,13 +46,13 @@ func handleInvalidNumber(code, format int, tok lexer.Token) {
 				lexer.NumberFormatHex:     errors.ErrExpectedHex,
 			}[format], errPos, tok,
 		)
-	case lexer.ErrIntMultipleDot:
+	case lexer.ErrIntIllegalExponent:
 
 	}
 	panic(err)
 }
 
-func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
+func (p *Parser) ParsePrimaryExpression() ast.Node {
 	var (
 		token = p.Advance()
 		src   = token.Source
@@ -63,7 +63,7 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 	case lexer.Numeric:
 		format := token.Attributes["format"].(int)
 		switch {
-		case token.Attributes["invalid"].(bool):
+		case token.Attributes["invalid"] == true:
 			handleInvalidNumber(token.Attributes["error"].(int), format, token)
 
 		case strings.Contains(src, "."),
@@ -81,7 +81,7 @@ func (p *Parser) ParsePrimaryExpression() ast.ASTItem {
 			Value:  int(unwrap(strconv.ParseInt(src, 0, 0))),
 		}
 	case lexer.String:
-		if token.Attributes["err"] == lexer.ErrStrUnterminated {
+		if token.Attributes["unterminated"] == true {
 			panic(errors.NewPositionError(errors.ErrUnterminatedString, token.Position))
 		}
 		escapes := parseStringEscapes(token)

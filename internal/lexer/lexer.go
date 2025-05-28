@@ -40,24 +40,22 @@ func (l *Lexer) Tokenize() *Token {
 		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/':
 			// Multi-character operators
 			tt, val := l.ParseOperator()
-			// Skip comments, just change position
-			if tt == LineComment {
+			switch tt {
+			default:
+				return NewToken(pos, tt, val)
+			// Just change position
+			case LineComment:
 				src := l.ParseLineComment()
 				if !l.IncludeComments {
 					continue
 				}
 				return NewToken(pos, LineComment, src)
-			}
-			if tt == BlockComment {
+			case BlockComment:
 				src, endPos := l.ParseBlockComment()
 				if !l.IncludeComments {
 					continue
 				}
 				return NewToken(pos, BlockComment, src).SetAttribute("end", endPos)
-			}
-			// Keep going if it's a dot
-			if !(tt == Illegal && val == ".") {
-				return NewToken(pos, tt, val)
 			}
 		// Single-character operators
 		case '@':

@@ -9,18 +9,20 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left ast.ASTItem, bp BindingPower) ast.TypeAnnotation {
+func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.TypeAnnotation {
 	// LHS must be a Symbol or index
 	if _, ok := left.(ast.Assignable); !ok {
 		panic(errors.ParseError{
-			Type:    errors.ErrExpectedSymbolAssign,
-			ASTItem: left,
+			Type: errors.ErrExpectedSymbolAssign,
+			Node: left,
 		})
 	}
 	// Skip the :
 	p.Advance()
 	typ := p.ParseType(bp)
-
+	if p.IsCurrently(lexer.ColonEqual, lexer.Arrow) {
+		panic(errors.ExpectedTokenError(lexer.ColonEqual, p.CurrentToken()))
+	}
 	return ast.TypeAnnotation{
 		Variable: left.(ast.Symbol),
 		Type:     typ,
@@ -37,11 +39,8 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		if annot, is := left.(ast.TypeAnnotation); is {
 			explicitType = annot.Type
 			left = annot.Variable
-		} else if _, ok := left.(ast.Assignable); !ok {
-			panic(errors.ParseError{
-				Type:    errors.ErrExpectedSymbolAssign,
-				ASTItem: left,
-			})
+		} else {
+			validateAssignable(left)
 		}
 		id := left.(ast.Symbol).Identifier
 		return ast.VariableDeclaration{
@@ -51,8 +50,9 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 			ExplicitType: explicitType,
 		}
 	}
+	validateAssignable(left)
 	return ast.AssignmentStatement{
-		Assignee: left,
+		Assignee: left.(ast.Assignable),
 		Operator: op,
 		Value:    rhs,
 	}
@@ -163,4 +163,46 @@ func (p *Parser) ParseReturnStatement() ast.ReturnStatement {
 	return ast.ReturnStatement{
 		Value: p.ParseExpression(DefaultBindingPower),
 	}
+}
+
+func (p *Parser) ParsePostfix(left ast.Expression) ast.UpdateStatement {
+	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus).Kind
+	return ast.UpdateStatement{Operator: op, Left: left}
+}
+
+func (p *Parser) ParseForStatement() ast.ForStatement {
+	p.Expect(lexer.For)
+	f := ast.ForStatement{}
+	// for { - infinite loop
+	if p.CurrentTokenKind() != lexer.LeftParenthesis {
+		switch stmt := p.ParseStatement().(type) {
+		// Conditional: for i < 10
+		case ast.ExpressionStatement:
+			f.Condition = stmt.Expression
+		// Iteration: for i := 1...10
+		case ast.AssignmentStatement:
+			// TODO: comma assignments
+			if _, ok := stmt.Assignee.(ast.Symbol); !ok ||
+				stmt.Operator != lexer.ColonEqual {
+				panic(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
+			}
+			f.Variables = append(f.Variables, stmt.Assignee.(ast.Symbol))
+			f.Assignment = stmt.Value
+		default:
+			panic(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
+		}
+	} else {
+		f.Infinite = true
+	}
+	f.Body = p.ParseBlock()
+	return f
+}
+
+func (p *Parser) ParseBlock() (body []ast.Statement) {
+	p.Expect(lexer.LeftCurlyBrace)
+	for p.WhileNot(lexer.RightCurlyBrace) {
+		body = append(body, p.ParseStatement())
+	}
+	p.Expect(lexer.RightCurlyBrace)
+	return
 }
