@@ -33,19 +33,15 @@ type TokenColorMap = map[lexer.TokenType]string
 var TokenColors = TokenColorMap{
 	lexer.BlockComment: tokenColorComment,
 	lexer.LineComment:  tokenColorComment,
-	lexer.For:          tokenColorKeyword,
-	lexer.Return:       tokenColorKeyword,
 	lexer.Type:         tokenColorStorage,
 	lexer.Func:         tokenColorStorage,
-	lexer.Next:         tokenColorKeyword,
-	lexer.When:         tokenColorKeyword,
-	lexer.Public:       tokenColorKeyword,
-	lexer.Import:       tokenColorKeyword,
 	lexer.String:       cli.ANSIGreen,
 	lexer.Numeric:      tokenColorNumber,
 	lexer.Boolean:      tokenColorBoolNil,
 	lexer.Nil:          tokenColorBoolNil,
 	lexer.Illegal:      tokenColorIllegal,
+	lexer.And:          tokenColorOperator,
+	lexer.Or:           tokenColorOperator,
 
 	// Punctuation
 	lexer.Dot:                tokenColorPunc,
@@ -62,7 +58,7 @@ var TokenColors = TokenColorMap{
 }
 
 var BuiltinFuncs = map[string]bool{
-	"print": true, "panic": true, "assert": true,
+	"print": true, "panic": true, "assert": true, "TODO": true,
 }
 var BuiltinTypes = ast.PrimitiveTypeMap
 
@@ -70,6 +66,11 @@ func init() {
 	for _, op := range lexer.OperatorMap {
 		if _, exists := TokenColors[op]; !exists {
 			TokenColors[op] = tokenColorOperator
+		}
+	}
+	for _, kw := range lexer.KeywordMap {
+		if _, exists := TokenColors[kw]; !exists {
+			TokenColors[kw] = tokenColorKeyword
 		}
 	}
 }
@@ -90,7 +91,7 @@ func colorize(tok lexer.Token) string {
 }
 
 func semanticFunc(tok lexer.Token) string {
-	if _, isType := BuiltinTypes[tok.Source]; isType {
+	if _, isType := BuiltinTypes[tok.Source]; isType || tok.Source == "List" {
 		return ansi(tokenColorType, tok.Source)
 	}
 	if _, isBuiltin := BuiltinFuncs[tok.Source]; isBuiltin {

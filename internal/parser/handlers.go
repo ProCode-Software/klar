@@ -32,15 +32,18 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 func (p *Parser) handleLED(
 	kind lexer.TokenType, left ast.Node, bp BindingPower,
 ) (res ast.Node, handled bool) {
-	// currentBP := BindingPowerMap[p.CurrentTokenKind()]
 	switch kind {
 	default:
 		return nil, false
 
-	// Arithmetic
-	case lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
+	case
+		// Arithmetic
+		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
+		// Relational
 		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
-		lexer.EqualEqual, lexer.NotEqual:
+		lexer.EqualEqual, lexer.NotEqual,
+		// Logical
+		lexer.AndAnd, lexer.OrOr:
 		res = p.ParseBinaryExpression(left, bp)
 	// Type annotation
 	case lexer.Colon:
@@ -59,7 +62,7 @@ func (p *Parser) handleLED(
 		validateAssignable(left)
 		res = p.ParsePostfix(left.(ast.Expression))
 	case lexer.Arrow:
-		res = p.ParseLambdaExpression(left, bp)
+		res = p.ParseLambda(left, bp)
 	}
 	return res, true
 }
@@ -74,12 +77,23 @@ func validateAssignable(left ast.Node) {
 }
 
 // handleStatement covers all keywords
-func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
+func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast.Statement, handled bool) {
 	switch kind {
 	default:
-		return nil, false
-	case lexer.Import:
-		res = p.ParseImportStatement()
+		if !isTopLevel {
+			return nil, false
+		}
+		switch kind {
+		default:
+			return nil, false
+		case lexer.Import:
+			res = p.ParseImportStatement()
+		case lexer.Public:
+			panic("TODO")
+		case lexer.At:
+			res = p.ParseAttribute()
+		}
+		return res, true
 	case lexer.Type:
 		res = p.ParseTypeDeclaration()
 	case lexer.Func:
@@ -87,8 +101,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 	case lexer.Return:
 		res = p.ParseReturnStatement()
 	case lexer.When:
-		panic("TODO")
-	case lexer.Public:
 		panic("TODO")
 	case lexer.For:
 		res = p.ParseForStatement()

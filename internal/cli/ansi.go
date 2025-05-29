@@ -15,3 +15,7 @@ const (
 	ANSIResetBold    = ANSIReset + ANSIBold
 	ANSIResetBoldDim = ANSIReset + ANSIBoldDim
 )
+
+func Color(ansi string, text string) string {
+	return ansi + text + ANSIReset
+}

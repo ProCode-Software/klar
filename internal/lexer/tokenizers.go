@@ -16,25 +16,22 @@ func handleReadError(err error) bool {
 	return false
 }
 
-func (l *Lexer) ParseOperator() (TokenType, string) {
-	op := l.TokenizeFunc(func(r rune, s *string) {
-		switch r {
-		// Only characters in a multichar operator
-		case '*':
-			if *s == "/" {
-				*s += string(r)
-			}
-		case '/', '+', '-', ':', '=', '!', '>', '<', '|', '&':
-			*s += string(r)
-		}
-	})
-	for len(op) >= 1 {
-		if operator, is := OperatorMap[op]; is {
-			return operator, op
-		}
-		op = op[:len(op)-1] // Parsed too much characters: backup
+func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
+	s := string(r)
+	if _, ok := OperatorMap[s]; !ok {
+		return Illegal, s
 	}
-	return Illegal, op
+	next, err := l.Reader.Peek(1)
+	if handleReadError(err) {
+		return OperatorMap[s], s
+	}
+	full := s + string(next)
+	if op, ok := OperatorMap[full]; ok {
+		l.Reader.ReadRune()
+		l.Pos.Col++
+		return op, full
+	}
+	return OperatorMap[s], s
 }
 
 func (l *Lexer) ParseLineComment() string {

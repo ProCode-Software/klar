@@ -25,6 +25,7 @@ const (
 	RightCurlyBrace    // }
 	HashLeftCurlyBrace // #{
 	At                 // @
+	Hash               // #
 
 	Identifier
 	Numeric
@@ -70,10 +71,13 @@ const (
 	Pipeline // |>
 
 	// Keywords
+	And
 	For
 	Func
 	Import
+	In
 	Next
+	Or
 	Public
 	Return
 	Type
@@ -118,6 +122,7 @@ var OperatorMap = map[string]TokenType{
 	// Punctuation
 	":":  Colon,
 	".":  Dot,
+	"#":  Hash,
 	"@":  At,
 	"#{": HashLeftCurlyBrace,
 	"//": LineComment,
@@ -125,10 +130,13 @@ var OperatorMap = map[string]TokenType{
 }
 
 var KeywordMap = map[string]TokenType{
+	"and":    And,
 	"for":    For,
 	"func":   Func,
 	"import": Import,
+	"in":     In,
 	"next":   Next,
+	"or":     Or,
 	"public": Public,
 	"return": Return,
 	"type":   Type,

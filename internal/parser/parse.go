@@ -10,7 +10,7 @@ import (
 )
 
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
-// not panic on a syntax error.
+// not stop parsing on a syntax error.
 func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs []error) {
 	var (
 		shouldBreak bool
@@ -22,7 +22,7 @@ func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs 
 	for p.HasTokens() && !shouldBreak {
 		func() {
 			defer p.handleError(continueOnErr, &errs, &shouldBreak)
-			body = append(body, p.ParseStatement())
+			body = append(body, p.ParseTopLevelStatement())
 		}()
 	}
 	return ast.Program{Body: body, Comments: comments}, errs
@@ -92,27 +92,35 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 	return left
 }
 
-func (p *Parser) ParseStatement() ast.Statement {
+func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrentTokenKind()
-	result, handled := p.handleStatement(kind)
+	result, handled := p.handleStatement(kind, true)
 	if handled {
 		p.Expect(lexer.EndOfStatement)
 		return result
 	}
+	return p.ParseStatement()
+}
 
+func (p *Parser) ParseStatement() ast.Statement {
+	kind := p.CurrentTokenKind()
+	result, handled := p.handleStatement(kind, false)
+	if handled {
+		p.Expect(lexer.EndOfStatement)
+		return result
+	}
 	res := p.ParseLED(DefaultBindingPower)
 	p.Expect(lexer.EndOfStatement)
 	switch res := res.(type) {
 	// Left-denoted statement
 	case ast.Statement:
 		return res
-
 	// Then it is an expression
 	case ast.Expression:
 		return ast.ExpressionStatement{Expression: res}
-
 	// I don't know what this is
 	default:
-		return nil
+		panic("Neither expression nor statement")
+		// return nil
 	}
 }

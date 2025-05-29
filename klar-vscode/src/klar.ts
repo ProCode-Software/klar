@@ -9,12 +9,15 @@ RegExp.prototype.toString = function () {
 
 // keywords:
 // import  func  type  return  next  for  when
+// public  in  and  or
 
 const Punctuation = {
     period: match(/\./, 'punctuation.separator.period.klar'),
     comma: match(/,/, 'punctuation.separator.comma.klar'),
     colonType: 'keyword.operator.type.annotation.klar',
     bracket: 'punctuation.definition.bracket',
+    at: 'punctuation.definition.attribute.klar',
+    generic: 'punctuation.definition.generic.klar',
     equalSign: 'keyword.operator.assignment.klar',
     brace: {
         begin: 'punctuation.definition.block.begin.klar',
@@ -28,21 +31,23 @@ const Punctuation = {
 
 const Identifier = /_?[\p{L}_][\p{L}\w_]*/u
 const IdCapture = /(_?[\p{L}_][\p{L}\w_]*)/u
-//@ts-ignore
-const Type: string =
+const Type = /([-\s\p{L}\w._,?<>\[\]\-()]+)/u
+/* const Type: string =
     /(((?:_?[\p{L}_][\p{L}\w_]*\.)?_?[\p{L}_][\p{L}\w_]*(?:<[\s\p{L}\w._,?<>\[\]\-()]+>)?\??)|\[\s*REC\s*\]\??)/u.source.replaceAll(
         'REC',
         '\\g<2>'
-    ) // Supports namespaces
+    ) // Supports namespaces */
 
-const IncludeType = [
-    { name: 'entity.name.type.klar', patterns: [include('types')] },
-    undefined,
-]
+const IncludeType = [{ name: 'entity.name.type.klar', patterns: [include('types')] }]
 
 const repository: Repository = {
     comments: {
         patterns: [
+            {
+                begin: '\\A#!',
+                end: /$/,
+                name: 'comment.line.shebang.klar',
+            },
             {
                 begin: /\/{2}/,
                 end: /$/,
@@ -59,7 +64,7 @@ const repository: Repository = {
         patterns: [
             [/"/, 'double', ['stringEscape', 'stringInterpolation']],
             [/'/, 'single', ['stringEscape']],
-            [/`/, 'raw', []],
+            [/`/, 'raw', ['stringInterpolation']],
         ].map(([b, name, pat]) => ({
             begin: b,
             end: b,
@@ -86,7 +91,9 @@ const repository: Repository = {
     },
     keywords: {
         patterns: [
+            match(/\b(public)\b/, 'storage.modifier.klar'),
             match(/\b(type)\b/, 'storage.type.type.klar'),
+            match(/\b(in)\b/, 'keyword.other.in.klar'),
             match(/\b(func)\b/, 'storage.type.function.klar'),
             match(/\b(for|next)\b/, 'keyword.control.loop.klar'),
             match(/\b(return)\b/, 'keyword.control.flow.klar'),
@@ -126,8 +133,11 @@ const repository: Repository = {
             match(/\.{2}/, 'keyword.operator.range.klar'),
             match(/&&|\|{2}|!/, 'keyword.operator.logical.klar'),
             match(/[><=!]=|[<>]/, 'keyword.operator.comparison.klar'),
-            match(/[&|?]/, 'keyword.operator.type.klar'),
-            match(/[-+*/%^:]?=/, Punctuation.equalSign),
+            match(/\b(and|or)\b/, 'keyword.operator.relational.klar'),
+            match(/[|?]/, 'keyword.operator.type.klar'),
+            match(/\+\+/, 'keyword.operator.increment.klar'),
+            match(/--/, 'keyword.operator.decrement.klar'),
+            match(/[-+:]?=/, Punctuation.equalSign),
             match(/[-+*/%^]/, 'keyword.operator.arithmetic.klar'),
             match(/=/, Punctuation.equalSign),
         ],
@@ -146,11 +156,14 @@ const repository: Repository = {
         endCaptures: [{ name: Punctuation.parenthesis.end }],
         patterns: [include('labels'), ...BASE],
     },
-    builtinFunctions: match(/\b(print|panic|TODO)\b/, 'support.function.builtin.klar'),
+    builtinFunctions: match(
+        /\b(print|panic|assert|TODO)\b/,
+        'support.function.builtin.klar'
+    ),
     castFunctions: {
-        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Dictionary)\b\??)|\[TYPE\])(\()/.source.replaceAll(
+        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map)\b\??)|\[TYPE\])(\()/.source.replaceAll(
             'TYPE',
-            Type
+            Type.source
         ),
         end: /\)/,
         beginCaptures: [
@@ -159,7 +172,6 @@ const repository: Repository = {
                 name: 'support.type.builtin.klar support.type.primitive.klar',
             },
             ...IncludeType,
-            undefined,
             { name: Punctuation.parenthesis.begin },
         ],
         endCaptures: [{ name: Punctuation.parenthesis.end }],
@@ -169,14 +181,19 @@ const repository: Repository = {
     functionDeclarations: {
         begin: merge(
             /(?<=\bfunc\b)\s*/,
-            `(?:(?:${IdCapture.source}(\\.))?${IdCapture.source})?`,
+            `(?:(?:${IdCapture.source}(\\.))?${IdCapture.source})`,
+            /(<[\p{L}\w_,\s]+>)?/u,
             /\s*(\()/
         ),
-        end: /(\))(?:\s*(->)\s*TYPE)?/.source.replace('TYPE', Type),
+        end: /(\))(?:\s*(->)\s*TYPE)?/.source.replace('TYPE', Type.source),
         beginCaptures: [
             { name: 'entity.name.type.struct.klar' },
             { name: Punctuation.period.name },
             { name: 'entity.name.function.klar' },
+            {
+                name: 'meta.function.generic.klar entity.name.type.klar',
+                patterns: [match(/[<>]/, Punctuation.generic), Punctuation.comma],
+            },
             { name: Punctuation.parenthesis.begin },
         ],
         endCaptures: [
@@ -186,13 +203,16 @@ const repository: Repository = {
         ],
         patterns: [
             {
-                match: `(?<=^|[(,])\\s*(\\b${Identifier.source}\\b)?\\s*(${Identifier.source})\\s*(:)\\s*${Type}`,
+                begin: `(?<=^|[(,])\\s*(\\b${Identifier.source}\\b)?\\s*(${Identifier.source})\\s*(:)\\s*${Type}\\s*(=)?`,
+                end: /(?=\)|,)/,
                 captures: [
                     { name: 'entity.other.attribute-name.klar' },
                     { name: 'variable.other.klar' },
                     { name: Punctuation.colonType },
                     ...IncludeType,
+                    { name: Punctuation.equalSign },
                 ],
+                patterns: BASE,
             },
         ],
     },
@@ -203,12 +223,14 @@ const repository: Repository = {
                 name: 'entity.name.namespace.klar',
             },
             match(
-                /\b(String|Int|Float|Bool|Result|List|Dictionary|Any|Never|Nothing|Error)(?!\.)\b/,
+                /\b(String|Int|Float|Bool|Result|List|Map|Any|Nothing|Error)(?!\.)\b/,
                 'support.type.builtin.klar support.type.primitive.klar'
             ),
-            match(/[&|?]/, 'keyword.operator.type.klar'),
-            match(/[<>]/, 'punctuation.definition.generic.klar'),
-            match(/[\[\]]/, 'punctuation.definition.type.array.klar'),
+            match(/[+|?]/, 'keyword.operator.type.klar'),
+            match(/->/, 'keyword.operator.arrow.klar'),
+            match(/[<>]/, Punctuation.generic),
+            match(/[\[\]]/, 'punctuation.definition.type.list.klar'),
+            match(/[()]/, 'punctuation.definition.type.tuple.klar'),
             Punctuation.comma,
             Punctuation.period,
         ],
@@ -228,10 +250,28 @@ const repository: Repository = {
         ],
     },
     labels: {
-        match: merge(/(?<=^|[(,])\s*/, IdCapture, /\s*(:)/),
-        captures: [
-            { name: 'entity.other.attribute-name.klar' },
-            { name: 'punctuation.separator.label.parameter.klar' },
+        patterns: [
+            {
+                // Shorthand syntax
+                match: merge(
+                    /(?<=^|[(,])\s*/,
+                    /\s*(:)/,
+                    `(${Identifier}\\.)*`,
+                    IdCapture
+                ),
+                captures: [
+                    { name: 'punctuation.separator.label.parameter.klar' },
+                    { patterns: BASE },
+                    { name: 'entity.other.attribute-name.klar' },
+                ],
+            },
+            {
+                match: merge(/(?<=^|[(,])\s*/, IdCapture, /\s*(:)/),
+                captures: [
+                    { name: 'entity.other.attribute-name.klar' },
+                    { name: 'punctuation.separator.label.parameter.klar' },
+                ],
+            },
         ],
     },
     punctuation: {
@@ -240,6 +280,7 @@ const repository: Repository = {
             match(/[\[\]]/, Punctuation.bracket),
             Punctuation.comma,
             match(/;/, 'invalid.semicolon.klar'),
+            match(/@/, Punctuation.at),
             Punctuation.period,
         ],
     },
@@ -293,20 +334,20 @@ const repository: Repository = {
     structs: {
         name: 'meta.type.klar',
         begin: merge(
-            /(?<=\btype\b)\s*/,
+            /(?<=\btype\b)\s*(#)?/,
             IdCapture,
             String.raw`\s*(?:(:)\s*${IdCapture})?`,
             /\s*({)/
         ),
         end: /}/,
         beginCaptures: [
+            { name: 'punctuation.definition.interface-type.klar' },
             { name: 'entity.name.type.struct.klar' },
             { name: Punctuation.colonType },
             {
                 name: 'entity.name.type.struct entity.other.inherited-type.klar',
                 patterns: [include('types')],
             },
-            undefined,
             { name: Punctuation.brace.begin },
         ],
         endCaptures: [{ name: Punctuation.brace.end }],
@@ -321,6 +362,7 @@ const repository: Repository = {
                     { patterns: BASE },
                 ],
             },
+            include('interfaces'),
             include('enums'),
             match(/,/, 'invalid.comma.klar'),
         ],
@@ -337,6 +379,21 @@ const repository: Repository = {
             },
             match(/\|/, 'keyword.operator.type.klar'),
         ],
+    },
+    interfaces: {
+        begin: `(?<=^|{)\\s*(${Identifier.source})\\s*(\\()`,
+        end: String.raw`(\))(?:\s*(->)\s*${Type})?`,
+        beginCaptures: [
+            { name: 'entity.name.function.member.klar' },
+            { name: Punctuation.parenthesis.begin },
+        ],
+        endCaptures: [
+            { name: Punctuation.parenthesis.begin },
+            { name: 'keyword.operator.arrow.klar' },
+            ...IncludeType,
+        ],
+        contentName: 'entity.name.type.klar',
+        patterns: [include('labels'), include('types')],
     },
     variableAssignments: {
         begin: merge(IdCapture, String.raw`(?:\s*(:)\s*${Type})?`, /\s*(:=)/),
@@ -367,6 +424,18 @@ const repository: Repository = {
             ...BASE,
         ],
     },
+    attributes: {
+        begin: merge('(@)', IdCapture, /(\()?/),
+        end: /(\))|$/,
+        beginCaptures: [
+            { name: Punctuation.at },
+            { name: 'storage.modifier.attribute.klar' },
+            { name: Punctuation.parenthesis.begin },
+        ],
+        endCaptures: [{ name: Punctuation.parenthesis.end }],
+        name: 'meta.attribute.klar',
+        patterns: [include('labels'), ...BASE],
+    },
 } satisfies Repository
 
 const klar: TextMateLanguage = {
@@ -387,6 +456,7 @@ const klar: TextMateLanguage = {
         include('variableAssignments'),
         include('whenExpression'),
 
+        include('attributes'),
         include('functions'),
         include('variables'),
         include('punctuation'),

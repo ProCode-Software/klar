@@ -33,6 +33,7 @@ func (Discard) Kind() string              { return "Discard" }
 func (WhenBlock) Kind() string            { return "WhenBlock" }
 func (LambdaExpression) Kind() string     { return "LambdaExpression" }
 func (ParamTuple) Kind() string           { return "ParamTuple" }
+func (Attribute) Kind() string            { return "Attribute" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -75,6 +76,7 @@ func (ReturnStatement) Statement()      {}
 func (FunctionDeclaration) Statement()  {}
 func (NextStatement) Statement()        {}
 func (WhenBlock) Statement()            {}
+func (Attribute) Statement()            {}
 
 // Type
 func (PrimitiveType) Type() {}

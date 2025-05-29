@@ -13,6 +13,6 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}/klar-vscode"
 			]
-		}
+		},
 	]
 }

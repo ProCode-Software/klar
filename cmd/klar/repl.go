@@ -37,6 +37,7 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		if input == "" {
 			continue
 		}
+		File = "<repl>"
 		RunString(input)
 	}
 }

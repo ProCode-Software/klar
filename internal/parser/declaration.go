@@ -215,3 +215,14 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	}
 	return f
 }
+
+// storage.modifier.attribute
+func (p *Parser) ParseAttribute() (d ast.Attribute) {
+	p.Expect(lexer.At)
+	d.Decorator = p.Expect(lexer.Identifier).Source
+	if p.CurrentTokenKind() == lexer.LeftParenthesis {
+		call := p.ParseCallExpression(nil, CallBindingPower)
+		d.Args = call.Args
+	}
+	return d
+}

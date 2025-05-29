@@ -32,6 +32,9 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 	expr := p.ParseExpression(CommaBindingPower)
 	next := p.CurrentToken()
 	switch next.Kind {
+	case lexer.Colon:
+		// Type tuple
+		return nil
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
 		tuple := ast.TupleLiteral{}
@@ -157,9 +160,8 @@ func (p *Parser) ParseEnumLiteral() ast.EnumLiteral {
 	return ast.EnumLiteral{Name: p.Expect(lexer.Identifier).Source}
 }
 
-func (p *Parser) ParseLambdaExpression(left ast.Node, bp BindingPower) ast.LambdaExpression {
+func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpression) {
 	p.Expect(lexer.Arrow)
-	l := ast.LambdaExpression{}
 	switch left := left.(type) {
 	case ast.Symbol:
 		l.Params = append(l.Params, ast.TypePair{Key: left.Identifier})
@@ -180,7 +182,7 @@ func (p *Parser) ParseLambdaExpression(left ast.Node, bp BindingPower) ast.Lambd
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		l.Body = p.ParseBlock()
 	} else {
-		l.ExprBody = p.ParseExpression(CommaBindingPower)
+		l.ExprBody = p.ParseExpression(DefaultBindingPower)
 	}
 	return l
 }

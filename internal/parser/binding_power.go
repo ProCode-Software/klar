@@ -12,6 +12,8 @@ const (
 	DefaultBindingPower        BindingPower = iota
 	CommaBindingPower                       // ,
 	AssignBindingPower                      // :=, +=, -=, =
+	ExpressionBindingPower                  // Minimum for expressions
+	LambdaBindingPower                      // ->
 	LogicalBindingPower                     // ||, &&, | or + in type
 	RelationalBindingPower                  // ==, >, etc.
 	AdditiveBindingPower                    // + and -
@@ -32,6 +34,12 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.PlusEqual:  AssignBindingPower,
 	lexer.MinusEqual: AssignBindingPower,
 
+	lexer.Arrow: LambdaBindingPower,
+
+	lexer.AndAnd: LogicalBindingPower,
+	lexer.OrOr:   LogicalBindingPower,
+	lexer.Stroke: LogicalBindingPower, // In when statements, a bit lower than logical, but higher than comma
+
 	lexer.LessThan:       RelationalBindingPower,
 	lexer.GreaterThan:    RelationalBindingPower,
 	lexer.LessEqualTo:    RelationalBindingPower,
@@ -39,10 +47,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
 	lexer.Spread:         RelationalBindingPower, // Infix only: 1...10
-
-	lexer.AndAnd: LogicalBindingPower,
-	lexer.OrOr:   LogicalBindingPower,
-	lexer.Stroke: LogicalBindingPower, // In when statements, a bit lower than logical, but higher than comma
 
 	lexer.Plus:  AdditiveBindingPower,
 	lexer.Minus: AdditiveBindingPower,

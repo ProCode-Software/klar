@@ -37,9 +37,9 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ParseString(pos, r)
-		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/':
+		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
-			tt, val := l.ParseOperator()
+			tt, val := l.ParseOperator(r)
 			switch tt {
 			default:
 				return NewToken(pos, tt, val)
@@ -82,14 +82,6 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Comma, ",")
 		case '?':
 			return NewToken(pos, Question, "?")
-		case '#':
-			next, err := l.Reader.Peek(1)
-			if handleReadError(err) || next[0] != '{' {
-				return NewToken(pos, Illegal, "#")
-			}
-			l.Reader.ReadRune()
-			l.Pos.Col++
-			return NewToken(pos, HashLeftCurlyBrace, "#{")
 		case '.':
 			if err := l.Reader.UnreadRune(); err != nil {
 				panic(err)

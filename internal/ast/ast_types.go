@@ -45,15 +45,12 @@ type IntegerLiteral struct {
 	Value  int
 }
 
-type BooleanLiteral struct {
-	Value bool
-}
+type BooleanLiteral struct{ Value bool }
 
 type NilLiteral struct{}
 
-type FloatLiteral struct {
-	Value float64
-}
+type FloatLiteral struct{ Value float64 }
+
 type Comment struct {
 	Begin, End lexer.Position
 	Type       CommentType
@@ -97,9 +94,7 @@ type StringInterpolation struct {
 	Expression Node
 }
 
-type Symbol struct {
-	Identifier string
-}
+type Symbol struct{ Identifier string }
 
 type Discard struct{} // _
 
@@ -347,7 +342,12 @@ type ParamTuple struct {
 }
 
 type LambdaExpression struct {
-	Params     []TypePair
-	Body       []Statement
-	ExprBody   Expression
+	Params   []TypePair
+	Body     []Statement
+	ExprBody Expression
+}
+
+type Attribute struct {
+	Decorator string
+	Args      []CallParam
 }

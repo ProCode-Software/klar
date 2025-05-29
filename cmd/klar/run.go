@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/sanity-io/litter"
 )
 
-const INCLUDE_COMMENTS = false
+const INCLUDE_COMMENTS = true
+
+var File string
 
 func tryPipe() {
 	stat, err := os.Stdin.Stat()
@@ -20,33 +23,55 @@ func tryPipe() {
 	}
 	// Is pipe
 	tokens, err := parser.TokenizeFile(os.Stdin, INCLUDE_COMMENTS)
+	File = "stdin"
 	handleError(err)
 	runTokens(tokens)
 	os.Exit(0)
 }
 
 var printOptions = errors.PrintOptions{
-	Color: true,
+	Color:    true,
 	MaxLines: 5,
 	Semantic: true,
+}
+
+func stack(err errors.KlarError) string {
+	var (
+		colon = cli.Color(cli.ANSIDim, ":")
+		file  = cli.Color(cli.ANSICyan, File)
+		pos   = err.At()
+		num   = func(n int) string {
+			return cli.Color(cli.ANSIYellow, fmt.Sprint(n))
+		}
+	)
+	return fmt.Sprint("\n    " +
+		cli.Color(cli.ANSIDim, "File: ") + file +
+		colon + num(pos.Line) +
+		colon + num(pos.Col),
+	)
 }
 
 func throw(err error) {
 	if !parser.IsKlarError(err) {
 		panic(err)
 	}
-	arr := strings.SplitAfterN(err.Error(), ": ", 3)
-	first := arr[0]
-	errors.PrintError(err.(errors.KlarError), printOptions)
+	var (
+		arr     = strings.SplitAfterN(err.Error(), ": ", 3)
+		first   = arr[0]
+		klarErr = err.(errors.KlarError)
+		stack   = stack(klarErr)
+	)
+	errors.PrintError(klarErr, printOptions)
 	if len(arr) < 2 {
-		cli.Fail(first)
+		cli.Fail(first, stack)
 	}
 	errName := strings.TrimSuffix(first, ": ")
 	if len(arr) < 3 {
-		cli.CustomFailure(errName, arr[1])
+		cli.CustomFailure(errName, arr[1], stack)
 	} else {
-		cli.CustomFailure(errName, arr[1], arr[2])
+		cli.CustomFailure(errName, arr[1], arr[2], stack)
 	}
+
 }
 
 func runTokens(tokens []lexer.Token) {
@@ -60,6 +85,7 @@ func runTokens(tokens []lexer.Token) {
 }
 
 func RunFile(path string) {
+	File = path
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		file, err = os.Open(path + ".klar")
@@ -84,6 +110,9 @@ func handleError(err error) {
 }
 
 func RunString(program string) {
+	if File != "<repl>" {
+		File = "<string>"
+	}
 	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
 	handleError(err)
 	runTokens(tokens)
