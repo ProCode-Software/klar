@@ -62,6 +62,7 @@ type ErrorParams map[string]any
 
 // A ParseError is a basic Klar parse error.
 type ParseError struct {
+	KlarError
 	Position lexer.Position
 	Type     ErrorCode
 	Token    lexer.Token

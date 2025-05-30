@@ -11,32 +11,35 @@ import (
 
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
 // not stop parsing on a syntax error.
-func Parse(tokens []lexer.Token, continueOnErr bool) (program ast.Program, errs []error) {
+func (p *Parser) Parse() (program ast.Program) {
 	var (
 		shouldBreak bool
-		body        = make([]ast.Statement, 0, len(tokens)/2)
-		p           = New(tokens)
+		body        = make([]ast.Statement, 0, len(p.Tokens)/2)
 		comments    = p.RemoveComments() // Move comments
 	)
 	p.InsertEOS() // Add the "semicolons"
 	for p.HasTokens() && !shouldBreak {
 		func() {
-			defer p.handleError(continueOnErr, &errs, &shouldBreak)
+			if p.CurrentTokenKind() == lexer.EndOfStatement {
+				p.Index++
+				return
+			}
+			defer p.handleError(&shouldBreak)
 			body = append(body, p.ParseTopLevelStatement())
 		}()
 	}
-	return ast.Program{Body: body, Comments: comments}, errs
+	return ast.Program{Body: body, Comments: comments}
 }
 
-func (p *Parser) handleError(continueOnErr bool, errs *[]error, shouldBreak *bool) {
+func (p *Parser) handleError( shouldBreak *bool) {
 	unshift := func(err error) {
-		*errs = slices.Insert(*errs, 0, err)
+		p.Errors = slices.Insert(p.Errors, 0, err)
 	}
 	if err := recover(); err != nil {
 		switch err := err.(type) {
 		case errors.ParseError:
 			unshift(err)
-			if !continueOnErr {
+			if !p.Options.ContinueOnError {
 				*shouldBreak = true
 				return
 			}
@@ -49,16 +52,6 @@ func (p *Parser) handleError(continueOnErr bool, errs *[]error, shouldBreak *boo
 			*shouldBreak = true
 		}
 	}
-}
-
-// For debugging purposes
-func noHandlerError(p *Parser, nudOrLED string) {
-	panic(fmt.Sprintf(
-		"Unexpected token '%s' (need %s handler for %s)\n",
-		p.CurrentToken().Source,
-		nudOrLED,
-		p.CurrentTokenKind().String(),
-	))
 }
 
 func (p *Parser) unknownTokenErr() {

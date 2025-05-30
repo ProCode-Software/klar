@@ -16,6 +16,8 @@ const (
 	LambdaBindingPower                      // ->
 	LogicalBindingPower                     // ||, &&, | or + in type
 	RelationalBindingPower                  // ==, >, etc.
+	DistributiveBindingPower                // and, or
+	RangeBindingPower                       // ...
 	AdditiveBindingPower                    // + and -
 	MultiplicativeBindingPower              // *, /, %
 	UnaryBindingPower                       // Prefix/Suffix: + -
@@ -46,7 +48,10 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.GreaterEqualTo: RelationalBindingPower,
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
-	lexer.Spread:         RelationalBindingPower, // Infix only: 1...10
+	lexer.Ellipsis:       RangeBindingPower, // Infix only: 1...10
+
+	lexer.And: DistributiveBindingPower,
+	lexer.Or:  DistributiveBindingPower,
 
 	lexer.Plus:  AdditiveBindingPower,
 	lexer.Minus: AdditiveBindingPower,
@@ -82,14 +87,14 @@ const (
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
-	lexer.Arrow:       FunctionTypeBindingPower,
-	lexer.Stroke:      UnionTypeBindingPower,
-	lexer.Plus:        UnionTypeBindingPower,
-	lexer.Question:    OptionalTypeBindingPower,
-	lexer.String:      PrimaryTypeBindingPower,
-	lexer.Numeric:     PrimaryTypeBindingPower,
-	lexer.Boolean:     PrimaryTypeBindingPower,
-	lexer.Identifier:  PrimaryTypeBindingPower,
-	lexer.Spread:      PrimaryTypeBindingPower,
-	lexer.LessEqualTo: PrimaryTypeBindingPower,
+	lexer.Arrow:      FunctionTypeBindingPower,
+	lexer.Stroke:     UnionTypeBindingPower,
+	lexer.Plus:       UnionTypeBindingPower,
+	lexer.Question:   OptionalTypeBindingPower,
+	lexer.String:     PrimaryTypeBindingPower,
+	lexer.Numeric:    PrimaryTypeBindingPower,
+	lexer.Boolean:    PrimaryTypeBindingPower,
+	lexer.Identifier: PrimaryTypeBindingPower,
+	lexer.Ellipsis:   PrimaryTypeBindingPower,
+	lexer.LessThan:   PrimaryTypeBindingPower,
 }

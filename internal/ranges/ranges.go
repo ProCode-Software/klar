@@ -53,6 +53,9 @@ func Add(p Position, line, col int) Position {
 
 // In reports whether p is in the range r.
 func (r Range) In(p Position) bool {
-	return p.Line >= r.Start.Line && p.Line <= r.End.Line &&
-		p.Col >= r.Start.Col && p.Col <= r.End.Col
+	if p.Line < r.Start.Line || p.Line > r.End.Line {
+		return false
+	}
+	return p.Col >= r.Start.Col &&
+		p.Col <= r.End.Col
 }

@@ -9,10 +9,14 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+
+
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
+	Options ParseOptions
 	Tokens []lexer.Token
 	Index  int
+	Errors []error
 }
 
 // New returns a new [Parser] that reads from tokens.

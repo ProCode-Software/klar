@@ -125,7 +125,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			default:
 				// Hex letter or e on other format
 				newError(ErrIntIncompatibleDigit, lit)
-				*lit += string(r)
+				// *lit += string(r)
 			}
 		case '+', '-':
 			if isExp {

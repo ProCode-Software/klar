@@ -15,6 +15,8 @@ func Quote(tok lexer.Token) string {
 		return "`" + tok.Source + "`"
 	case tok.Kind == lexer.EndOfStatement:
 		return "a newline"
+	case tok.Kind == 0:
+		return "<unknown>"
 	case tok.Kind == lexer.EOF:
 		return "end of file"
 	}
@@ -54,6 +56,11 @@ var vowels = map[byte]bool{
 func FormatTokenType(tok lexer.TokenType) string {
 	switch tok {
 	default:
+		for src, kind := range lexer.OperatorMap {
+			if kind == tok {
+				return Quote(lexer.Token{Source: src, Kind: kind})
+			}
+		}
 		if vowels[tok.String()[0]] {
 			return "an " + tok.String()
 		}

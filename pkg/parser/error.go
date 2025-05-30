@@ -8,9 +8,6 @@ func IsKlarError(err error) bool {
 }
 
 func IsParseError(err error) bool {
-	if !IsKlarError(err) {
-		return false
-	}
 	_, is := err.(errors.ParseError)
 	return is
 }

@@ -10,13 +10,15 @@ func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
-		noHandlerError(p, "TypeNUD")
+		p.unknownTokenErr()
 	}
 	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
-		left, handled = p.handleTypeLED(kind, left, TypeBindingPowerMap[p.CurrentTokenKind()])
+		left, handled = p.handleTypeLED(
+			kind, left, TypeBindingPowerMap[p.CurrentTokenKind()],
+		)
 		if !handled {
-			noHandlerError(p, "TypeLED")
+			p.unknownTokenErr()
 		}
 	}
 	return left.(ast.SimpleType)
@@ -76,7 +78,7 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 	}
 	for p.WhileNotEndOr(lexer.GreaterThan) {
 		params = append(params, p.ParseType(DefaultTypeBindingPower))
-		if p.CurrentTokenKind() != lexer.GreaterThan {
+		if p.IsNotCurrentlyEndOr(lexer.GreaterThan) {
 			p.Expect(lexer.Comma)
 		}
 	}

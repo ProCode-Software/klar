@@ -103,7 +103,7 @@ func (l *Lexer) Tokenize() *Token {
 				} else {
 					l.Reader.ReadRune()
 					l.Pos.Col++
-					return NewToken(pos, Spread, "...")
+					return NewToken(pos, Ellipsis, "...")
 				}
 			}
 			return NewToken(pos, Dot, ".")

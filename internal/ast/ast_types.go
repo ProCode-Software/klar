@@ -351,3 +351,12 @@ type Attribute struct {
 	Decorator string
 	Args      []CallParam
 }
+
+type RestExpression struct {
+	Left bool
+	Expr Expression
+}
+
+type RangeExpression struct {
+	Start, End, Step Expression
+}

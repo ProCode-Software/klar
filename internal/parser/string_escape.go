@@ -14,6 +14,9 @@ func parseStringEscapes(tok lexer.Token) []ast.StringEscape {
 		lexEscapes = tok.Attributes["escapes"].(map[int]lexer.StringEscape)
 		escapes    = make([]ast.StringEscape, 0, len(lexEscapes))
 	)
+	if len(lexEscapes) == 0 {
+		return nil
+	}
 	for i, e := range lexEscapes {
 		var (
 			val      ast.StringEscapeValue

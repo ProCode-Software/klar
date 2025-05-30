@@ -34,6 +34,8 @@ func (WhenBlock) Kind() string            { return "WhenBlock" }
 func (LambdaExpression) Kind() string     { return "LambdaExpression" }
 func (ParamTuple) Kind() string           { return "ParamTuple" }
 func (Attribute) Kind() string            { return "Attribute" }
+func (RangeExpression) Kind() string      { return "RangeExpression" }
+func (RestExpression) Kind() string       { return "RestExpression" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -61,6 +63,8 @@ func (Discard) Expression()          {}
 func (WhenBlock) Expression()        {}
 func (ParamTuple) Expression()       {}
 func (LambdaExpression) Expression() {}
+func (RangeExpression) Expression()  {}
+func (RestExpression) Expression()   {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}

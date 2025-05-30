@@ -6,8 +6,9 @@ import "io"
 type TokenType int
 
 const (
-	EOF            TokenType = iota
-	EndOfStatement           // Replacement for semicolons
+	_ TokenType = iota
+	EOF
+	EndOfStatement // Replacement for semicolons
 	Illegal
 	Newline
 
@@ -66,7 +67,7 @@ const (
 	Question // ?
 
 	// Misc
-	Spread   // ...
+	Ellipsis // ...
 	Arrow    // ->
 	Pipeline // |>
 
@@ -94,7 +95,7 @@ const (
 var OperatorMap = map[string]TokenType{
 	"++":  PlusPlus,
 	"--":  MinusMinus,
-	"...": Spread,
+	"...": Ellipsis,
 	":=":  ColonEqual,
 	"+=":  PlusEqual,
 	"-=":  MinusEqual,

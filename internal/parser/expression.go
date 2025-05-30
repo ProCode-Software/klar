@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -185,4 +187,40 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 		l.ExprBody = p.ParseExpression(DefaultBindingPower)
 	}
 	return l
+}
+
+func (p *Parser) ParseDistributive(left ast.Node, bp BindingPower) (b ast.BinaryExpression) {
+	return ast.BinaryExpression{
+		Left:     left,
+		Operator: p.Advance().Kind,
+		Right:    p.ParseExpression(DistributiveBindingPower),
+	}
+}
+
+func (p *Parser) ParseLeftRest() ast.RestExpression {
+	p.Expect(lexer.Ellipsis)
+	return ast.RestExpression{
+		Left: true,
+		Expr: p.ParseExpression(UnaryBindingPower),
+	}
+}
+
+func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
+	p.Advance() // ...
+	l := left.(ast.Expression)
+	// Rest if no expression on the right: [items...]
+	if !slices.Contains(IsHandledNUD, p.CurrentTokenKind()) {
+		return ast.RestExpression{Left: false, Expr: l}
+	}
+	// Range operator
+	rang := ast.RangeExpression{
+		Start: l,
+		End:   p.ParseExpression(bp),
+	}
+	if p.CurrentTokenKind() == lexer.Ellipsis {
+		// Step
+		p.Advance()
+		rang.Step = p.ParseExpression(bp)
+	}
+	return rang
 }

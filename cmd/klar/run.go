@@ -76,9 +76,12 @@ func throw(err error) {
 
 func runTokens(tokens []lexer.Token) {
 	printOptions.Tokens = tokens
-	program, errs := parser.ParseTokens(tokens, false)
-	if len(errs) > 0 {
-		throw(errs[0])
+	p := parser.NewParser(tokens, parser.ParseOptions{
+		ContinueOnError: false,
+	})
+	program := p.Parse()
+	if len(p.Errors) > 0 {
+		throw(p.Errors[0])
 	}
 	litter.Config.StripPackageNames = true
 	litter.Dump(program)

@@ -6,6 +6,13 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+var IsHandledNUD = []lexer.TokenType{
+	lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil,
+	lexer.Minus, lexer.Plus, lexer.Not,
+	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
+	lexer.Dot, lexer.Ellipsis,
+}
+
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	switch kind {
 	default:
@@ -25,6 +32,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseList()
 	case lexer.Dot:
 		res = p.ParseEnumLiteral()
+	case lexer.Ellipsis:
+		res = p.ParseLeftRest()
 	}
 	return res, true
 }
@@ -63,6 +72,11 @@ func (p *Parser) handleLED(
 		res = p.ParsePostfix(left.(ast.Expression))
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
+	// and, or
+	case lexer.And, lexer.Or:
+		res = p.ParseDistributive(left, bp)
+	case lexer.Ellipsis:
+		res = p.ParseRange(left, bp)
 	}
 	return res, true
 }
