@@ -21,6 +21,7 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		cli.ANSIReset+cli.ANSICyan, cli.ANSIReset+cli.ANSIDim,
 	)
 	r := bufio.NewReader(os.Stdin)
+	File = "<repl>"
 	for {
 		fmt.Print(cli.ANSIMagenta + "> " + cli.ANSIReset)
 		input, err := r.ReadString('\n')
@@ -37,7 +38,6 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		if input == "" {
 			continue
 		}
-		File = "<repl>"
 		RunString(input)
 	}
 }

@@ -15,8 +15,6 @@ func Quote(tok lexer.Token) string {
 		return "`" + tok.Source + "`"
 	case tok.Kind == lexer.EndOfStatement:
 		return "a newline"
-	case tok.Kind == 0:
-		return "<unknown>"
 	case tok.Kind == lexer.EOF:
 		return "end of file"
 	}
@@ -75,5 +73,7 @@ func FormatTokenType(tok lexer.TokenType) string {
 		return "a colon"
 	case lexer.Dot:
 		return "a period"
+	case 0:
+		return "<unknown>"
 	}
 }

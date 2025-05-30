@@ -51,6 +51,11 @@ func Add(p Position, line, col int) Position {
 	return Position{Line: p.Line + line, Col: p.Col + col}
 }
 
+// Add returns a new Position with line and col added to p.
+func AddPosition(p Position, n Position) Position {
+	return Add(p, n.Line, n.Col)
+}
+
 // In reports whether p is in the range r.
 func (r Range) In(p Position) bool {
 	if p.Line < r.Start.Line || p.Line > r.End.Line {

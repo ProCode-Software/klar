@@ -50,9 +50,11 @@ func (p *Parser) handleLED(
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
 		// Relational
 		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
-		lexer.EqualEqual, lexer.NotEqual,
+		lexer.EqualEqual, lexer.NotEqual, lexer.In,
 		// Logical
-		lexer.AndAnd, lexer.OrOr:
+		lexer.AndAnd, lexer.OrOr,
+		// Distributive
+		lexer.And, lexer.Or:
 		res = p.ParseBinaryExpression(left, bp)
 	// Type annotation
 	case lexer.Colon:
@@ -68,26 +70,27 @@ func (p *Parser) handleLED(
 		res = p.ParseAssignment(left.(ast.Expression), bp)
 	// Increment/decrement (statements, not expressions)
 	case lexer.PlusPlus, lexer.MinusMinus:
-		validateAssignable(left)
+		p.validateAssignable(left)
 		res = p.ParsePostfix(left.(ast.Expression))
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
-	// and, or
-	case lexer.And, lexer.Or:
-		res = p.ParseDistributive(left, bp)
 	case lexer.Ellipsis:
 		res = p.ParseRange(left, bp)
+	case lexer.Pipeline:
+		res = p.ParsePipeline(left, bp)
 	}
 	return res, true
 }
 
-func validateAssignable(left ast.Node) {
+func (p *Parser) validateAssignable(left ast.Node) bool {
 	if _, ok := left.(ast.Assignable); !ok {
-		panic(errors.ParseError{
+		p.Error(errors.ParseError{
 			Type: errors.ErrExpectedSymbolAssign,
 			Node: left,
 		})
+		return false
 	}
+	return true
 }
 
 // handleStatement covers all keywords
@@ -103,7 +106,7 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		case lexer.Import:
 			res = p.ParseImportStatement()
 		case lexer.Public:
-			panic("TODO")
+			res = p.ParsePublicModifier()
 		case lexer.At:
 			res = p.ParseAttribute()
 		}

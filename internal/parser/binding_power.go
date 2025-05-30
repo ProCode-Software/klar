@@ -38,9 +38,10 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 
 	lexer.Arrow: LambdaBindingPower,
 
-	lexer.AndAnd: LogicalBindingPower,
-	lexer.OrOr:   LogicalBindingPower,
-	lexer.Stroke: LogicalBindingPower, // In when statements, a bit lower than logical, but higher than comma
+	lexer.AndAnd:   LogicalBindingPower,
+	lexer.OrOr:     LogicalBindingPower,
+	lexer.Stroke:   LogicalBindingPower,
+	lexer.Pipeline: LogicalBindingPower,
 
 	lexer.LessThan:       RelationalBindingPower,
 	lexer.GreaterThan:    RelationalBindingPower,
@@ -48,7 +49,9 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.GreaterEqualTo: RelationalBindingPower,
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
-	lexer.Ellipsis:       RangeBindingPower, // Infix only: 1...10
+	lexer.In:             RelationalBindingPower,
+
+	lexer.Ellipsis: RangeBindingPower, // Infix only: 1...10
 
 	lexer.And: DistributiveBindingPower,
 	lexer.Or:  DistributiveBindingPower,

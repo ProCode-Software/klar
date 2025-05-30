@@ -17,7 +17,7 @@ func Print(msg string, detail ...any) {
 func Custom(errorType string, msg string, detail ...any) {
 	str := ANSIBoldRed + errorType + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
 	if detail != nil && len(detail) > 0 {
-		str += fmt.Sprintf("%v", detail...)
+		str += fmt.Sprint(detail...)
 	}
 	fmt.Fprintln(os.Stderr, str)
 }

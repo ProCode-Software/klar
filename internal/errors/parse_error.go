@@ -54,8 +54,10 @@ const (
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrExpectedParamInGeneric  // At least one parameter requried in generic
+	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 
 	ErrForInvalidCondition // Expected assignment or expression in for loop
+	ErrInvalidPublic
 )
 
 type ErrorParams map[string]any
@@ -78,6 +80,11 @@ func (e ParseError) Error() string {
 	)
 	switch e.Type {
 	default:
+		if e.Node != nil {
+			return fmt.Sprintf(
+				"SyntaxError: %s: %s here", e.Type.String(), e.Node.Kind(),
+			)
+		}
 		return fmt.Sprintf("SyntaxError: %s: %s (%s)",
 			e.Type.String(), Quote(tok), FormatTokenType(kind),
 		)

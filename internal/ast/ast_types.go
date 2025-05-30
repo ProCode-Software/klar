@@ -22,6 +22,8 @@ type Expression interface {
 	Expression()
 }
 
+type BadExpression struct{ Value Node }
+
 // A Program is a parsed Klar file. Body contains the parsed statements in the program,
 // and all comments are moved to Comments.
 type Program struct {
@@ -37,7 +39,7 @@ type ExpressionStatement struct {
 type StringLiteral struct {
 	QuoteStyle rune
 	Content    string
-	Escapes    []StringEscape
+	Escapes    map[lexer.Position]StringEscape
 }
 
 type IntegerLiteral struct {
@@ -71,28 +73,14 @@ type UnaryExpression struct {
 }
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
-type StringEscape struct {
-	Type  lexer.EscapeType
-	Index int
-	Value StringEscapeValue
-}
-
-// StringEscapeValue is the value of an escape sequence in a [StringLiteral].
-type StringEscapeValue interface {
+type StringEscape interface {
 	StringEscape()
 }
-type CharacterEscape struct {
-	Character rune
-}
-type UnicodeEscape struct {
-	Hex int32
-}
-type HexadecimalEscape struct {
-	Hex int32
-}
-type StringInterpolation struct {
-	Expression Node
-}
+
+type CharacterEscape struct{ Character rune }
+type UnicodeEscape struct{ Hex int32 }
+type HexadecimalEscape struct{ Hex int32 }
+type StringInterpolation struct{ Expression Node }
 
 type Symbol struct{ Identifier string }
 
@@ -102,7 +90,14 @@ type Assignable interface {
 	Assignable()
 }
 
+// Publicizable is any declaration that allows the `public` modifier.
+// Calling the Publicizable will set the Public field to true on the declaration.
+type Publicizable interface {
+	Publicize()
+}
+
 type VariableDeclaration struct {
+	Public       bool
 	Identifier   string
 	Value        Expression
 	Constant     bool // Constant if Identifier is capitalized
@@ -119,21 +114,14 @@ type Pair struct {
 	Key, Value Expression
 }
 
-// ReservedIdent is the set of keywords that cannot be used as variables
+// ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
-	lexer.Import,
-	lexer.Func,
-	lexer.When,
-	lexer.Return,
-	lexer.For,
-	lexer.Next,
-	lexer.Type,
-	lexer.Public,
-	lexer.Boolean,
-	lexer.Nil,
+	lexer.Import, lexer.Func, lexer.When, lexer.Return, lexer.For, lexer.Next,
+	lexer.Type, lexer.Public, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or, lexer.In,
 }
 
 type Type interface {
+	Node
 	Type()
 }
 type SimpleType interface {
@@ -229,6 +217,7 @@ type TypeDeclaration interface {
 }
 
 type StructDeclaration struct {
+	Public         bool
 	Identifier     string
 	InheritedTypes []Type // Type alias or primitive
 	Fields         []StructField
@@ -241,6 +230,7 @@ type StructField struct {
 }
 
 type EnumDeclaration struct {
+	Public     bool
 	Identifier string
 	Values     []EnumItem
 }
@@ -250,6 +240,7 @@ type EnumItem struct {
 }
 
 type TypeAliasDeclaration struct {
+	Public     bool
 	Identifier string
 	Type       Type
 }
@@ -268,6 +259,7 @@ type ReturnStatement struct {
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
+	Public        bool
 	Identifier    string
 	Struct        Type
 	GenericParams []string
@@ -359,4 +351,8 @@ type RestExpression struct {
 
 type RangeExpression struct {
 	Start, End, Step Expression
+}
+
+type PipelineExpression struct {
+	Steps []Node
 }

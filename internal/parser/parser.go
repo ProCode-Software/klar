@@ -9,14 +9,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-
-
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
 	Options ParseOptions
-	Tokens []lexer.Token
-	Index  int
-	Errors []error
+	Tokens  []lexer.Token
+	Index   int
+	Errors  []error
 }
 
 // New returns a new [Parser] that reads from tokens.
@@ -97,7 +95,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 		if err == nil {
 			err = errors.ExpectedTokenError(need[0], token)
 		}
-		panic(err)
+		p.Error(err.(ParseError))
 	}
 	return p.Advance()
 }
@@ -124,4 +122,11 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 		}
 	}
 	return comments
+}
+
+func (p *Parser) Error(err errors.ParseError) {
+	p.Errors = append([]error{err}, p.Errors...)
+	if p.Options.OnError != nil {
+		p.Options.OnError(err)
+	}
 }

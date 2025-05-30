@@ -39,12 +39,14 @@ func _() {
 	_ = x[ErrExpectedTypeAssignment-29]
 	_ = x[ErrRequiredStructFieldType-30]
 	_ = x[ErrExpectedParamInGeneric-31]
-	_ = x[ErrForInvalidCondition-32]
+	_ = x[ErrParenRequiredFunc-32]
+	_ = x[ErrForInvalidCondition-33]
+	_ = x[ErrInvalidPublic-34]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrForInvalidCondition"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 460, 483, 501, 522, 546, 567, 592, 618, 643, 665}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 460, 483, 501, 522, 546, 567, 592, 618, 643, 663, 685, 701}
 
 func (i ErrorCode) String() string {
 	i -= 1

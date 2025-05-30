@@ -36,6 +36,20 @@ func (ParamTuple) Kind() string           { return "ParamTuple" }
 func (Attribute) Kind() string            { return "Attribute" }
 func (RangeExpression) Kind() string      { return "RangeExpression" }
 func (RestExpression) Kind() string       { return "RestExpression" }
+func (PipelineExpression) Kind() string   { return "PipelineExpression" }
+func (BadExpression) Kind() string        { return "BadExpression" }
+
+// Implementations for types
+func (PrimitiveType) Kind() string { return "PrimitiveType" }
+func (TypeAlias) Kind() string     { return "TypeAlias" }
+func (OptionalType) Kind() string  { return "OptionalType" }
+func (ListType) Kind() string      { return "ListType" }
+func (RestType) Kind() string      { return "RestType" }
+func (TupleType) Kind() string     { return "TupleType" }
+func (InterfaceType) Kind() string { return "InterfaceType" }
+func (FunctionType) Kind() string  { return "FunctionType" }
+func (GenericType) Kind() string   { return "GenericType" }
+func (UnionType) Kind() string     { return "UnionType" }
 
 // String escapes
 func (CharacterEscape) StringEscape()     {}
@@ -44,27 +58,29 @@ func (HexadecimalEscape) StringEscape()   {}
 func (StringInterpolation) StringEscape() {}
 
 // Expressions
-func (BinaryExpression) Expression() {}
-func (UnaryExpression) Expression()  {}
-func (NilLiteral) Expression()       {}
-func (StringLiteral) Expression()    {}
-func (IntegerLiteral) Expression()   {}
-func (FloatLiteral) Expression()     {}
-func (BooleanLiteral) Expression()   {}
-func (Symbol) Expression()           {}
-func (TypeAnnotation) Expression()   {}
-func (MapLiteral) Expression()       {}
-func (TupleLiteral) Expression()     {}
-func (ListLiteral) Expression()      {}
-func (IndexExpression) Expression()  {}
-func (CallExpression) Expression()   {}
-func (EnumLiteral) Expression()      {}
-func (Discard) Expression()          {}
-func (WhenBlock) Expression()        {}
-func (ParamTuple) Expression()       {}
-func (LambdaExpression) Expression() {}
-func (RangeExpression) Expression()  {}
-func (RestExpression) Expression()   {}
+func (BinaryExpression) Expression()   {}
+func (UnaryExpression) Expression()    {}
+func (NilLiteral) Expression()         {}
+func (StringLiteral) Expression()      {}
+func (IntegerLiteral) Expression()     {}
+func (FloatLiteral) Expression()       {}
+func (BooleanLiteral) Expression()     {}
+func (Symbol) Expression()             {}
+func (TypeAnnotation) Expression()     {}
+func (MapLiteral) Expression()         {}
+func (TupleLiteral) Expression()       {}
+func (ListLiteral) Expression()        {}
+func (IndexExpression) Expression()    {}
+func (CallExpression) Expression()     {}
+func (EnumLiteral) Expression()        {}
+func (Discard) Expression()            {}
+func (WhenBlock) Expression()          {}
+func (ParamTuple) Expression()         {}
+func (LambdaExpression) Expression()   {}
+func (RangeExpression) Expression()    {}
+func (RestExpression) Expression()     {}
+func (PipelineExpression) Expression() {}
+func (BadExpression) Expression()      {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}
@@ -93,6 +109,7 @@ func (InterfaceType) Type() {}
 func (FunctionType) Type()  {}
 func (GenericType) Type()   {}
 func (UnionType) Type()     {}
+func (BadExpression) Type() {}
 
 // Simple type
 // Interface types aren't simple types
@@ -105,6 +122,7 @@ func (TupleType) SimpleType()     {}
 func (FunctionType) SimpleType()  {}
 func (GenericType) SimpleType()   {}
 func (UnionType) SimpleType()     {}
+func (BadExpression) SimpleType() {}
 
 // Type declaration
 func (TypeAliasDeclaration) TypeDeclaration() {}
@@ -115,3 +133,11 @@ func (EnumDeclaration) TypeDeclaration()      {}
 func (Symbol) Assignable()          {}
 func (IndexExpression) Assignable() {}
 func (TupleLiteral) Assignable()    {}
+func (BadExpression) Assignable()   {}
+
+// Publicizable declarations
+func (d *VariableDeclaration) Publicize()  { d.Public = true }
+func (d *EnumDeclaration) Publicize()      { d.Public = true }
+func (d *FunctionDeclaration) Publicize()  { d.Public = true }
+func (d *StructDeclaration) Publicize()    { d.Public = true }
+func (d *TypeAliasDeclaration) Publicize() { d.Public = true }

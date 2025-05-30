@@ -12,7 +12,7 @@ import (
 func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.TypeAnnotation {
 	// LHS must be a Symbol or index
 	if _, ok := left.(ast.Assignable); !ok {
-		panic(errors.ParseError{
+		p.Error(errors.ParseError{
 			Type: errors.ErrExpectedSymbolAssign,
 			Node: left,
 		})
@@ -21,7 +21,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Type
 	p.Advance()
 	typ := p.ParseType(bp)
 	if p.CurrentTokenKind() != lexer.ColonEqual {
-		panic(errors.ExpectedTokenError(lexer.ColonEqual, p.CurrentToken()))
+		p.Error(errors.ExpectedTokenError(lexer.ColonEqual, p.CurrentToken()))
 	}
 	return ast.TypeAnnotation{
 		Variable: left.(ast.Symbol),
@@ -36,11 +36,13 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	rhs := p.ParseExpression(bp)
 	if op == lexer.ColonEqual {
 		var explicitType ast.SimpleType
-		if annot, is := left.(ast.TypeAnnotation); is {
+		switch annot := left.(type) {
+		case ast.Assignable:
+		case ast.TypeAnnotation:
 			explicitType = annot.Type
 			left = annot.Variable
-		} else {
-			validateAssignable(left)
+		default:
+			left = ast.BadExpression{}
 		}
 		id := left.(ast.Symbol).Identifier
 		return ast.VariableDeclaration{
@@ -50,7 +52,9 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 			ExplicitType: explicitType,
 		}
 	}
-	validateAssignable(left)
+	if !p.validateAssignable(left) {
+		left = ast.BadExpression{}
+	}
 	return ast.AssignmentStatement{
 		Assignee: left.(ast.Assignable),
 		Operator: op,
@@ -94,10 +98,11 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	}
 	// Module name begins with .
 	if module[0] == '.' {
-		panic(errors.ParseError{
+		p.Error(errors.ParseError{
 			Type:   errors.ErrImportPrefixDot,
 			Params: map[string]any{"module": module},
 		})
+		// module = module[1:]
 	}
 
 	// Unqualified import
@@ -105,7 +110,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		p.Expect(lexer.LeftCurlyBrace)
 		// import module{...} instead of module.{...}
 		if module[len(module)-1] != '.' {
-			panic(errors.NewTokenError(
+			p.Error(errors.NewTokenError(
 				errors.ErrExpectedDotInBraceImport, p.CurrentToken(),
 			))
 		}
@@ -114,7 +119,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		var wasTypeKw, isTypeImport bool
 		for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
-				panic(errors.NewTokenError(
+				p.Error(errors.NewTokenError(
 					errors.ErrImportExpectedIdentAfterType, p.CurrentToken(),
 				))
 			}
@@ -134,7 +139,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				})
 			default:
 				// Need identifier
-				panic(errors.ExpectedTokenError(
+				p.Error(errors.ExpectedTokenError(
 					lexer.Identifier,
 					p.CurrentToken(),
 				))
@@ -184,12 +189,12 @@ func (p *Parser) ParseForStatement() ast.ForStatement {
 			// TODO: comma assignments
 			if _, ok := stmt.Assignee.(ast.Symbol); !ok ||
 				stmt.Operator != lexer.ColonEqual {
-				panic(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
+				p.Error(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
 			}
 			f.Variables = append(f.Variables, stmt.Assignee.(ast.Symbol))
 			f.Assignment = stmt.Value
 		default:
-			panic(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
+			p.Error(errors.NewNodeError(errors.ErrForInvalidCondition, stmt))
 		}
 	} else {
 		f.Infinite = true

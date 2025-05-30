@@ -10,7 +10,8 @@ func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
-		p.unknownTokenErr()
+		p.unknownTokenErr(false)
+		return ast.BadExpression{}
 	}
 	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
@@ -18,7 +19,8 @@ func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 			kind, left, TypeBindingPowerMap[p.CurrentTokenKind()],
 		)
 		if !handled {
-			p.unknownTokenErr()
+			p.unknownTokenErr(true)
+			continue
 		}
 	}
 	return left.(ast.SimpleType)
@@ -74,7 +76,7 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 	p.Expect(lexer.LessThan)
 	if p.CurrentTokenKind() == lexer.GreaterThan {
 		// At least 1 parameter required
-		panic(errors.NewTokenError(errors.ErrExpectedParamInGeneric, p.CurrentToken()))
+		p.Error(errors.NewTokenError(errors.ErrExpectedParamInGeneric, p.CurrentToken()))
 	}
 	for p.WhileNotEndOr(lexer.GreaterThan) {
 		params = append(params, p.ParseType(DefaultTypeBindingPower))
@@ -129,8 +131,13 @@ func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 }
 
 func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) ast.FunctionType {
-	if _, ok := left.(ast.TupleType); !ok {
-		panic(errors.UnexpectedTokenError(p.CurrentToken()))
+	switch left.(type) {
+	case ast.TypeAlias, ast.PrimitiveType:
+		// Param must be in parentheses
+		p.Error(errors.NewNodeError(errors.ErrParenRequiredFunc, left))
+	case ast.TupleType:
+	default:
+		p.Error(errors.UnexpectedTokenError(p.CurrentToken()))
 	}
 	p.Expect(lexer.Arrow)
 	return ast.FunctionType{

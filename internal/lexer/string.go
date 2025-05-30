@@ -15,6 +15,7 @@ const (
 )
 
 type EscapeError int
+type EscapeMap = map[Position]StringEscape
 
 const (
 	_ EscapeError = iota
@@ -29,7 +30,7 @@ type StringEscape struct {
 	Type          EscapeType
 	Value         string
 	Invalid       EscapeError
-	ErrorPosition int
+	ErrorPosition Position
 }
 
 func isHex(r rune) bool {
@@ -39,10 +40,10 @@ func isHex(r rune) bool {
 func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	var (
 		err    EscapeError
-		errPos int
+		errPos Position
 	)
-	invalid := func(l int, reason EscapeError) {
-		err, errPos = reason, l+2
+	invalid := func(reason EscapeError) {
+		err, errPos = reason, l.Pos
 	}
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
@@ -52,16 +53,16 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 		case l > 0 && (*s)[l-1] == '}':
 			return
 		case l > 6 && r != '}':
-			invalid(l, ErrEscapeTooLong)
+			invalid(ErrEscapeTooLong)
 		case l < 2 && r == '}':
-			invalid(l+1, ErrEscapeTooShort)
+			invalid(ErrEscapeTooShort)
 			*s += string(r)
 		case r == '}', isHex(r):
 			*s += string(r)
 		case r == delim:
-			invalid(l, ErrEscapeUnterm)
+			invalid(ErrEscapeUnterm)
 		default:
-			invalid(l, ErrEscapeExpHex)
+			invalid(ErrEscapeExpHex)
 		}
 	})
 	// TODO: check length and closing due to EOF
@@ -75,8 +76,8 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	var (
 		err     EscapeError
-		errPos  int
-		invalid = func(l int) { err, errPos = ErrEscapeExpHex, l+2 }
+		errPos  Position
+		invalid = func() { err, errPos = ErrEscapeExpHex, l.Pos }
 	)
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
@@ -86,10 +87,10 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 		case isHex(r):
 			*s += string(r)
 		case r == delim:
-			invalid(l)
+			invalid()
 			return
 		default:
-			invalid(l)
+			invalid()
 			*s += string(r)
 		}
 	})
@@ -104,16 +105,16 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 func (l *Lexer) parseStrInterp(delim rune) StringEscape {
 	var (
 		err     EscapeError
-		errPos  int
-		invalid = func(code EscapeError, l int) { err, errPos = code, l+2 }
+		errPos  Position
+		invalid = func(code EscapeError) { err, errPos = code, l.Pos }
 	)
 	esc := l.TokenizeFwdFunc(func(r rune, s *string) {
 		l := len(*s)
 		switch {
 		case l == 0 && r == '}':
-			invalid(ErrEscapeTooShort, l)
+			invalid(ErrEscapeTooShort)
 		case r == delim:
-			invalid(ErrEscapeUnterm, l)
+			invalid(ErrEscapeUnterm)
 		case l > 0 && (*s)[l-1] == '}':
 			return
 		default:
@@ -134,13 +135,13 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 	var (
 		str, esc         string
 		isEscape, unterm bool
-		escapes          = make(map[int]StringEscape)
-		escStart         int
+		escapes          = make(EscapeMap)
+		escStart         Position
 	)
 	escape := func(typ EscapeType, err EscapeError) {
 		e := StringEscape{Type: typ, Value: `\` + esc, Invalid: err}
 		if err > 0 {
-			e.ErrorPosition = len(str) + 1
+			e.ErrorPosition = l.Pos
 		}
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
@@ -170,21 +171,16 @@ loop:
 		case '\\':
 			if isEscape {
 				escape(EscCharacter, 0)
-			} else if delim != '`' {
-				isEscape, escStart = true, len(str)+1
+			} else if delim != '\'' {
+				isEscape, escStart = true, l.Pos
 			}
 		case '{':
 			// TODO
 			str += string(r)
-			continue
 			if isEscape {
-				if delim == '"' {
-					escape(EscCharacter, 0)
-				} else {
-					escape(EscCharacter, ErrEscapeUnknown)
-				}
-			} else if delim == '"' {
-				escapes[len(str)+1] = l.parseStrInterp(delim)
+				escape(EscCharacter, 0)
+			} else if delim != '\'' {
+				escapes[l.Pos] = l.parseStrInterp(delim)
 			} // "
 		case 'b', 'e', 'f', 'n', 'r', 't':
 			if isEscape {

@@ -55,13 +55,15 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		} else if p.IsCurrently(lexer.Equal, lexer.Stroke) {
 			// Can't use reserved keyword as enum member
 			if fieldName.Kind != lexer.Identifier {
-				panic(errors.NewTokenError(errors.ErrReservedKeyword, fieldName))
+				p.Error(errors.NewTokenError(errors.ErrReservedKeyword, fieldName))
 			}
 			return p.ParseEnum(name.Source, fieldName.Source)
 		}
 	default:
 		// Some other token or unassigned type (if EOS)
-		panic(errors.NewTokenError(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
+		p.Error(errors.NewTokenError(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
+		p.Advance()
+		return ast.TypeAliasDeclaration{Identifier: name.Source}
 	}
 	return nil
 }
@@ -113,7 +115,7 @@ func (p *Parser) ParseStruct(typeName, firstField string, inherited []ast.Type) 
 			isFirst = false
 		} else {
 			if !p.isMapIdentifier() {
-				errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken())
+				p.Error(errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken()))
 			}
 			field = ast.StructField{Identifier: p.Advance().Source}
 		}
@@ -216,7 +218,6 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	return f
 }
 
-// storage.modifier.attribute
 func (p *Parser) ParseAttribute() (d ast.Attribute) {
 	p.Expect(lexer.At)
 	d.Decorator = p.Expect(lexer.Identifier).Source
@@ -225,4 +226,15 @@ func (p *Parser) ParseAttribute() (d ast.Attribute) {
 		d.Args = call.Args
 	}
 	return d
+}
+
+func (p *Parser) ParsePublicModifier() ast.Statement {
+	p.Expect(lexer.Public)
+	stmt := p.ParseStatement()
+	if pub, ok := stmt.(ast.Publicizable); ok {
+		pub.Publicize() // Set Public to true
+	} else {
+		p.Error(errors.NewNodeError(errors.ErrInvalidPublic, stmt))
+	}
+	return stmt
 }

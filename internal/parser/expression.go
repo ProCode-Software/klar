@@ -55,7 +55,9 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 		p.Advance()
 		return expr
 	default:
-		panic(errors.ExpectedTokenError(lexer.RightParenthesis, next))
+		p.Error(errors.ExpectedTokenError(lexer.RightParenthesis, next))
+		p.Advance()
+		return ast.BadExpression{}
 	}
 }
 
@@ -136,7 +138,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExp
 				}
 			}
 			if !isOk {
-				panic(errors.NewNodeError(errors.ErrInvalidLabelShorthand, sym))
+				p.Error(errors.NewNodeError(errors.ErrInvalidLabelShorthand, sym))
 			}
 		} else {
 			expr := p.ParseExpression(LogicalBindingPower)
@@ -172,14 +174,14 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 	case ast.TupleLiteral:
 		for _, param := range left.Values {
 			if _, ok := param.(ast.Symbol); !ok {
-				panic(errors.NewNodeError(errors.ErrExpectedParamInLambda, param))
+				p.Error(errors.NewNodeError(errors.ErrExpectedParamInLambda, param))
 			}
 			l.Params = append(l.Params, ast.TypePair{
 				Key: param.(ast.Symbol).Identifier,
 			})
 		}
 	default:
-		panic(errors.NewNodeError(errors.ErrExpectedParamInLambda, left))
+		p.Error(errors.NewNodeError(errors.ErrExpectedParamInLambda, left))
 	}
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		l.Body = p.ParseBlock()
@@ -187,14 +189,6 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 		l.ExprBody = p.ParseExpression(DefaultBindingPower)
 	}
 	return l
-}
-
-func (p *Parser) ParseDistributive(left ast.Node, bp BindingPower) (b ast.BinaryExpression) {
-	return ast.BinaryExpression{
-		Left:     left,
-		Operator: p.Advance().Kind,
-		Right:    p.ParseExpression(DistributiveBindingPower),
-	}
 }
 
 func (p *Parser) ParseLeftRest() ast.RestExpression {
@@ -223,4 +217,28 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 		rang.Step = p.ParseExpression(bp)
 	}
 	return rang
+}
+
+func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) ast.PipelineExpression {
+	steps := make([]ast.Node, 1, 2)
+	steps[0] = left // First step
+
+loop:
+	for p.CurrentTokenKind() == lexer.Pipeline {
+		p.Advance()
+		switch p.CurrentTokenKind() {
+		// Return should be the last step, without parameters, and should
+		// only be used in expression statements
+		case lexer.Return:
+			steps = append(steps, ast.ReturnStatement{})
+			break loop
+		// Same thing for next
+		case lexer.Next:
+			steps = append(steps, ast.NextStatement{})
+			break loop
+		default:
+			steps = append(steps, p.ParseExpression(bp))
+		}
+	}
+	return ast.PipelineExpression{Steps: steps}
 }

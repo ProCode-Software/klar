@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -20,7 +19,7 @@ func unwrap[T any](res T, err error) T {
 	return res
 }
 
-func handleInvalidNumber(code, format int, tok lexer.Token) {
+func (p *Parser) handleInvalidNumber(code, format int, tok lexer.Token) {
 	var (
 		err    errors.ParseError
 		src    = tok.Source
@@ -49,7 +48,7 @@ func handleInvalidNumber(code, format int, tok lexer.Token) {
 	case lexer.ErrIntIllegalExponent:
 
 	}
-	panic(err)
+	p.Error(err)
 }
 
 func (p *Parser) ParsePrimaryExpression() ast.Node {
@@ -64,7 +63,9 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		format := token.Attributes["format"].(int)
 		switch {
 		case token.Attributes["invalid"] == true:
-			handleInvalidNumber(token.Attributes["error"].(int), format, token)
+			p.handleInvalidNumber(token.Attributes["error"].(int), format, token)
+			// Set default value for ParseInt call
+			src = "0"
 
 		case strings.Contains(src, "."),
 			format != lexer.NumberFormatHex && strings.ContainsAny(src, "eE"):
@@ -73,6 +74,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 				Value: unwrap(strconv.ParseFloat(src, 64)),
 			}
 		// Go parses 0 prefix as octal
+		// Also check if prefix is not 0o, 0b, or 0x
 		case len(src) > 1 && (src[1] == '_' || unicode.IsDigit(rune(src[1]))):
 			src = strings.TrimLeft(src, "0")
 		}
@@ -82,9 +84,11 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		}
 	case lexer.String:
 		if token.Attributes["unterminated"] == true {
-			panic(errors.NewPositionError(errors.ErrUnterminatedString, token.Position))
+			p.Error(errors.NewPositionError(errors.ErrUnterminatedString, token.Position))
+			// Quotes removed below, so add them here
+			token.Source = token.Source + string(token.Source[0])
 		}
-		escapes := parseStringEscapes(token)
+		escapes := p.parseStringEscapes(token)
 		return ast.StringLiteral{
 			QuoteStyle: token.Attributes["quoteStyle"].(rune),
 			Content:    token.Source[1 : len(token.Source)-1], // Remove quotes
@@ -98,10 +102,6 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		return p.ParseMap()
 	case lexer.Nil:
 		return ast.NilLiteral{}
-	default:
-		panic(fmt.Sprintf(
-			"Expected primary expression, got %s",
-			token.Kind.String(),
-		))
 	}
+	return nil
 }

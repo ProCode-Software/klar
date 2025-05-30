@@ -9,25 +9,27 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func parseStringEscapes(tok lexer.Token) []ast.StringEscape {
+type EscapeMap = map[lexer.Position]ast.StringEscape
+
+func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 	var (
-		lexEscapes = tok.Attributes["escapes"].(map[int]lexer.StringEscape)
-		escapes    = make([]ast.StringEscape, 0, len(lexEscapes))
+		lexEscapes = tok.Attributes["escapes"].(lexer.EscapeMap)
+		escapes    = make(EscapeMap, len(lexEscapes))
 	)
 	if len(lexEscapes) == 0 {
 		return nil
 	}
 	for i, e := range lexEscapes {
 		var (
-			val      ast.StringEscapeValue
+			val      ast.StringEscape
 			src      = e.Value
 			parseHex = func(str string) int32 {
 				return int32(unwrap(strconv.ParseInt(str, 16, 32)))
 			}
 		)
 		if e.Invalid > 0 {
-			errPos := ranges.Add(tok.Position, 0, e.ErrorPosition)
-			panic(errors.InvalidEscapeError(e, errPos))
+			errPos := ranges.AddPosition(tok.Position, e.ErrorPosition)
+			p.Error(errors.InvalidEscapeError(e, errPos))
 		}
 		switch e.Type {
 		case lexer.EscCharacter:
@@ -39,11 +41,7 @@ func parseStringEscapes(tok lexer.Token) []ast.StringEscape {
 		case lexer.EscInterpolation:
 			val = ast.StringInterpolation{} // TODO: lex string interpolation
 		}
-		escapes = append(escapes, ast.StringEscape{
-			Index: i,
-			Type:  e.Type,
-			Value: val,
-		})
+		escapes[i] = val
 	}
 	return escapes
 }
