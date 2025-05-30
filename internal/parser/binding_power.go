@@ -84,8 +84,8 @@ const (
 	_ BindingPower = iota + AssignBindingPower
 	DefaultTypeBindingPower
 	FunctionTypeBindingPower
-	UnionTypeBindingPower
 	OptionalTypeBindingPower
+	UnionTypeBindingPower
 	PrimaryTypeBindingPower
 )
 

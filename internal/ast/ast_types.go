@@ -77,6 +77,7 @@ type StringEscape interface {
 	StringEscape()
 }
 
+type BadEscape struct{ Source string }
 type CharacterEscape struct{ Character rune }
 type UnicodeEscape struct{ Hex int32 }
 type HexadecimalEscape struct{ Hex int32 }
@@ -156,8 +157,7 @@ type TypePair struct {
 	Value Type
 }
 type UnionType struct {
-	Left, Right Type
-	Operator    lexer.TokenType
+	Options []Type
 }
 type TypeAnnotation struct {
 	Variable Symbol

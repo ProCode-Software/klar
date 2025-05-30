@@ -6,7 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type EscapeMap = map[lexer.Position]ast.StringEscape
@@ -28,8 +27,9 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 			}
 		)
 		if e.Invalid > 0 {
-			errPos := ranges.AddPosition(tok.Position, e.ErrorPosition)
-			p.Error(errors.InvalidEscapeError(e, errPos))
+			p.Error(errors.StringEscape(e))
+			escapes[i] = ast.BadEscape{Source: src}
+			continue
 		}
 		switch e.Type {
 		case lexer.EscCharacter:

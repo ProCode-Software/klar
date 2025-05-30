@@ -114,8 +114,13 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		switch lower {
 		case 'e':
 			if format == NumberFormatDecimal && !isExp {
+				if (*lit)[len(*lit)-1] == '_' {
+					newError(ErrIntMisplacedSeparator, lit)
+					errPos--
+				}
 				*lit += string(r)
 				isExp = true
+				return
 			}
 			fallthrough
 		case 'a', 'b', 'c', 'd', 'f':
@@ -143,6 +148,10 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				newError(ErrIntIncompatibleDigit, lit)
 				fallthrough
 			default:
+				if (*lit)[len(*lit)-1] == '_' {
+					newError(ErrIntMisplacedSeparator, lit)
+					errPos--
+				}
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
 				l.Reader.ReadRune()
@@ -155,7 +164,10 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			}
 		case '_':
 			// Underscore separators: no consecutive, must be in between digits
-			if (*lit)[len(*lit)-1] == '_' {
+			last := (*lit)[len(*lit)-1]
+			if last == '_' {
+				newError(ErrIntMisplacedSeparator, lit)
+			} else if format == NumberFormatDecimal && !unicode.IsDigit(rune(last)) {
 				newError(ErrIntMisplacedSeparator, lit)
 			}
 			*lit += string(r)

@@ -64,14 +64,14 @@ func throw(err error) {
 	errors.PrintError(klarErr, printOptions)
 	if len(arr) < 2 {
 		cli.Fail(first, stack)
-	}
-	errName := strings.TrimSuffix(first, ": ")
-	if len(arr) < 3 {
-		cli.CustomFailure(errName, arr[1], stack)
 	} else {
-		cli.CustomFailure(errName, arr[1], arr[2], stack)
+		errName := strings.TrimSuffix(first, ": ")
+		if len(arr) < 3 {
+			cli.CustomFailure(errName, arr[1], stack)
+		} else {
+			cli.CustomFailure(errName, arr[1], arr[2], stack)
+		}
 	}
-
 }
 
 func runTokens(tokens []lexer.Token) {

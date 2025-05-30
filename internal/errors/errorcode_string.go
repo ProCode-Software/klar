@@ -26,27 +26,28 @@ func _() {
 	_ = x[ErrStringEscape-16]
 	_ = x[ErrConsecutiveSep-17]
 	_ = x[ErrMisplacedSep-18]
-	_ = x[ErrExpectedHex-19]
-	_ = x[ErrExpectedOctal-20]
-	_ = x[ErrExpectedBinary-21]
-	_ = x[ErrExpectedDecimal-22]
-	_ = x[ErrExpectedParamInLambda-23]
-	_ = x[ErrExpectedSymbolAssign-24]
-	_ = x[ErrReservedKeyword-25]
-	_ = x[ErrExpectedExpression-26]
-	_ = x[ErrInvalidLabelShorthand-27]
-	_ = x[ErrNotEnoughEnumItems-28]
-	_ = x[ErrExpectedTypeAssignment-29]
-	_ = x[ErrRequiredStructFieldType-30]
-	_ = x[ErrExpectedParamInGeneric-31]
-	_ = x[ErrParenRequiredFunc-32]
-	_ = x[ErrForInvalidCondition-33]
-	_ = x[ErrInvalidPublic-34]
+	_ = x[ErrTrailingSep-19]
+	_ = x[ErrExpectedHex-20]
+	_ = x[ErrExpectedOctal-21]
+	_ = x[ErrExpectedBinary-22]
+	_ = x[ErrExpectedDecimal-23]
+	_ = x[ErrExpectedParamInLambda-24]
+	_ = x[ErrExpectedSymbolAssign-25]
+	_ = x[ErrReservedKeyword-26]
+	_ = x[ErrExpectedExpression-27]
+	_ = x[ErrInvalidLabelShorthand-28]
+	_ = x[ErrNotEnoughEnumItems-29]
+	_ = x[ErrExpectedTypeAssignment-30]
+	_ = x[ErrRequiredStructFieldType-31]
+	_ = x[ErrExpectedParamInGeneric-32]
+	_ = x[ErrParenRequiredFunc-33]
+	_ = x[ErrForInvalidCondition-34]
+	_ = x[ErrInvalidPublic-35]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
+const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 401, 418, 436, 460, 483, 501, 522, 546, 567, 592, 618, 643, 663, 685, 701}
+var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 399, 415, 432, 450, 474, 497, 515, 536, 560, 581, 606, 632, 657, 677, 699, 715}
 
 func (i ErrorCode) String() string {
 	i -= 1

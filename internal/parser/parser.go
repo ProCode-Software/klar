@@ -93,7 +93,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	got := token.Kind
 	if !slices.Contains(need, got) {
 		if err == nil {
-			err = errors.ExpectedTokenError(need[0], token)
+			err = errors.ExpectedToken(need[0], token)
 		}
 		p.Error(err.(ParseError))
 	}

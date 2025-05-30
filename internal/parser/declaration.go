@@ -44,7 +44,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			p.Advance()
 		}
 		if !p.isMapIdentifier() {
-			errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken())
+			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
 		}
 		fieldName := p.Advance()
 		// Struct fields always need a type
@@ -55,13 +55,13 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		} else if p.IsCurrently(lexer.Equal, lexer.Stroke) {
 			// Can't use reserved keyword as enum member
 			if fieldName.Kind != lexer.Identifier {
-				p.Error(errors.NewTokenError(errors.ErrReservedKeyword, fieldName))
+				p.Error(errors.Token(errors.ErrReservedKeyword, fieldName))
 			}
 			return p.ParseEnum(name.Source, fieldName.Source)
 		}
 	default:
 		// Some other token or unassigned type (if EOS)
-		p.Error(errors.NewTokenError(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
+		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
 		p.Advance()
 		return ast.TypeAliasDeclaration{Identifier: name.Source}
 	}
@@ -115,12 +115,12 @@ func (p *Parser) ParseStruct(typeName, firstField string, inherited []ast.Type) 
 			isFirst = false
 		} else {
 			if !p.isMapIdentifier() {
-				p.Error(errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken()))
+				p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
 			}
 			field = ast.StructField{Identifier: p.Advance().Source}
 		}
 		// Type
-		p.ExpectError(errors.NewTokenError(
+		p.ExpectError(errors.Token(
 			errors.ErrRequiredStructFieldType, p.CurrentToken(),
 		), lexer.Colon)
 		field.Type = p.ParseType(DefaultTypeBindingPower)
@@ -234,7 +234,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 	if pub, ok := stmt.(ast.Publicizable); ok {
 		pub.Publicize() // Set Public to true
 	} else {
-		p.Error(errors.NewNodeError(errors.ErrInvalidPublic, stmt))
+		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
 	}
 	return stmt
 }

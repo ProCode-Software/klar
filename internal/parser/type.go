@@ -55,20 +55,14 @@ func (p *Parser) ParseOptionalType(left ast.Type, bp BindingPower) ast.OptionalT
 	return ast.OptionalType{Value: left}
 }
 
-// Either + or |
-func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) ast.UnionType {
-	op := p.Advance().Kind
-	var right ast.Type
-	if op == lexer.Stroke {
-		right = p.ParseType(bp)
-	} else {
-		right = p.ParseComplexType(bp)
+func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) (u ast.UnionType) {
+	u.Options = make([]ast.Type, 1, 2)
+	u.Options[0] = left
+	for p.CurrentTokenKind() == lexer.Stroke {
+		p.Advance()
+		u.Options = append(u.Options, p.ParseType(bp))
 	}
-	return ast.UnionType{
-		Left:     left,
-		Right:    right,
-		Operator: op,
-	}
+	return u
 }
 
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericType {
@@ -76,7 +70,7 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 	p.Expect(lexer.LessThan)
 	if p.CurrentTokenKind() == lexer.GreaterThan {
 		// At least 1 parameter required
-		p.Error(errors.NewTokenError(errors.ErrExpectedParamInGeneric, p.CurrentToken()))
+		p.Error(errors.Token(errors.ErrExpectedParamInGeneric, p.CurrentToken()))
 	}
 	for p.WhileNotEndOr(lexer.GreaterThan) {
 		params = append(params, p.ParseType(DefaultTypeBindingPower))
@@ -93,7 +87,7 @@ func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 	p.Advance() // #{
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 		if !p.isMapIdentifier() {
-			errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken())
+			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
 		}
 		field := ast.TypePair{
 			Key: p.Advance().Source,
@@ -134,10 +128,10 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) ast.FunctionT
 	switch left.(type) {
 	case ast.TypeAlias, ast.PrimitiveType:
 		// Param must be in parentheses
-		p.Error(errors.NewNodeError(errors.ErrParenRequiredFunc, left))
+		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
 	case ast.TupleType:
 	default:
-		p.Error(errors.UnexpectedTokenError(p.CurrentToken()))
+		p.Error(errors.UnexpectedToken(p.CurrentToken()))
 	}
 	p.Expect(lexer.Arrow)
 	return ast.FunctionType{

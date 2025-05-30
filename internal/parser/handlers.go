@@ -43,7 +43,7 @@ func (p *Parser) handleLED(
 ) (res ast.Node, handled bool) {
 	switch kind {
 	default:
-		return nil, false
+		return left, false
 
 	case
 		// Arithmetic
@@ -157,7 +157,7 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	case lexer.Arrow:
 		res = p.ParseFunctionType(left, bp)
 	default:
-		return nil, false
+		return left, false
 	}
 	return res, true
 }

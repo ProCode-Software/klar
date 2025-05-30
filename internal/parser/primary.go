@@ -28,19 +28,22 @@ func (p *Parser) handleInvalidNumber(code, format int, tok lexer.Token) {
 	)
 	switch code {
 	case lexer.ErrIntMisplacedSeparator:
-		// Check for consecutive separator
-		consec := strings.Index(src, "__")
-		if consec > -1 {
-			err = errors.NewPositionError(errors.ErrConsecutiveSep, errPos)
+		switch {
+		case strings.Contains(src, "__"):
+			// Consecutive separator
+			err = errors.Position(errors.ErrConsecutiveSep, errPos)
+		case src[len(src)-1] == '_':
+			// Separator at end of number
+			err = errors.Position(errors.ErrTrailingSep, errPos)
+		default:
+			// Somewhere else
+			err = errors.Position(errors.ErrMisplacedSep, errPos)
 		}
-		// Otherwise it's at the beginning or end
-		err = errors.NewPositionError(errors.ErrMisplacedSep, errPos)
-
 	case lexer.ErrIntIncompatibleDigit:
-		err = errors.NewTokenPosError(
+		err = errors.TokenPos(
 			map[int]errors.ErrorCode{
 				lexer.NumberFormatDecimal: errors.ErrExpectedDecimal,
-				lexer.NumberFormatBinary:  errors.ErrExpectedHex,
+				lexer.NumberFormatBinary:  errors.ErrExpectedBinary,
 				lexer.NumberFormatOctal:   errors.ErrExpectedOctal,
 				lexer.NumberFormatHex:     errors.ErrExpectedHex,
 			}[format], errPos, tok,
@@ -84,7 +87,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		}
 	case lexer.String:
 		if token.Attributes["unterminated"] == true {
-			p.Error(errors.NewPositionError(errors.ErrUnterminatedString, token.Position))
+			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 			// Quotes removed below, so add them here
 			token.Source = token.Source + string(token.Source[0])
 		}

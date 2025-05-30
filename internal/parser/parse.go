@@ -12,12 +12,14 @@ import (
 // not stop parsing on a syntax error.
 func (p *Parser) Parse() (program ast.Program) {
 	var (
-		shouldBreak bool
-		body        = make([]ast.Statement, 0, len(p.Tokens)/2)
-		comments    = p.RemoveComments() // Move comments
+		body     = make([]ast.Statement, 0, len(p.Tokens)/2)
+		comments = p.RemoveComments() // Move comments
 	)
 	p.InsertEOS() // Add the "semicolons"
-	for p.HasTokens() && !shouldBreak {
+	for p.HasTokens() {
+		if !p.Options.ContinueOnError && len(p.Errors) > 0 {
+			break
+		}
 		if p.CurrentTokenKind() == lexer.EndOfStatement {
 			p.Index++
 			return
@@ -28,7 +30,7 @@ func (p *Parser) Parse() (program ast.Program) {
 }
 
 func (p *Parser) unknownTokenErr(advance bool) {
-	p.Error(errors.UnexpectedTokenError(p.CurrentToken()))
+	p.Error(errors.UnexpectedToken(p.CurrentToken()))
 	if advance {
 		p.Advance()
 	}

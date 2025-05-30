@@ -5,6 +5,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // An ErrorCode is a type of syntax or type error.
@@ -37,7 +38,8 @@ const (
 	ErrInvalidNumber  // Invalid number format
 	ErrStringEscape   // Invalid string escape
 	ErrConsecutiveSep // Number has consecutive _
-	ErrMisplacedSep   // Number has misplaced _
+	ErrMisplacedSep   // Number has separator somewhere where it's not supposed to
+	ErrTrailingSep    // Number has misplaced _
 	ErrExpectedHex    // Expected hex digit
 	ErrExpectedOctal
 	ErrExpectedBinary
@@ -135,6 +137,14 @@ func (e ParseError) Error() string {
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
 		return "SyntaxError: This enum must have at least 2 items, but it has only 1"
+	case ErrExpectedHex:
+		return "SyntaxError: I expected a hexadecimal digit (0-9, a-f or A-F)"
+	case ErrExpectedBinary:
+		return "SyntaxError: I expected a binary digit (0-1)"
+	case ErrExpectedOctal:
+		return "SyntaxError: I expected an octal digit (0-7)"
+	case ErrExpectedDecimal:
+		return "SyntaxError: I expected a decimal digit (0-9)"
 	case ErrStringEscape:
 		reason := e.Params["reason"].(lexer.EscapeError)
 		kind := e.Params["type"].(lexer.EscapeType)
@@ -153,17 +163,25 @@ func (e ParseError) Error() string {
 			return "SyntaxError: Invalid string escape"
 		}
 	case ErrForInvalidCondition:
-		return "Expected an assignment or expression in for condition"
+		return "SyntaxError: Expected an assignment or expression in for condition"
 	case ErrExpectedParamInGeneric:
-		return "At least 1 type parameter is required in generic"
+		return "SyntaxError: At least 1 type parameter is required in generic"
+	case ErrInvalidPublic:
+		return "SyntaxError: Expected a declaration after public modifier"
+	case ErrTrailingSep:
+		return "SyntaxError: An underscore cannot be at the end of a number"
+	case ErrConsecutiveSep:
+		return "SyntaxError: Numbers cannot have consecutive underscores"
+	case ErrMisplacedSep:
+		return "SyntaxError: An underscore isn't allowed here"
 	}
 }
 
-func UnexpectedTokenError(token lexer.Token) ParseError {
+func UnexpectedToken(token lexer.Token) ParseError {
 	return ParseError{Position: token.Position, Token: token, Type: ErrUnexpectedToken}
 }
 
-func ExpectedTokenError(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseError {
+func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseError {
 	return ParseError{
 		Position: gotToken.Position,
 		Token:    gotToken,
@@ -173,13 +191,10 @@ func ExpectedTokenError(expTokenKind lexer.TokenType, gotToken lexer.Token) Pars
 		},
 	}
 }
-func UnterminatedStringError(startPos lexer.Position) ParseError {
-	return ParseError{Position: startPos, Type: ErrUnterminatedString}
-}
 
-func InvalidEscapeError(e lexer.StringEscape, pos lexer.Position) ParseError {
+func StringEscape(e lexer.StringEscape) ParseError {
 	return ParseError{
-		Position: pos,
+		Position: ranges.Sub(e.ErrorPosition, 0, 1),
 		Type:     ErrStringEscape,
 		Params: ErrorParams{
 			"reason": e.Invalid,
@@ -189,18 +204,18 @@ func InvalidEscapeError(e lexer.StringEscape, pos lexer.Position) ParseError {
 	}
 }
 
-func NewTokenError(err ErrorCode, token lexer.Token) ParseError {
+func Token(err ErrorCode, token lexer.Token) ParseError {
 	return ParseError{Type: err, Position: token.Position, Token: token}
 }
 
-func NewNodeError(err ErrorCode, node ast.Node) ParseError {
+func Node(err ErrorCode, node ast.Node) ParseError {
 	return ParseError{Type: err, Node: node}
 }
 
-func NewPositionError(err ErrorCode, pos lexer.Position) ParseError {
+func Position(err ErrorCode, pos lexer.Position) ParseError {
 	return ParseError{Type: err, Position: pos}
 }
 
-func NewTokenPosError(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {
+func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {
 	return ParseError{Type: err, Position: pos, Token: tok}
 }

@@ -52,6 +52,7 @@ func (GenericType) Kind() string   { return "GenericType" }
 func (UnionType) Kind() string     { return "UnionType" }
 
 // String escapes
+func (BadEscape) StringEscape()           {}
 func (CharacterEscape) StringEscape()     {}
 func (UnicodeEscape) StringEscape()       {}
 func (HexadecimalEscape) StringEscape()   {}

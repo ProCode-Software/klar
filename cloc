@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-git ls-files "*.${1:-go}" | xargs cat | grep -v '^\s*//' | grep -v '^\s*$' | wc -l
+git ls-files "*.${1:-go}" |
+    xargs cat |
+    grep -v '^\s*//' | 
+    grep -cv '^\s*$'

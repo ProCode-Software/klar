@@ -55,7 +55,7 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 		p.Advance()
 		return expr
 	default:
-		p.Error(errors.ExpectedTokenError(lexer.RightParenthesis, next))
+		p.Error(errors.ExpectedToken(lexer.RightParenthesis, next))
 		p.Advance()
 		return ast.BadExpression{}
 	}
@@ -98,7 +98,7 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.IndexE
 	if !computed {
 		// Allow use of keywords as fields
 		if !p.isMapIdentifier() {
-			errors.ExpectedTokenError(lexer.Identifier, p.CurrentToken())
+			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
 		}
 		item = ast.Symbol{Identifier: p.Advance().Source}
 	} else {
@@ -138,7 +138,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExp
 				}
 			}
 			if !isOk {
-				p.Error(errors.NewNodeError(errors.ErrInvalidLabelShorthand, sym))
+				p.Error(errors.Node(errors.ErrInvalidLabelShorthand, sym))
 			}
 		} else {
 			expr := p.ParseExpression(LogicalBindingPower)
@@ -174,14 +174,14 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 	case ast.TupleLiteral:
 		for _, param := range left.Values {
 			if _, ok := param.(ast.Symbol); !ok {
-				p.Error(errors.NewNodeError(errors.ErrExpectedParamInLambda, param))
+				p.Error(errors.Node(errors.ErrExpectedParamInLambda, param))
 			}
 			l.Params = append(l.Params, ast.TypePair{
 				Key: param.(ast.Symbol).Identifier,
 			})
 		}
 	default:
-		p.Error(errors.NewNodeError(errors.ErrExpectedParamInLambda, left))
+		p.Error(errors.Node(errors.ErrExpectedParamInLambda, left))
 	}
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		l.Body = p.ParseBlock()
