@@ -8,6 +8,9 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
+	_ = x[ParseErrorPrefix-0]
+	_ = x[TypeErrorPrefix-100]
+	_ = x[ReferenceErrorPrefix-200]
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrExpectedEOS-3]
@@ -19,40 +22,64 @@ func _() {
 	_ = x[ErrImportInvalidWildcard-9]
 	_ = x[ErrImportTooManyWildcard-10]
 	_ = x[ErrWildcardAndUnqImport-11]
-	_ = x[ErrUnterminatedString-12]
-	_ = x[ErrUnterminatedComment-13]
-	_ = x[ErrUnterminatedBrace-14]
-	_ = x[ErrInvalidNumber-15]
-	_ = x[ErrStringEscape-16]
-	_ = x[ErrConsecutiveSep-17]
-	_ = x[ErrMisplacedSep-18]
-	_ = x[ErrTrailingSep-19]
-	_ = x[ErrExpectedHex-20]
-	_ = x[ErrExpectedOctal-21]
-	_ = x[ErrExpectedBinary-22]
-	_ = x[ErrExpectedDecimal-23]
-	_ = x[ErrExpectedParamInLambda-24]
-	_ = x[ErrExpectedSymbolAssign-25]
-	_ = x[ErrReservedKeyword-26]
-	_ = x[ErrExpectedExpression-27]
-	_ = x[ErrInvalidLabelShorthand-28]
-	_ = x[ErrNotEnoughEnumItems-29]
-	_ = x[ErrExpectedTypeAssignment-30]
-	_ = x[ErrRequiredStructFieldType-31]
-	_ = x[ErrExpectedParamInGeneric-32]
-	_ = x[ErrParenRequiredFunc-33]
-	_ = x[ErrForInvalidCondition-34]
-	_ = x[ErrInvalidPublic-35]
+	_ = x[ErrImportsGoFirst-12]
+	_ = x[ErrUnterminatedString-13]
+	_ = x[ErrUnterminatedComment-14]
+	_ = x[ErrUnterminatedBrace-15]
+	_ = x[ErrInvalidNumber-16]
+	_ = x[ErrStringEscape-17]
+	_ = x[ErrConsecutiveSep-18]
+	_ = x[ErrMisplacedSep-19]
+	_ = x[ErrTrailingSep-20]
+	_ = x[ErrExpectedHex-21]
+	_ = x[ErrExpectedOctal-22]
+	_ = x[ErrExpectedBinary-23]
+	_ = x[ErrExpectedDecimal-24]
+	_ = x[ErrExpectedParamInLambda-25]
+	_ = x[ErrExpectedSymbolAssign-26]
+	_ = x[ErrReservedKeyword-27]
+	_ = x[ErrExpectedExpression-28]
+	_ = x[ErrInvalidLabelShorthand-29]
+	_ = x[ErrNotEnoughEnumItems-30]
+	_ = x[ErrExpectedTypeAssignment-31]
+	_ = x[ErrRequiredStructFieldType-32]
+	_ = x[ErrExpectedParamInGeneric-33]
+	_ = x[ErrParenRequiredFunc-34]
+	_ = x[ErrForInvalidCondition-35]
+	_ = x[ErrInvalidPublic-36]
+	_ = x[ErrVarExists-201]
+	_ = x[ErrVarUndefined-202]
+	_ = x[ErrUntypedNil-101]
+	_ = x[ErrUntypedEmptyList-102]
+	_ = x[ErrAssignToConst-103]
+	_ = x[ErrUncheckedOptional-104]
+	_ = x[ErrUncheckedResult-105]
+	_ = x[ErrUnusedLiteral-106]
 }
 
-const _ErrorCode_name = "ErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
+const (
+	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
+	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteral"
+	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefined"
+)
 
-var _ErrorCode_index = [...]uint16{0, 18, 34, 48, 75, 102, 125, 156, 174, 198, 222, 245, 266, 288, 308, 324, 339, 356, 371, 385, 399, 415, 432, 450, 474, 497, 515, 536, 560, 581, 606, 632, 657, 677, 699, 715}
+var (
+	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 91, 118, 141, 172, 190, 214, 238, 261, 278, 299, 321, 341, 357, 372, 389, 404, 418, 432, 448, 465, 483, 507, 530, 548, 569, 593, 614, 639, 665, 690, 710, 732, 748}
+	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117}
+	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47}
+)
 
 func (i ErrorCode) String() string {
-	i -= 1
-	if i < 0 || i >= ErrorCode(len(_ErrorCode_index)-1) {
-		return "ErrorCode(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	switch {
+	case 0 <= i && i <= 36:
+		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
+	case 100 <= i && i <= 106:
+		i -= 100
+		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
+	case 200 <= i && i <= 202:
+		i -= 200
+		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
+	default:
+		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _ErrorCode_name[_ErrorCode_index[i]:_ErrorCode_index[i+1]]
 }

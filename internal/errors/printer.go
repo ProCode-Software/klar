@@ -162,6 +162,14 @@ func PrintError(err KlarError, options PrintOptions) {
 		currCol = tok.Col + len(tok.Source)
 	}
 	line := ansi(cli.ANSIBoldRed, "^")
+	if err.AtRange() != (ranges.Range{}) {
+		rang := err.AtRange()
+		len := 10
+		if rang.IsSingleLine() {
+			len = rang.LineLength()
+		}
+		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len)
+	}
 	if err, ok := err.(ParseError); ok &&
 		errPos == err.Position && len(err.Token.Source) > 1 {
 		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len(err.Token.Source))

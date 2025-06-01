@@ -64,3 +64,14 @@ func (r Range) In(p Position) bool {
 	return p.Col >= r.Start.Col &&
 		p.Col <= r.End.Col
 }
+
+func (r Range) IsSingleLine() bool {
+	return r.Start.Line == r.End.Line
+}
+
+func (r Range) LineLength() int {
+	if !r.IsSingleLine() {
+		return -1
+	}
+	return r.End.Col - r.Start.Col
+}

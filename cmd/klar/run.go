@@ -8,6 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/sanity-io/litter"
 )
@@ -85,6 +86,16 @@ func runTokens(tokens []lexer.Token) {
 	}
 	litter.Config.StripPackageNames = true
 	litter.Dump(program)
+
+	// Typecheck
+	errors := analysis.CheckProgram(program, analysis.CheckOptions{
+		ContinueOnError: true,
+	})
+	if len(errors) > 0 {
+		throw(errors[0])
+	} else {
+		fmt.Println(cli.Color(cli.ANSIGreen+cli.ANSIBold, "✅ No type errors found!"))
+	}
 }
 
 func RunFile(path string) {

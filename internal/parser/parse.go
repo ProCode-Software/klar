@@ -8,6 +8,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+var defPos = lexer.Position{}
+
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
 // not stop parsing on a syntax error.
 func (p *Parser) Parse() (program ast.Program) {
@@ -22,7 +24,7 @@ func (p *Parser) Parse() (program ast.Program) {
 		}
 		if p.CurrentTokenKind() == lexer.EndOfStatement {
 			p.Index++
-			return
+			continue
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
@@ -40,8 +42,8 @@ func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	expr := p.ParseLED(bp)
 	if _, ok := expr.(ast.Expression); !ok {
 		p.Error(errors.ParseError{
-			Type: errors.ErrExpectedExpression,
-			Node: expr,
+			ErrorCode: errors.ErrExpectedExpression,
+			Node:      expr,
 		})
 		return ast.BadExpression{Value: expr}
 	}
@@ -63,6 +65,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 			continue
 		}
 	}
+	left = left.SetPos(left.Base().Start, p.savePos())
 	return left
 }
 
@@ -82,6 +85,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	kind := p.CurrentTokenKind()
 	result, handled := p.handleStatement(kind, false)
 	if handled {
+		p.Expect(lexer.EndOfStatement)
 		return result
 	}
 	res := p.ParseLED(DefaultBindingPower)

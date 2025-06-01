@@ -10,7 +10,11 @@ done
 cat <<-EOF > ./internal/version/version.go
 package version
 
-const KlarVersion = "${newVersion}"
+const (
+    KlarVersion = "${newVersion}"
+    KlarPath = "$HOME/.klar"
+)
+
 EOF
 
 echo "Bumped Klar version to v${newVersion}"

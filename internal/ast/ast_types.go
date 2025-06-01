@@ -3,11 +3,20 @@ package ast
 
 import (
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // All AST tokens implement the Node interface.
+//
+//go:generate go run ../cmd/astgen ./ast_types_impl.go ./node_base.go
 type Node interface {
 	Kind() string
+	Base() BaseNode
+	SetPos(start, end lexer.Position) Node
+}
+
+type BaseNode struct {
+	ranges.Range
 }
 
 // All EOS-terminated statement AST tokens implement the Statement interface.
@@ -22,41 +31,54 @@ type Expression interface {
 	Expression()
 }
 
-type BadExpression struct{ Value Node }
+type BadExpression struct {
+	BaseNode
+	Value Node
+}
 
 // A Program is a parsed Klar file. Body contains the parsed statements in the program,
 // and all comments are moved to Comments.
 type Program struct {
+	BaseNode
 	Body     []Statement
 	Comments []Comment
 }
 
 // An ExpressionStatement is an expression used as a statement.
 type ExpressionStatement struct {
+	BaseNode
 	Expression Expression
 }
 
 type StringLiteral struct {
+	BaseNode
 	QuoteStyle rune
 	Content    string
 	Escapes    map[lexer.Position]StringEscape
 }
 
 type IntegerLiteral struct {
+	BaseNode
 	Format int
-	Value  int
+	Value  int64
 }
 
-type BooleanLiteral struct{ Value bool }
+type BooleanLiteral struct {
+	BaseNode
+	Value bool
+}
 
-type NilLiteral struct{}
+type NilLiteral struct{ BaseNode }
 
-type FloatLiteral struct{ Value float64 }
+type FloatLiteral struct {
+	BaseNode
+	Value float64
+}
 
 type Comment struct {
-	Begin, End lexer.Position
-	Type       CommentType
-	Value      string
+	BaseNode
+	Type  CommentType
+	Value string
 }
 
 // lexer.LineComment or lexer.BlockComment
@@ -65,11 +87,13 @@ type CommentType = lexer.TokenType
 type BinaryExpression struct {
 	Left, Right Node
 	Operator    lexer.TokenType
+	BaseNode
 }
 
 type UnaryExpression struct {
 	Operator lexer.TokenType
 	Right    Node
+	BaseNode
 }
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
@@ -77,15 +101,20 @@ type StringEscape interface {
 	StringEscape()
 }
 
-type BadEscape struct{ Source string }
-type CharacterEscape struct{ Character rune }
-type UnicodeEscape struct{ Hex int32 }
-type HexadecimalEscape struct{ Hex int32 }
-type StringInterpolation struct{ Expression Node }
+type (
+	BadEscape           struct{ Source string }
+	CharacterEscape     struct{ Character rune }
+	UnicodeEscape       struct{ Hex int32 }
+	HexadecimalEscape   struct{ Hex int32 }
+	StringInterpolation struct{ Expression Node }
+)
 
-type Symbol struct{ Identifier string }
+type Symbol struct {
+	BaseNode
+	Identifier string
+}
 
-type Discard struct{} // _
+type Discard struct{ BaseNode } // _
 
 type Assignable interface {
 	Assignable()
@@ -98,6 +127,7 @@ type Publicizable interface {
 }
 
 type VariableDeclaration struct {
+	BaseNode
 	Public       bool
 	Identifier   string
 	Value        Expression
@@ -106,6 +136,7 @@ type VariableDeclaration struct {
 }
 
 type AssignmentStatement struct {
+	BaseNode
 	Assignee Assignable
 	Operator lexer.TokenType
 	Value    Expression
@@ -131,24 +162,47 @@ type SimpleType interface {
 }
 
 // A PrimitiveType is a Klar-builtin type
-type PrimitiveType struct{ Primitive PrimitiveTypeName }
+type PrimitiveType struct {
+	BaseNode
+	Primitive PrimitiveTypeName
+}
 
 // A TypeAlias is a non-primitive type name
-type TypeAlias struct{ Identifier string }
+type TypeAlias struct {
+	BaseNode
+	Identifier string
+}
 
 // An OptionalType is a type marked with the suffix '?'. In Klar, this indicates
 // that a type could be nil.
-type OptionalType struct{ Value Type }
-type ListType struct{ Value Type }
-type RestType struct{ Value Type }
-type TupleType struct{ Values []Type }
-type InterfaceType struct{ Fields []TypePair }
+type OptionalType struct {
+	BaseNode
+	Value Type
+}
+type ListType struct {
+	BaseNode
+	Value Type
+}
+type RestType struct {
+	BaseNode
+	Value Type
+}
+type TupleType struct {
+	BaseNode
+	Values []Type
+}
+type InterfaceType struct {
+	BaseNode
+	Fields []TypePair
+}
 
 type FunctionType struct {
+	BaseNode
 	Parameters []Type
 	ReturnType Type
 }
 type GenericType struct {
+	BaseNode
 	Name       Type
 	Parameters []SimpleType
 }
@@ -157,9 +211,11 @@ type TypePair struct {
 	Value Type
 }
 type UnionType struct {
+	BaseNode
 	Options []Type
 }
 type TypeAnnotation struct {
+	BaseNode
 	Variable Symbol
 	Type     SimpleType
 }
@@ -198,6 +254,7 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 //	import klar.regex.{type RegEx}
 //	import fetch: klar.http.requests.{get}
 type ImportStatement struct {
+	BaseNode
 	Module             string
 	Alias              string // Only if there are no unqualified imports
 	Wildcard           bool
@@ -205,6 +262,7 @@ type ImportStatement struct {
 }
 
 type UnqualifiedImport struct {
+	BaseNode
 	TypeImport bool
 	Wildcard   bool
 	Identifier string
@@ -221,40 +279,48 @@ type StructDeclaration struct {
 	Identifier     string
 	InheritedTypes []Type // Type alias or primitive
 	Fields         []StructField
+	BaseNode
 }
 type StructField struct {
 	Identifier string
 	Type       Type
 	Constant   bool
 	Value      Expression
+	BaseNode
 }
 
 type EnumDeclaration struct {
 	Public     bool
 	Identifier string
 	Values     []EnumItem
+	BaseNode
 }
 type EnumItem struct {
 	Identifier string
 	Value      Expression
+	BaseNode
 }
 
 type TypeAliasDeclaration struct {
 	Public     bool
 	Identifier string
 	Type       Type
+	BaseNode
 }
 
 type MapLiteral struct {
 	Entries []Pair
+	BaseNode
 }
 
 type TupleLiteral struct {
 	Values []Expression
+	BaseNode
 }
 
 type ReturnStatement struct {
 	Value Expression // Can be nil
+	BaseNode
 }
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
@@ -267,6 +333,7 @@ type FunctionDeclaration struct {
 	ReturnType    SimpleType
 	Body          []Statement
 	Expression
+	BaseNode
 }
 
 type FunctionParam struct {
@@ -274,33 +341,48 @@ type FunctionParam struct {
 	Label string
 	Type    SimpleType
 	Default Expression
+	BaseNode
 }
 
-type NextStatement struct{}
+type NextStatement struct{ BaseNode }
 
 type ListLiteral struct {
+	BaseNode
 	Items []Expression
 }
 
 type IndexExpression struct {
 	Object, Property Node
 	Computed         bool // If square bracket [
+	BaseNode
 }
 
-type EnumLiteral struct{ Name string }
+type SliceExpression struct {
+	Object   Node
+	From, To Expression
+	BaseNode
+}
+
+type EnumLiteral struct {
+	BaseNode
+	Name string
+}
 
 type CallParam struct {
 	Label string
 	Value Expression
+	BaseNode
 }
 
 type CallExpression struct {
 	Callee Node
 	Args   []CallParam
+	BaseNode
 }
 
 type TypeCastSymbol struct {
 	Type SimpleType
+	BaseNode
 }
 
 // An UpdateStatement is a decrement or increment statement. These statements end in
@@ -309,9 +391,11 @@ type TypeCastSymbol struct {
 type UpdateStatement struct {
 	Left     Expression
 	Operator lexer.TokenType
+	BaseNode
 }
 
 type ForStatement struct {
+	BaseNode
 	Infinite   bool       // or
 	Condition  Expression // or
 	Variables  []Symbol
@@ -321,38 +405,44 @@ type ForStatement struct {
 }
 
 type WhenBlock struct {
+	BaseNode
 	IsExpression bool
 	Subjects     []Expression
 	Cases        []WhenCase
 }
 
-type WhenCase struct {
-}
+type WhenCase struct{}
 
 type ParamTuple struct {
+	BaseNode
 	Params []TypePair
 }
 
 type LambdaExpression struct {
+	BaseNode
 	Params   []TypePair
 	Body     []Statement
 	ExprBody Expression
 }
 
 type Attribute struct {
+	BaseNode
 	Decorator string
 	Args      []CallParam
 }
 
 type RestExpression struct {
+	BaseNode
 	Left bool
 	Expr Expression
 }
 
 type RangeExpression struct {
-	Start, End, Step Expression
+	From, To, Step Expression
+	BaseNode
 }
 
 type PipelineExpression struct {
 	Steps []Node
+	BaseNode
 }

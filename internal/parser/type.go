@@ -139,6 +139,7 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) ast.FunctionT
 		ReturnType: p.ParseType(DefaultTypeBindingPower),
 	}
 }
+
 func (p *Parser) ParseTupleType() ast.TupleType {
 	params := []ast.Type{}
 	p.Advance() // (

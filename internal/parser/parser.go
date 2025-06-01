@@ -7,6 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
@@ -14,7 +15,7 @@ type Parser struct {
 	Options ParseOptions
 	Tokens  []lexer.Token
 	Index   int
-	Errors  []error
+	Errors  []ParseError
 }
 
 // New returns a new [Parser] that reads from tokens.
@@ -100,6 +101,10 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	return p.Advance()
 }
 
+func (p *Parser) savePos() lexer.Position {
+	return p.CurrentToken().Position
+}
+
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
 func (p *Parser) RemoveComments() (comments []ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
@@ -113,10 +118,9 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 				endPos = tok.Attributes["end"].(lexer.Position)
 			}
 			comments = append(comments, ast.Comment{
-				Begin: tok.Position,
-				End:   endPos,
-				Value: tok.Source,
-				Type:  tok.Kind,
+				BaseNode: ast.BaseNode{ranges.Range{tok.Position, endPos}},
+				Value:    tok.Source,
+				Type:     tok.Kind,
 			})
 			p.Tokens = slices.Delete(p.Tokens, i, i+1)
 		}
@@ -125,7 +129,7 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 }
 
 func (p *Parser) Error(err errors.ParseError) {
-	p.Errors = append([]error{err}, p.Errors...)
+	p.Errors = append([]ParseError{err}, p.Errors...)
 	if p.Options.OnError != nil {
 		p.Options.OnError(err)
 	}

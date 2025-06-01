@@ -37,6 +37,7 @@ func (t *ArgTable) BoolFlag(name, description string, defaultValue bool) {
 	name = addPrefix(name)
 	t.Definitions[name] = FlagDefinition{TypeBoolFlag, description, defaultValue}
 }
+
 func (t *ArgTable) StringFlag(name, description, defaultValue string) {
 	name = addPrefix(name)
 	t.Definitions[name] = FlagDefinition{TypeStringFlag, description, defaultValue}
@@ -79,5 +80,4 @@ func (t *ArgTable) Parse() {
 }
 
 func (t ArgTable) PrintHelp(cmdName string) {
-
 }

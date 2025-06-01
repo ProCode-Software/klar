@@ -13,8 +13,8 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Type
 	// LHS must be a Symbol or index
 	if _, ok := left.(ast.Assignable); !ok {
 		p.Error(errors.ParseError{
-			Type: errors.ErrExpectedSymbolAssign,
-			Node: left,
+			ErrorCode: errors.ErrExpectedSymbolAssign,
+			Node:      left,
 		})
 	}
 	// Skip the :
@@ -99,8 +99,8 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	// Module name begins with .
 	if module[0] == '.' {
 		p.Error(errors.ParseError{
-			Type:   errors.ErrImportPrefixDot,
-			Params: map[string]any{"module": module},
+			ErrorCode: errors.ErrImportPrefixDot,
+			Params:    map[string]any{"module": module},
 		})
 		// module = module[1:]
 	}
@@ -176,7 +176,6 @@ func (p *Parser) ParsePostfix(left ast.Expression) ast.UpdateStatement {
 }
 
 func (p *Parser) ParseForStatement() ast.ForStatement {
-	p.Expect(lexer.For)
 	f := ast.ForStatement{}
 	// for { - infinite loop
 	if p.CurrentTokenKind() != lexer.LeftParenthesis {

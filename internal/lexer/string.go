@@ -14,8 +14,10 @@ const (
 	EscInterpolation
 )
 
-type EscapeError int
-type EscapeMap = map[Position]StringEscape
+type (
+	EscapeError int
+	EscapeMap   = map[Position]StringEscape
+)
 
 const (
 	_ EscapeError = iota
@@ -73,6 +75,7 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 		ErrorPosition: errPos,
 	}
 }
+
 func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	var (
 		err     EscapeError
@@ -102,6 +105,7 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 		ErrorPosition: errPos,
 	}
 }
+
 func (l *Lexer) parseStrInterp(delim rune) StringEscape {
 	var (
 		err     EscapeError

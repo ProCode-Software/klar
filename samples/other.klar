@@ -1,5 +1,6 @@
 import klar.http.*
 import what
+a := 1
 import klar.http.server
 import re = klar.regex
 import klar.io.{stdio}
@@ -49,4 +50,5 @@ type Person {
     age: Int
 }
 
-age := call(name -> 'John' || jane, 3, 4)
+//age := call(name -> 'John', jane, 3)
+age := call(name, 'John', jane, 3)

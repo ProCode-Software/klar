@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-go generate ./internal/errors
+go generate ./{cmd,internal,pkg}/...
 clear
 if [ "$1" = "repl" ]; then
     go run ./cmd/klar repl
     exit $?
 fi
-go run ./cmd/klar run "./samples/${1:-main}.klar"
+go run ./cmd/klar run "./samples/${1:-other}.klar"

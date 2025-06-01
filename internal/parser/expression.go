@@ -208,8 +208,8 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 	}
 	// Range operator
 	rang := ast.RangeExpression{
-		Start: l,
-		End:   p.ParseExpression(bp),
+		From: l,
+		To:   p.ParseExpression(bp),
 	}
 	if p.CurrentTokenKind() == lexer.Ellipsis {
 		// Step

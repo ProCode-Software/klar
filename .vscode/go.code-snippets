@@ -29,5 +29,15 @@
             "}"
         ],
         "description": "Print all tokens"
+    },
+    "check": {
+        "scope": "go",
+        "prefix": "check",
+        "body": [
+            "func (c *Checker) $1($2) $3 {",
+            "\t$0",
+            "}"
+        ],
+        "description": "New checker function"
     }
 }

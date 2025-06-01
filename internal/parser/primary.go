@@ -83,7 +83,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		}
 		return ast.IntegerLiteral{
 			Format: format,
-			Value:  int(unwrap(strconv.ParseInt(src, 0, 0))),
+			Value:  unwrap(strconv.ParseInt(src, 0, 0)),
 		}
 	case lexer.String:
 		if token.Attributes["unterminated"] == true {

@@ -102,6 +102,7 @@ func (p *Parser) ParseEnum(typeName, firstItem string) ast.EnumDeclaration {
 	p.Expect(lexer.RightCurlyBrace)
 	return ast.EnumDeclaration{Identifier: typeName, Values: items}
 }
+
 func (p *Parser) ParseStruct(typeName, firstField string, inherited []ast.Type) ast.StructDeclaration {
 	var (
 		isFirst = true

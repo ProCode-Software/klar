@@ -15,6 +15,7 @@ const (
 	List
 	Function
 	Map
+	ErrorType
 )
 
 type Union struct {
@@ -26,8 +27,16 @@ type Struct struct {
 type Alias struct {
 	For Type
 }
+type Optional struct {
+	Underlying Type
+}
+type Enum struct {
+	Members []string
+}
 
 func (CoreType) Type() {}
 func (Union) Type()    {}
 func (Struct) Type()   {}
 func (Alias) Type()    {}
+func (Optional) Type() {}
+func (Enum) Type()     {}

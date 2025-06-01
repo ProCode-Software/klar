@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -14,6 +16,7 @@ var IsHandledNUD = []lexer.TokenType{
 }
 
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
+	startPos := p.savePos()
 	switch kind {
 	default:
 		return nil, false
@@ -35,6 +38,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
 	}
+	res = res.SetPos(startPos, lexer.Position{})
 	return res, true
 }
 
@@ -79,14 +83,15 @@ func (p *Parser) handleLED(
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
 	}
+	res = res.SetPos(left.Base().Start, p.savePos())
 	return res, true
 }
 
 func (p *Parser) validateAssignable(left ast.Node) bool {
 	if _, ok := left.(ast.Assignable); !ok {
 		p.Error(errors.ParseError{
-			Type: errors.ErrExpectedSymbolAssign,
-			Node: left,
+			ErrorCode: errors.ErrExpectedSymbolAssign,
+			Node:      left,
 		})
 		return false
 	}
@@ -95,6 +100,7 @@ func (p *Parser) validateAssignable(left ast.Node) bool {
 
 // handleStatement covers all keywords
 func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast.Statement, handled bool) {
+	startPos := p.savePos()
 	switch kind {
 	default:
 		if !isTopLevel {
@@ -110,7 +116,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		case lexer.At:
 			res = p.ParseAttribute()
 		}
-		return res, true
 	case lexer.Type:
 		res = p.ParseTypeDeclaration()
 	case lexer.Func:
@@ -125,6 +130,10 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		res = ast.NextStatement{}
 		p.Advance()
 	}
+	res = res.SetPos(startPos, p.savePos()).(ast.Statement)
+	fmt.Println("what")
+	println("whatever")
+	fmt.Printf("Result: %#v\n", res)
 	return res, true
 }
 
@@ -133,6 +142,7 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 // =================
 
 func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool) {
+	startPos := p.savePos()
 	switch kind {
 	case lexer.LeftBracket:
 		res = p.ParseListType()
@@ -143,6 +153,7 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	default:
 		return nil, false
 	}
+	res = res.SetPos(startPos, defPos).(ast.Type)
 	return res, true
 }
 
@@ -159,5 +170,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	default:
 		return left, false
 	}
+	res = res.SetPos(left.Base().Start, p.savePos()).(ast.Type)
 	return res, true
 }
