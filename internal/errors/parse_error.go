@@ -14,6 +14,10 @@ const (
 	ErrUnexpectedToken
 	ErrExpectedToken // Expected kind of token but got different type
 	ErrExpectedEOS   // Expected end of statement (newline)
+	ErrRedeclaredVar
+	ErrRedeclaredType
+	ErrVarSameNameAsFunc
+	ErrRedeclaredEnum
 
 	// Import
 	ErrExpectedDotInBraceImport     // Dot required before brace in unqualified import
@@ -63,7 +67,6 @@ type ErrorParams map[string]any
 
 // A ParseError is a basic Klar parse error.
 type ParseError struct {
-	KlarError
 	Position  lexer.Position
 	Range     ranges.Range
 	ErrorCode ErrorCode
@@ -125,7 +128,7 @@ func (e ParseError) Error() string {
 			return "SyntaxError: I didn't expect this " + QuoteWithoutA(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf("SyntaxError: The string starting at %v was left open", e.Position)
+		return fmt.Sprintf("SyntaxError: The string starting at %s was left open", e.Position)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
@@ -174,6 +177,14 @@ func (e ParseError) Error() string {
 		return "SyntaxError: An underscore isn't allowed here"
 	case ErrImportsGoFirst:
 		return "SyntaxError: Imports must go before other declarations"
+	case ErrRedeclaredType:
+		return fmt.Sprintf("SyntaxError: Type %s was already declared at %s",
+			QuoteString(e.Params["name"].(string)), e.Params["origPos"],
+		)
+	case ErrRedeclaredVar:
+		return fmt.Sprintf("SyntaxError: Variable %s was already declared at %s",
+			QuoteString(e.Params["name"].(string)), e.Params["origPos"],
+		)
 	}
 }
 
@@ -221,6 +232,28 @@ func Position(err ErrorCode, pos lexer.Position) ParseError {
 	return ParseError{ErrorCode: err, Position: pos}
 }
 
+func Range(err ErrorCode, rang ranges.Range) ParseError {
+	return ParseError{ErrorCode: err, Range: rang, Position: rang.Start}
+}
+
 func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {
 	return ParseError{ErrorCode: err, Position: pos, Token: tok}
+}
+
+func Redeclared(name, kind string, p1, p2 ranges.Range) ParseError {
+	var code ErrorCode
+	if kind == "Type" {
+		code = ErrRedeclaredType
+	} else {
+		code = ErrRedeclaredVar
+	}
+	return ParseError{
+		Range:     p2,
+		Position:  p2.Start,
+		ErrorCode: code,
+		Params: ErrorParams{
+			"origPos": p1.Start,
+			"name":    name,
+		},
+	}
 }

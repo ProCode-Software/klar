@@ -2,12 +2,17 @@ package lexer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"unicode"
 )
 
 type Position struct {
 	Line, Col int
+}
+
+func (p Position) String() string {
+	return fmt.Sprintf("%d:%d", p.Line, p.Col)
 }
 
 type Lexer struct {

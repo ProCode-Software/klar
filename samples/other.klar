@@ -1,6 +1,5 @@
 import klar.http.*
 import what
-a := 1
 import klar.http.server
 import re = klar.regex
 import klar.io.{stdio}
@@ -52,3 +51,7 @@ type Person {
 
 //age := call(name -> 'John', jane, 3)
 age := call(name, 'John', jane, 3)
+
+type Colors {
+    red = 1 | orange = 2.5
+}

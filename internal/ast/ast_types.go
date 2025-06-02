@@ -124,6 +124,7 @@ type Assignable interface {
 // Calling the Publicizable will set the Public field to true on the declaration.
 type Publicizable interface {
 	Publicize()
+	IsPublic() bool
 }
 
 type VariableDeclaration struct {

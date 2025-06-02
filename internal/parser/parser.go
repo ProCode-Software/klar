@@ -129,7 +129,7 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 }
 
 func (p *Parser) Error(err errors.ParseError) {
-	p.Errors = append([]ParseError{err}, p.Errors...)
+	p.Errors = append(p.Errors, err)
 	if p.Options.OnError != nil {
 		p.Options.OnError(err)
 	}

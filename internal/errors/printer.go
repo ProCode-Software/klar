@@ -122,9 +122,13 @@ func PrintError(err KlarError, options PrintOptions) {
 		minPos            = ranges.Sub(errPos, options.MaxLines-1, 0)
 		currLine, currCol int
 		out               string
+		lastTok           lexer.Token
 	)
 	for i, tok := range options.Tokens {
 		if tok.Position.Line > errPos.Line {
+			if i > 0 {
+				lastTok = options.Tokens[i-1]
+			}
 			break
 		}
 		if tok.Position.Line < minPos.Line {
@@ -162,13 +166,17 @@ func PrintError(err KlarError, options PrintOptions) {
 		currCol = tok.Col + len(tok.Source)
 	}
 	line := ansi(cli.ANSIBoldRed, "^")
-	if err.AtRange() != (ranges.Range{}) {
+	if err.AtRange().Start.Line > 0 {
 		rang := err.AtRange()
-		len := 10
+		var len int
 		if rang.IsSingleLine() {
 			len = rang.LineLength()
+		} else {
+			len = lastTok.Col - rang.Start.Col + 1
 		}
-		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len)
+		if len > 1 {
+			line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len)
+		}
 	}
 	if err, ok := err.(ParseError); ok &&
 		errPos == err.Position && len(err.Token.Source) > 1 {

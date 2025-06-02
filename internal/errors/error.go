@@ -24,3 +24,7 @@ const (
 func (e ParseError) At() lexer.Position    { return e.Position }
 func (e ParseError) AtRange() ranges.Range { return e.Range }
 func (e ParseError) Code() ErrorCode       { return e.ErrorCode }
+
+func (e TypeError) At() lexer.Position    { return e.Range.Start }
+func (e TypeError) AtRange() ranges.Range { return e.Range }
+func (e TypeError) Code() ErrorCode       { return e.ErrorCode }

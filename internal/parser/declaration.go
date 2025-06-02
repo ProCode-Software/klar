@@ -88,7 +88,7 @@ func (p *Parser) ParseEnum(typeName, firstItem string) ast.EnumDeclaration {
 		}
 		if p.CurrentTokenKind() == lexer.Equal {
 			p.Advance()
-			item.Value = p.ParseExpression(CallBindingPower)
+			item.Value = p.ParseExpression(PrimaryBindingPower)
 		}
 		items = append(items, item)
 		if p.CurrentTokenKind() == lexer.EndOfStatement {

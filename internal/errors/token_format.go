@@ -6,13 +6,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+func QuoteString(s string) string {
+	if strings.Contains(s, "'") {
+		return "`" + s + "`"
+	}
+	return "'" + s + "'"
+}
+
 // Quotes add quotes around source code. By default, Quote uses single quotes for source code, or backticks if the source contains single quotes.
 func Quote(tok lexer.Token) string {
 	switch {
 	default:
-		return "'" + tok.Source + "'"
-	case strings.Contains(tok.Source, "'"):
-		return "`" + tok.Source + "`"
+		return QuoteString(tok.Source)
 	case tok.Kind == lexer.EndOfStatement:
 		return "a newline"
 	case tok.Kind == lexer.EOF:

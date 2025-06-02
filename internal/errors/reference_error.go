@@ -5,4 +5,5 @@ const (
 
 	ErrVarExists    // Can't redeclare variable
 	ErrVarUndefined // Variable doesn't exist
+	ErrTypeUndefined // Type doesn't exist
 )

@@ -1,17 +1,18 @@
 package runtime
 
 import (
-	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
 type TypeDeclaration struct {
-	Type types.Type
-	Used bool
+	Type     types.Type
+	Used     bool
+	Position ranges.Range
 }
 
 type Declaration struct {
-	Position lexer.Position
+	Position ranges.Range
 	Type     types.Type
 	Constant bool
 	Value    RuntimeVal
@@ -59,7 +60,7 @@ func (c *Context) IsRoot() bool {
 
 // Declare declares a new variable. If the variable already exists, Declare returns false.
 func (c *Context) Declare(
-	name string, constant bool, typ types.Type, pos lexer.Position,
+	name string, constant bool, typ types.Type, pos ranges.Range,
 ) bool {
 	if _, ok := c.Declarations[name]; ok {
 		// Already declared
@@ -74,13 +75,14 @@ func (c *Context) Declare(
 	return true
 }
 
-func (c *Context) DeclareType(name string, typ types.Type) bool {
+func (c *Context) DeclareType(name string, typ types.Type, pos ranges.Range) bool {
 	if _, ok := c.TypeDeclarations[name]; ok {
 		// Already declared
 		return false
 	}
 	c.TypeDeclarations[name] = &TypeDeclaration{
 		Type: typ,
+		Position: pos,
 	}
 	return true
 }

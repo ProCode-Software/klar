@@ -142,3 +142,9 @@ func (d *EnumDeclaration) Publicize()      { d.Public = true }
 func (d *FunctionDeclaration) Publicize()  { d.Public = true }
 func (d *StructDeclaration) Publicize()    { d.Public = true }
 func (d *TypeAliasDeclaration) Publicize() { d.Public = true }
+
+func (d VariableDeclaration) IsPublic() bool  { return d.IsPublic() }
+func (d EnumDeclaration) IsPublic() bool      { return d.IsPublic() }
+func (d FunctionDeclaration) IsPublic() bool  { return d.IsPublic() }
+func (d StructDeclaration) IsPublic() bool    { return d.IsPublic() }
+func (d TypeAliasDeclaration) IsPublic() bool { return d.IsPublic() }

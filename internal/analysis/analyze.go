@@ -4,13 +4,17 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
-	"github.com/ProCode-Software/klar/internal/types"
+	typespkg "github.com/ProCode-Software/klar/internal/types"
 )
 
 var defaultPos lexer.Position
 
-type Type = types.Type
+type (
+	Type    = typespkg.Type
+	Context = runtime.Context
+)
 
 // A Checker type-checks a [ast.Program].
 type Checker struct {
@@ -30,13 +34,23 @@ func NewChecker(program ast.Program) *Checker {
 }
 
 func (c *Checker) Error(err errors.KlarError) {
-	c.Errors = append([]errors.KlarError{err}, c.Errors...)
+	c.Errors = append(c.Errors, err)
 	if c.OnError != nil {
 		c.OnError(err)
 	}
 }
 
 func (c *Checker) InferType(expr ast.Expression) Type {
+	if expr == nil {
+		return nil
+	}
+	return nil
+}
+
+func (c *Checker) ParseType(typ ast.Type, ctx *Context) Type {
+	if typ == nil {
+		return nil
+	}
 	return nil
 }
 
@@ -44,27 +58,39 @@ func (c *Checker) CheckCompatible(t1, t2 Type) Type {
 	if t1 == t2 {
 		return t1
 	} else {
-		return types.ErrorType
+		return typespkg.ErrorType
 	}
 }
 
 func (c *Checker) CheckProgram() {
 	rootCtx := runtime.NewContext(-1)
-	c.Check(rootCtx)
+	c.Check(rootCtx, &c.Program.Body)
 }
 
-func (c *Checker) Check(ctx *runtime.Context) {
+func (c *Checker) checkRedeclared(ok bool, ctx *Context, rang ranges.Range, name string) {
+	if ok || ctx.TypeDeclarations[name] == nil {
+		return
+	}
+	lastPos := ctx.TypeDeclarations[name].Position
+	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
+}
+
+func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 	var (
 		foundDec bool
 		// Sort each statement so normal statements can reference functions before
-		// they are declared. Same thing for functions referencing types.
-		types   []ast.TypeDeclaration
-		funcs   []ast.FunctionDeclaration
-		stmts   []ast.Statement
+		// they are declared. Same thing for functions referencing types and for
+		// structs/interfaces referencing type aliases
+		types []ast.TypeDeclaration
+		attrs []ast.Attribute
+		funcs []ast.FunctionDeclaration
+		stmts = make([]ast.Statement, 0, len(*body))
+		// Only at top-level
 		imports []ast.ImportStatement
+		exports []ast.Publicizable
 	)
-	for _, dec := range c.Program.Body {
-		var isImport bool
+	for _, dec := range *body {
+		var (isImport, ok bool; id string; pos = dec.Base().Range)
 		switch dec := dec.(type) {
 		// Imports are only parsed at the top-level, but they must go
 		// before other declarations.
@@ -75,27 +101,56 @@ func (c *Checker) Check(ctx *runtime.Context) {
 				c.Error(errors.Node(errors.ErrImportsGoFirst, dec))
 			}
 			continue
-		case ast.TypeDeclaration:
+		// Declare enums first since they don't depend on other types
+		case ast.EnumDeclaration:
+			ok = ctx.DeclareType(dec.Identifier, c.parseEnum(dec), pos)
+			id = dec.Identifier
+		// Types don't have to be declared before they can be used.
+		// For structs and type aliases
+		case ast.TypeAliasDeclaration:
+			ok = ctx.DeclareType(dec.Identifier, nil, pos)
+			id = dec.Identifier
+			types = append(types, dec)
+		case ast.StructDeclaration:
+			ok = ctx.DeclareType(dec.Identifier, nil, pos)
+			id = dec.Identifier
 			types = append(types, dec)
 		case ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
+		case ast.Attribute:
+			attrs = append(attrs, dec)
 		default:
 			stmts = append(stmts, dec)
+		}
+		if id != "" {
+			c.checkRedeclared(ok, ctx, pos, id)
+		}
+		if !ctx.IsRoot() {
+			continue
+		}
+		if dec, ok := dec.(ast.Publicizable); ok && dec.IsPublic() {
+			exports = append(exports, dec)
 		}
 		if !isImport {
 			foundDec = true
 		}
 	}
-	/* switch dec := dec.(type) {
-	case ast.VariableDeclaration:
-		var typ Type
-		if dec.ExplicitType == nil {
-			typ = c.InferType(dec.Value)
-		} else {
-			typ = c.CheckCompatible(dec.ExplicitType, c.InferType(dec.Value))
-		}
-		ctx.Declare(dec.Identifier, dec.Constant, typ, dec.Base().Start)
-	case ast.EnumDeclaration:
-		// rootCtx.DeclareType(dec.)
+
+	// Types don't have to be declared before they can be used
+	/* for _, t := range types {
+		
 	} */
 }
+
+/* switch dec := dec.(type) {
+case ast.VariableDeclaration:
+	var typ Type
+	if dec.ExplicitType == nil {
+		typ = c.InferType(dec.Value)
+	} else {
+		typ = c.CheckCompatible(dec.ExplicitType, c.InferType(dec.Value))
+	}
+	ctx.Declare(dec.Identifier, dec.Constant, typ, dec.Base().Start)
+case ast.EnumDeclaration:
+	// rootCtx.DeclareType(dec.)
+} */
