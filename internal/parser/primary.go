@@ -99,7 +99,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		}
 	case lexer.Boolean:
 		return ast.BooleanLiteral{
-			Value: unwrap(strconv.ParseBool(src)),
+			Value: src == "true",
 		}
 	case lexer.HashLeftCurlyBrace:
 		return p.ParseMap()

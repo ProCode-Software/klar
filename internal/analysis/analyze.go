@@ -90,7 +90,11 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 		exports []ast.Publicizable
 	)
 	for _, dec := range *body {
-		var (isImport, ok bool; id string; pos = dec.Base().Range)
+		var (
+			isImport, ok bool
+			id           string
+			pos          = dec.Base().Range
+		)
 		switch dec := dec.(type) {
 		// Imports are only parsed at the top-level, but they must go
 		// before other declarations.
@@ -138,7 +142,7 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 
 	// Types don't have to be declared before they can be used
 	/* for _, t := range types {
-		
+
 	} */
 }
 

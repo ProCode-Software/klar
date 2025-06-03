@@ -31,6 +31,7 @@ const (
 type StringEscape struct {
 	Type          EscapeType
 	Value         string
+	Interpolated  []Token
 	Invalid       EscapeError
 	ErrorPosition Position
 }
@@ -51,21 +52,22 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	esc := l.TokenizeFunc(func(r rune, b *Builder) bool {
 		l := b.Len()
 		switch {
-		case l == 0 && r == '{':
+		case r == '}', isHex(r), l == 0 && r == '{':
 			b.WriteRune(r)
 		case l > 0 && last == '}':
 			return false
 		case l > 6 && r != '}':
 			invalid(ErrEscapeTooLong)
+			return false
 		case l < 2 && r == '}':
 			invalid(ErrEscapeTooShort)
 			b.WriteRune(r)
-		case r == '}', isHex(r):
-			b.WriteRune(r)
 		case r == delim:
 			invalid(ErrEscapeUnterm)
+			return false
 		default:
 			invalid(ErrEscapeExpHex)
+			return false
 		}
 		last = r
 		return true
@@ -110,45 +112,64 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	}
 }
 
-func (l *Lexer) parseStrInterp(delim rune) StringEscape {
+// '{' already parsed
+func (l *Lexer) parseStrInterp() StringEscape {
 	var (
 		err     EscapeError
 		errPos  Position
-		invalid = func(code EscapeError) { err, errPos = code, l.Pos }
-		last    rune
+		tokens  []Token
+		braceCt = 1
+		b       Builder
 	)
-	esc := l.TokenizeFunc(func(r rune, b *Builder) bool {
-		l := b.Len()
-		switch {
-		case l == 0 && r == '}':
-			invalid(ErrEscapeTooShort)
-		case r == delim:
-			invalid(ErrEscapeUnterm)
-		case l > 0 && last == '}':
-			return false
-		default:
-			b.WriteRune(r)
+loop:
+	for {
+		t := l.Tokenize()
+		switch t.Kind {
+		case EOF:
+			err, errPos = ErrEscapeUnterm, l.Pos
+			break loop
+		case LeftCurlyBrace, HashLeftCurlyBrace:
+			braceCt++
+		case RightCurlyBrace:
+			braceCt--
+			if braceCt == 0 {
+				if len(tokens) == 0 {
+					err, errPos = ErrEscapeTooShort, l.Pos
+				} else {
+					tokens[len(tokens)-1].SetAttribute("end", l.Pos)
+				}
+				b.WriteString(t.Source)
+				break loop
+			}
 		}
-		last = r
-		return true
-	})
-	// TODO: check length and closing due to EOF
+		tokens = append(tokens, *t)
+		b.WriteString(t.Source)
+	}
 	return StringEscape{
 		Type:          EscInterpolation,
-		Value:         "{" + esc,
+		Interpolated:  tokens,
+		Value:         "{" + b.String(),
 		Invalid:       err,
 		ErrorPosition: errPos,
 	}
 }
 
-// Beginning is already parsed
+/*
+Beginning is already parsed
+
+There are three types of strings in Klar:
+
+	Double-quote "": Interpolation, escapes
+	Single-quote '': Raw, no escapes
+	Backtick ``: Interpolation, escapes, multiline
+*/
 func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 	var (
 		esc              string
 		b                Builder
 		isEscape, unterm bool
 		escapes          = make(EscapeMap)
-		escStart         Position
+		escStart, end    Position
 	)
 	escape := func(typ EscapeType, err EscapeError) {
 		e := StringEscape{Type: typ, Value: `\` + esc, Invalid: err}
@@ -178,21 +199,24 @@ loop:
 				escape(EscCharacter, 0)
 			} else {
 				b.WriteRune(r)
+				end = l.Pos
 				break loop
 			}
 		case '\\':
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else if delim != '\'' {
-				isEscape, escStart = true, l.Pos
+				isEscape, escStart = true, l.prevCol()
 			}
 		case '{':
-			// TODO
-			b.WriteRune(r)
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else if delim != '\'' {
-				escapes[l.Pos] = l.parseStrInterp(delim)
+				e := l.parseStrInterp()
+				escapes[l.prevCol()] = e
+				isEscape = false
+				b.WriteString(e.Value)
+				continue loop
 			} // "
 		case 'b', 'e', 'f', 'n', 'r', 't':
 			if isEscape {
@@ -226,6 +250,7 @@ loop:
 	// TODO: check if closes due to EOF
 	return NewToken(pos, String, string(delim)+b.String()).
 		SetAttribute("escapes", escapes).
+		SetAttribute("end", end).
 		SetAttribute("quoteStyle", delim).
 		SetAttribute("unterminated", unterm)
 }

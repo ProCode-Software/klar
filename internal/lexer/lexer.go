@@ -156,12 +156,12 @@ func (l *Lexer) TokenizeFunc(fn func(rune, *Builder) bool) string {
 		if handleReadError(err) {
 			return b.String()
 		}
-		if r == '\n' {
-			l.ResetPosition()
-		}
 		if !fn(r, &b) {
 			l.Backup()
 			return b.String()
+		}
+		if r == '\n' {
+			l.ResetPosition()
 		}
 	}
 }
@@ -173,18 +173,32 @@ func (l *Lexer) TokenizeEOFFunc(
 ) string {
 	var b Builder
 	for {
-		rune, _, err := l.Reader.ReadRune()
+		r, _, err := l.Reader.ReadRune()
 		l.Pos.Col++
 		if handleReadError(err) {
 			onEOF()
 			return b.String()
 		}
-		if rune == '\n' {
-			l.ResetPosition()
-		}
-		if !fn(rune, &b) {
+		if !fn(r, &b) {
 			l.Backup()
 			return b.String()
 		}
+		if r == '\n' {
+			l.ResetPosition()
+		}
 	}
+}
+
+func (l *Lexer) nextCol() Position {
+	l.Pos.Col++
+	p := l.Pos
+	l.Pos.Col--
+	return p
+}
+
+func (l *Lexer) prevCol() Position {
+	l.Pos.Col--
+	p := l.Pos
+	l.Pos.Col++
+	return p
 }

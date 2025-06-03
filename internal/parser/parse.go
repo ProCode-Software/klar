@@ -8,8 +8,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-var defPos = lexer.Position{}
-
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
 // not stop parsing on a syntax error.
 func (p *Parser) Parse() (program ast.Program) {
@@ -28,7 +26,9 @@ func (p *Parser) Parse() (program ast.Program) {
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
-	return ast.Program{Body: body, Comments: comments}
+	prog := ast.Program{Body: body, Comments: comments}
+	prog = prog.SetPos(p.Tokens[0].Position, p.savePos()).(ast.Program)
+	return prog
 }
 
 func (p *Parser) unknownTokenErr(advance bool) {
@@ -65,7 +65,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 			continue
 		}
 	}
-	left = left.SetPos(left.Base().Start, p.savePos())
+	//left = left.SetPos(left.Base().Start, p.savePos())
 	return left
 }
 
@@ -96,7 +96,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 		return res
 	// Then it is an expression
 	case ast.Expression:
-		return ast.ExpressionStatement{Expression: res}
+		return copyPos(res, ast.ExpressionStatement{Expression: res})
 	// I don't know what this is. If this occurs, then it is a bug.
 	default:
 		log.Panicf("node %v is neither an expression nor statement", res)

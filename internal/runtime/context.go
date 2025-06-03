@@ -81,7 +81,7 @@ func (c *Context) DeclareType(name string, typ types.Type, pos ranges.Range) boo
 		return false
 	}
 	c.TypeDeclarations[name] = &TypeDeclaration{
-		Type: typ,
+		Type:     typ,
 		Position: pos,
 	}
 	return true

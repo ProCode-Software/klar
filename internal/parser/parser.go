@@ -20,8 +20,10 @@ type Parser struct {
 
 // New returns a new [Parser] that reads from tokens.
 func New(tokens []lexer.Token) *Parser {
+	t := make([]lexer.Token, len(tokens))
+	copy(t, tokens)
 	return &Parser{
-		Tokens: tokens,
+		Tokens: t,
 		Index:  0,
 	}
 }
@@ -88,6 +90,16 @@ func (p *Parser) isMapIdentifier() bool {
 	return p.IsCurrently(lexer.Identifier, lexer.Numeric) || p.IsCurrently(ast.ReservedIdent...)
 }
 
+// Only works for single-line tokens
+func (p *Parser) lastTokEnd() lexer.Position {
+	last := p.Tokens[p.Index-1]
+	return ranges.FromToken(last).End
+}
+
+func copyPos[S, T ast.Node](from S, to T) T {
+	return to.SetPos(from.Base().Start, from.Base().End).(T)
+}
+
 // Expect advances the parser if the current token is of typ, otherwise panics with err.
 func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.CurrentToken()
@@ -123,6 +135,7 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 				Type:     tok.Kind,
 			})
 			p.Tokens = slices.Delete(p.Tokens, i, i+1)
+			i--
 		}
 	}
 	return comments

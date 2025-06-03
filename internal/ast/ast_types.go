@@ -123,7 +123,8 @@ type Assignable interface {
 // Publicizable is any declaration that allows the `public` modifier.
 // Calling the Publicizable will set the Public field to true on the declaration.
 type Publicizable interface {
-	Publicize()
+	Statement
+	Publicize() Publicizable
 	IsPublic() bool
 }
 

@@ -121,7 +121,7 @@ func PrintError(err KlarError, options PrintOptions) {
 		errPos            = err.At()
 		minPos            = ranges.Sub(errPos, options.MaxLines-1, 0)
 		currLine, currCol int
-		out               string
+		b                 strings.Builder
 		lastTok           lexer.Token
 	)
 	for i, tok := range options.Tokens {
@@ -136,7 +136,8 @@ func PrintError(err KlarError, options PrintOptions) {
 		}
 		if tok.Position.Line > currLine {
 			currLine, currCol = tok.Position.Line, 1
-			out += "\n" + ansi(lineNumberColor, fmt.Sprintf("%4d | ", currLine))
+			b.WriteByte('\n')
+			b.WriteString(ansi(lineNumberColor, fmt.Sprintf("%4d | ", currLine)))
 		}
 		if tok.Kind == lexer.Newline || tok.Kind == lexer.EndOfStatement {
 			continue
@@ -162,7 +163,8 @@ func PrintError(err KlarError, options PrintOptions) {
 		case prevIs(lexer.Type), prevIs(lexer.Func) && nextIs(lexer.Dot):
 			add = semanticType(tok)
 		}
-		out += addSpace(tok.Col-currCol) + add
+		b.WriteString(addSpace(tok.Col - currCol))
+		b.WriteString(add)
 		currCol = tok.Col + len(tok.Source)
 	}
 	line := ansi(cli.ANSIBoldRed, "^")
@@ -182,7 +184,7 @@ func PrintError(err KlarError, options PrintOptions) {
 		errPos == err.Position && len(err.Token.Source) > 1 {
 		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len(err.Token.Source))
 	}
-	out += fmt.Sprintf("\n%[1]*[2]s"+line, 7+errPos.Col-1, " ")
-	out = strings.TrimPrefix(out, "\n")
+	b.WriteString(fmt.Sprintf("\n%[1]*[2]s"+line, 7+errPos.Col-1, " "))
+	out := strings.TrimPrefix(b.String(), "\n")
 	fmt.Fprintln(os.Stderr, out)
 }

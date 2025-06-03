@@ -36,7 +36,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
 	}
-	res = res.SetPos(startPos, lexer.Position{})
+	res = res.SetPos(startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -81,7 +81,7 @@ func (p *Parser) handleLED(
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
 	}
-	res = res.SetPos(left.Base().Start, p.savePos())
+	res = res.SetPos(left.Base().Start, p.lastTokEnd())
 	return res, true
 }
 
@@ -148,7 +148,7 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	default:
 		return nil, false
 	}
-	res = res.SetPos(startPos, defPos).(ast.Type)
+	res = res.SetPos(startPos, p.lastTokEnd()).(ast.Type)
 	return res, true
 }
 
@@ -165,6 +165,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	default:
 		return left, false
 	}
-	res = res.SetPos(left.Base().Start, p.savePos()).(ast.Type)
+	res = res.SetPos(left.Base().Start, p.lastTokEnd()).(ast.Type)
 	return res, true
 }

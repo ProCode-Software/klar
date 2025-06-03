@@ -1,6 +1,9 @@
 package lexer
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 //go:generate stringer -type=TokenType
 type TokenType int
@@ -169,4 +172,16 @@ func (t *Token) SetAttribute(key string, value any) *Token {
 
 func (t TokenType) LitterDump(w io.Writer) {
 	w.Write([]byte("{" + t.String() + "}"))
+}
+
+func (t Token) String() string {
+	s := fmt.Sprintf("%s %s: %#q", t.Position, t.Kind, t.Source)
+	if t.Attributes != nil {
+		s += fmt.Sprintf(" %+v", t.Attributes)
+	}
+	return s
+}
+
+func (p Position) LitterDump(w io.Writer) {
+	w.Write([]byte("{" + p.String() + "}"))
 }

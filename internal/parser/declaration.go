@@ -233,7 +233,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 	p.Expect(lexer.Public)
 	stmt := p.ParseStatement()
 	if pub, ok := stmt.(ast.Publicizable); ok {
-		pub.Publicize() // Set Public to true
+		stmt = pub.Publicize() // Set Public to true
 	} else {
 		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
 	}

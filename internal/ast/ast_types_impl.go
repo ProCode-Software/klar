@@ -137,14 +137,33 @@ func (TupleLiteral) Assignable()    {}
 func (BadExpression) Assignable()   {}
 
 // Publicizable declarations
-func (d *VariableDeclaration) Publicize()  { d.Public = true }
-func (d *EnumDeclaration) Publicize()      { d.Public = true }
-func (d *FunctionDeclaration) Publicize()  { d.Public = true }
-func (d *StructDeclaration) Publicize()    { d.Public = true }
-func (d *TypeAliasDeclaration) Publicize() { d.Public = true }
+func (d VariableDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
 
-func (d VariableDeclaration) IsPublic() bool  { return d.IsPublic() }
-func (d EnumDeclaration) IsPublic() bool      { return d.IsPublic() }
-func (d FunctionDeclaration) IsPublic() bool  { return d.IsPublic() }
-func (d StructDeclaration) IsPublic() bool    { return d.IsPublic() }
-func (d TypeAliasDeclaration) IsPublic() bool { return d.IsPublic() }
+func (d EnumDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
+
+func (d FunctionDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
+
+func (d StructDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
+
+func (d TypeAliasDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
+
+func (d VariableDeclaration) IsPublic() bool  { return d.Public }
+func (d EnumDeclaration) IsPublic() bool      { return d.Public }
+func (d FunctionDeclaration) IsPublic() bool  { return d.Public }
+func (d StructDeclaration) IsPublic() bool    { return d.Public }
+func (d TypeAliasDeclaration) IsPublic() bool { return d.Public }

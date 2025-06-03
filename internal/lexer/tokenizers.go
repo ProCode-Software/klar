@@ -55,9 +55,10 @@ func (l *Lexer) ParseBlockComment(pos Position) *Token {
 		endPos   Position
 		cmtLevel = 1
 		unterm   bool
-		cmt      Builder
+		b        Builder
 		last     rune
 	)
+	b.WriteString("/*")
 loop:
 	for {
 		r, _, err := l.Reader.ReadRune()
@@ -69,13 +70,12 @@ loop:
 		}
 		switch {
 		case r == '/' && last == '*':
-			if cmt.Len() > 2 {
+			if b.Len() > 2 {
 				cmtLevel--
 			}
 			if cmtLevel == 0 {
-				l.Pos.Col++
-				endPos = l.Pos
-				l.Pos.Col--
+				b.WriteRune(r)
+				endPos = l.nextCol()
 				break loop
 			}
 		case r == '*' && last == '/':
@@ -84,10 +84,10 @@ loop:
 			l.ResetPosition()
 		}
 		last = r
-		cmt.WriteRune(r)
+		b.WriteRune(r)
 	}
 
-	return NewToken(pos, BlockComment, cmt.String()).
+	return NewToken(pos, BlockComment, b.String()).
 		SetAttribute("unterm", unterm).SetAttribute("end", endPos)
 }
 
@@ -153,9 +153,10 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				// b.WriteRune(r)
 			}
 		case '+', '-':
-			if isExp {
-				b.WriteRune(r)
+			if !isExp {
+				return false
 			}
+			b.WriteRune(r)
 		case '.':
 			switch {
 			case isDecimal:
@@ -175,7 +176,8 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
 				l.Reader.ReadRune()
-				if handleReadError(err) || unicode.IsDigit(rune(next[1])) {
+				if handleReadError(err) || next[1] == '\n' ||
+					unicode.IsDigit(rune(next[1])) {
 					// Trailing decimal point at EOF
 					isDecimal = true
 					b.WriteRune(r)

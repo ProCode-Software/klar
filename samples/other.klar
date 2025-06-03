@@ -52,5 +52,4 @@ type Person {
 //age := call(name -> 'John', jane, 3)
 age := call(name, 'John', jane, 3)
 
-3.
-abeca
+"Hello \x"

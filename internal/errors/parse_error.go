@@ -36,12 +36,13 @@ const (
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
 
 	// Literal
-	ErrInvalidNumber  // Invalid number format
-	ErrStringEscape   // Invalid string escape
-	ErrConsecutiveSep // Number has consecutive _
-	ErrMisplacedSep   // Number has separator somewhere where it's not supposed to
-	ErrTrailingSep    // Number has misplaced _
-	ErrExpectedHex    // Expected hex digit
+	ErrInvalidNumber    // Invalid number format
+	ErrStringEscape     // Invalid string escape
+	ErrUnicodeEscTooBig // Unicode escape over 0x10FFFF
+	ErrConsecutiveSep   // Number has consecutive _
+	ErrMisplacedSep     // Number has separator somewhere where it's not supposed to
+	ErrTrailingSep      // Number has misplaced _
+	ErrExpectedHex      // Expected hex digit
 	ErrExpectedOctal
 	ErrExpectedBinary
 	ErrExpectedDecimal
@@ -125,7 +126,7 @@ func (e ParseError) Error() string {
 		case src == ";":
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		default:
-			return "SyntaxError: I didn't expect this " + QuoteWithoutA(tok)
+			return "SyntaxError: I didn't expect " + Quote(tok)
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %s was left open", e.Position)
@@ -146,6 +147,8 @@ func (e ParseError) Error() string {
 		return "SyntaxError: I expected an octal digit (0-7)"
 	case ErrExpectedDecimal:
 		return "SyntaxError: I expected a decimal digit (0-9)"
+	case ErrUnicodeEscTooBig:
+		return "SyntaxError: This Unicode escape should be in the range 0 to 10FFFF"
 	case ErrStringEscape:
 		reason := e.Params["reason"].(lexer.EscapeError)
 		kind := e.Params["type"].(lexer.EscapeType)

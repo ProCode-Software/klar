@@ -3,7 +3,9 @@
 // based on line and column positions, typically used in lexers and parsers.
 package ranges
 
-import "github.com/ProCode-Software/klar/internal/lexer"
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+)
 
 // Position is an alias for [lexer.Position]
 type Position = lexer.Position
@@ -13,8 +15,18 @@ type Range struct {
 	Start, End Position
 }
 
+func IsZeroPosition(p Position) bool {
+	return p.Line == 0
+}
+
 // FromToken returns a new Range that is the position and length of token t.
+// If the token is multiline, this will only work with an 'end' attribute.
 func FromToken(t lexer.Token) Range {
+	if t.Attributes != nil {
+		if end, ok := t.Attributes["end"].(Position); ok && !IsZeroPosition(end) {
+			return Range{t.Position, end}
+		}
+	}
 	return Range{Start: t.Position, End: Position{
 		Line: t.Position.Line,
 		Col:  t.Position.Col + len(t.Source),

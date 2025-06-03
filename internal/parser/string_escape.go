@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type EscapeMap = map[lexer.Position]ast.StringEscape
@@ -37,11 +38,35 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 		case lexer.EscHex:
 			val = ast.HexadecimalEscape{Hex: parseHex(src[2:])}
 		case lexer.EscUnicode:
-			val = ast.HexadecimalEscape{Hex: parseHex(src[3 : len(src)-1])}
+			hex := parseHex(src[3 : len(src)-1])
+			if hex > 0x10FFFF {
+				p.Error(errors.Range(errors.ErrUnicodeEscTooBig, ranges.Range{
+					ranges.Add(i, 0, 3),
+					ranges.Add(i, 0, len(src)-1),
+				}))
+				escapes[i] = ast.BadEscape{Source: src}
+				continue
+			}
+			val = ast.HexadecimalEscape{Hex: hex}
 		case lexer.EscInterpolation:
-			val = ast.StringInterpolation{} // TODO: lex string interpolation
+			p2 := newInterpParser(e.Interpolated)
+			val = ast.StringInterpolation{
+				Expression: p2.ParseExpression(DefaultBindingPower),
+			}
 		}
 		escapes[i] = val
 	}
 	return escapes
+}
+
+func newInterpParser(tokens []lexer.Token) *Parser {
+	// Add the EOF
+	tokens = append(tokens, lexer.Token{
+		Kind:     lexer.EOF,
+		//Position: tokens[len(tokens)-1].Attributes["end"].(lexer.Position),
+	})
+	ep := New(tokens)
+	ep.RemoveComments()
+	ep.InsertEOS()
+	return ep
 }
