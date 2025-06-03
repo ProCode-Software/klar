@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -131,9 +129,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		p.Advance()
 	}
 	res = res.SetPos(startPos, p.savePos()).(ast.Statement)
-	fmt.Println("what")
-	println("whatever")
-	fmt.Printf("Result: %#v\n", res)
 	return res, true
 }
 

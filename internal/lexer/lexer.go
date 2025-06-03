@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strings"
 	"unicode"
 )
+
+type Builder = strings.Builder
 
 type Position struct {
 	Line, Col int
@@ -31,10 +34,10 @@ func (l *Lexer) Tokenize() *Token {
 	for {
 		pos := l.Pos
 		r, _, err := l.Reader.ReadRune()
+		l.Pos.Col++
 		if handleReadError(err) {
 			return NewToken(pos, EOF, "")
 		}
-		l.Pos.Col++
 
 		switch r {
 		case '\n':
@@ -56,11 +59,11 @@ func (l *Lexer) Tokenize() *Token {
 				}
 				return NewToken(pos, LineComment, src)
 			case BlockComment:
-				src, endPos := l.ParseBlockComment()
+				tok := l.ParseBlockComment(pos)
 				if !l.IncludeComments {
 					continue
 				}
-				return NewToken(pos, BlockComment, src).SetAttribute("end", endPos)
+				return tok
 			}
 		// Single-character operators
 		case '@':
@@ -139,26 +142,49 @@ func (l *Lexer) Backup() {
 	l.Pos.Col--
 }
 
-func (l *Lexer) TokenizeFunc(fn func(rune, *string)) (literal string) {
+// BackupTokenizeFunc backs up the lexer before calling TokenizeFunc.
+func (l *Lexer) BackupTokenizeFunc(fn func(rune, *Builder) bool) string {
 	l.Backup()
-	literal = l.TokenizeFwdFunc(fn)
-	return
+	return l.TokenizeFunc(fn)
 }
 
-// TokenizeFunc but doesn't backup first
-func (l *Lexer) TokenizeFwdFunc(fn func(rune, *string)) (literal string) {
-	var oldLit string
+func (l *Lexer) TokenizeFunc(fn func(rune, *Builder) bool) string {
+	var b Builder
+	for {
+		r, _, err := l.Reader.ReadRune()
+		l.Pos.Col++
+		if handleReadError(err) {
+			return b.String()
+		}
+		if r == '\n' {
+			l.ResetPosition()
+		}
+		if !fn(r, &b) {
+			l.Backup()
+			return b.String()
+		}
+	}
+}
+
+// TokenizeFunc with a callback if the lexer reaches EOF.
+func (l *Lexer) TokenizeEOFFunc(
+	fn func(rune, *Builder) bool,
+	onEOF func(),
+) string {
+	var b Builder
 	for {
 		rune, _, err := l.Reader.ReadRune()
-		if handleReadError(err) {
-			return
-		}
 		l.Pos.Col++
-		oldLit = literal
-		fn(rune, &literal)
-		if literal == oldLit {
+		if handleReadError(err) {
+			onEOF()
+			return b.String()
+		}
+		if rune == '\n' {
+			l.ResetPosition()
+		}
+		if !fn(rune, &b) {
 			l.Backup()
-			return
+			return b.String()
 		}
 	}
 }

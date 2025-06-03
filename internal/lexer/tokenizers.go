@@ -36,41 +36,59 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 
 func (l *Lexer) ParseLineComment() string {
 	var shouldStop bool
-	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
+	cmt := l.TokenizeFunc(func(r rune, b *Builder) bool {
 		if shouldStop {
-			return
+			return false
 		}
 		// Beginning // is already parsed
 		if r == '\n' {
-			l.ResetPosition()
 			shouldStop = true
 		}
-		*s += string(r)
+		b.WriteRune(r)
+		return true
 	})
 	return "//" + cmt
 }
 
-func (l *Lexer) ParseBlockComment() (string, Position) {
-	cmtLevel := 1
-	var endPos Position
-	cmt := l.TokenizeFwdFunc(func(r rune, s *string) {
-		switch {
-		case cmtLevel == 0:
+func (l *Lexer) ParseBlockComment(pos Position) *Token {
+	var (
+		endPos   Position
+		cmtLevel = 1
+		unterm   bool
+		cmt      Builder
+		last     rune
+	)
+loop:
+	for {
+		r, _, err := l.Reader.ReadRune()
+		l.Pos.Col++
+		if handleReadError(err) {
+			unterm = true
 			endPos = l.Pos
-			return
+			break loop
+		}
+		switch {
+		case r == '/' && last == '*':
+			if cmt.Len() > 2 {
+				cmtLevel--
+			}
+			if cmtLevel == 0 {
+				l.Pos.Col++
+				endPos = l.Pos
+				l.Pos.Col--
+				break loop
+			}
+		case r == '*' && last == '/':
+			cmtLevel++
 		case r == '\n':
 			l.ResetPosition()
-		case len(*s) > 1:
-			last := (*s)[len(*s)-1]
-			if last == '*' && r == '/' {
-				cmtLevel--
-			} else if last == '/' && r == '*' {
-				cmtLevel++
-			}
 		}
-		*s += string(r)
-	})
-	return "/*" + cmt, endPos
+		last = r
+		cmt.WriteRune(r)
+	}
+
+	return NewToken(pos, BlockComment, cmt.String()).
+		SetAttribute("unterm", unterm).SetAttribute("end", endPos)
 }
 
 const (
@@ -85,71 +103,73 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (
 		format, errorType, errPos   int
 		isExp, isIllegal, isDecimal bool
+		last                        rune
 	)
-	newError := func(code int, lit *string) {
+	newError := func(code int, b *Builder) {
 		errorType = code
-		errPos = len(*lit)
+		if b != nil {
+			errPos = b.Len()
+		}
 		isIllegal = true
 	}
-	digit := l.TokenizeFunc(func(r rune, lit *string) {
+	digit := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
 		lower := unicode.ToLower(r)
-		if *lit == "0" {
+		if b.String() == "0" {
 			switch lower {
 			case 'x':
 				format = NumberFormatHex
-				*lit += string(r)
-				return
+				b.WriteRune(r)
 			case 'o':
 				format = NumberFormatOctal
-				*lit += string(r)
-				return
+				b.WriteRune(r)
 			case 'b':
 				format = NumberFormatBinary
-				*lit += string(r)
-				return
+				b.WriteRune(r)
 			default:
 				format = NumberFormatDecimal
+				return false
 			}
+			return true
 		}
 		switch lower {
 		case 'e':
 			if format == NumberFormatDecimal && !isExp {
-				if (*lit)[len(*lit)-1] == '_' {
-					newError(ErrIntMisplacedSeparator, lit)
+				if last == '_' {
+					newError(ErrIntMisplacedSeparator, b)
 					errPos--
 				}
-				*lit += string(r)
+				b.WriteRune(r)
 				isExp = true
-				return
+				return true
 			}
 			fallthrough
 		case 'a', 'b', 'c', 'd', 'f':
 			switch format {
 			case NumberFormatHex:
-				*lit += string(r)
+				b.WriteRune(r)
 			default:
 				// Hex letter or e on other format
-				newError(ErrIntIncompatibleDigit, lit)
-				// *lit += string(r)
+				newError(ErrIntIncompatibleDigit, b)
+				// b.WriteRune(r)
 			}
 		case '+', '-':
 			if isExp {
-				*lit += string(r)
+				b.WriteRune(r)
 			}
 		case '.':
 			switch {
 			case isDecimal:
-				return
-			case *lit == "": // .3
+				return false
+			case b.Len() == 0: // .3
 				format = NumberFormatDecimal
-				*lit += string(r)
+				b.WriteRune(r)
 				isDecimal = true
 			case format != NumberFormatDecimal:
-				newError(ErrIntIncompatibleDigit, lit)
+				newError(ErrIntIncompatibleDigit, b)
 				fallthrough
 			default:
-				if (*lit)[len(*lit)-1] == '_' {
-					newError(ErrIntMisplacedSeparator, lit)
+				if last == '_' {
+					newError(ErrIntMisplacedSeparator, b)
 					errPos--
 				}
 				l.Reader.UnreadRune()
@@ -158,36 +178,39 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				if handleReadError(err) || unicode.IsDigit(rune(next[1])) {
 					// Trailing decimal point at EOF
 					isDecimal = true
-					*lit += string(r)
-					return
+					b.WriteRune(r)
+					return true
 				}
 			}
 		case '_':
 			// Underscore separators: no consecutive, must be in between digits
-			last := (*lit)[len(*lit)-1]
 			if last == '_' {
-				newError(ErrIntMisplacedSeparator, lit)
+				newError(ErrIntMisplacedSeparator, b)
 			} else if format == NumberFormatDecimal && !unicode.IsDigit(rune(last)) {
-				newError(ErrIntMisplacedSeparator, lit)
+				newError(ErrIntMisplacedSeparator, b)
 			}
-			*lit += string(r)
+			b.WriteRune(r)
 		default:
 			switch {
 			case !unicode.IsDigit(r):
-				return
-			case format == NumberFormatDecimal, format == NumberFormatHex,
-				(format == NumberFormatBinary && r <= '1'),
-				(format == NumberFormatOctal && r <= '7'):
-				*lit += string(r)
+				return false
+			case
+				format == NumberFormatDecimal,
+				format == NumberFormatHex,
+				format == NumberFormatBinary && r <= '1',
+				format == NumberFormatOctal && r <= '7':
+				b.WriteRune(r)
 			default:
-				newError(ErrIntIncompatibleDigit, lit)
-				*lit += string(r)
+				newError(ErrIntIncompatibleDigit, b)
+				b.WriteRune(r)
 			}
 		}
+		last = r
+		return true
 	})
 	// Last digit is separator
 	if digit[len(digit)-1] == '_' {
-		newError(ErrIntMisplacedSeparator, &digit)
+		newError(ErrIntMisplacedSeparator, nil)
 		errPos = len(digit) - 1
 	}
 	return NewToken(pos, Numeric, digit).
@@ -198,10 +221,12 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 }
 
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
-	id := l.TokenizeFunc(func(r rune, lit *string) {
+	id := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
-			*lit += string(r)
+			b.WriteRune(r)
+			return true
 		}
+		return false
 	})
 	if keyword, is := KeywordMap[id]; is {
 		return keyword, id

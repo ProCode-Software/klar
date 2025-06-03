@@ -52,6 +52,5 @@ type Person {
 //age := call(name -> 'John', jane, 3)
 age := call(name, 'John', jane, 3)
 
-type Colors {
-    red = 1 | orange = 2.5
-}
+3.
+abeca

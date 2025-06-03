@@ -53,6 +53,7 @@ func _() {
 	_ = x[ErrInvalidPublic-40]
 	_ = x[ErrVarExists-201]
 	_ = x[ErrVarUndefined-202]
+	_ = x[ErrTypeUndefined-203]
 	_ = x[ErrUntypedNil-101]
 	_ = x[ErrUntypedEmptyList-102]
 	_ = x[ErrAssignToConst-103]
@@ -61,30 +62,32 @@ func _() {
 	_ = x[ErrUnusedLiteral-106]
 	_ = x[ErrUnusedLastLit-107]
 	_ = x[ErrTypeMismatch-108]
-	_ = x[ErrInvalidEnumValue-109]
-	_ = x[ErrCannotInferEnumValue-110]
+	_ = x[ErrRecursiveType-109]
+	_ = x[ErrCircularType-110]
+	_ = x[ErrInvalidEnumValue-111]
+	_ = x[ErrCannotInferEnumValue-112]
 }
 
 const (
 	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
-	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrInvalidEnumValueErrCannotInferEnumValue"
-	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefined"
+	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrRecursiveTypeErrCircularTypeErrInvalidEnumValueErrCannotInferEnumValue"
+	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefinedErrTypeUndefined"
 )
 
 var (
 	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 242, 260, 284, 308, 331, 348, 369, 391, 411, 427, 442, 459, 474, 488, 502, 518, 535, 553, 577, 600, 618, 639, 663, 684, 709, 735, 760, 780, 802, 818}
-	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 167, 190}
-	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47}
+	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 164, 179, 198, 221}
+	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47, 63}
 )
 
 func (i ErrorCode) String() string {
 	switch {
 	case 0 <= i && i <= 40:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
-	case 100 <= i && i <= 110:
+	case 100 <= i && i <= 112:
 		i -= 100
 		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
-	case 200 <= i && i <= 202:
+	case 200 <= i && i <= 203:
 		i -= 200
 		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
 	default:

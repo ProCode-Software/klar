@@ -3,9 +3,7 @@
 // based on line and column positions, typically used in lexers and parsers.
 package ranges
 
-import (
-	"github.com/ProCode-Software/klar/internal/lexer"
-)
+import "github.com/ProCode-Software/klar/internal/lexer"
 
 // Position is an alias for [lexer.Position]
 type Position = lexer.Position
