@@ -49,7 +49,7 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	invalid := func(reason EscapeError) {
 		err, errPos = reason, l.Pos
 	}
-	esc := l.TokenizeFunc(func(r rune, b *Builder) bool {
+	esc := l.TokenizeEOFFunc(func(r rune, b *Builder) bool {
 		l := b.Len()
 		switch {
 		case r == '}', isHex(r), l == 0 && r == '{':
@@ -71,8 +71,12 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 		}
 		last = r
 		return true
+	}, func() {
+		if last != '}' {
+			invalid(ErrEscapeUnterm)
+		}
 	})
-	// TODO: check length and closing due to EOF
+
 	return StringEscape{
 		Type:          EscUnicode,
 		Value:         `\u` + esc,
@@ -85,9 +89,10 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 	var (
 		err     EscapeError
 		errPos  Position
+		unterm  bool
 		invalid = func() { err, errPos = ErrEscapeExpHex, l.Pos }
 	)
-	esc := l.TokenizeFunc(func(r rune, b *Builder) bool {
+	esc := l.TokenizeEOFFunc(func(r rune, b *Builder) bool {
 		l := b.Len()
 		switch {
 		case l == 2:
@@ -102,8 +107,12 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 			b.WriteRune(r)
 		}
 		return true
-	})
-	// TODO: check length and closing due to EOF
+	}, func() { unterm = true })
+
+	if unterm && len(esc) < 2 {
+		invalid()
+	}
+
 	return StringEscape{
 		Type:          EscHex,
 		Value:         `\x` + esc,
@@ -247,8 +256,9 @@ loop:
 		}
 		b.WriteRune(r)
 	}
-	// TODO: check if closes due to EOF
-	return NewToken(pos, String, string(delim)+b.String()).
+	str := string(delim) + b.String()
+
+	return NewToken(pos, String, str).
 		SetAttribute("escapes", escapes).
 		SetAttribute("end", end).
 		SetAttribute("quoteStyle", delim).

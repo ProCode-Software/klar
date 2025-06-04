@@ -420,7 +420,6 @@ const repository: Repository = {
         name: 'meta.block.when.klar',
         patterns: [
             match(/\|(?!\|)/, 'keyword.operator.alternative.klar'),
-            match(/\b_\b/, 'keyword.operator.default.klar'),
             ...BASE,
         ],
     },

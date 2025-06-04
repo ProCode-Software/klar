@@ -20,15 +20,16 @@ const (
 	ErrRedeclaredEnum
 
 	// Import
-	ErrExpectedDotInBraceImport     // Dot required before brace in unqualified import
-	ErrAliasInUnqualifiedImport     // Alias is not allowed before unqualified import
-	ErrImportExpectedModule         // Unqualified import without module name
-	ErrImportExpectedIdentAfterType // type TypeName or type *
-	ErrImportPrefixDot              // Module name beginning with .
-	ErrImportInvalidWildcard        // Wildcard must be last part of module
-	ErrImportTooManyWildcard        // More than 1 wildcard
-	ErrWildcardAndUnqImport         // Using unqualified import with wildcard
-	ErrImportsGoFirst               // Imports always go before other declarations
+	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
+	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
+	ErrImportExpectedModule     // Unqualified import without module name
+	ErrImportPrefixDot          // Module name beginning with .
+	ErrImportInvalidWildcard    // Wildcard must be last part of module
+	ErrImportTooManyWildcard    // More than 1 wildcard
+	ErrWildcardAndUnqImport     // Using unqualified import with wildcard
+	ErrWildcardAndAlias         // Using alias with wildcard
+	ErrEmptyUnqImport           // Empty unqualified import
+	ErrImportsGoFirst           // Imports always go before other declarations
 
 	// Punctuation
 	ErrUnterminatedString  // A string that was left open
@@ -93,11 +94,9 @@ func (e ParseError) Error() string {
 			e.ErrorCode.String(), Quote(tok), FormatTokenType(kind),
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: I expected an expression, but got " +
-			FormatTokenType(kind) + " instead"
+		return "SyntaxError: I expected an expression"
 	case ErrExpectedSymbolAssign:
-		return "SyntaxError: You can only assign to a variable or property, not " +
-			e.Node.Kind()
+		return "Can't assign to this kind of expression"
 	case ErrExpectedToken:
 		if src == ";" {
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
@@ -111,8 +110,12 @@ func (e ParseError) Error() string {
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
 	case ErrImportTooManyWildcard:
 		return "SyntaxError: There can only be one '*' in module name"
+	case ErrWildcardAndAlias:
+		return "SyntaxError: Can't use '*' with alias in unqualified import"
 	case ErrExpectedDotInBraceImport:
 		return "SyntaxError: There should be a '.' before '{' in unqualified import statement"
+	case ErrEmptyUnqImport:
+		return "SyntaxError: Expected at least 1 unqualified import"
 	case ErrImportExpectedModule:
 		return "SyntaxError: I expected a module name before '.{' in unqualified import"
 	case ErrImportInvalidWildcard:

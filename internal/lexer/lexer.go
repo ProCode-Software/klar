@@ -149,21 +149,7 @@ func (l *Lexer) BackupTokenizeFunc(fn func(rune, *Builder) bool) string {
 }
 
 func (l *Lexer) TokenizeFunc(fn func(rune, *Builder) bool) string {
-	var b Builder
-	for {
-		r, _, err := l.Reader.ReadRune()
-		l.Pos.Col++
-		if handleReadError(err) {
-			return b.String()
-		}
-		if !fn(r, &b) {
-			l.Backup()
-			return b.String()
-		}
-		if r == '\n' {
-			l.ResetPosition()
-		}
-	}
+	return l.TokenizeEOFFunc(fn, nil)
 }
 
 // TokenizeFunc with a callback if the lexer reaches EOF.
@@ -176,7 +162,9 @@ func (l *Lexer) TokenizeEOFFunc(
 		r, _, err := l.Reader.ReadRune()
 		l.Pos.Col++
 		if handleReadError(err) {
-			onEOF()
+			if onEOF != nil {
+				onEOF()
+			}
 			return b.String()
 		}
 		if !fn(r, &b) {

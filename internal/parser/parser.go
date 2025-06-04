@@ -33,6 +33,16 @@ func (p *Parser) CurrentToken() lexer.Token {
 	return p.Tokens[p.Index]
 }
 
+// PeekBehind return the [lexer.Token] before the current parser index.
+func (p *Parser) PeekBehind() lexer.Token {
+	return p.Tokens[p.Index-1]
+}
+
+// Peek return the next [lexer.Token].
+func (p *Parser) Peek() lexer.Token {
+	return p.Tokens[p.Index+1]
+}
+
 // CurrentTokenKind return the Kind of the [lexer.Token] at the current parser index.
 func (p *Parser) CurrentTokenKind() lexer.TokenType {
 	return p.CurrentToken().Kind
@@ -109,6 +119,9 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 			err = errors.ExpectedToken(need[0], token)
 		}
 		p.Error(err.(ParseError))
+	}
+	if got == lexer.EOF {
+		return token
 	}
 	return p.Advance()
 }

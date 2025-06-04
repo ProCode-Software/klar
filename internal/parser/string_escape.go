@@ -62,8 +62,8 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 func newInterpParser(tokens []lexer.Token) *Parser {
 	// Add the EOF
 	tokens = append(tokens, lexer.Token{
-		Kind:     lexer.EOF,
-		//Position: tokens[len(tokens)-1].Attributes["end"].(lexer.Position),
+		Kind: lexer.EOF,
+		// Position: tokens[len(tokens)-1].Attributes["end"].(lexer.Position),
 	})
 	ep := New(tokens)
 	ep.RemoveComments()

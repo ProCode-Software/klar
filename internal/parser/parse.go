@@ -65,7 +65,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 			continue
 		}
 	}
-	//left = left.SetPos(left.Base().Start, p.savePos())
+	// left = left.SetPos(left.Base().Start, p.savePos())
 	return left
 }
 

@@ -1,55 +1,39 @@
 import klar.http.*
-import what
 import klar.http.server
-import re = klar.regex
-import klar.io.{stdio}
-import klar.io.{Whatever, type Other, *}
+import klar.json.{encode, decode, D: type Decodable}
 
-type A = [String]
-
-a: [Int] := "John"
-b := 3 * (4 + 2) + 4
-
-type Bus: Vehicle {
-    fuel: Int
-}
-
-/*
-type #Whatever: Integer {
-    name: String
-    age: Int
-    This(t: String, Int) -> Thing
-}
-
-*/
-
-type LEDHandler = (Declaration, BindingPower) -> ASTItem
-
-func Person.greet(person other: Person = 1) -> String {
-    a := 1
-    return a
-}
-
-@external(js: "./date.js", name: "now")
-func now() -> Date
-
-func now<T>() -> Date
-
-function.this(1, 2, value: 3, :person)
-
-type Color {
-    | red
-    | orange
-    | yellow
-    | green
-}
+users := [
+    Person("John", age: 32),
+    Person("Jane", age: 31),
+    Person("Lucy", age: 28),
+    Person("James", age: 34),
+]
 
 type Person {
     name: String
     age: Int
 }
 
-//age := call(name -> 'John', jane, 3)
-age := call(name, 'John', jane, 3)
+type DBRequest {
+    amount: Int
+    filter: (Person) -> Bool
+}
 
-"Hello \x"
+server.handle(path: '/get', with: (r, w) -> {
+    params: DBRequest? := nil
+    r.params.decode(object: params)
+    when params {
+        nil -> w.error("Invalid params", code: .badRequest)
+        _ -> {
+            filtered := users.filter(params.filter)
+            filtered = when params.amount {
+                <= 0 -> filtered
+                _ -> filtered[:params.amount]
+            }
+            w.returnJSON(filtered)
+        }
+    }
+})
+
+print("Starting the server...")
+server.start(port: 8080)

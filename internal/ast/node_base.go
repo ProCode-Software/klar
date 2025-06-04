@@ -149,8 +149,8 @@ func (e Discard) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
-func (e WhenBlock) Base() BaseNode { return e.BaseNode }
-func (e WhenBlock) SetPos(start, end lexer.Position) Node {
+func (e WhenExpression) Base() BaseNode { return e.BaseNode }
+func (e WhenExpression) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }

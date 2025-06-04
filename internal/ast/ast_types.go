@@ -68,7 +68,10 @@ type BooleanLiteral struct {
 	Value bool
 }
 
-type NilLiteral struct{ BaseNode }
+type NilLiteral struct {
+	BaseNode
+	Shorthand bool
+}
 
 type FloatLiteral struct {
 	BaseNode
@@ -396,24 +399,36 @@ type UpdateStatement struct {
 	BaseNode
 }
 
+// A for statement acts as a foreach (C#), while (C) and loop (Rust) with
+// one keyword, similar to Go.
+//
+//	for { ...infinite loop }
+//	for <expr> - while loop
+//	for k, v in <expr>
+//	for item in <expr>
+//	for 5 { ...repeat 5 times } - only if literal, else - for _ in 5
 type ForStatement struct {
 	BaseNode
-	Infinite   bool       // or
-	Condition  Expression // or
-	Variables  []Symbol
-	Assignment Expression
-
-	Body []Statement
+	Infinite  bool       // or
+	Condition Expression // When used as while loop
+	Variables []Symbol
+	In        Expression
+	Body      []Statement
 }
 
-type WhenBlock struct {
+type WhenExpression struct {
 	BaseNode
-	IsExpression bool
-	Subjects     []Expression
-	Cases        []WhenCase
+	Subjects []Expression
+	Cases    []WhenCase
 }
 
-type WhenCase struct{}
+type WhenCase struct {
+	Options [][]Expression
+	Default bool       // _ | _, _
+	Guard   Expression // <case> when <expr>
+	Body    []Statement     // -> <expr> | -> {...}
+	BodyExpr Expression
+}
 
 type ParamTuple struct {
 	BaseNode

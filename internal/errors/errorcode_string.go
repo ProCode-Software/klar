@@ -21,37 +21,38 @@ func _() {
 	_ = x[ErrExpectedDotInBraceImport-8]
 	_ = x[ErrAliasInUnqualifiedImport-9]
 	_ = x[ErrImportExpectedModule-10]
-	_ = x[ErrImportExpectedIdentAfterType-11]
-	_ = x[ErrImportPrefixDot-12]
-	_ = x[ErrImportInvalidWildcard-13]
-	_ = x[ErrImportTooManyWildcard-14]
-	_ = x[ErrWildcardAndUnqImport-15]
-	_ = x[ErrImportsGoFirst-16]
-	_ = x[ErrUnterminatedString-17]
-	_ = x[ErrUnterminatedComment-18]
-	_ = x[ErrUnterminatedBrace-19]
-	_ = x[ErrInvalidNumber-20]
-	_ = x[ErrStringEscape-21]
-	_ = x[ErrUnicodeEscTooBig-22]
-	_ = x[ErrConsecutiveSep-23]
-	_ = x[ErrMisplacedSep-24]
-	_ = x[ErrTrailingSep-25]
-	_ = x[ErrExpectedHex-26]
-	_ = x[ErrExpectedOctal-27]
-	_ = x[ErrExpectedBinary-28]
-	_ = x[ErrExpectedDecimal-29]
-	_ = x[ErrExpectedParamInLambda-30]
-	_ = x[ErrExpectedSymbolAssign-31]
-	_ = x[ErrReservedKeyword-32]
-	_ = x[ErrExpectedExpression-33]
-	_ = x[ErrInvalidLabelShorthand-34]
-	_ = x[ErrNotEnoughEnumItems-35]
-	_ = x[ErrExpectedTypeAssignment-36]
-	_ = x[ErrRequiredStructFieldType-37]
-	_ = x[ErrExpectedParamInGeneric-38]
-	_ = x[ErrParenRequiredFunc-39]
-	_ = x[ErrForInvalidCondition-40]
-	_ = x[ErrInvalidPublic-41]
+	_ = x[ErrImportPrefixDot-11]
+	_ = x[ErrImportInvalidWildcard-12]
+	_ = x[ErrImportTooManyWildcard-13]
+	_ = x[ErrWildcardAndUnqImport-14]
+	_ = x[ErrWildcardAndAlias-15]
+	_ = x[ErrEmptyUnqImport-16]
+	_ = x[ErrImportsGoFirst-17]
+	_ = x[ErrUnterminatedString-18]
+	_ = x[ErrUnterminatedComment-19]
+	_ = x[ErrUnterminatedBrace-20]
+	_ = x[ErrInvalidNumber-21]
+	_ = x[ErrStringEscape-22]
+	_ = x[ErrUnicodeEscTooBig-23]
+	_ = x[ErrConsecutiveSep-24]
+	_ = x[ErrMisplacedSep-25]
+	_ = x[ErrTrailingSep-26]
+	_ = x[ErrExpectedHex-27]
+	_ = x[ErrExpectedOctal-28]
+	_ = x[ErrExpectedBinary-29]
+	_ = x[ErrExpectedDecimal-30]
+	_ = x[ErrExpectedParamInLambda-31]
+	_ = x[ErrExpectedSymbolAssign-32]
+	_ = x[ErrReservedKeyword-33]
+	_ = x[ErrExpectedExpression-34]
+	_ = x[ErrInvalidLabelShorthand-35]
+	_ = x[ErrNotEnoughEnumItems-36]
+	_ = x[ErrExpectedTypeAssignment-37]
+	_ = x[ErrRequiredStructFieldType-38]
+	_ = x[ErrExpectedParamInGeneric-39]
+	_ = x[ErrParenRequiredFunc-40]
+	_ = x[ErrForInvalidCondition-41]
+	_ = x[ErrInvalidPublic-42]
 	_ = x[ErrVarExists-201]
 	_ = x[ErrVarUndefined-202]
 	_ = x[ErrTypeUndefined-203]
@@ -70,20 +71,20 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportExpectedIdentAfterTypeErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
+	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublic"
 	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrRecursiveTypeErrCircularTypeErrInvalidEnumValueErrCannotInferEnumValue"
 	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefinedErrTypeUndefined"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 242, 260, 284, 308, 331, 348, 369, 391, 411, 427, 442, 461, 478, 493, 507, 521, 537, 554, 572, 596, 619, 637, 658, 682, 703, 728, 754, 779, 799, 821, 837}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 229, 253, 277, 300, 319, 336, 353, 374, 396, 416, 432, 447, 466, 483, 498, 512, 526, 542, 559, 577, 601, 624, 642, 663, 687, 708, 733, 759, 784, 804, 826, 842}
 	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 164, 179, 198, 221}
 	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47, 63}
 )
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 41:
+	case 0 <= i && i <= 42:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 112:
 		i -= 100

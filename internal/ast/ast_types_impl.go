@@ -30,7 +30,7 @@ func (EnumLiteral) Kind() string          { return "EnumValue" }
 func (ForStatement) Kind() string         { return "ForStatement" }
 func (UpdateStatement) Kind() string      { return "UpdateStatement" }
 func (Discard) Kind() string              { return "Discard" }
-func (WhenBlock) Kind() string            { return "WhenBlock" }
+func (WhenExpression) Kind() string       { return "WhenExpression" }
 func (LambdaExpression) Kind() string     { return "LambdaExpression" }
 func (ParamTuple) Kind() string           { return "ParamTuple" }
 func (Attribute) Kind() string            { return "Attribute" }
@@ -75,7 +75,7 @@ func (IndexExpression) Expression()    {}
 func (CallExpression) Expression()     {}
 func (EnumLiteral) Expression()        {}
 func (Discard) Expression()            {}
-func (WhenBlock) Expression()          {}
+func (WhenExpression) Expression()     {}
 func (ParamTuple) Expression()         {}
 func (LambdaExpression) Expression()   {}
 func (RangeExpression) Expression()    {}
@@ -96,7 +96,6 @@ func (TypeAliasDeclaration) Statement() {}
 func (ReturnStatement) Statement()      {}
 func (FunctionDeclaration) Statement()  {}
 func (NextStatement) Statement()        {}
-func (WhenBlock) Statement()            {}
 func (Attribute) Statement()            {}
 
 // Type

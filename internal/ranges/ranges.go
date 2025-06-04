@@ -4,6 +4,8 @@
 package ranges
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -84,4 +86,8 @@ func (r Range) LineLength() int {
 		return -1
 	}
 	return r.End.Col - r.Start.Col
+}
+
+func (r Range) String() string {
+	return fmt.Sprintf("%s:%s", r.Start, r.End)
 }

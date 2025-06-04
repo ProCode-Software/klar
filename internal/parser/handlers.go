@@ -10,7 +10,7 @@ var IsHandledNUD = []lexer.TokenType{
 	lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil,
 	lexer.Minus, lexer.Plus, lexer.Not,
 	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
-	lexer.Dot, lexer.Ellipsis,
+	lexer.Dot, lexer.Ellipsis, lexer.When,
 }
 
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
@@ -35,6 +35,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
+	case lexer.When:
+		res = p.ParseWhenBlock()
 	}
 	res = res.SetPos(startPos, p.lastTokEnd())
 	return res, true
@@ -120,8 +122,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		res = p.ParseFuncDeclaration()
 	case lexer.Return:
 		res = p.ParseReturnStatement()
-	case lexer.When:
-		panic("TODO")
 	case lexer.For:
 		res = p.ParseForStatement()
 	case lexer.Next:
