@@ -189,6 +189,11 @@ func (e BadExpression) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e SliceExpression) Base() BaseNode { return e.BaseNode }
+func (e SliceExpression) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e PrimitiveType) Base() BaseNode { return e.BaseNode }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end

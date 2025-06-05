@@ -16,6 +16,10 @@ type Parser struct {
 	Tokens  []lexer.Token
 	Index   int
 	Errors  []ParseError
+
+	// Conditional flags
+	isWhenGuard bool // Disable some types of expressions
+	isWhenCase  bool // Allow '_'
 }
 
 // New returns a new [Parser] that reads from tokens.

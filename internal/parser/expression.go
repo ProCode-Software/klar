@@ -92,7 +92,12 @@ func (p *Parser) ParseList() ast.ListLiteral {
 	return ast.ListLiteral{Items: items}
 }
 
-func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.IndexExpression {
+// Parses an index or slice expression.
+//
+//	list[1]
+//	person.name
+//	list[1:3]
+func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expression {
 	computed := p.Advance().Kind == lexer.LeftBracket
 	var item ast.Expression
 	if !computed {
@@ -102,8 +107,35 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.IndexE
 		}
 		item = ast.Symbol{Identifier: p.Advance().Source}
 	} else {
-		item = p.ParseExpression(bp)
+		var (
+			left, right ast.Expression
+			isSlice     bool
+		)
+		// Slice [:3]
+		if p.CurrentTokenKind() == lexer.Colon {
+			isSlice = true
+			p.Advance()
+		}
+		item = p.ParseExpression(ExpressionBindingPower)
+		if isSlice {
+			right = item
+		} else if p.CurrentTokenKind() == lexer.Colon {
+			isSlice = true
+			left = item
+			p.Advance()
+			// Slice [1:]
+			if p.CurrentTokenKind() != lexer.RightBracket {
+				right = p.ParseExpression(ExpressionBindingPower)
+			}
+		}
 		p.Expect(lexer.RightBracket)
+		if isSlice {
+			return ast.SliceExpression{
+				Object: left,
+				Index:  left,
+				Length: right,
+			}
+		}
 	}
 	return ast.IndexExpression{
 		Object:   left,
@@ -193,6 +225,14 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 
 func (p *Parser) ParseLeftRest() ast.RestExpression {
 	p.Expect(lexer.Ellipsis)
+	// Allow [...] in when case
+	// But not ..._
+	if p.CurrentTokenKind() == lexer.Underscore {
+		p.Error(errors.Token(errors.ErrUnderscoreWithRest, p.CurrentToken()))
+	}
+	if p.isWhenCase && !slices.Contains(IsHandledNUD, p.CurrentTokenKind()) {
+		return ast.RestExpression{Left: true}
+	}
 	return ast.RestExpression{
 		Left: true,
 		Expr: p.ParseExpression(UnaryBindingPower),
@@ -204,6 +244,10 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 	l := left.(ast.Expression)
 	// Rest if no expression on the right: [items...]
 	if !slices.Contains(IsHandledNUD, p.CurrentTokenKind()) {
+		if _, ok := left.(ast.Discard); ok {
+			// _... not allowed
+			p.Error(errors.Node(errors.ErrUnderscoreWithRest, left))
+		}
 		return ast.RestExpression{Left: false, Expr: l}
 	}
 	// Range operator
@@ -254,32 +298,41 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In:
 		return p.ParseBinaryExpression(nil, BindingPowerMap[tok])
 	case lexer.Question:
+		p.Advance()
 		return ast.NilLiteral{Shorthand: true}
 	case lexer.Underscore:
+		p.Advance()
 		return ast.Discard{}
 	default:
 		return p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
 	}
 }
 
-func (p *Parser) parseWhenCase() ast.WhenCase {
+func (p *Parser) parseWhenCase(subjects int) ast.WhenCase {
 	var (
-		c    = ast.WhenCase{}
-		opts [][]ast.Expression
+		c        = ast.WhenCase{}
+		commaExp = make([]ast.Expression, 0, subjects)
+		orOpts   [][]ast.Expression
 	)
-	for p.HasTokens() &&
-		!p.IsCurrently(lexer.Arrow, lexer.When, lexer.EndOfStatement) {
-		opt := []ast.Expression{p.parseCaseSubExpr()}
-		for p.CurrentTokenKind() == lexer.Stroke {
-			p.Advance()
-			opt = append(opt, p.parseCaseSubExpr())
+	// ',' binds tighter than '|' in case
+	for p.HasTokens() {
+		if p.IsCurrently(lexer.When, lexer.Arrow, lexer.EndOfStatement) {
+			break
 		}
-		opts = append(opts, opt)
-		if !p.IsCurrently(lexer.Arrow, lexer.When, lexer.EOF, lexer.EndOfStatement) {
+		commaExp = append(commaExp, p.parseCaseSubExpr())
+		if p.CurrentTokenKind() == lexer.Stroke {
+			orOpts = append(orOpts, commaExp)
+			clear(commaExp)
+			p.Advance()
+		} else if !p.IsCurrently(lexer.When, lexer.Arrow) {
 			p.Expect(lexer.Comma)
 		}
 	}
+	c.Options = orOpts
 	// Guard clause
+	// 	when x, y {
+	//		5, _ when y < 10 -> ...
+	// 	}
 	if p.CurrentTokenKind() == lexer.When {
 		c.Guard = p.ParseExpression(ExpressionBindingPower)
 	}
@@ -287,10 +340,22 @@ func (p *Parser) parseWhenCase() ast.WhenCase {
 	switch p.CurrentTokenKind() {
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
-	case lexer.Return:
-		c.Body = []ast.Statement{p.ParseReturnStatement()}
+		c.InBraces = true
 	default:
-		c.BodyExpr = p.ParseExpression(DefaultBindingPower)
+		res := p.ParseLED(DefaultBindingPower)
+		switch res := res.(type) {
+		// Allow some kinds of statements outside of braces
+		case ast.AssignmentStatement, ast.ReturnStatement,
+			ast.NextStatement, ast.UpdateStatement:
+			c.Body = []ast.Statement{res.(ast.Statement)}
+		// All expressions are allowed
+		case ast.Expression:
+			c.BodyExpr = res
+		default:
+			// Expected expression error
+			p.errExpectedExpr(res)
+			c.BodyExpr = ast.BadExpression{}
+		}
 	}
 	return c
 }
@@ -300,20 +365,18 @@ func (p *Parser) ParseWhenBlock() ast.WhenExpression {
 	w := ast.WhenExpression{}
 	if p.CurrentTokenKind() != lexer.LeftCurlyBrace {
 		// Subjects
-		for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
-			w.Subjects = append(w.Subjects, p.ParseExpression(ExpressionBindingPower))
-			if p.IsNotCurrentlyEndOr(lexer.LeftCurlyBrace) {
-				p.Expect(lexer.Comma)
-			}
-		}
+		parseSeries(p, &w.Subjects,
+			func() ast.Expression { return p.ParseExpression(ExpressionBindingPower) },
+			lexer.LeftCurlyBrace, lexer.Comma, false,
+		)
+	} else {
+		p.Expect(lexer.LeftCurlyBrace)
 	}
-	p.Expect(lexer.LeftCurlyBrace)
-	for p.WhileNot(lexer.RightCurlyBrace) {
-		w.Cases = append(w.Cases, p.parseWhenCase())
-		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
-			p.Expect(lexer.EndOfStatement)
-		}
-	}
-	p.Expect(lexer.RightCurlyBrace)
+	lenSubj := len(w.Subjects)
+	parseSeries(
+		p, &w.Cases,
+		func() ast.WhenCase { return p.parseWhenCase(lenSubj) },
+		lexer.RightCurlyBrace, lexer.EndOfStatement, true,
+	)
 	return w
 }

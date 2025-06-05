@@ -5,4 +5,4 @@ if [ "$1" = "repl" ]; then
     go run ./cmd/klar repl
     exit $?
 fi
-go run ./cmd/klar run "./samples/${1:-other}.klar"
+go run ./cmd/klar run "./samples/${1:-other}.klar" > ./ast.txt

@@ -363,8 +363,8 @@ type IndexExpression struct {
 }
 
 type SliceExpression struct {
-	Object   Node
-	From, To Expression
+	Object        Node
+	Index, Length Expression
 	BaseNode
 }
 
@@ -423,11 +423,11 @@ type WhenExpression struct {
 }
 
 type WhenCase struct {
-	Options [][]Expression
-	Default bool       // _ | _, _
-	Guard   Expression // <case> when <expr>
-	Body    []Statement     // -> <expr> | -> {...}
+	Options  [][]Expression
+	Guard    Expression  // <case> when <expr>
+	Body     []Statement // -> <expr> | -> {...}
 	BodyExpr Expression
+	InBraces bool
 }
 
 type ParamTuple struct {

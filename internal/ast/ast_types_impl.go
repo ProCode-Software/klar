@@ -38,6 +38,7 @@ func (RangeExpression) Kind() string      { return "RangeExpression" }
 func (RestExpression) Kind() string       { return "RestExpression" }
 func (PipelineExpression) Kind() string   { return "PipelineExpression" }
 func (BadExpression) Kind() string        { return "BadExpression" }
+func (SliceExpression) Kind() string      { return "SliceExpression" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -82,6 +83,7 @@ func (RangeExpression) Expression()    {}
 func (RestExpression) Expression()     {}
 func (PipelineExpression) Expression() {}
 func (BadExpression) Expression()      {}
+func (SliceExpression) Expression()    {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}
@@ -132,6 +134,7 @@ func (EnumDeclaration) TypeDeclaration()      {}
 // Assignable types
 func (Symbol) Assignable()          {}
 func (IndexExpression) Assignable() {}
+func (SliceExpression) Assignable() {}
 func (TupleLiteral) Assignable()    {}
 func (BadExpression) Assignable()   {}
 

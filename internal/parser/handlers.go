@@ -37,6 +37,12 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseLeftRest()
 	case lexer.When:
 		res = p.ParseWhenBlock()
+	case lexer.Underscore:
+		if !p.isWhenCase {
+			return nil, false
+		}
+		res = ast.Discard{}
+		p.Advance()
 	}
 	res = res.SetPos(startPos, p.lastTokEnd())
 	return res, true

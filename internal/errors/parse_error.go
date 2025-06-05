@@ -63,6 +63,7 @@ const (
 
 	ErrForInvalidCondition // Expected assignment or expression in for loop
 	ErrInvalidPublic
+	ErrUnderscoreWithRest // ... instead of ..._ or _...
 )
 
 type ErrorParams map[string]any

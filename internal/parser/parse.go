@@ -38,13 +38,17 @@ func (p *Parser) unknownTokenErr(advance bool) {
 	}
 }
 
+func (p *Parser) errExpectedExpr(got ast.Node) {
+	p.Error(errors.ParseError{
+		ErrorCode: errors.ErrExpectedExpression,
+		Node:      got,
+	})
+}
+
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	expr := p.ParseLED(bp)
 	if _, ok := expr.(ast.Expression); !ok {
-		p.Error(errors.ParseError{
-			ErrorCode: errors.ErrExpectedExpression,
-			Node:      expr,
-		})
+		p.errExpectedExpr(expr)
 		return ast.BadExpression{Value: expr}
 	}
 	return expr.(ast.Expression)
@@ -102,4 +106,26 @@ func (p *Parser) ParseStatement() ast.Statement {
 		log.Panicf("node %v is neither an expression nor statement", res)
 		return nil
 	}
+}
+
+func parseSeries[T any](
+	p *Parser, arr *[]T,
+	with func() T, until, sepBy lexer.TokenType,
+	end bool,
+) {
+	var while, isNot func() bool
+	if end {
+		while = func() bool { return p.WhileNot(until) }
+		isNot = func() bool { return p.CurrentTokenKind() != until }
+	} else {
+		while = func() bool { return p.WhileNotEndOr(until) }
+		isNot = func() bool { return p.IsNotCurrentlyEndOr(until) }
+	}
+	for while() {
+		*arr = append(*arr, with())
+		if isNot() {
+			p.Expect(sepBy)
+		}
+	}
+	p.Expect(until)
 }
