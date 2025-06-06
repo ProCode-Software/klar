@@ -24,7 +24,7 @@ func (p *Parser) ParseUnaryExpression() ast.UnaryExpression {
 	return ast.UnaryExpression{Operator: op, Right: right}
 }
 
-func (p *Parser) ParseGroupOrTuple() ast.Expression {
+func (p *Parser) ParseParenExpression() ast.Expression {
 	p.Advance() // (
 	if p.CurrentTokenKind() == lexer.RightParenthesis {
 		// Empty tuple
@@ -35,28 +35,35 @@ func (p *Parser) ParseGroupOrTuple() ast.Expression {
 	next := p.CurrentToken()
 	switch next.Kind {
 	case lexer.Colon:
-		// Type tuple
-		return nil
+		// Type tuple (for lambda)
+		typeTuple := ast.ParamTuple{}
+		parseSeries(
+			p, &typeTuple.Params,
+			func() ast.TypePair {
+				key := p.Expect(lexer.Identifier).Source
+				p.Expect(lexer.Colon)
+				typ := p.ParseType(DefaultTypeBindingPower)
+				return ast.TypePair{key, typ}
+			},
+			lexer.RightParenthesis, lexer.Comma, false,
+		)
+		return typeTuple
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
 		tuple := ast.TupleLiteral{}
 		tuple.Values = append(tuple.Values, expr)
 		p.Advance()
-		for p.WhileNotEndOr(lexer.RightParenthesis) {
-			tuple.Values = append(tuple.Values, p.ParseExpression(LogicalBindingPower))
-			if p.CurrentTokenKind() != lexer.RightParenthesis {
-				p.Expect(lexer.Comma)
-			}
-		}
-		p.Expect(lexer.RightParenthesis)
+		parseSeriesWithBP(
+			p, &tuple.Values, ExpressionBindingPower,
+			lexer.RightParenthesis, lexer.Comma,
+		)
 		return tuple
 	case lexer.RightParenthesis:
 		// Grouped expression
 		p.Advance()
-		return expr
+		return ast.ParenExpression{Expr: expr}
 	default:
-		p.Error(errors.ExpectedToken(lexer.RightParenthesis, next))
-		p.Advance()
+		p.Expect(lexer.RightParenthesis)
 		return ast.BadExpression{}
 	}
 }
@@ -316,7 +323,8 @@ func (p *Parser) parseWhenCase(subjects int) ast.WhenCase {
 	)
 	p.isWhenCase = true
 	// ',' binds tighter than '|' in case
-	loop:for p.HasTokens() {
+loop:
+	for p.HasTokens() {
 		if p.IsCurrently(lexer.When, lexer.Arrow, lexer.EndOfStatement) {
 			break loop
 		}
@@ -376,9 +384,9 @@ func (p *Parser) ParseWhenBlock() ast.WhenExpression {
 	w := ast.WhenExpression{}
 	if p.CurrentTokenKind() != lexer.LeftCurlyBrace {
 		// Subjects
-		parseSeries(p, &w.Subjects,
-			func() ast.Expression { return p.ParseExpression(ExpressionBindingPower) },
-			lexer.LeftCurlyBrace, lexer.Comma, false,
+		parseSeriesWithBP(
+			p, &w.Subjects, ExpressionBindingPower,
+			lexer.LeftCurlyBrace, lexer.Comma,
 		)
 	} else {
 		p.Expect(lexer.LeftCurlyBrace)

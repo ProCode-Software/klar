@@ -108,6 +108,17 @@ func (p *Parser) ParseStatement() ast.Statement {
 	}
 }
 
+func parseSeriesWithBP[T any](
+	p *Parser, arr *[]T,
+	bp BindingPower, until, sepBy lexer.TokenType,
+) {
+	parseSeries(
+		p, arr,
+		func() T { return p.ParseExpression(bp).(T) },
+		until, sepBy, false,
+	)
+}
+
 func parseSeries[T any](
 	p *Parser, arr *[]T,
 	with func() T, until, sepBy lexer.TokenType,

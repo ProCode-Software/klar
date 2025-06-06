@@ -26,7 +26,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseUnaryExpression()
 	// Group or tuple
 	case lexer.LeftParenthesis:
-		res = p.ParseGroupOrTuple()
+		res = p.ParseParenExpression()
 	case lexer.HashLeftCurlyBrace:
 		res = p.ParseMap()
 	case lexer.LeftBracket:

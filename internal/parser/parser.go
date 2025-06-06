@@ -71,7 +71,8 @@ func (p *Parser) HasTokens() bool {
 	return p.Index < len(p.Tokens) && p.CurrentTokenKind() != lexer.EOF
 }
 
-// Expect advances the parser if the current token is of typ, otherwise panics.
+// Expect advances the parser if the current token is of typ, otherwise throws an
+// ExpectedTokenError.
 func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
@@ -114,7 +115,7 @@ func copyPos[S, T ast.Node](from S, to T) T {
 	return to.SetPos(from.Base().Start, from.Base().End).(T)
 }
 
-// Expect advances the parser if the current token is of typ, otherwise panics with err.
+// Expect advances the parser if the current token is of typ, otherwise throws err.
 func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.CurrentToken()
 	got := token.Kind
@@ -125,7 +126,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 		p.Error(err.(ParseError))
 	}
 	if got == lexer.EOF {
-		return token
+		return token // Avoid advancing
 	}
 	return p.Advance()
 }
