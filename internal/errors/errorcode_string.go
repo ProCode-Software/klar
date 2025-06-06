@@ -31,29 +31,31 @@ func _() {
 	_ = x[ErrUnterminatedString-18]
 	_ = x[ErrUnterminatedComment-19]
 	_ = x[ErrUnterminatedBrace-20]
-	_ = x[ErrInvalidNumber-21]
-	_ = x[ErrStringEscape-22]
-	_ = x[ErrUnicodeEscTooBig-23]
-	_ = x[ErrConsecutiveSep-24]
-	_ = x[ErrMisplacedSep-25]
-	_ = x[ErrTrailingSep-26]
-	_ = x[ErrExpectedHex-27]
-	_ = x[ErrExpectedOctal-28]
-	_ = x[ErrExpectedBinary-29]
-	_ = x[ErrExpectedDecimal-30]
-	_ = x[ErrExpectedParamInLambda-31]
-	_ = x[ErrExpectedSymbolAssign-32]
-	_ = x[ErrReservedKeyword-33]
-	_ = x[ErrExpectedExpression-34]
-	_ = x[ErrInvalidLabelShorthand-35]
-	_ = x[ErrNotEnoughEnumItems-36]
-	_ = x[ErrExpectedTypeAssignment-37]
-	_ = x[ErrRequiredStructFieldType-38]
-	_ = x[ErrExpectedParamInGeneric-39]
-	_ = x[ErrParenRequiredFunc-40]
-	_ = x[ErrForInvalidCondition-41]
-	_ = x[ErrInvalidPublic-42]
-	_ = x[ErrUnderscoreWithRest-43]
+	_ = x[ErrMisplacedShebang-21]
+	_ = x[ErrInvalidNumber-22]
+	_ = x[ErrStringEscape-23]
+	_ = x[ErrUnicodeEscTooBig-24]
+	_ = x[ErrConsecutiveSep-25]
+	_ = x[ErrMisplacedSep-26]
+	_ = x[ErrTrailingSep-27]
+	_ = x[ErrExpectedHex-28]
+	_ = x[ErrExpectedOctal-29]
+	_ = x[ErrExpectedBinary-30]
+	_ = x[ErrExpectedDecimal-31]
+	_ = x[ErrExpectedParamInLambda-32]
+	_ = x[ErrExpectedSymbolAssign-33]
+	_ = x[ErrReservedKeyword-34]
+	_ = x[ErrExpectedExpression-35]
+	_ = x[ErrInvalidLabelShorthand-36]
+	_ = x[ErrNotEnoughEnumItems-37]
+	_ = x[ErrExpectedTypeAssignment-38]
+	_ = x[ErrRequiredStructFieldType-39]
+	_ = x[ErrExpectedParamInGeneric-40]
+	_ = x[ErrParenRequiredFunc-41]
+	_ = x[ErrForInvalidCondition-42]
+	_ = x[ErrInvalidPublic-43]
+	_ = x[ErrUnderscoreWithRest-44]
+	_ = x[ErrNotAllowedInGuard-45]
 	_ = x[ErrVarExists-201]
 	_ = x[ErrVarUndefined-202]
 	_ = x[ErrTypeUndefined-203]
@@ -72,20 +74,20 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRest"
+	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuard"
 	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrRecursiveTypeErrCircularTypeErrInvalidEnumValueErrCannotInferEnumValue"
 	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefinedErrTypeUndefined"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 229, 253, 277, 300, 319, 336, 353, 374, 396, 416, 432, 447, 466, 483, 498, 512, 526, 542, 559, 577, 601, 624, 642, 663, 687, 708, 733, 759, 784, 804, 826, 842, 863}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 229, 253, 277, 300, 319, 336, 353, 374, 396, 416, 435, 451, 466, 485, 502, 517, 531, 545, 561, 578, 596, 620, 643, 661, 682, 706, 727, 752, 778, 803, 823, 845, 861, 882, 902}
 	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 164, 179, 198, 221}
 	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47, 63}
 )
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 43:
+	case 0 <= i && i <= 45:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 112:
 		i -= 100

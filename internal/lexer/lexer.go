@@ -47,24 +47,25 @@ func (l *Lexer) Tokenize() *Token {
 			return l.ParseString(pos, r)
 		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
-			tt, val := l.ParseOperator(r)
-			switch tt {
+			var (
+				typ, val = l.ParseOperator(r)
+				tok      *Token
+			)
+			switch typ {
 			default:
-				return NewToken(pos, tt, val)
+				return NewToken(pos, typ, val)
 			// Just change position
 			case LineComment:
-				src := l.ParseLineComment()
-				if !l.IncludeComments {
-					continue
-				}
-				return NewToken(pos, LineComment, src)
+				tok = l.ParseLineComment(pos)
 			case BlockComment:
-				tok := l.ParseBlockComment(pos)
-				if !l.IncludeComments {
-					continue
-				}
-				return tok
+				tok = l.ParseBlockComment(pos)
+			case Hashbang:
+				tok = l.ParseShebang(pos)
 			}
+			if !l.IncludeComments {
+				continue
+			}
+			return tok
 		// Single-character operators
 		case '@':
 			return NewToken(pos, At, "@")

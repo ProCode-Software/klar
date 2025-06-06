@@ -8,7 +8,7 @@ import (
 
 // All AST tokens implement the Node interface.
 //
-//go:generate go run ../cmd/astgen ./ast_types_impl.go ./node_base.go
+//go:generate go run ../cmd/astgen ./ast_types_impl.go ./ast_types_base.go
 type Node interface {
 	Kind() string
 	Base() BaseNode
@@ -461,5 +461,10 @@ type RangeExpression struct {
 
 type PipelineExpression struct {
 	Steps []Node
+	BaseNode
+}
+
+type ParenExpression struct {
+	Expr Expression
 	BaseNode
 }

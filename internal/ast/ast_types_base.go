@@ -194,6 +194,16 @@ func (e SliceExpression) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e ParenExpression) Base() BaseNode { return e.BaseNode }
+func (e ParenExpression) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
+func (e Comment) Base() BaseNode { return e.BaseNode }
+func (e Comment) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e PrimitiveType) Base() BaseNode { return e.BaseNode }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end

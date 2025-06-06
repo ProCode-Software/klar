@@ -39,6 +39,8 @@ func (RestExpression) Kind() string       { return "RestExpression" }
 func (PipelineExpression) Kind() string   { return "PipelineExpression" }
 func (BadExpression) Kind() string        { return "BadExpression" }
 func (SliceExpression) Kind() string      { return "SliceExpression" }
+func (ParenExpression) Kind() string      { return "ParenExpression" }
+func (Comment) Kind() string      { return "Comment" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -84,6 +86,7 @@ func (RestExpression) Expression()     {}
 func (PipelineExpression) Expression() {}
 func (BadExpression) Expression()      {}
 func (SliceExpression) Expression()    {}
+func (ParenExpression) Expression()    {}
 
 // Statement
 func (VariableDeclaration) Statement()  {}

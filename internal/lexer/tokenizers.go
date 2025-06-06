@@ -34,7 +34,14 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 	return OperatorMap[s], s
 }
 
-func (l *Lexer) ParseLineComment() string {
+func (l *Lexer) ParseShebang(pos Position) *Token {
+	tok := l.ParseLineComment(pos)
+	tok.Kind = Hashbang
+	tok.Source = "#!" + tok.Source[2:]
+	return tok
+}
+
+func (l *Lexer) ParseLineComment(pos Position) *Token {
 	var shouldStop bool
 	cmt := l.TokenizeFunc(func(r rune, b *Builder) bool {
 		if shouldStop {
@@ -47,7 +54,7 @@ func (l *Lexer) ParseLineComment() string {
 		b.WriteRune(r)
 		return true
 	})
-	return "//" + cmt
+	return NewToken(pos, LineComment, "//"+cmt)
 }
 
 func (l *Lexer) ParseBlockComment(pos Position) *Token {

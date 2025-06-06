@@ -36,6 +36,10 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
 	case lexer.When:
+		if p.isWhenGuard {
+			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.CurrentToken()))
+			return ast.BadExpression{}, true
+		}
 		res = p.ParseWhenBlock()
 	case lexer.Underscore:
 		if !p.isWhenCase {

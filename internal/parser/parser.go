@@ -138,18 +138,24 @@ func (p *Parser) savePos() lexer.Position {
 func (p *Parser) RemoveComments() (comments []ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
 		tok := p.Tokens[i]
-		if tok.Kind == lexer.BlockComment || tok.Kind == lexer.LineComment {
-			endPos := lexer.Position{
-				Line: tok.Position.Line,
-				Col:  tok.Position.Col + len(tok.Source),
-			}
-			if tok.Kind == lexer.BlockComment {
-				endPos = tok.Attributes["end"].(lexer.Position)
+		switch tok.Kind {
+		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
+			switch {
+			case tok.Kind == lexer.Hashbang:
+				if tok.Position != (lexer.Position{1, 1}) {
+					p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
+				}
+			case tok.Attributes["unterm"] == true:
+				p.Error(errors.ParseError{
+					ErrorCode: errors.ErrUnterminatedComment,
+					Token: tok,
+					Position: tok.Position,
+				})
 			}
 			comments = append(comments, ast.Comment{
-				BaseNode: ast.BaseNode{ranges.Range{tok.Position, endPos}},
 				Value:    tok.Source,
 				Type:     tok.Kind,
+				BaseNode: ast.BaseNode{ranges.FromToken(tok)},
 			})
 			p.Tokens = slices.Delete(p.Tokens, i, i+1)
 			i--

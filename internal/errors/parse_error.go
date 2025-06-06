@@ -35,6 +35,7 @@ const (
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
+	ErrMisplacedShebang
 
 	// Literal
 	ErrInvalidNumber    // Invalid number format
@@ -64,6 +65,7 @@ const (
 	ErrForInvalidCondition // Expected assignment or expression in for loop
 	ErrInvalidPublic
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
+	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 )
 
 type ErrorParams map[string]any
@@ -91,8 +93,8 @@ func (e ParseError) Error() string {
 				"SyntaxError: %s: %s here", e.ErrorCode.String(), e.Node.Kind(),
 			)
 		}
-		return fmt.Sprintf("SyntaxError: %s: %s (%s)",
-			e.ErrorCode.String(), Quote(tok), FormatTokenType(kind),
+		return fmt.Sprintf("SyntaxError: %s: %s %s",
+			e.ErrorCode.String(), kind.String(), Quote(tok),
 		)
 	case ErrExpectedExpression:
 		return "SyntaxError: I expected an expression"
@@ -105,7 +107,7 @@ func (e ParseError) Error() string {
 		return fmt.Sprintf(
 			"SyntaxError: I expected %s, but got %s instead",
 			FormatTokenType(e.Params["expected"].(lexer.TokenType)),
-			Quote(tok),
+			QuoteA(tok),
 		)
 	case ErrWildcardAndUnqImport:
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
@@ -182,6 +184,13 @@ func (e ParseError) Error() string {
 		return "SyntaxError: Numbers can't have consecutive underscores"
 	case ErrMisplacedSep:
 		return "SyntaxError: An underscore isn't allowed here"
+	case ErrNotAllowedInGuard:
+		return "SyntaxError: Case guards can't contain when expressions"
+	case ErrUnterminatedComment:
+		return "SyntaxError: The comment starting at " + e.Position.String() +
+			" was left open"
+	case ErrMisplacedShebang:
+		return "SyntaxError: Shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrImportsGoFirst:
 		return "SyntaxError: Imports must go before other declarations"
 	case ErrRedeclaredType:

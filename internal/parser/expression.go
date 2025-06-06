@@ -314,18 +314,25 @@ func (p *Parser) parseWhenCase(subjects int) ast.WhenCase {
 		commaExp = make([]ast.Expression, 0, subjects)
 		orOpts   [][]ast.Expression
 	)
+	p.isWhenCase = true
 	// ',' binds tighter than '|' in case
-	for p.HasTokens() {
+	loop:for p.HasTokens() {
 		if p.IsCurrently(lexer.When, lexer.Arrow, lexer.EndOfStatement) {
-			break
+			break loop
 		}
 		commaExp = append(commaExp, p.parseCaseSubExpr())
-		if p.CurrentTokenKind() == lexer.Stroke {
+		switch p.CurrentTokenKind() {
+		case lexer.Stroke:
 			orOpts = append(orOpts, commaExp)
 			clear(commaExp)
 			p.Advance()
-		} else if !p.IsCurrently(lexer.When, lexer.Arrow) {
-			p.Expect(lexer.Comma)
+		case lexer.When, lexer.Arrow:
+			orOpts = append(orOpts, commaExp)
+			break loop
+		case lexer.Comma:
+			p.Advance()
+		default:
+			p.Expect(lexer.Arrow)
 		}
 	}
 	c.Options = orOpts
@@ -334,8 +341,12 @@ func (p *Parser) parseWhenCase(subjects int) ast.WhenCase {
 	//		5, _ when y < 10 -> ...
 	// 	}
 	if p.CurrentTokenKind() == lexer.When {
-		c.Guard = p.ParseExpression(ExpressionBindingPower)
+		p.Advance()
+		p.isWhenGuard = true
+		c.Guard = p.ParseExpression(LambdaBindingPower)
+		p.isWhenGuard = false
 	}
+	p.isWhenCase = false
 	p.Expect(lexer.Arrow)
 	switch p.CurrentTokenKind() {
 	case lexer.LeftCurlyBrace:

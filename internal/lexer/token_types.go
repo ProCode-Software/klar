@@ -20,6 +20,7 @@ const (
 	Dot                // .
 	LineComment        // //
 	BlockComment       // /*
+	Hashbang           // #!
 	Colon              // :
 	LeftBracket        // [
 	RightBracket       // ]
@@ -131,6 +132,7 @@ var OperatorMap = map[string]TokenType{
 	"#{": HashLeftCurlyBrace,
 	"//": LineComment,
 	"/*": BlockComment,
+	"#!": Hashbang,
 }
 
 var KeywordMap = map[string]TokenType{

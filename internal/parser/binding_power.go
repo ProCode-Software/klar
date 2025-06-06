@@ -23,7 +23,7 @@ const (
 	UnaryBindingPower                       // Prefix/Suffix: + -
 	ExponentiationBindingPower              // ^
 	CallBindingPower                        // Call: (
-	MemberBindingPower                      // Index: . [
+	MemberBindingPower                      // Index/Slice: . [
 	PrimaryBindingPower                     // Primary expressions, such as literals
 )
 
@@ -40,7 +40,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 
 	lexer.AndAnd:   LogicalBindingPower,
 	lexer.OrOr:     LogicalBindingPower,
-	lexer.Stroke:   LogicalBindingPower,
 	lexer.Pipeline: LogicalBindingPower,
 
 	lexer.LessThan:       RelationalBindingPower,

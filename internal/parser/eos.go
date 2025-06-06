@@ -22,19 +22,30 @@ func (p *Parser) InsertEOS() {
 			tok       = p.Tokens[i]
 			insertEOS = true
 		)
-		if tok.Kind == lexer.EOF && p.Tokens[i-1].Kind != lexer.EndOfStatement {
+		switch {
+		// Add before EOF
+		case tok.Kind == lexer.EOF &&
+			p.Tokens[i-1].Kind != lexer.EndOfStatement:
+			fallthrough
+		// Block with curly brace on same line:
+		// 	func fn(x: Int) { return x * 2 }
+		// but not {}
+		case tok.Kind == lexer.RightCurlyBrace &&
+			p.Tokens[i-1].Kind != lexer.EndOfStatement &&
+			p.Tokens[i-1].Kind != lexer.LeftCurlyBrace:
+
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
 				Kind:     lexer.EndOfStatement,
 				Position: tok.Position,
 			})
-			break
-		}
-		if tok.Kind != lexer.Newline {
+			if tok.Kind == lexer.EOF {
+				break
+			}
+			i++
 			continue
-		}
-		if i > 0 {
-			// Never terminate statement after these tokens, these token always need
-			// another token after:
+		case tok.Kind != lexer.Newline:
+			continue
+		case i > 0:
 			switch p.Tokens[i-1].Kind {
 			case
 				// Punctuation
@@ -80,7 +91,7 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
 		lexer.Percent,
 		// Punctuation
-		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis,
+		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis, lexer.LeftCurlyBrace,
 		// Operators
 		lexer.Stroke, lexer.Pipeline, lexer.Arrow,
 		// Comparison
