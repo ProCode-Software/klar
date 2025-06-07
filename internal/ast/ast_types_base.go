@@ -159,8 +159,8 @@ func (e LambdaExpression) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
-func (e ParamTuple) Base() BaseNode { return e.BaseNode }
-func (e ParamTuple) SetPos(start, end lexer.Position) Node {
+func (e TypeTuple) Base() BaseNode { return e.BaseNode }
+func (e TypeTuple) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
@@ -199,6 +199,11 @@ func (e ParenExpression) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e InterfaceDeclaration) Base() BaseNode { return e.BaseNode }
+func (e InterfaceDeclaration) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e Comment) Base() BaseNode { return e.BaseNode }
 func (e Comment) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
@@ -231,11 +236,6 @@ func (e RestType) SetPos(start, end lexer.Position) Node {
 }
 func (e TupleType) Base() BaseNode { return e.BaseNode }
 func (e TupleType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
-	return e
-}
-func (e InterfaceType) Base() BaseNode { return e.BaseNode }
-func (e InterfaceType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }

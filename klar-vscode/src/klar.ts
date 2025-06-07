@@ -130,7 +130,6 @@ const repository: Repository = {
             match(/\|>/, 'keyword.operator.pipe.klar'),
             match(/->/, 'keyword.operator.arrow.klar'),
             match(/\.{3}/, 'keyword.operator.spread.klar'),
-            match(/\.{2}/, 'keyword.operator.range.klar'),
             match(/&&|\|{2}|!/, 'keyword.operator.logical.klar'),
             match(/[><=!]=|[<>]/, 'keyword.operator.comparison.klar'),
             match(/\b(and|or)\b/, 'keyword.operator.relational.klar'),
@@ -227,6 +226,7 @@ const repository: Repository = {
                 'support.type.builtin.klar support.type.primitive.klar'
             ),
             match(/[+|?]/, 'keyword.operator.type.klar'),
+            match(/\.{3}/, 'keyword.operator.spread.klar'),
             match(/->/, 'keyword.operator.arrow.klar'),
             match(/[<>]/, Punctuation.generic),
             match(/[\[\]]/, 'punctuation.definition.type.list.klar'),
@@ -280,6 +280,7 @@ const repository: Repository = {
             match(/[\[\]]/, Punctuation.bracket),
             Punctuation.comma,
             match(/;/, 'invalid.semicolon.klar'),
+            match(/:/, 'punctuation.other.colon.klar'),
             match(/@/, Punctuation.at),
             Punctuation.period,
         ],
@@ -329,6 +330,25 @@ const repository: Repository = {
             { name: 'entity.name.type.klar' },
             { name: Punctuation.equalSign },
             ...IncludeType,
+        ],
+    },
+    interfaceTag: {
+        begin: merge(
+            /(?<=\btype\b)\s*(#)?/,
+            IdCapture,
+            String.raw`\s*(?:(:)\s*${IdCapture})?`
+        ),
+        end: /$/,
+        name: 'meta.type.klar',
+        beginCaptures: [
+            { name: 'punctuation.definition.interface-type.klar' },
+            { name: 'entity.name.type.struct.klar' },
+            { name: Punctuation.colonType },
+            {
+                name: 'entity.name.type.struct entity.other.inherited-type.klar',
+                patterns: [include('types')],
+            },
+            { name: Punctuation.brace.begin },
         ],
     },
     structs: {
@@ -420,6 +440,7 @@ const repository: Repository = {
         name: 'meta.block.when.klar',
         patterns: [
             match(/\|(?!\|)/, 'keyword.operator.alternative.klar'),
+            match(/\?/, 'constant.language.nil.klar'),
             ...BASE,
         ],
     },
@@ -450,6 +471,7 @@ const klar: TextMateLanguage = {
         include('castFunctions'),
         include('functionDeclarations'),
         include('structs'),
+        include('interfaceTag'),
         include('typeAliasDeclarations'),
         include('importStatements'),
         include('variableAssignments'),

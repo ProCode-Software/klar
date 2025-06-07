@@ -6,11 +6,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
+func (p *Parser) ParseType(bp BindingPower) ast.Type {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
-		p.unknownTokenErr(false)
+		p.unknownTokenErr(true)
 		return ast.BadExpression{}
 	}
 	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
@@ -23,14 +23,7 @@ func (p *Parser) ParseType(bp BindingPower) ast.SimpleType {
 			continue
 		}
 	}
-	return left.(ast.SimpleType)
-}
-
-func (p *Parser) ParseComplexType(bp BindingPower) ast.Type {
-	if p.CurrentTokenKind() == lexer.HashLeftCurlyBrace {
-		return p.ParseInterfaceType()
-	}
-	return p.ParseType(bp)
+	return left
 }
 
 func (p *Parser) ParseListType() ast.ListType {
@@ -41,7 +34,7 @@ func (p *Parser) ParseListType() ast.ListType {
 	return ast.ListType{Value: typ}
 }
 
-func (p *Parser) ParseTypeAlias() ast.SimpleType {
+func (p *Parser) ParseTypeAlias() ast.Type {
 	typ := p.Advance().Source
 	if primType, is := ast.PrimitiveTypeMap[typ]; is {
 		return ast.PrimitiveType{Primitive: primType}
@@ -66,7 +59,7 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) (u ast.UnionType
 }
 
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericType {
-	params := make([]ast.SimpleType, 0, 1)
+	params := make([]ast.Type, 0, 1)
 	p.Expect(lexer.LessThan)
 	if p.CurrentTokenKind() == lexer.GreaterThan {
 		// At least 1 parameter required
@@ -82,9 +75,8 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 	return ast.GenericType{Name: left, Parameters: params}
 }
 
-func (p *Parser) ParseInterfaceType() ast.InterfaceType {
-	fields := []ast.TypePair{}
-	p.Advance() // #{
+func (p *Parser) ParseInterface(name string, inherited []ast.Type) ast.InterfaceDeclaration {
+	var fields []ast.TypePair
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 		if !p.isMapIdentifier() {
 			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
@@ -119,8 +111,10 @@ func (p *Parser) ParseInterfaceType() ast.InterfaceType {
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
-	return ast.InterfaceType{
-		Fields: fields,
+	return ast.InterfaceDeclaration{
+		Identifier:     name,
+		InheritedTypes: inherited,
+		Fields:         fields,
 	}
 }
 

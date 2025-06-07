@@ -12,9 +12,7 @@ type (
 )
 
 func NewParser(tokens []lexer.Token, options parse.ParseOptions) *parse.Parser {
-	return &parse.Parser{
-		Options: options,
-		Tokens:  tokens,
-		Index:   0,
-	}
+	p := parse.New(tokens)
+	p.Options = options
+	return p
 }

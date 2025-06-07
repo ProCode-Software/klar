@@ -23,7 +23,7 @@ server.handle(path: '/get', with: (r, w) -> {
     params: DBRequest? := nil
     r.params.decode(object: params)
     when params {
-        nil -> w.error("Invalid params", code: .badRequest)
+        ? -> w.error("Invalid params", code: .badRequest)
         _ -> {
             filtered := users.filter(params.filter)
             filtered = when params.amount {

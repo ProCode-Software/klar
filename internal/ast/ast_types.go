@@ -137,7 +137,7 @@ type VariableDeclaration struct {
 	Identifier   string
 	Value        Expression
 	Constant     bool // Constant if Identifier is capitalized
-	ExplicitType SimpleType
+	ExplicitType Type
 }
 
 type AssignmentStatement struct {
@@ -160,10 +160,6 @@ var ReservedIdent = []lexer.TokenType{
 type Type interface {
 	Node
 	Type()
-}
-type SimpleType interface {
-	Type
-	SimpleType()
 }
 
 // A PrimitiveType is a Klar-builtin type
@@ -196,10 +192,6 @@ type TupleType struct {
 	BaseNode
 	Values []Type
 }
-type InterfaceType struct {
-	BaseNode
-	Fields []TypePair
-}
 
 type FunctionType struct {
 	BaseNode
@@ -209,7 +201,7 @@ type FunctionType struct {
 type GenericType struct {
 	BaseNode
 	Name       Type
-	Parameters []SimpleType
+	Parameters []Type
 }
 type TypePair struct {
 	Key   string
@@ -222,7 +214,7 @@ type UnionType struct {
 type TypeAnnotation struct {
 	BaseNode
 	Variable Symbol
-	Type     SimpleType
+	Type     Type
 }
 
 // Primitives
@@ -277,6 +269,15 @@ type UnqualifiedImport struct {
 type TypeDeclaration interface {
 	Statement
 	TypeDeclaration()
+}
+
+type InterfaceDeclaration struct {
+	Public         bool
+	Identifier     string
+	InheritedTypes []Type
+	Tag            bool // If empty
+	Fields         []TypePair
+	BaseNode
 }
 
 type StructDeclaration struct {
@@ -335,7 +336,7 @@ type FunctionDeclaration struct {
 	Struct        Type
 	GenericParams []string
 	Parameters    []FunctionParam
-	ReturnType    SimpleType
+	ReturnType    Type
 	Body          []Statement
 	Expression
 	BaseNode
@@ -344,7 +345,7 @@ type FunctionDeclaration struct {
 type FunctionParam struct {
 	Identifier,
 	Label string
-	Type    SimpleType
+	Type    Type
 	Default Expression
 	BaseNode
 }
@@ -386,7 +387,7 @@ type CallExpression struct {
 }
 
 type TypeCastSymbol struct {
-	Type SimpleType
+	Type Type
 	BaseNode
 }
 
@@ -410,7 +411,7 @@ type UpdateStatement struct {
 type ForStatement struct {
 	BaseNode
 	Infinite  bool       // or
-	Condition Expression // When used as while loop
+	Condition Expression // When used as while loop or repeat
 	Variables []Symbol
 	In        Expression
 	Body      []Statement
@@ -430,7 +431,7 @@ type WhenCase struct {
 	InBraces bool
 }
 
-type ParamTuple struct {
+type TypeTuple struct {
 	BaseNode
 	Params []TypePair
 }

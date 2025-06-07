@@ -35,7 +35,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 
 	rhs := p.ParseExpression(bp)
 	if op == lexer.ColonEqual {
-		var explicitType ast.SimpleType
+		var explicitType ast.Type
 		switch annot := left.(type) {
 		case ast.Assignable:
 		case ast.TypeAnnotation:

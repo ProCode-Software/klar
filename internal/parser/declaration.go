@@ -6,8 +6,20 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+/*
+Type declaration:
+
+	type Type = Int -- type alias
+	type Type { ... } -- struct or enum
+	type #Type { ... } -- interface
+	type #Type -- type tag (interface with no requirements, manually implemented)
+*/
 func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	p.Expect(lexer.Type)
+	isIntf := p.CurrentTokenKind() == lexer.Hash
+	if isIntf {
+		p.Advance()
+	}
 	var (
 		name      = p.Expect(lexer.Identifier)
 		inherited []ast.Type
@@ -15,11 +27,11 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 
 	switch p.CurrentTokenKind() {
 	case lexer.Equal:
-		// Type
+		// Type alias
 		p.Advance()
 		return ast.TypeAliasDeclaration{
 			Identifier: name.Source,
-			Type:       p.ParseComplexType(DefaultTypeBindingPower),
+			Type:       p.ParseType(DefaultTypeBindingPower),
 		}
 	case lexer.Colon:
 		// Inherited struct
@@ -34,13 +46,18 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	case lexer.LeftCurlyBrace:
 		// Struct or enum
 		p.Expect(lexer.LeftCurlyBrace)
+		if isIntf {
+			return p.ParseInterface(name.Source, inherited)
+		}
 
+		var isEnum bool
 		// Leading | for formatting
 		// type Color {
 		// 	| Red
 		// 	| Blue
 		// }
 		if p.CurrentTokenKind() == lexer.Stroke {
+			isEnum = true
 			p.Advance()
 		}
 		if !p.isMapIdentifier() {
@@ -50,15 +67,25 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		// Struct fields always need a type
 		// 	range: Int = 1000
 		//	range = 1000 // Incorrect
-		if p.CurrentTokenKind() == lexer.Colon {
-			return p.ParseStruct(name.Source, fieldName.Source, inherited)
-		} else if p.IsCurrently(lexer.Equal, lexer.Stroke) {
+		if isEnum || p.IsCurrently(lexer.Equal, lexer.Stroke) {
 			// Can't use reserved keyword as enum member
 			if fieldName.Kind != lexer.Identifier {
 				p.Error(errors.Token(errors.ErrReservedKeyword, fieldName))
 			}
 			return p.ParseEnum(name.Source, fieldName.Source)
+		} else if p.CurrentTokenKind() == lexer.Colon {
+			return p.ParseStruct(name.Source, fieldName.Source, inherited)
 		}
+	case lexer.EndOfStatement:
+		// Type tag if interface
+		if isIntf {
+			return ast.InterfaceDeclaration{
+				Tag:            true,
+				Identifier:     name.Source,
+				InheritedTypes: inherited,
+			}
+		}
+		fallthrough
 	default:
 		// Some other token or unassigned type (if EOS)
 		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.CurrentToken()))

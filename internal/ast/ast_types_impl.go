@@ -32,7 +32,7 @@ func (UpdateStatement) Kind() string      { return "UpdateStatement" }
 func (Discard) Kind() string              { return "Discard" }
 func (WhenExpression) Kind() string       { return "WhenExpression" }
 func (LambdaExpression) Kind() string     { return "LambdaExpression" }
-func (ParamTuple) Kind() string           { return "ParamTuple" }
+func (TypeTuple) Kind() string            { return "TypeTuple" }
 func (Attribute) Kind() string            { return "Attribute" }
 func (RangeExpression) Kind() string      { return "RangeExpression" }
 func (RestExpression) Kind() string       { return "RestExpression" }
@@ -40,7 +40,8 @@ func (PipelineExpression) Kind() string   { return "PipelineExpression" }
 func (BadExpression) Kind() string        { return "BadExpression" }
 func (SliceExpression) Kind() string      { return "SliceExpression" }
 func (ParenExpression) Kind() string      { return "ParenExpression" }
-func (Comment) Kind() string      { return "Comment" }
+func (InterfaceDeclaration) Kind() string { return "InterfaceDeclaration" }
+func (Comment) Kind() string              { return "Comment" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -49,7 +50,6 @@ func (OptionalType) Kind() string  { return "OptionalType" }
 func (ListType) Kind() string      { return "ListType" }
 func (RestType) Kind() string      { return "RestType" }
 func (TupleType) Kind() string     { return "TupleType" }
-func (InterfaceType) Kind() string { return "InterfaceType" }
 func (FunctionType) Kind() string  { return "FunctionType" }
 func (GenericType) Kind() string   { return "GenericType" }
 func (UnionType) Kind() string     { return "UnionType" }
@@ -79,7 +79,7 @@ func (CallExpression) Expression()     {}
 func (EnumLiteral) Expression()        {}
 func (Discard) Expression()            {}
 func (WhenExpression) Expression()     {}
-func (ParamTuple) Expression()         {}
+func (TypeTuple) Expression()          {}
 func (LambdaExpression) Expression()   {}
 func (RangeExpression) Expression()    {}
 func (RestExpression) Expression()     {}
@@ -98,6 +98,7 @@ func (ImportStatement) Statement()      {}
 func (EnumDeclaration) Statement()      {}
 func (StructDeclaration) Statement()    {}
 func (TypeAliasDeclaration) Statement() {}
+func (InterfaceDeclaration) Statement() {}
 func (ReturnStatement) Statement()      {}
 func (FunctionDeclaration) Statement()  {}
 func (NextStatement) Statement()        {}
@@ -110,29 +111,16 @@ func (OptionalType) Type()  {}
 func (ListType) Type()      {}
 func (RestType) Type()      {}
 func (TupleType) Type()     {}
-func (InterfaceType) Type() {}
 func (FunctionType) Type()  {}
 func (GenericType) Type()   {}
 func (UnionType) Type()     {}
 func (BadExpression) Type() {}
 
-// Simple type
-// Interface types aren't simple types
-func (PrimitiveType) SimpleType() {}
-func (TypeAlias) SimpleType()     {}
-func (OptionalType) SimpleType()  {}
-func (ListType) SimpleType()      {}
-func (RestType) SimpleType()      {}
-func (TupleType) SimpleType()     {}
-func (FunctionType) SimpleType()  {}
-func (GenericType) SimpleType()   {}
-func (UnionType) SimpleType()     {}
-func (BadExpression) SimpleType() {}
-
 // Type declaration
 func (TypeAliasDeclaration) TypeDeclaration() {}
 func (StructDeclaration) TypeDeclaration()    {}
 func (EnumDeclaration) TypeDeclaration()      {}
+func (InterfaceDeclaration) TypeDeclaration() {}
 
 // Assignable types
 func (Symbol) Assignable()          {}
@@ -167,8 +155,14 @@ func (d TypeAliasDeclaration) Publicize() Publicizable {
 	return d
 }
 
+func (d InterfaceDeclaration) Publicize() Publicizable {
+	d.Public = true
+	return d
+}
+
 func (d VariableDeclaration) IsPublic() bool  { return d.Public }
 func (d EnumDeclaration) IsPublic() bool      { return d.Public }
 func (d FunctionDeclaration) IsPublic() bool  { return d.Public }
 func (d StructDeclaration) IsPublic() bool    { return d.Public }
 func (d TypeAliasDeclaration) IsPublic() bool { return d.Public }
+func (d InterfaceDeclaration) IsPublic() bool { return d.Public }

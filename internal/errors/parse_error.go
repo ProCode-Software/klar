@@ -54,6 +54,7 @@ const (
 	ErrReservedKeyword       // Reserved keyword used as an identifier
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
+	ErrInvalidLabel          // Function label can't be number
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
@@ -90,7 +91,7 @@ func (e ParseError) Error() string {
 	default:
 		if e.Node != nil {
 			return fmt.Sprintf(
-				"SyntaxError: %s: %s here", e.ErrorCode.String(), e.Node.Kind(),
+				"SyntaxError: %s: in %s", e.ErrorCode.String(), e.Node.Kind(),
 			)
 		}
 		return fmt.Sprintf("SyntaxError: %s: %s %s",

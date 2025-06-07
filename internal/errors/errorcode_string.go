@@ -47,15 +47,16 @@ func _() {
 	_ = x[ErrReservedKeyword-34]
 	_ = x[ErrExpectedExpression-35]
 	_ = x[ErrInvalidLabelShorthand-36]
-	_ = x[ErrNotEnoughEnumItems-37]
-	_ = x[ErrExpectedTypeAssignment-38]
-	_ = x[ErrRequiredStructFieldType-39]
-	_ = x[ErrExpectedParamInGeneric-40]
-	_ = x[ErrParenRequiredFunc-41]
-	_ = x[ErrForInvalidCondition-42]
-	_ = x[ErrInvalidPublic-43]
-	_ = x[ErrUnderscoreWithRest-44]
-	_ = x[ErrNotAllowedInGuard-45]
+	_ = x[ErrInvalidLabel-37]
+	_ = x[ErrNotEnoughEnumItems-38]
+	_ = x[ErrExpectedTypeAssignment-39]
+	_ = x[ErrRequiredStructFieldType-40]
+	_ = x[ErrExpectedParamInGeneric-41]
+	_ = x[ErrParenRequiredFunc-42]
+	_ = x[ErrForInvalidCondition-43]
+	_ = x[ErrInvalidPublic-44]
+	_ = x[ErrUnderscoreWithRest-45]
+	_ = x[ErrNotAllowedInGuard-46]
 	_ = x[ErrVarExists-201]
 	_ = x[ErrVarUndefined-202]
 	_ = x[ErrTypeUndefined-203]
@@ -74,20 +75,20 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuard"
+	_ErrorCode_name_0 = "ParseErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedEOSErrRedeclaredVarErrRedeclaredTypeErrVarSameNameAsFuncErrRedeclaredEnumErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuard"
 	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrRecursiveTypeErrCircularTypeErrInvalidEnumValueErrCannotInferEnumValue"
 	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarExistsErrVarUndefinedErrTypeUndefined"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 229, 253, 277, 300, 319, 336, 353, 374, 396, 416, 435, 451, 466, 485, 502, 517, 531, 545, 561, 578, 596, 620, 643, 661, 682, 706, 727, 752, 778, 803, 823, 845, 861, 882, 902}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 34, 50, 64, 80, 97, 117, 134, 161, 188, 211, 229, 253, 277, 300, 319, 336, 353, 374, 396, 416, 435, 451, 466, 485, 502, 517, 531, 545, 561, 578, 596, 620, 643, 661, 682, 706, 721, 742, 767, 793, 818, 838, 860, 876, 897, 917}
 	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 164, 179, 198, 221}
 	_ErrorCode_index_2 = [...]uint8{0, 20, 32, 47, 63}
 )
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 45:
+	case 0 <= i && i <= 46:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 112:
 		i -= 100

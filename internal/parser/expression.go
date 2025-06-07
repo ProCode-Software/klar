@@ -36,7 +36,16 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	switch next.Kind {
 	case lexer.Colon:
 		// Type tuple (for lambda)
-		typeTuple := ast.ParamTuple{}
+		typeTuple := ast.TypeTuple{}
+		if expr, ok := expr.(ast.Symbol); ok {
+			p.Advance()
+			typeTuple.Params = append(typeTuple.Params, ast.TypePair{
+				expr.Identifier,
+				p.ParseType(DefaultTypeBindingPower),
+			})
+		} else {
+			// Expected identifier
+		}
 		parseSeries(
 			p, &typeTuple.Params,
 			func() ast.TypePair {
@@ -51,7 +60,6 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
 		tuple := ast.TupleLiteral{}
-		tuple.Values = append(tuple.Values, expr)
 		p.Advance()
 		parseSeriesWithBP(
 			p, &tuple.Values, ExpressionBindingPower,
@@ -180,14 +188,16 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExp
 				p.Error(errors.Node(errors.ErrInvalidLabelShorthand, sym))
 			}
 		} else {
-			expr := p.ParseExpression(ExpressionBindingPower)
-			arg.Value = expr
-			if expr, ok := expr.(ast.Symbol); ok && p.CurrentTokenKind() == lexer.Colon {
-				// Label
-				p.Advance()
-				arg.Label = expr.Identifier
-				arg.Value = p.ParseExpression(ExpressionBindingPower)
+			if p.Peek().Kind == lexer.Colon {
+				// Label (allow keywords)
+				if !slices.Contains(ast.ReservedIdent, p.CurrentTokenKind()) ||
+					p.CurrentTokenKind() != lexer.Identifier {
+					p.Error(errors.Token(errors.ErrInvalidLabel, p.CurrentToken()))
+				}
+				arg.Label = p.Advance().Source
+				p.Advance() // :
 			}
+			arg.Value = p.ParseExpression(ExpressionBindingPower)
 		}
 		args = append(args, arg)
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
@@ -208,16 +218,19 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) (l ast.LambdaExpres
 	switch left := left.(type) {
 	case ast.Symbol:
 		l.Params = append(l.Params, ast.TypePair{Key: left.Identifier})
-	case ast.ParamTuple:
+	case ast.TypeTuple:
 		l.Params = left.Params
 	case ast.TupleLiteral:
 		for _, param := range left.Values {
-			if _, ok := param.(ast.Symbol); !ok {
+			switch param := param.(type) {
+			case ast.Symbol:
+				l.Params = append(l.Params, ast.TypePair{Key: param.Identifier})
+			// Allow (_, b) -> ...
+			case ast.Discard:
+				l.Params = append(l.Params, ast.TypePair{Key: "_"})
+			default:
 				p.Error(errors.Node(errors.ErrExpectedParamInLambda, param))
 			}
-			l.Params = append(l.Params, ast.TypePair{
-				Key: param.(ast.Symbol).Identifier,
-			})
 		}
 	default:
 		p.Error(errors.Node(errors.ErrExpectedParamInLambda, left))
@@ -333,6 +346,7 @@ loop:
 		case lexer.Stroke:
 			orOpts = append(orOpts, commaExp)
 			clear(commaExp)
+			commaExp = commaExp[:0]
 			p.Advance()
 		case lexer.When, lexer.Arrow:
 			orOpts = append(orOpts, commaExp)

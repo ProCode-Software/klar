@@ -119,6 +119,10 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
 			types = append(types, dec)
+		case ast.InterfaceDeclaration:
+			ok = ctx.DeclareType(dec.Identifier, nil, pos)
+			id = dec.Identifier
+			types = append(types, dec)
 		case ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
 		case ast.Attribute:
@@ -139,6 +143,8 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			foundDec = true
 		}
 	}
+	types = sortTypeDeclDeps(getTypeDeclDeps(types), types)
+	
 
 	// Types don't have to be declared before they can be used
 	/* for _, t := range types {

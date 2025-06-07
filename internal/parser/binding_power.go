@@ -5,9 +5,7 @@ import "github.com/ProCode-Software/klar/internal/lexer"
 // BindingPower represents the operator precedence for a type of operator.
 type BindingPower int
 
-// References:
-// - https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
-// - https://github.com/microsoft/typescript-go/blob/main/internal/parser/parser.go
+// Reference: https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
 const (
 	DefaultBindingPower        BindingPower = iota
 	CommaBindingPower                       // ,

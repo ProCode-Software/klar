@@ -33,6 +33,7 @@ type TokenColorMap = map[lexer.TokenType]string
 var TokenColors = TokenColorMap{
 	lexer.BlockComment: tokenColorComment,
 	lexer.LineComment:  tokenColorComment,
+	lexer.Hashbang:     tokenColorComment,
 	lexer.Type:         tokenColorStorage,
 	lexer.Func:         tokenColorStorage,
 	lexer.String:       cli.ANSIGreen,

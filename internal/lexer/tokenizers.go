@@ -50,6 +50,7 @@ func (l *Lexer) ParseLineComment(pos Position) *Token {
 		// Beginning // is already parsed
 		if r == '\n' {
 			shouldStop = true
+			return true
 		}
 		b.WriteRune(r)
 		return true

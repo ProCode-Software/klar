@@ -92,7 +92,7 @@ func (c *Context) Resolve(name string) (d *Declaration, found bool) {
 		val.Used = true
 		return val, true
 	}
-	if !c.IsRoot() {
+	if c.Parent > -1 {
 		return RuntimeContexts[c.Parent].Resolve(name)
 	}
 	return nil, false
