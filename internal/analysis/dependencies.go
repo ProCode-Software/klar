@@ -47,49 +47,99 @@ func getTypeDeps(t any) []string {
 	return deps
 }
 
-func getTypeDeclDeps(types []ast.TypeDeclaration) depMap {
-	typeDeps := make(map[string][]string, len(types))
+type cycleError struct {
+	dep, base string
+	error     bool
+}
+
+func getAllDeps(typeDeps depMap, dep, base string) ([]string, cycleError) {
+	depsOfDep := typeDeps[dep]
+	if len(depsOfDep) == 0 {
+		return nil, cycleError{}
+	}
+	list := make([]string, 0, len(depsOfDep))
+	for _, dep := range depsOfDep {
+		if dep == base {
+			// Cycle
+			return nil, cycleError{dep, base, true}
+		}
+		deps, err := getAllDeps(typeDeps, dep, base)
+		if err.error {
+			return nil, err
+		}
+		list = append(list, deps...)
+	}
+	return list, cycleError{}
+}
+
+func getTypeAliasDeps(types []ast.TypeAliasDeclaration) (depMap, cycleError) {
+	var (
+		typeDeps = make(map[string][]string, len(types))
+		cycleErr cycleError
+	)
+	// Step 1: create list of all aliases each alias depends on
 	for _, t := range types {
 		var deps []string
-		switch t := t.(type) {
-		case ast.TypeAliasDeclaration:
-			typeDeps[t.Identifier] = getTypeDeps(t.Type)
-		case ast.StructDeclaration:
-			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
-			for _, v := range t.Fields {
-				deps = append(deps, getTypeDeps(v.Type)...)
+		deps = append(deps, getTypeDeps(t.Type)...)
+		typeDeps[t.Identifier] = deps
+	}
+	// Step 2: add the dependencies of those aliases
+	// getAllDeps recursively adds deps
+	for t, deps := range typeDeps {
+		for _, dep := range deps {
+			d, err := getAllDeps(typeDeps, dep, t)
+			if err.error {
+				cycleErr = err
+				continue
 			}
-			typeDeps[t.Identifier] = deps
-		case ast.InterfaceDeclaration:
-			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
-			deps = append(deps, getTypeDeps(t.Fields)...)
-			typeDeps[t.Identifier] = deps
+			typeDeps[t] = append(typeDeps[t], d...)
 		}
 	}
-	return typeDeps
+	return typeDeps, cycleErr
 }
 
 /*
 Sort them in the order that they should be declared in so types can reference each other.
 Throws an error if there is a cycle.
 
-We can sort them by iterating over each dependency and adding it to the top of the stack. Or
-the bottom of the stack and reverse it at the end.
-
 For this example:
 
 	type A = B
 	type B = C
-	type C = Int
+	type C = D
+	type D = Int
 
-the order would be: C, B, A.
+the order would be: D, C, B, A.
 C should be declared first so it can be referenced by B, and B can be referenced by A.
-
-If there is a cycle:
-
-	type A = B
-	type B = C
-	type C = A
 */
-func sortTypeDeclDeps(deps depMap, types []ast.TypeDeclaration) []ast.TypeDeclaration {
+func sortTypeAliases(
+	depMap depMap, types []ast.TypeAliasDeclaration,
+) []ast.TypeAliasDeclaration {
+	var (
+		list     = make([]string, 0, len(types))
+		final    = make([]ast.TypeAliasDeclaration, 0, len(types))
+		aliasMap = make(map[string]ast.TypeAliasDeclaration, len(types))
+	)
+	// Create the alias map
+	for _, t := range types {
+		aliasMap[t.Identifier] = t
+	}
+	// Add all dependencies into a flat list
+	for id, deps := range depMap {
+		list = append(list, append([]string{id}, deps...)...)
+	}
+	// Loop backwards for the final order
+	alreadyAdded := make(map[string]bool, len(list))
+	for i := len(list) - 1; i >= 0; i-- {
+		if len(final) == len(types) {
+			break
+		}
+		name := list[i]
+		if alreadyAdded[name] {
+			continue
+		}
+		final = append(final, aliasMap[name])
+		alreadyAdded[name] = true
+	}
+	return final
 }

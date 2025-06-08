@@ -47,18 +47,11 @@ func (c *Checker) InferType(expr ast.Expression) Type {
 	return nil
 }
 
-func (c *Checker) ParseType(typ ast.Type, ctx *Context) Type {
-	if typ == nil {
-		return nil
-	}
-	return nil
-}
-
 func (c *Checker) CheckCompatible(t1, t2 Type) Type {
 	if t1 == t2 {
 		return t1
 	} else {
-		return typespkg.ErrorType
+		return typespkg.InvalidType
 	}
 }
 
@@ -81,9 +74,10 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 		// Sort each statement so normal statements can reference functions before
 		// they are declared. Same thing for functions referencing types and for
 		// structs/interfaces referencing type aliases
-		types []ast.TypeDeclaration
+		types []ast.TypeAliasDeclaration
 		attrs []ast.Attribute
 		funcs []ast.FunctionDeclaration
+		intfs []ast.TypeDeclaration // Structs and interfaces
 		stmts = make([]ast.Statement, 0, len(*body))
 		// Only at top-level
 		imports []ast.ImportStatement
@@ -98,6 +92,8 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 		switch dec := dec.(type) {
 		// Imports are only parsed at the top-level, but they must go
 		// before other declarations.
+		// Resolve all modules before type-checking so they can be referenced
+		// by the current module.
 		case ast.ImportStatement:
 			imports = append(imports, dec)
 			isImport = true
@@ -115,16 +111,22 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
 			types = append(types, dec)
+		// Structs and enums may recursively reference themselves with
+		// limitations.
 		case ast.StructDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
-			types = append(types, dec)
+			intfs = append(intfs, dec)
 		case ast.InterfaceDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
-			types = append(types, dec)
+			intfs = append(intfs, dec)
+		// Functions may redeclare themselves with different parameters/overloads
 		case ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
+		// Attributes attach to declarations
+		// @target - sets the target runtime for a declaration
+		// @deprecated - warn when referenced
 		case ast.Attribute:
 			attrs = append(attrs, dec)
 		default:
@@ -143,13 +145,27 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			foundDec = true
 		}
 	}
-	types = sortTypeDeclDeps(getTypeDeclDeps(types), types)
-	
-
-	// Types don't have to be declared before they can be used
-	/* for _, t := range types {
-
-	} */
+	deps, err := getTypeAliasDeps(types)
+	if err.error {
+		// Cycle
+		c.Error(errors.TypeError{
+			ErrorCode: errors.ErrTypeCycle,
+			Range:     ctx.TypeDeclarations[err.dep].Position,
+			Params: errors.ErrorParams{
+				"cycleError": err,
+			},
+		})
+	}
+	types = sortTypeAliases(deps, types)
+	for _, t := range types {
+		name := t.Identifier
+		// Skip type cycles
+		if name == err.base {
+			ctx.SetType(name, typespkg.InvalidType)
+			continue
+		}
+		ctx.SetType(name, c.ParseType(t.Type, ctx))
+	}
 }
 
 /* switch dec := dec.(type) {

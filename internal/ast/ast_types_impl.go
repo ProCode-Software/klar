@@ -121,6 +121,10 @@ func (TypeAliasDeclaration) TypeDeclaration() {}
 func (StructDeclaration) TypeDeclaration()    {}
 func (EnumDeclaration) TypeDeclaration()      {}
 func (InterfaceDeclaration) TypeDeclaration() {}
+func (d TypeAliasDeclaration) Name() string   { return d.Identifier }
+func (d StructDeclaration) Name() string      { return d.Identifier }
+func (d EnumDeclaration) Name() string        { return d.Identifier }
+func (d InterfaceDeclaration) Name() string   { return d.Identifier }
 
 // Assignable types
 func (Symbol) Assignable()          {}

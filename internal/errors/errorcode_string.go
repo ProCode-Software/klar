@@ -69,7 +69,7 @@ func _() {
 	_ = x[ErrUnusedLastLit-107]
 	_ = x[ErrTypeMismatch-108]
 	_ = x[ErrRecursiveType-109]
-	_ = x[ErrCircularType-110]
+	_ = x[ErrTypeCycle-110]
 	_ = x[ErrInvalidEnumValue-111]
 	_ = x[ErrCannotInferEnumValue-112]
 }

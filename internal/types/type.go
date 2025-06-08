@@ -15,7 +15,7 @@ const (
 	List
 	Function
 	Map
-	ErrorType
+	InvalidType
 )
 
 type (

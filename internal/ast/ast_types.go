@@ -268,6 +268,7 @@ type UnqualifiedImport struct {
 
 type TypeDeclaration interface {
 	Statement
+	Name() string
 	TypeDeclaration()
 }
 

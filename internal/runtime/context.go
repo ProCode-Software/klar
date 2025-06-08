@@ -98,6 +98,26 @@ func (c *Context) Resolve(name string) (d *Declaration, found bool) {
 	return nil, false
 }
 
+func (c *Context) ResolveType(name string) (d *TypeDeclaration, found bool) {
+	if val, ok := c.TypeDeclarations[name]; ok {
+		val.Used = true
+		return val, true
+	}
+	if c.Parent > -1 {
+		return RuntimeContexts[c.Parent].ResolveType(name)
+	}
+	return nil, false
+}
+
+func (c *Context) SetType(name string, typ types.Type) (success bool) {
+	resolved, ok := c.ResolveType(name)
+	if !ok {
+		return false
+	}
+	resolved.Type = typ
+	return true
+}
+
 // GetContext returns the context with id. If the context does not exist, GetContext
 // returns nil.
 func GetContext(id int) *Context {

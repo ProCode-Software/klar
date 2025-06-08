@@ -19,7 +19,7 @@ const (
 	ErrUnusedLastLit     // Same as above, but last statement in block
 	ErrTypeMismatch      // Type mismatch
 	ErrRecursiveType     // Recursive type that is not union, array, or optional in struct
-	ErrCircularType      // Circular type reference
+	ErrTypeCycle         // Circular type reference
 
 	ErrInvalidEnumValue     // Enum value must be literal string or number
 	ErrCannotInferEnumValue // Explicit enum value required for strings
