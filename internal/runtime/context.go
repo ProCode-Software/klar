@@ -6,9 +6,10 @@ import (
 )
 
 type TypeDeclaration struct {
-	Type     types.Type
-	Used     bool
-	Position ranges.Range
+	Type       types.Type
+	Used       bool
+	Position   ranges.Range
+	Attributes map[string]any
 }
 
 type Declaration struct {
@@ -17,6 +18,7 @@ type Declaration struct {
 	Constant bool
 	Value    RuntimeVal
 	Used     bool
+	Attributes map[string]any
 }
 
 type Context struct {

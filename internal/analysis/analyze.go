@@ -68,6 +68,11 @@ func (c *Checker) checkRedeclared(ok bool, ctx *Context, rang ranges.Range, name
 	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
 }
 
+type B interface {
+	value() A
+}
+type A = B
+
 func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 	var (
 		foundDec bool
@@ -127,6 +132,8 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 		// Attributes attach to declarations
 		// @target - sets the target runtime for a declaration
 		// @deprecated - warn when referenced
+		// @added - version when added
+		// @external - external implementation
 		case ast.Attribute:
 			attrs = append(attrs, dec)
 		default:
@@ -145,26 +152,14 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			foundDec = true
 		}
 	}
-	deps, err := getTypeAliasDeps(types)
-	if err.error {
-		// Cycle
-		c.Error(errors.TypeError{
-			ErrorCode: errors.ErrTypeCycle,
-			Range:     ctx.TypeDeclarations[err.dep].Position,
-			Params: errors.ErrorParams{
-				"cycleError": err,
-			},
-		})
-	}
-	types = sortTypeAliases(deps, types)
+	deps := c.mergeStructDeps(c.getTypeAliasDeps(types, ctx), intfs)
+	types = sortTypeDecls(deps, types)
 	for _, t := range types {
 		name := t.Identifier
-		// Skip type cycles
-		if name == err.base {
-			ctx.SetType(name, typespkg.InvalidType)
-			continue
+		// Skip type cycles, would already be set to error type
+		if ctx.TypeDeclarations[name] == nil {
+			ctx.SetType(name, c.ParseType(t.Type, ctx))
 		}
-		ctx.SetType(name, c.ParseType(t.Type, ctx))
 	}
 }
 

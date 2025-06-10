@@ -209,6 +209,11 @@ func (e Comment) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e MethodType) Base() BaseNode { return e.BaseNode }
+func (e MethodType) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e PrimitiveType) Base() BaseNode { return e.BaseNode }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end

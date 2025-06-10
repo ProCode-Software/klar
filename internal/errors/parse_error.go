@@ -9,15 +9,10 @@ import (
 )
 
 const (
-	_ ErrorCode = ParseErrorPrefix + iota
+	_ ErrorCode = SyntaxErrorPrefix + iota
 
 	ErrUnexpectedToken
 	ErrExpectedToken // Expected kind of token but got different type
-	ErrExpectedEOS   // Expected end of statement (newline)
-	ErrRedeclaredVar
-	ErrRedeclaredType
-	ErrVarSameNameAsFunc
-	ErrRedeclaredEnum
 
 	// Import
 	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
@@ -63,10 +58,17 @@ const (
 	ErrExpectedParamInGeneric  // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 
+	// When
 	ErrForInvalidCondition // Expected assignment or expression in for loop
 	ErrInvalidPublic
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
+
+	ErrVarExists // Can't redeclare variable
+	ErrRedeclaredVar
+	ErrRedeclaredType
+	ErrRedeclaredEnum
+	ErrVarSameNameAsFunc
 )
 
 type ErrorParams map[string]any

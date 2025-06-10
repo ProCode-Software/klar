@@ -2,8 +2,11 @@ package analysis
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/types"
 )
 
 type depMap map[string][]string
@@ -19,6 +22,11 @@ func getTypeDeps(t any) []string {
 		for _, v := range t {
 			deps = append(deps, getTypeDeps(v.Value)...)
 		}
+	case ast.MethodType:
+		for _, v := range t.Parameters {
+			deps = append(deps, getTypeDeps(v.Type)...)
+		}
+		deps = append(deps, getTypeDeps(t.ReturnType)...)
 	case ast.TypePair:
 		return getTypeDeps(t.Value)
 	case ast.RestType:
@@ -47,55 +55,64 @@ func getTypeDeps(t any) []string {
 	return deps
 }
 
-type cycleError struct {
-	dep, base string
-	error     bool
-}
-
-func getAllDeps(typeDeps depMap, dep, base string) ([]string, cycleError) {
+func (c *Checker) getAllDeps(typeDeps depMap, dep, base string, ctx *Context) []string {
 	depsOfDep := typeDeps[dep]
 	if len(depsOfDep) == 0 {
-		return nil, cycleError{}
+		return nil
 	}
 	list := make([]string, 0, len(depsOfDep))
 	for _, dep := range depsOfDep {
 		if dep == base {
 			// Cycle
-			return nil, cycleError{dep, base, true}
+			ctx.SetType(base, types.InvalidType)
+			ctx.SetType(dep, types.InvalidType)
+			c.Error(errors.TypeError{
+				ErrorCode: errors.ErrTypeCycle,
+				Range:     ctx.TypeDeclarations[dep].Position,
+			})
+			return nil
 		}
-		deps, err := getAllDeps(typeDeps, dep, base)
-		if err.error {
-			return nil, err
-		}
-		list = append(list, deps...)
+		list = append(list, c.getAllDeps(typeDeps, dep, base, ctx)...)
 	}
-	return list, cycleError{}
+	return list
 }
 
-func getTypeAliasDeps(types []ast.TypeAliasDeclaration) (depMap, cycleError) {
-	var (
-		typeDeps = make(map[string][]string, len(types))
-		cycleErr cycleError
-	)
+func (c *Checker) getTypeAliasDeps(
+	types []ast.TypeAliasDeclaration, ctx *Context,
+) depMap {
+	typeDeps := make(map[string][]string, len(types))
 	// Step 1: create list of all aliases each alias depends on
 	for _, t := range types {
-		var deps []string
-		deps = append(deps, getTypeDeps(t.Type)...)
-		typeDeps[t.Identifier] = deps
+		typeDeps[t.Identifier] = getTypeDeps(t.Type)
 	}
 	// Step 2: add the dependencies of those aliases
 	// getAllDeps recursively adds deps
 	for t, deps := range typeDeps {
 		for _, dep := range deps {
-			d, err := getAllDeps(typeDeps, dep, t)
-			if err.error {
-				cycleErr = err
-				continue
-			}
-			typeDeps[t] = append(typeDeps[t], d...)
+			typeDeps[t] = append(typeDeps[t], c.getAllDeps(typeDeps, dep, t, ctx)...)
 		}
 	}
-	return typeDeps, cycleErr
+	return typeDeps
+}
+
+func (c *Checker) mergeStructDeps(
+	aliases depMap, intfs []ast.TypeDeclaration,
+) depMap {
+	intfDeps := make(map[string][]string, len(intfs))
+	for _, t := range intfs {
+		var deps []string
+		switch t := t.(type) {
+		case ast.StructDeclaration:
+			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
+			deps = append(deps, getTypeDeps(t.Fields)...)
+		case ast.InterfaceDeclaration:
+			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
+			deps = append(deps, getTypeDeps(t.Fields)...)
+		}
+		intfDeps[t.Name()] = deps
+	}
+	maps.Copy(aliases, intfDeps)
+	return aliases
 }
 
 /*
@@ -112,7 +129,7 @@ For this example:
 the order would be: D, C, B, A.
 C should be declared first so it can be referenced by B, and B can be referenced by A.
 */
-func sortTypeAliases(
+func sortTypeDecls(
 	depMap depMap, types []ast.TypeAliasDeclaration,
 ) []ast.TypeAliasDeclaration {
 	var (

@@ -3,15 +3,22 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
 func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
+	type pendingItem struct {
+		name string
+		pos  ranges.Range
+	}
 	var (
 		members = make(map[string]any, len(t.Values))
 		last    any
 		expType Type
+		pending = make(map[string]pendingItem)
 	)
+
 	for _, i := range t.Values {
 		if _, ok := members[i.Identifier]; ok {
 			c.Error(errors.Range(errors.ErrRedeclaredEnum, i.Range))
@@ -46,6 +53,7 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 			last, currType = v.Content, types.String
 		case ast.Symbol:
 			// Wait for it to be assigned
+			pending[i.Identifier] = pendingItem{v.Identifier, v.Range}
 		default:
 			c.Error(errors.Range(errors.ErrInvalidEnumValue, i.Range))
 		}
@@ -55,6 +63,13 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 			c.Error(errors.TypeMismatch(expType, currType, i.Range))
 		}
 		members[i.Identifier] = last
+	}
+	for k, item := range pending {
+		if v, ok := members[item.name]; ok {
+			members[k] = v
+		} else {
+			c.Error(errors.Range(errors.ErrEnumUndefined, item.pos))
+		}
 	}
 	return types.Enum{
 		ValueType: expType,

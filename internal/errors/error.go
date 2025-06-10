@@ -16,7 +16,7 @@ type KlarError interface {
 type ErrorCode int
 
 const (
-	ParseErrorPrefix ErrorCode = iota * 100
+	SyntaxErrorPrefix ErrorCode = iota * 100
 	TypeErrorPrefix
 	ReferenceErrorPrefix
 )

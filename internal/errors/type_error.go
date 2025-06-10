@@ -41,9 +41,11 @@ func (e TypeError) Error() string {
 	default:
 		return "TypeError:"
 	case ErrTypeMismatch:
-		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T.",
+		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T",
 			expType, gotType,
 		)
+	case ErrInvalidEnumValue:
+		return "TypeError: Enum values can only be String, Int, or Float"
 	}
 }
 

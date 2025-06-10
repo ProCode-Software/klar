@@ -15,7 +15,8 @@ const (
 	List
 	Function
 	Map
-	InvalidType
+	InvalidType // If error
+	Self        // For structs and interfaces, allow referencing themselves
 )
 
 type (

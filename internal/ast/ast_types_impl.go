@@ -42,6 +42,7 @@ func (SliceExpression) Kind() string      { return "SliceExpression" }
 func (ParenExpression) Kind() string      { return "ParenExpression" }
 func (InterfaceDeclaration) Kind() string { return "InterfaceDeclaration" }
 func (Comment) Kind() string              { return "Comment" }
+func (MethodType) Kind() string           { return "MethodType" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -114,6 +115,7 @@ func (TupleType) Type()     {}
 func (FunctionType) Type()  {}
 func (GenericType) Type()   {}
 func (UnionType) Type()     {}
+func (MethodType) Type()    {}
 func (BadExpression) Type() {}
 
 // Type declaration

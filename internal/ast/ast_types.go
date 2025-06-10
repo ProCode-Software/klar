@@ -211,6 +211,16 @@ type UnionType struct {
 	BaseNode
 	Options []Type
 }
+type MethodType struct {
+	BaseNode
+	ReturnType Type
+	Parameters []MethodTypeParam
+}
+type MethodTypeParam struct {
+	Label, Identifier string
+	Type              Type
+	BaseNode
+}
 type TypeAnnotation struct {
 	BaseNode
 	Variable Symbol
