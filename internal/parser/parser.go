@@ -102,7 +102,22 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 }
 
 func (p *Parser) isMapIdentifier() bool {
-	return p.IsCurrently(lexer.Identifier, lexer.Numeric) || p.IsCurrently(ast.ReservedIdent...)
+	return p.IsCurrently(ast.ReservedIdent...) ||
+		p.IsCurrently(lexer.Identifier, lexer.Numeric, lexer.Boolean, lexer.Nil)
+}
+
+func (p *Parser) expectMapIdent() lexer.Token {
+	if !p.isMapIdentifier() {
+		return p.Expect(lexer.Identifier)
+	}
+	return p.Advance()
+}
+
+func (p *Parser) expectNonNumericMapIdent() lexer.Token {
+	if !p.isMapIdentifier() || p.CurrentTokenKind() == lexer.Numeric {
+		return p.Expect(lexer.Identifier)
+	}
+	return p.Advance()
 }
 
 // Only works for single-line tokens
@@ -149,8 +164,8 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 			case tok.Attributes["unterm"] == true:
 				p.Error(errors.ParseError{
 					ErrorCode: errors.ErrUnterminatedComment,
-					Token: tok,
-					Position: tok.Position,
+					Token:     tok,
+					Position:  tok.Position,
 				})
 			}
 			comments = append(comments, ast.Comment{

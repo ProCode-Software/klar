@@ -14,7 +14,7 @@ type depMap map[string][]string
 func getTypeDeps(t any) []string {
 	var deps []string
 	switch t := t.(type) {
-	case []Type:
+	case []ast.Type:
 		for _, v := range t {
 			deps = append(deps, getTypeDeps(v)...)
 		}
@@ -47,7 +47,7 @@ func getTypeDeps(t any) []string {
 		return getTypeDeps(t.Options)
 	case ast.TypeAlias:
 		return []string{t.Identifier}
-	case ast.PrimitiveType:
+	case ast.PrimitiveType, nil:
 		return nil
 	default:
 		panic(fmt.Sprintf("getTypeDeps: unhandled type %T", t))

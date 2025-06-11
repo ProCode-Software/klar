@@ -60,10 +60,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			isEnum = true
 			p.Advance()
 		}
-		if !p.isMapIdentifier() {
-			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
-		}
-		fieldName := p.Advance()
+		fieldName := p.expectNonNumericMapIdent()
 		// Struct fields always need a type
 		// 	range: Int = 1000
 		//	range = 1000 // Incorrect
@@ -199,26 +196,31 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	}
 	// Params
 	p.Expect(lexer.LeftParenthesis)
+	var isTrailingType bool
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
-		param := ast.FunctionParam{
-			Identifier: p.Expect(lexer.Identifier).Source,
+		param := ast.FunctionParam{}
+
+		if p.Peek().Kind == lexer.Identifier {
+			// Optional label:
+			// 	func replace(src, with replacement: String)
+			param.Label = p.expectNonNumericMapIdent().Source
 		}
-		// Optional label:
-		// 	func replace(src, with replacement: String)
-		if p.CurrentTokenKind() == lexer.Identifier {
-			param.Label = param.Identifier
-			param.Identifier = p.Expect(lexer.Identifier).Source
-		}
+		// Normal identifier
+		param.Identifier = p.Expect(lexer.Identifier).Source
 		// Parse type: still allow trailing type (example above)
 		if p.CurrentTokenKind() == lexer.Colon {
 			p.Advance()
 			param.Type = p.ParseType(DefaultTypeBindingPower)
+			isTrailingType = false
+		} else {
+			isTrailingType = true
 		}
 		// Default value:
 		// 	func List.join(by by: String = ", ")
 		if p.CurrentTokenKind() == lexer.Equal {
 			p.Advance()
 			param.Default = p.ParseExpression(DefaultBindingPower)
+			isTrailingType = false
 		}
 
 		f.Parameters = append(f.Parameters, param)
@@ -227,6 +229,13 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		}
 	}
 	p.Expect(lexer.RightParenthesis)
+	if isTrailingType {
+		// Last parameters need a type
+		p.Error(errors.Range(
+			errors.ErrMissingFuncParamType,
+			f.Parameters[len(f.Parameters)-1].Range,
+		))
+	}
 
 	// Return type: the arrow. Can be inferred
 	if p.CurrentTokenKind() == lexer.Arrow {
@@ -241,7 +250,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		f.Body = p.ParseBlock()
 	} else if p.CurrentTokenKind() == lexer.Equal {
 		p.Advance()
-		f.Expression = p.ParseExpression(DefaultBindingPower)
+		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}
 	return f
 }

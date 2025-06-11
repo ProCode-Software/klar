@@ -50,6 +50,7 @@ const (
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel          // Function label can't be number
+	ErrMissingFuncParamType  // Required function parameter type
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
@@ -194,14 +195,18 @@ func (e ParseError) Error() string {
 			" was left open"
 	case ErrMisplacedShebang:
 		return "SyntaxError: Shebang must be on the first line of the file (without any lines or spaces before)"
+	case ErrMissingFuncParamType:
+		return "SyntaxError: Function parameters must have a type"
 	case ErrImportsGoFirst:
 		return "SyntaxError: Imports must go before other declarations"
-	case ErrRedeclaredType:
-		return fmt.Sprintf("SyntaxError: Type %s was already declared at %s",
-			QuoteString(e.Params["name"].(string)), e.Params["origPos"],
-		)
-	case ErrRedeclaredVar:
-		return fmt.Sprintf("SyntaxError: Variable %s was already declared at %s",
+	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
+		kind := map[ErrorCode]string{
+			ErrRedeclaredType: "Type",
+			ErrRedeclaredVar:  "Variable",
+			ErrRedeclaredEnum: "Enum member",
+		}
+		return fmt.Sprintf("SyntaxError: %s %s was already declared at %s",
+			kind[e.ErrorCode],
 			QuoteString(e.Params["name"].(string)), e.Params["origPos"],
 		)
 	}

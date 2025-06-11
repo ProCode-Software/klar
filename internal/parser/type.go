@@ -87,15 +87,27 @@ func (p *Parser) ParseInterface(name string, inherited []ast.Type) ast.Interface
 		}
 		if p.CurrentTokenKind() == lexer.LeftParenthesis {
 			// Parse function: #{ Kind() -> string }
-			fn := ast.FunctionType{}
-			p.Advance()
-			for p.WhileNot(lexer.RightParenthesis) {
-				fn.Parameters = append(fn.Parameters, p.ParseType(CallBindingPower))
-				if p.CurrentTokenKind() != lexer.RightParenthesis {
-					p.Expect(lexer.Comma)
+			fn := ast.MethodType{}
+			p.Advance() // (
+			parseSeries(p, &fn.Parameters, func() ast.MethodTypeParam {
+				var label, name string
+				if p.Peek().Kind == lexer.Identifier {
+					// Label: fib(length length: Int)
+					label = p.expectNonNumericMapIdent().Source
+					name = p.Expect(lexer.Identifier).Source
+					p.Expect(lexer.Colon)
+				} else if p.Peek().Kind == lexer.Colon {
+					// Declared wih a name
+					name = p.Expect(lexer.Identifier).Source
+					p.Expect(lexer.Colon)
 				}
-			}
-			p.Expect(lexer.RightParenthesis)
+				// Type
+				return ast.MethodTypeParam{
+					Type:       p.ParseType(CallBindingPower),
+					Label:      label,
+					Identifier: name,
+				}
+			}, lexer.RightParenthesis, lexer.Comma, false)
 			if p.CurrentTokenKind() == lexer.Arrow {
 				p.Advance()
 				fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
@@ -103,7 +115,7 @@ func (p *Parser) ParseInterface(name string, inherited []ast.Type) ast.Interface
 			field.Value = fn
 		} else {
 			p.Expect(lexer.Colon)
-			field.Value = p.ParseType(AssignBindingPower)
+			field.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		fields = append(fields, field)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {

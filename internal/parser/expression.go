@@ -117,10 +117,7 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 	var item ast.Expression
 	if !computed {
 		// Allow use of keywords as fields
-		if !p.isMapIdentifier() {
-			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
-		}
-		item = ast.Symbol{Identifier: p.Advance().Source}
+		item = ast.Symbol{Identifier: p.expectNonNumericMapIdent().Source}
 	} else {
 		var (
 			left, right ast.Expression
