@@ -10,8 +10,8 @@ func (p *Parser) ParseType(bp BindingPower) ast.Type {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
-		p.unknownTokenErr(true)
-		return ast.BadExpression{}
+		p.unknownTokenErr()
+		return ast.BadExpression{Token: kind}
 	}
 	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
@@ -19,7 +19,7 @@ func (p *Parser) ParseType(bp BindingPower) ast.Type {
 			kind, left, TypeBindingPowerMap[p.CurrentTokenKind()],
 		)
 		if !handled {
-			p.unknownTokenErr(true)
+			p.unknownTokenErr()
 			continue
 		}
 	}
@@ -78,11 +78,8 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 func (p *Parser) ParseInterface(name string, inherited []ast.Type) ast.InterfaceDeclaration {
 	var fields []ast.TypePair
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
-		if !p.isMapIdentifier() {
-			errors.ExpectedToken(lexer.Identifier, p.CurrentToken())
-		}
 		field := ast.TypePair{
-			Key: p.Advance().Source,
+			Key: p.expectMapIdent().Source,
 			// If not ident, then it is unmatched
 		}
 		if p.CurrentTokenKind() == lexer.LeftParenthesis {
@@ -157,4 +154,9 @@ func (p *Parser) ParseTupleType() ast.TupleType {
 	}
 	p.Expect(lexer.RightParenthesis)
 	return ast.TupleType{Values: params}
+}
+
+func (p *Parser) ParseRestType(left ast.Type, bp BindingPower) ast.RestType {
+	p.Advance()
+	return ast.RestType{Value: left}
 }

@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -31,11 +31,9 @@ func (p *Parser) Parse() (program ast.Program) {
 	return prog
 }
 
-func (p *Parser) unknownTokenErr(advance bool) {
+func (p *Parser) unknownTokenErr() {
 	p.Error(errors.UnexpectedToken(p.CurrentToken()))
-	if advance {
-		p.Advance()
-	}
+	p.Advance()
 }
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
@@ -58,14 +56,14 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleNUD(kind)
 	if !handled {
-		p.unknownTokenErr(false)
-		return ast.BadExpression{}
+		p.unknownTokenErr()
+		return ast.BadExpression{Token: kind}
 	}
 	for BindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
 		left, handled = p.handleLED(kind, left, BindingPowerMap[p.CurrentTokenKind()])
 		if !handled {
-			p.unknownTokenErr(true)
+			p.unknownTokenErr()
 			continue
 		}
 	}
@@ -103,8 +101,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 		return copyPos(res, ast.ExpressionStatement{Expression: res})
 	// I don't know what this is. If this occurs, then it is a bug.
 	default:
-		log.Panicf("node %v is neither an expression nor statement", res)
-		return nil
+		panic(fmt.Sprintf("node %v is neither an expression nor statement", res))
 	}
 }
 

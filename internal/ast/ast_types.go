@@ -34,6 +34,7 @@ type Expression interface {
 type BadExpression struct {
 	BaseNode
 	Value Node
+	Token lexer.TokenType
 }
 
 // A Program is a parsed Klar file. Body contains the parsed statements in the program,

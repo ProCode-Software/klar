@@ -38,7 +38,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.When:
 		if p.isWhenGuard {
 			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.CurrentToken()))
-			return ast.BadExpression{}, true
+			return ast.BadExpression{Token: kind}, true
 		}
 		res = p.ParseWhenBlock()
 	case lexer.Underscore:
@@ -164,7 +164,7 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 
 func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPower) (res ast.Type, handled bool) {
 	switch kind {
-	case lexer.Plus, lexer.Stroke:
+	case lexer.Stroke:
 		res = p.ParseUnionType(left, bp)
 	case lexer.Question:
 		res = p.ParseOptionalType(left, bp)
@@ -172,6 +172,8 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 		res = p.ParseGenericType(left, bp)
 	case lexer.Arrow:
 		res = p.ParseFunctionType(left, bp)
+	case lexer.Ellipsis:
+		res = p.ParseRestType(left, bp)
 	default:
 		return left, false
 	}

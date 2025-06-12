@@ -42,7 +42,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 			explicitType = annot.Type
 			left = annot.Variable
 		default:
-			left = ast.BadExpression{}
+			left = ast.BadExpression{Value: left}
 		}
 		id := left.(ast.Symbol).Identifier
 		return ast.VariableDeclaration{
@@ -53,7 +53,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		}
 	}
 	if !p.validateAssignable(left) {
-		left = ast.BadExpression{}
+		left = ast.BadExpression{Value: left}
 	}
 	return ast.AssignmentStatement{
 		Assignee: left.(ast.Assignable),

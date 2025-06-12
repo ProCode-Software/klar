@@ -11,6 +11,7 @@ Type declaration:
 
 	type Type = Int -- type alias
 	type Type { ... } -- struct or enum
+	type Type {} -- if empty, then it is a struct
 	type #Type { ... } -- interface
 	type #Type -- type tag (interface with no requirements, manually implemented)
 */
@@ -48,6 +49,14 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		p.Expect(lexer.LeftCurlyBrace)
 		if isIntf {
 			return p.ParseInterface(name.Source, inherited)
+		}
+		if p.CurrentTokenKind() == lexer.RightCurlyBrace {
+			// Empty struct
+			p.Advance()
+			return ast.StructDeclaration{
+				Identifier:     name.Source,
+				InheritedTypes: inherited,
+			}
 		}
 
 		var isEnum bool

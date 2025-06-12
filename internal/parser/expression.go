@@ -31,20 +31,29 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		p.Advance()
 		return ast.TupleLiteral{}
 	}
-	expr := p.ParseExpression(CommaBindingPower)
+	var (
+		expr  ast.Expression
+		first = p.CurrentToken()
+	)
+	if first.Kind == lexer.Underscore {
+		expr = ast.Discard{}
+	} else {
+		expr = p.ParseExpression(CommaBindingPower)
+	}
 	next := p.CurrentToken()
 	switch next.Kind {
 	case lexer.Colon:
 		// Type tuple (for lambda)
 		typeTuple := ast.TypeTuple{}
-		if expr, ok := expr.(ast.Symbol); ok {
+		if e, ok := expr.(ast.Symbol); ok {
 			p.Advance()
 			typeTuple.Params = append(typeTuple.Params, ast.TypePair{
-				expr.Identifier,
+				e.Identifier,
 				p.ParseType(DefaultTypeBindingPower),
 			})
 		} else {
 			// Expected identifier
+			p.Error(errors.ExpectedToken(lexer.Identifier, first))
 		}
 		parseSeries(
 			p, &typeTuple.Params,
@@ -72,7 +81,7 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		return ast.ParenExpression{Expr: expr}
 	default:
 		p.Expect(lexer.RightParenthesis)
-		return ast.BadExpression{}
+		return ast.ParenExpression{Expr: expr}
 	}
 }
 
@@ -81,10 +90,10 @@ func (p *Parser) ParseMap() ast.MapLiteral {
 	entries := []ast.Pair{}
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 		entry := ast.Pair{
-			Key: p.ParseExpression(LogicalBindingPower),
+			Key: p.ParseExpression(ExpressionBindingPower),
 		}
 		p.Expect(lexer.Colon)
-		entry.Value = p.ParseExpression(LogicalBindingPower)
+		entry.Value = p.ParseExpression(ExpressionBindingPower)
 		entries = append(entries, entry)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
@@ -98,7 +107,7 @@ func (p *Parser) ParseList() ast.ListLiteral {
 	items := []ast.Expression{}
 	p.Expect(lexer.LeftBracket)
 	for p.WhileNotEndOr(lexer.RightBracket) {
-		items = append(items, p.ParseExpression(LogicalBindingPower))
+		items = append(items, p.ParseExpression(ExpressionBindingPower))
 		if p.IsNotCurrentlyEndOr(lexer.RightBracket) {
 			p.Expect(lexer.Comma)
 		}
@@ -112,6 +121,7 @@ func (p *Parser) ParseList() ast.ListLiteral {
 //	list[1]
 //	person.name
 //	list[1:3]
+//	list[:]
 func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expression {
 	computed := p.Advance().Kind == lexer.LeftBracket
 	var item ast.Expression
@@ -120,32 +130,36 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 		item = ast.Symbol{Identifier: p.expectNonNumericMapIdent().Source}
 	} else {
 		var (
-			left, right ast.Expression
-			isSlice     bool
+			leftExpr, rightExpr ast.Expression
+			isSlice             bool
 		)
 		// Slice [:3]
 		if p.CurrentTokenKind() == lexer.Colon {
 			isSlice = true
 			p.Advance()
+			if p.CurrentTokenKind() == lexer.RightBracket {
+				// Slice all [:]
+				return ast.SliceExpression{Object: leftExpr}
+			}
 		}
 		item = p.ParseExpression(ExpressionBindingPower)
 		if isSlice {
-			right = item
+			rightExpr = item
 		} else if p.CurrentTokenKind() == lexer.Colon {
 			isSlice = true
-			left = item
+			leftExpr = item
 			p.Advance()
 			// Slice [1:]
 			if p.CurrentTokenKind() != lexer.RightBracket {
-				right = p.ParseExpression(ExpressionBindingPower)
+				rightExpr = p.ParseExpression(ExpressionBindingPower)
 			}
 		}
 		p.Expect(lexer.RightBracket)
 		if isSlice {
 			return ast.SliceExpression{
 				Object: left,
-				Index:  left,
-				Length: right,
+				Index:  leftExpr,
+				Length: rightExpr,
 			}
 		}
 	}
@@ -187,11 +201,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExp
 		} else {
 			if p.Peek().Kind == lexer.Colon {
 				// Label (allow keywords)
-				if !slices.Contains(ast.ReservedIdent, p.CurrentTokenKind()) ||
-					p.CurrentTokenKind() != lexer.Identifier {
-					p.Error(errors.Token(errors.ErrInvalidLabel, p.CurrentToken()))
-				}
-				arg.Label = p.Advance().Source
+				arg.Label = p.expectNonNumericMapIdent().Source
 				p.Advance() // :
 			}
 			arg.Value = p.ParseExpression(ExpressionBindingPower)
@@ -268,10 +278,7 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 		return ast.RestExpression{Left: false, Expr: l}
 	}
 	// Range operator
-	rang := ast.RangeExpression{
-		From: l,
-		To:   p.ParseExpression(bp),
-	}
+	rang := ast.RangeExpression{From: l, To: p.ParseExpression(bp)}
 	if p.CurrentTokenKind() == lexer.Ellipsis {
 		// Step
 		p.Advance()
@@ -384,7 +391,7 @@ loop:
 		default:
 			// Expected expression error
 			p.errExpectedExpr(res)
-			c.BodyExpr = ast.BadExpression{}
+			c.BodyExpr = ast.BadExpression{Value: res}
 		}
 	}
 	return c

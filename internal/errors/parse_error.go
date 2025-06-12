@@ -109,7 +109,7 @@ func (e ParseError) Error() string {
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		}
 		return fmt.Sprintf(
-			"SyntaxError: I expected %s, but got %s instead",
+			"SyntaxError: I expected %s, but found %s instead",
 			FormatTokenType(e.Params["expected"].(lexer.TokenType)),
 			QuoteA(tok),
 		)
@@ -144,7 +144,7 @@ func (e ParseError) Error() string {
 		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment, but got " + Quote(tok) + " instead"
+		return "SyntaxError: I expected a type assignment, but found " + Quote(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
@@ -170,9 +170,8 @@ func (e ParseError) Error() string {
 		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
 			if kind == lexer.EscUnicode {
 				return "SyntaxError: Expected between 1-6 hex digits in Unicode escape"
-			} else {
-				return "SyntaxError: I expected an expression"
 			}
+			return "SyntaxError: I expected an expression"
 		default:
 			return "SyntaxError: Invalid string escape"
 		}

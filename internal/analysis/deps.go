@@ -95,19 +95,60 @@ func (c *Checker) getTypeAliasDeps(
 	return typeDeps
 }
 
+func getC1AndC2Deps(
+	typ ast.Type, c1Arr, c2Arr *[]string,
+) {
+	var list []ast.Type
+	switch typ := typ.(type) {
+	case ast.GenericType:
+		list = append(list, typ.Parameters...)
+		list = append(list, typ.Name)
+	case ast.ListType:
+		*c2Arr = append(*c2Arr, getTypeDeps(typ.Value)...)
+	case ast.OptionalType:
+		*c2Arr = append(*c2Arr, getTypeDeps(typ.Value)...)
+	case ast.UnionType:
+		*c2Arr = append(*c2Arr, getTypeDeps(typ.Options)...)
+	case ast.FunctionType:
+		list = append(list, typ.Parameters...)
+		list = append(list, typ.ReturnType)
+	case ast.RestType:
+		list = append(list, typ.Value)
+	case ast.TupleType:
+		list = append(list, typ.Values...)
+	case ast.TypeAlias:
+		*c1Arr = append(*c1Arr, typ.Identifier)
+	case ast.PrimitiveType:
+	default:
+		panic(fmt.Sprintf("getC1AndC2Deps: unhandled type %T", typ))
+	}
+	for _, t := range list {
+		getC1AndC2Deps(t, c1Arr, c2Arr)
+	}
+}
+
 func (c *Checker) mergeStructDeps(
 	aliases depMap, intfs []ast.TypeDeclaration,
 ) depMap {
 	intfDeps := make(map[string][]string, len(intfs))
 	for _, t := range intfs {
-		var deps []string
+		var (
+			deps []string
+			// c1: Generic, static, inherited dependencies
+			// c2: List, optional, union deps: cycle allowed
+			c1Deps, c2Deps []string
+		)
 		switch t := t.(type) {
 		case ast.StructDeclaration:
-			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
-			deps = append(deps, getTypeDeps(t.Fields)...)
+			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
+			for _, f := range t.Fields {
+				getC1AndC2Deps(f.Type, &c1Deps, &c2Deps)
+			}
 		case ast.InterfaceDeclaration:
-			deps = append(deps, getTypeDeps(t.InheritedTypes)...)
-			deps = append(deps, getTypeDeps(t.Fields)...)
+			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
+			for _, f := range t.Fields {
+				getC1AndC2Deps(f.Value, &c1Deps, &c2Deps)
+			}
 		}
 		intfDeps[t.Name()] = deps
 	}

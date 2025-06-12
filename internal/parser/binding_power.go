@@ -48,7 +48,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.NotEqual:       RelationalBindingPower,
 	lexer.In:             RelationalBindingPower,
 
-	lexer.Ellipsis: RangeBindingPower, // Infix only: 1...10
+	lexer.Ellipsis: RangeBindingPower,
 
 	lexer.And: DistributiveBindingPower,
 	lexer.Or:  DistributiveBindingPower,
@@ -75,10 +75,11 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Boolean:    PrimaryBindingPower,
 	lexer.Identifier: PrimaryBindingPower,
 	lexer.Nil:        PrimaryBindingPower,
+	lexer.Underscore: PrimaryBindingPower,
 }
 
 const (
-	_ BindingPower = iota + AssignBindingPower
+	_ BindingPower = AssignBindingPower + iota
 	DefaultTypeBindingPower
 	FunctionTypeBindingPower
 	OptionalTypeBindingPower
@@ -89,7 +90,6 @@ const (
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Arrow:      FunctionTypeBindingPower,
 	lexer.Stroke:     UnionTypeBindingPower,
-	lexer.Plus:       UnionTypeBindingPower,
 	lexer.Question:   OptionalTypeBindingPower,
 	lexer.String:     PrimaryTypeBindingPower,
 	lexer.Numeric:    PrimaryTypeBindingPower,

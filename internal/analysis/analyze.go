@@ -68,11 +68,6 @@ func (c *Checker) checkRedeclared(ok bool, ctx *Context, rang ranges.Range, name
 	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
 }
 
-type B interface {
-	value() A
-}
-type A = B
-
 func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 	var (
 		foundDec bool
@@ -111,12 +106,12 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			ok = ctx.DeclareType(dec.Identifier, c.parseEnum(dec), pos)
 			id = dec.Identifier
 		// Types don't have to be declared before they can be used.
-		// For structs and type aliases
+		// in structs and type aliases. No recursive types in aliases
 		case ast.TypeAliasDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
 			types = append(types, dec)
-		// Structs and enums may recursively reference themselves with
+		// Structs and interfaces may recursively reference themselves with
 		// limitations.
 		case ast.StructDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
@@ -152,7 +147,8 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			foundDec = true
 		}
 	}
-	deps := c.mergeStructDeps(c.getTypeAliasDeps(types, ctx), intfs)
+	deps := c.getTypeAliasDeps(types, ctx)
+	deps = c.mergeStructDeps(deps, intfs)
 	types = sortTypeDecls(deps, types)
 	for _, t := range types {
 		name := t.Identifier

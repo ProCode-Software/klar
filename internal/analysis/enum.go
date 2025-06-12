@@ -42,7 +42,7 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 			}
 		case ast.IntegerLiteral:
 			// Allow ints for floats
-			if _, ok := last.(float64); ok {
+			if expType == types.Float {
 				last, currType = float64(v.Value), types.Float
 			} else {
 				last, currType = v.Value, types.Int
