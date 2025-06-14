@@ -3,7 +3,10 @@
 ## Parser
 - `for` loop
     - tuple declarations also needed
-- multi-variable declarations
+- multi-variable assignments
 - tuple variable declarations
+- [done] string pattern matching in `when` case
 
 ## Analysis
+
+## Other

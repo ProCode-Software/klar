@@ -6,13 +6,13 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
-	typespkg "github.com/ProCode-Software/klar/internal/types"
+	"github.com/ProCode-Software/klar/internal/types"
 )
 
 var defaultPos lexer.Position
 
 type (
-	Type    = typespkg.Type
+	Type    = types.Type
 	Context = runtime.Context
 )
 
@@ -23,6 +23,8 @@ type Checker struct {
 	Program         ast.Program
 	OnError         func(err errors.KlarError)
 	ContinueOnError bool
+
+	typeDepMode int
 }
 
 // NewChecker returns a new Checker for program.
@@ -51,7 +53,7 @@ func (c *Checker) CheckCompatible(t1, t2 Type) Type {
 	if t1 == t2 {
 		return t1
 	} else {
-		return typespkg.InvalidType
+		return types.InvalidType
 	}
 }
 
@@ -72,9 +74,9 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 	var (
 		foundDec bool
 		// Sort each statement so normal statements can reference functions before
-		// they are declared. Same thing for functions referencing types and for
-		// structs/interfaces referencing type aliases
-		types []ast.TypeAliasDeclaration
+		// they are declared. Same thing for functions referencing alias and for
+		// structs/interfaces referencing type alias
+		alias []ast.TypeAliasDeclaration
 		attrs []ast.Attribute
 		funcs []ast.FunctionDeclaration
 		intfs []ast.TypeDeclaration // Structs and interfaces
@@ -103,24 +105,21 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			continue
 		// Declare enums first since they don't depend on other types
 		case ast.EnumDeclaration:
-			ok = ctx.DeclareType(dec.Identifier, c.parseEnum(dec), pos)
 			id = dec.Identifier
+			ok = ctx.DeclareType(id, c.parseEnum(dec), pos)
 		// Types don't have to be declared before they can be used.
 		// in structs and type aliases. No recursive types in aliases
 		case ast.TypeAliasDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
-			types = append(types, dec)
+			alias = append(alias, dec)
 		// Structs and interfaces may recursively reference themselves with
 		// limitations.
-		case ast.StructDeclaration:
-			ok = ctx.DeclareType(dec.Identifier, nil, pos)
-			id = dec.Identifier
-			intfs = append(intfs, dec)
-		case ast.InterfaceDeclaration:
-			ok = ctx.DeclareType(dec.Identifier, nil, pos)
-			id = dec.Identifier
-			intfs = append(intfs, dec)
+		case ast.StructDeclaration, ast.InterfaceDeclaration:
+			d := dec.(ast.TypeDeclaration)
+			id = d.Name()
+			ok = ctx.DeclareType(id, nil, pos)
+			intfs = append(intfs, d)
 		// Functions may redeclare themselves with different parameters/overloads
 		case ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
@@ -147,13 +146,26 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 			foundDec = true
 		}
 	}
-	deps := c.getTypeAliasDeps(types, ctx)
-	deps = c.mergeStructDeps(deps, intfs)
-	types = sortTypeDecls(deps, types)
-	for _, t := range types {
-		name := t.Identifier
+	deps := c.getTypeAliasDeps(alias, ctx) // Deps of aliases
+	c.mergeStructDeps(deps, intfs, ctx)
+	types, names := sortTypeDecls(deps, alias, intfs)
+	for i, t := range types {
+		if t == nil {
+			// Not defined
+			c.Error(errors.Undefined(
+				errors.ErrTypeUndefined, names[i], ranges.Range{},
+			))
+			continue
+		}
+		name := t.Name()
 		// Skip type cycles, would already be set to error type
-		if ctx.TypeDeclarations[name] == nil {
+		if ctx.TypeDeclarations[name] != nil {
+			continue
+		}
+		switch t := t.(type) {
+		case ast.StructDeclaration:
+		case ast.InterfaceDeclaration:
+		case ast.TypeAliasDeclaration:
 			ctx.SetType(name, c.ParseType(t.Type, ctx))
 		}
 	}

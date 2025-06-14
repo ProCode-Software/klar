@@ -20,7 +20,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Type
 	// Skip the :
 	p.Advance()
 	typ := p.ParseType(bp)
-	if p.CurrentTokenKind() != lexer.ColonEqual {
+	if !p.isWhenCase && p.CurrentTokenKind() != lexer.ColonEqual {
 		p.Error(errors.ExpectedToken(lexer.ColonEqual, p.CurrentToken()))
 	}
 	return ast.TypeAnnotation{

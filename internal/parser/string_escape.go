@@ -49,9 +49,9 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 			}
 			val = ast.HexadecimalEscape{Hex: hex}
 		case lexer.EscInterpolation:
-			p2 := newInterpParser(e.Interpolated)
+			p2, bp := p.newInterpParser(e.Interpolated)
 			val = ast.StringInterpolation{
-				Expression: p2.ParseExpression(DefaultBindingPower),
+				Expression: p2.ParseExpression(bp),
 			}
 		}
 		escapes[i] = val
@@ -59,7 +59,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 	return escapes
 }
 
-func newInterpParser(tokens []lexer.Token) *Parser {
+func (p *Parser) newInterpParser(tokens []lexer.Token) (*Parser, BindingPower) {
 	// Add the EOF
 	tokens = append(tokens, lexer.Token{
 		Kind: lexer.EOF,
@@ -68,5 +68,12 @@ func newInterpParser(tokens []lexer.Token) *Parser {
 	ep := New(tokens)
 	ep.RemoveComments()
 	ep.InsertEOS()
-	return ep
+	// Allow type pattern matching in when cases
+	// when str {
+	// 	 "{x: Int} cats" -> ...
+	// }
+	if p.isWhenCase {
+		return ep, AssignBindingPower
+	}
+	return ep, ExpressionBindingPower
 }

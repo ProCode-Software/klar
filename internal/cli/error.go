@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func isREPL() bool {
+func IsREPL() bool {
 	return os.Getenv("KLAR_REPL") == "1"
 }
 
@@ -22,25 +22,31 @@ func Custom(errorType string, msg string, detail ...any) {
 	fmt.Fprintln(os.Stderr, str)
 }
 
-// CustomError prints an error to [os.Stderr] with a custom title, followed by a call to
+// CustomError prints an error to [os.Stderr] with a custom title.
+func CustomError(errorType string, msg string, detail ...any) {
+	Custom(errorType, msg, detail...)
+}
+
+// CustomFailure prints an error to [os.Stderr] with a custom title, followed by a call to
 // [os.Exit](1).
 func CustomFailure(errorType string, msg string, detail ...any) {
 	Custom(errorType, msg, detail...)
-	if !isREPL() {
-		os.Exit(1)
-	}
+	os.Exit(1)
 }
 
-// Fail prints an error to [os.Stderr], followed by a call to [os.Exit](1).
-func Fail(msg string, detail ...any) {
+// Error prints an error to [os.Stderr].
+func Error(msg string, detail ...any) {
 	Print(msg, detail...)
-	if !isREPL() {
-		os.Exit(1)
-	}
+}
+
+// Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
+func Failure(msg string, detail ...any) {
+	Print(msg, detail...)
+	os.Exit(1)
 }
 
 func InternalError(err any) {
-	Fail("Internal Error: ", err)
+	Failure("Internal Error: ", err)
 }
 
 func InvalidUsage(usage string) {
@@ -49,5 +55,9 @@ func InvalidUsage(usage string) {
 }
 
 func FileNotFound(path string) {
-	Fail("File not found: ", path)
+	Error("File not found: ", path)
+}
+
+func HintIndent(hint string) {
+	Custom(ANSIBlue+"    Hint", "", hint)
 }

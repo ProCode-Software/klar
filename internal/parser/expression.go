@@ -99,7 +99,9 @@ func (p *Parser) ParseMap() ast.MapLiteral {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
 		}
 	}
-	p.Expect(lexer.RightCurlyBrace)
+	err := errors.ExpectedToken(lexer.RightCurlyBrace, p.CurrentToken())
+	err.Params["isMap"] = true
+	p.ExpectError(err, lexer.RightCurlyBrace)
 	return ast.MapLiteral{Entries: entries}
 }
 

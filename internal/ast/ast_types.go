@@ -22,13 +22,13 @@ type BaseNode struct {
 // All EOS-terminated statement AST tokens implement the Statement interface.
 type Statement interface {
 	Node
-	Statement()
+	stmt()
 }
 
 // All expression AST tokens implement the Expression interface.
 type Expression interface {
 	Node
-	Expression()
+	expr()
 }
 
 type BadExpression struct {
@@ -102,7 +102,7 @@ type UnaryExpression struct {
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
 type StringEscape interface {
-	StringEscape()
+	stringEsc()
 }
 
 type (
@@ -121,7 +121,7 @@ type Symbol struct {
 type Discard struct{ BaseNode } // _
 
 type Assignable interface {
-	Assignable()
+	assignable()
 }
 
 // Publicizable is any declaration that allows the `public` modifier.
@@ -160,7 +160,7 @@ var ReservedIdent = []lexer.TokenType{
 
 type Type interface {
 	Node
-	Type()
+	_type()
 }
 
 // A PrimitiveType is a Klar-builtin type
@@ -280,7 +280,7 @@ type UnqualifiedImport struct {
 type TypeDeclaration interface {
 	Statement
 	Name() string
-	TypeDeclaration()
+	typeDecl()
 }
 
 type InterfaceDeclaration struct {

@@ -26,26 +26,42 @@ const (
 )
 
 type TypeError struct {
+	Name                  string
 	Range                 ranges.Range
 	ErrorCode             ErrorCode
 	Params                ErrorParams
 	ExpectedType, GotType types.Type
+	Hints                 []string
 }
 
 func (e TypeError) Error() string {
 	var (
 		expType = e.ExpectedType
 		gotType = e.GotType
+		params  = e.Params
 	)
 	switch e.ErrorCode {
 	default:
-		return "TypeError:"
+		return "TypeError: " + e.Code().String()
 	case ErrTypeMismatch:
 		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T",
 			expType, gotType,
 		)
 	case ErrInvalidEnumValue:
 		return "TypeError: Enum values can only be String, Int, or Float"
+	case ErrTypeCycle:
+		types := params["types"].([2]string)
+		switch {
+		case params["isSelf"]:
+			return fmt.Sprintf(
+				"TypeError: Type cycle: Type %s refers to itself",
+				QuoteString(types[0]),
+			)
+		}
+		return fmt.Sprintf(
+			"TypeError: Type cycle: %s and %s recursively depend on each other",
+			QuoteString(types[0]), QuoteString(types[1]),
+		)
 	}
 }
 
@@ -55,5 +71,13 @@ func TypeMismatch(expType, gotType types.Type, rang ranges.Range) TypeError {
 		ExpectedType: expType,
 		GotType:      gotType,
 		Range:        rang,
+	}
+}
+
+func NamedTypeError(code ErrorCode, name string, rang ranges.Range) TypeError {
+	return TypeError{
+		ErrorCode: code,
+		Name:      name,
+		Range:     rang,
 	}
 }

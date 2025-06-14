@@ -33,13 +33,16 @@ func (p *Parser) Parse() (program ast.Program) {
 
 func (p *Parser) unknownTokenErr() {
 	p.Error(errors.UnexpectedToken(p.CurrentToken()))
-	p.Advance()
+	if p.CurrentTokenKind() != lexer.EOF {
+		p.Advance()
+	}
 }
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
 	p.Error(errors.ParseError{
 		ErrorCode: errors.ErrExpectedExpression,
 		Node:      got,
+		Range:     got.Base().Range,
 	})
 }
 
@@ -121,18 +124,19 @@ func parseSeries[T any](
 	with func() T, until, sepBy lexer.TokenType,
 	end bool,
 ) {
-	var while, isNot func() bool
 	if end {
-		while = func() bool { return p.WhileNot(until) }
-		isNot = func() bool { return p.CurrentTokenKind() != until }
+		for p.WhileNot(until) {
+			*arr = append(*arr, with())
+			if p.CurrentTokenKind() != until {
+				p.Expect(sepBy)
+			}
+		}
 	} else {
-		while = func() bool { return p.WhileNotEndOr(until) }
-		isNot = func() bool { return p.IsNotCurrentlyEndOr(until) }
-	}
-	for while() {
-		*arr = append(*arr, with())
-		if isNot() {
-			p.Expect(sepBy)
+		for p.WhileNotEndOr(until) {
+			*arr = append(*arr, with())
+			if p.IsNotCurrentlyEndOr(until) {
+				p.Expect(sepBy)
+			}
 		}
 	}
 	p.Expect(until)

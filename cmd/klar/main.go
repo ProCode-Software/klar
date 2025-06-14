@@ -32,7 +32,7 @@ func main() {
 	switch cmd {
 	case "run":
 		if len(args) <= 2 {
-			cli.Fail("No file to run specified")
+			cli.Error("No file to run specified")
 			os.Exit(2)
 		}
 		cmd = args[2]
@@ -42,7 +42,7 @@ func main() {
 	case "repl":
 		StartRepl()
 	case "test", "install", "build":
-		cli.Fail(fmt.Sprintf("Command '%s' is not implemented yet.", cmd), "")
+		cli.Error(fmt.Sprintf("Command '%s' is not implemented yet.", cmd), "")
 	case "help", "--help", "-h":
 		showHelp()
 	}

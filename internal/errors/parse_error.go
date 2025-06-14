@@ -65,8 +65,7 @@ const (
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 
-	ErrVarExists // Can't redeclare variable
-	ErrRedeclaredVar
+	ErrRedeclaredVar // Can't redeclare variable
 	ErrRedeclaredType
 	ErrRedeclaredEnum
 	ErrVarSameNameAsFunc
@@ -101,17 +100,34 @@ func (e ParseError) Error() string {
 			e.ErrorCode.String(), kind.String(), Quote(tok),
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: I expected an expression"
+		return "SyntaxError: This isn't an expression"
 	case ErrExpectedSymbolAssign:
 		return "Can't assign to this kind of expression"
 	case ErrExpectedToken:
+		expToken := e.Params["expected"].(lexer.TokenType)
+		expected := FormatTokenType(expToken)
 		if src == ";" {
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		}
+		switch expToken {
+		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan,lexer.RightBracket:
+			beginMap := map[lexer.TokenType]lexer.TokenType{
+				lexer.RightCurlyBrace:  lexer.LeftCurlyBrace,
+				lexer.RightParenthesis: lexer.LeftParenthesis,
+				lexer.GreaterThan:      lexer.LessThan,
+				lexer.RightBracket:     lexer.LeftBracket,
+			}
+			begin := beginMap[expToken]
+			if e.Params["isMap"] == true {
+				begin = lexer.HashLeftCurlyBrace
+			}
+			return fmt.Sprintf("SyntaxError: Expected %s to close %s",
+				expected, FormatTokenType(begin),
+			)
+		}
 		return fmt.Sprintf(
 			"SyntaxError: I expected %s, but found %s instead",
-			FormatTokenType(e.Params["expected"].(lexer.TokenType)),
-			QuoteA(tok),
+			expected, QuoteA(tok),
 		)
 	case ErrWildcardAndUnqImport:
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
@@ -131,12 +147,14 @@ func (e ParseError) Error() string {
 		return "SyntaxError: A module name can't start with '.'"
 	case ErrUnexpectedToken:
 		switch {
-		case kind == lexer.Illegal:
-			return "SyntaxError: I don't know what to do with this " + Quote(tok)
 		case src == ";":
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+		case kind == lexer.EOF:
+			return "SyntaxError: Unexpected end of file"
+		case kind == lexer.Newline:
+			return "SyntaxError: Unexpected newline"
 		default:
-			return "SyntaxError: I didn't expect " + Quote(tok)
+			return "SyntaxError: I didn't expect " + QuoteA(tok)
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %s was left open", e.Position)
@@ -144,7 +162,7 @@ func (e ParseError) Error() string {
 		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment, but found " + Quote(tok) + " instead"
+		return "SyntaxError: I expected a type assignment, but found " + QuoteA(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:

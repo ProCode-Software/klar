@@ -17,6 +17,10 @@ type Range struct {
 	Start, End Position
 }
 
+func NewRange(sl, sc, el, ec int) Range {
+	return Range{Start: Position{sl, sc}, End: Position{el, ec}}
+}
+
 func IsZeroPosition(p Position) bool {
 	return p.Line == 0
 }

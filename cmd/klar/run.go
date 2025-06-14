@@ -52,26 +52,29 @@ func stack(err errors.KlarError) string {
 	)
 }
 
-func throw(err error) {
-	if !parser.IsKlarError(err) {
-		panic(err)
+func throw(anyError error) {
+	if !parser.IsKlarError(anyError) {
+		panic(anyError)
 	}
 	var (
-		arr     = strings.SplitAfterN(err.Error(), ": ", 3)
+		arr     = strings.SplitAfterN(anyError.Error(), ": ", 3)
 		first   = arr[0]
-		klarErr = err.(errors.KlarError)
-		stack   = stack(klarErr)
+		err = anyError.(errors.KlarError)
+		stack   = stack(err)
 	)
-	errors.PrintError(klarErr, printOptions)
+	errors.PrintError(err, printOptions)
 	if len(arr) < 2 {
-		cli.Fail(first, stack)
+		cli.Error(first, stack)
 	} else {
 		errName := strings.TrimSuffix(first, ": ")
 		if len(arr) < 3 {
-			cli.CustomFailure(errName, arr[1], stack)
+			cli.CustomError(errName, arr[1], stack)
 		} else {
-			cli.CustomFailure(errName, arr[1], arr[2], stack)
+			cli.CustomError(errName, arr[1], arr[2], stack)
 		}
+	}
+	for _, hint := range err.GetHints() {
+		cli.HintIndent(hint)
 	}
 }
 
@@ -82,17 +85,22 @@ func runTokens(tokens []lexer.Token) {
 	})
 	program := p.Parse()
 	if len(p.Errors) > 0 {
-		throw(p.Errors[0])
+		for _, err := range p.Errors {
+			throw(err)
+		}
+	} else {
+		litter.Config.StripPackageNames = true
+		//litter.Dump(program)
 	}
-	litter.Config.StripPackageNames = true
-	litter.Dump(program)
 
 	// Typecheck
 	errors := analysis.CheckProgram(program, analysis.CheckOptions{
 		ContinueOnError: true,
 	})
 	if len(errors) > 0 {
-		throw(errors[0])
+		for _, err := range errors {
+			throw(err)
+		}
 	} else {
 		fmt.Println(cli.Color(cli.ANSIGreen+cli.ANSIBold, "✅ No type errors found!"))
 	}

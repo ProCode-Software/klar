@@ -53,11 +53,10 @@ func _() {
 	_ = x[ErrInvalidPublic-40]
 	_ = x[ErrUnderscoreWithRest-41]
 	_ = x[ErrNotAllowedInGuard-42]
-	_ = x[ErrVarExists-43]
-	_ = x[ErrRedeclaredVar-44]
-	_ = x[ErrRedeclaredType-45]
-	_ = x[ErrRedeclaredEnum-46]
-	_ = x[ErrVarSameNameAsFunc-47]
+	_ = x[ErrRedeclaredVar-43]
+	_ = x[ErrRedeclaredType-44]
+	_ = x[ErrRedeclaredEnum-45]
+	_ = x[ErrVarSameNameAsFunc-46]
 	_ = x[ErrVarUndefined-201]
 	_ = x[ErrEnumUndefined-202]
 	_ = x[ErrTypeUndefined-203]
@@ -76,20 +75,20 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrMissingFuncParamTypeErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrVarExistsErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrVarSameNameAsFunc"
+	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrMissingFuncParamTypeErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrVarSameNameAsFunc"
 	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeMismatchErrRecursiveTypeErrTypeCycleErrInvalidEnumValueErrCannotInferEnumValue"
 	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefined"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 105, 128, 146, 170, 194, 217, 236, 253, 270, 291, 313, 333, 352, 368, 383, 402, 419, 434, 448, 462, 478, 495, 513, 537, 560, 578, 599, 623, 638, 661, 682, 707, 733, 758, 778, 800, 816, 837, 857, 869, 885, 902, 919, 939}
+	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 105, 128, 146, 170, 194, 217, 236, 253, 270, 291, 313, 333, 352, 368, 383, 402, 419, 434, 448, 462, 478, 495, 513, 537, 560, 578, 599, 623, 638, 661, 682, 707, 733, 758, 778, 800, 816, 837, 857, 873, 890, 907, 927}
 	_ErrorCode_index_1 = [...]uint8{0, 15, 28, 47, 63, 83, 101, 117, 133, 148, 164, 176, 195, 218}
 	_ErrorCode_index_2 = [...]uint8{0, 20, 35, 51, 67}
 )
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 47:
+	case 0 <= i && i <= 46:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 112:
 		i -= 100

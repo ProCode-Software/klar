@@ -19,34 +19,38 @@ func (p *Parser) InsertEOS() {
 	}
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
+			prev      lexer.Token
 			tok       = p.Tokens[i]
 			insertEOS = true
 		)
+		if i > 0 {
+			prev = p.Tokens[i-1]
+		}
 		switch {
 		// Add before EOF
 		case tok.Kind == lexer.EOF &&
-			p.Tokens[i-1].Kind != lexer.EndOfStatement:
+			prev.Kind != lexer.EndOfStatement:
 			fallthrough
 		// Block with curly brace on same line:
 		// 	func fn(x: Int) { return x * 2 }
 		// but not {}
 		case tok.Kind == lexer.RightCurlyBrace &&
-			p.Tokens[i-1].Kind != lexer.EndOfStatement &&
-			p.Tokens[i-1].Kind != lexer.LeftCurlyBrace:
-
+			prev.Kind != lexer.EndOfStatement &&
+			prev.Kind != lexer.LeftCurlyBrace &&
+			prev.Kind != lexer.HashLeftCurlyBrace:
+			if canGoOnNewline(prev.Kind) {
+				continue
+			}
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
 				Kind:     lexer.EndOfStatement,
 				Position: tok.Position,
 			})
-			if tok.Kind == lexer.EOF {
-				break
-			}
 			i++
 			continue
 		case tok.Kind != lexer.Newline:
 			continue
 		case i > 0:
-			switch p.Tokens[i-1].Kind {
+			switch prev.Kind {
 			case
 				// Punctuation
 				lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
@@ -56,8 +60,9 @@ func (p *Parser) InsertEOS() {
 				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type, lexer.Public:
 				insertEOS = false
 			case lexer.RightParenthesis, lexer.RightBracket:
+				insertEOS = true
 			default:
-				insertEOS = !canGoOnNewline(p.Tokens[i-1].Kind)
+				insertEOS = !canGoOnNewline(prev.Kind)
 			}
 		}
 		// Should add EOS before next token?

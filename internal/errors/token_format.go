@@ -48,7 +48,7 @@ var vowels = map[byte]bool{
 	'a': true, 'e': true, 'i': true, 'o': true, 'u': true,
 }
 
-var stringMap = map[lexer.TokenType]string{
+var TypeStringMap = map[lexer.TokenType]string{
 	lexer.Identifier:     "an identifier",
 	lexer.Numeric:        "a number",
 	lexer.Boolean:        "a boolean",
@@ -66,15 +66,15 @@ var stringMap = map[lexer.TokenType]string{
 
 func init() {
 	for str, kw := range lexer.KeywordMap {
-		stringMap[kw] = "'" + str + "'"
+		TypeStringMap[kw] = "'" + str + "'"
 	}
 	for str, op := range lexer.OperatorMap {
-		stringMap[op] = "'" + str + "'"
+		TypeStringMap[op] = "'" + str + "'"
 	}
 }
 
 func FormatTokenType(tok lexer.TokenType) string {
-	if s, ok := stringMap[tok]; ok {
+	if s, ok := TypeStringMap[tok]; ok {
 		return s
 	}
 	panic(fmt.Sprintf("cannot represent token type %s as string", tok))
