@@ -423,11 +423,10 @@ type UpdateStatement struct {
 //	for 5 { ...repeat 5 times } - only if literal, else - for _ in 5
 type ForStatement struct {
 	BaseNode
-	Infinite  bool       // or
-	Condition Expression // When used as while loop or repeat
-	Variables []Symbol
-	In        Expression
-	Body      []Statement
+	Infinite   bool // or
+	Variables  []string
+	Expression Expression // When used as while loop or repeat
+	Body       []Statement
 }
 
 type WhenExpression struct {

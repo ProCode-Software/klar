@@ -44,6 +44,9 @@ func (p *Parser) PeekBehind() lexer.Token {
 
 // Peek return the next [lexer.Token].
 func (p *Parser) Peek() lexer.Token {
+	if !p.HasTokens() {
+		return p.CurrentToken()
+	}
 	return p.Tokens[p.Index+1]
 }
 

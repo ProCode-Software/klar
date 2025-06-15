@@ -9,3 +9,11 @@ type D {
 }
 
 type E = D
+
+
+for i in 5 = print("i is {i}")
+
+
+for i in 5 {
+    print("i is {i}")
+}

@@ -202,28 +202,21 @@ func (p *Parser) ParsePostfix(left ast.Expression) ast.UpdateStatement {
 	return ast.UpdateStatement{Operator: op, Left: left}
 }
 
-func (p *Parser) ParseForStatement() ast.ForStatement {
-	f := ast.ForStatement{}
-	// for { - infinite loop
-	if p.CurrentTokenKind() != lexer.LeftParenthesis {
-		switch stmt := p.ParseStatement().(type) {
-		// Conditional: for i < 10
-		case ast.ExpressionStatement:
-			f.Condition = stmt.Expression
-		// Iteration: for i := 1...10
-		case ast.AssignmentStatement:
-			// TODO: comma assignments
-			if _, ok := stmt.Assignee.(ast.Symbol); !ok ||
-				stmt.Operator != lexer.ColonEqual {
-				p.Error(errors.Node(errors.ErrForInvalidCondition, stmt))
-			}
-			f.Variables = append(f.Variables, stmt.Assignee.(ast.Symbol))
-			f.In = stmt.Value
-		default:
-			p.Error(errors.Node(errors.ErrForInvalidCondition, stmt))
-		}
-	} else {
+func (p *Parser) ParseForStatement() (f ast.ForStatement) {
+	p.Expect(lexer.For)
+	next := p.Peek().Kind
+	switch {
+	case p.CurrentTokenKind() == lexer.LeftCurlyBrace:
+		// for { - infinite loop
 		f.Infinite = true
+	case next == lexer.In, next == lexer.Comma:
+		// for-in
+		parseSeries(p, &f.Variables, func() string {
+			return p.Expect(lexer.Identifier, lexer.Underscore).Source
+		}, lexer.In, lexer.Comma, false)
+		fallthrough
+	default:
+		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}
 	f.Body = p.ParseBlock()
 	return f

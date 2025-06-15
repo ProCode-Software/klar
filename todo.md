@@ -8,5 +8,6 @@
 - [done] string pattern matching in `when` case
 
 ## Analysis
+- handle `<self>` and recursive types in structs
 
 ## Other
