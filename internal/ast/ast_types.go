@@ -207,6 +207,7 @@ type GenericType struct {
 type TypePair struct {
 	Key   string
 	Value Type
+	BaseNode
 }
 type UnionType struct {
 	BaseNode

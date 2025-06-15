@@ -48,18 +48,27 @@ func (e TypeError) Error() string {
 			expType, gotType,
 		)
 	case ErrInvalidEnumValue:
-		return "TypeError: Enum values can only be String, Int, or Float"
+		return "TypeError: Enum values can only be 'String', 'Int', or 'Float'"
 	case ErrTypeCycle:
 		types := params["types"].([2]string)
 		switch {
+		// Infinite size struct or interface:
+		// 	type A { value: A }
+		case params["mode"] == 1:
+			return fmt.Sprintf(
+				"TypeError: Invalid recursive type in %s",
+				QuoteString(types[0]),
+			)
+		// Defined in terms of itself: type A = A
 		case params["isSelf"]:
 			return fmt.Sprintf(
-				"TypeError: Type cycle: Type %s refers to itself",
+				"TypeError: Type %s references itself",
 				QuoteString(types[0]),
 			)
 		}
+		// Other cycle
 		return fmt.Sprintf(
-			"TypeError: Type cycle: %s and %s recursively depend on each other",
+			"TypeError: Type cycle: %s and %s recursively reference each other",
 			QuoteString(types[0]), QuoteString(types[1]),
 		)
 	}

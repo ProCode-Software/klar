@@ -110,7 +110,7 @@ func (e ParseError) Error() string {
 			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		}
 		switch expToken {
-		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan,lexer.RightBracket:
+		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan, lexer.RightBracket:
 			beginMap := map[lexer.TokenType]lexer.TokenType{
 				lexer.RightCurlyBrace:  lexer.LeftCurlyBrace,
 				lexer.RightParenthesis: lexer.LeftParenthesis,

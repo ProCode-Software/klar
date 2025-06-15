@@ -38,9 +38,6 @@ func (p *Parser) InsertEOS() {
 			prev.Kind != lexer.EndOfStatement &&
 			prev.Kind != lexer.LeftCurlyBrace &&
 			prev.Kind != lexer.HashLeftCurlyBrace:
-			if canGoOnNewline(prev.Kind) {
-				continue
-			}
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
 				Kind:     lexer.EndOfStatement,
 				Position: tok.Position,

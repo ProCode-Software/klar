@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -15,7 +16,10 @@ import (
 
 const INCLUDE_COMMENTS = true
 
-var File string
+var (
+	File        string
+	rootProgram ast.Program
+)
 
 func tryPipe() {
 	stat, err := os.Stdin.Stat()
@@ -45,7 +49,7 @@ func stack(err errors.KlarError) string {
 			return cli.Color(cli.ANSIYellow, fmt.Sprint(n))
 		}
 	)
-	return fmt.Sprint("\n    " +
+	return fmt.Sprint("    " +
 		cli.Color(cli.ANSIDim, "File: ") + file +
 		colon + num(pos.Line) +
 		colon + num(pos.Col),
@@ -57,25 +61,26 @@ func throw(anyError error) {
 		panic(anyError)
 	}
 	var (
-		arr     = strings.SplitAfterN(anyError.Error(), ": ", 3)
-		first   = arr[0]
-		err = anyError.(errors.KlarError)
-		stack   = stack(err)
+		arr   = strings.SplitAfterN(anyError.Error(), ": ", 3)
+		first = arr[0]
+		err   = anyError.(errors.KlarError)
+		stack = stack(err)
 	)
 	errors.PrintError(err, printOptions)
 	if len(arr) < 2 {
-		cli.Error(first, stack)
+		cli.Error(first)
 	} else {
 		errName := strings.TrimSuffix(first, ": ")
 		if len(arr) < 3 {
-			cli.CustomError(errName, arr[1], stack)
+			cli.CustomError(errName, arr[1])
 		} else {
-			cli.CustomError(errName, arr[1], arr[2], stack)
+			cli.CustomError(errName, arr[1], arr[2])
 		}
 	}
 	for _, hint := range err.GetHints() {
 		cli.HintIndent(hint)
 	}
+	fmt.Println(stack)
 }
 
 func runTokens(tokens []lexer.Token) {
@@ -84,17 +89,18 @@ func runTokens(tokens []lexer.Token) {
 		ContinueOnError: false,
 	})
 	program := p.Parse()
+	rootProgram.Body = append(rootProgram.Body, program.Body...)
 	if len(p.Errors) > 0 {
 		for _, err := range p.Errors {
 			throw(err)
 		}
 	} else {
 		litter.Config.StripPackageNames = true
-		//litter.Dump(program)
+		// litter.Dump(program)
 	}
 
 	// Typecheck
-	errors := analysis.CheckProgram(program, analysis.CheckOptions{
+	errors := analysis.CheckProgram(rootProgram, analysis.CheckOptions{
 		ContinueOnError: true,
 	})
 	if len(errors) > 0 {

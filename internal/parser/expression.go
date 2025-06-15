@@ -48,8 +48,8 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		if e, ok := expr.(ast.Symbol); ok {
 			p.Advance()
 			typeTuple.Params = append(typeTuple.Params, ast.TypePair{
-				e.Identifier,
-				p.ParseType(DefaultTypeBindingPower),
+				Key:   e.Identifier,
+				Value: p.ParseType(DefaultTypeBindingPower),
 			})
 		} else {
 			// Expected identifier
@@ -61,7 +61,7 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 				key := p.Expect(lexer.Identifier).Source
 				p.Expect(lexer.Colon)
 				typ := p.ParseType(DefaultTypeBindingPower)
-				return ast.TypePair{key, typ}
+				return ast.TypePair{Key: key, Value: typ}
 			},
 			lexer.RightParenthesis, lexer.Comma, false,
 		)

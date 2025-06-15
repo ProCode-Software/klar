@@ -36,16 +36,13 @@ func QuoteA(tok lexer.Token) string {
 		return QuoteString(tok.Source)
 	case lexer.Comma:
 		return "a comma"
+	case lexer.EOF:
+		return "end of file"
 	case lexer.EndOfStatement:
 		return "a newline"
 	case lexer.Colon:
 		return "a colon"
 	}
-}
-
-var vowels = map[byte]bool{
-	'A': true, 'E': true, 'I': true, 'O': true, 'U': true,
-	'a': true, 'e': true, 'i': true, 'o': true, 'u': true,
 }
 
 var TypeStringMap = map[lexer.TokenType]string{

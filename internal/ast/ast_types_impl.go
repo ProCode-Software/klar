@@ -18,6 +18,7 @@ func (TypeAnnotation) Kind() string       { return "TypeAnnotation" }
 func (EnumDeclaration) Kind() string      { return "EnumDeclaration" }
 func (StructDeclaration) Kind() string    { return "StructDeclaration" }
 func (TypeAliasDeclaration) Kind() string { return "TypeAliasDeclaration" }
+func (StructField) Kind() string          { return "StructField" }
 func (MapLiteral) Kind() string           { return "MapLiteral" }
 func (TupleLiteral) Kind() string         { return "TupleLiteral" }
 func (ReturnStatement) Kind() string      { return "ReturnStatement" }
@@ -43,6 +44,7 @@ func (ParenExpression) Kind() string      { return "ParenExpression" }
 func (InterfaceDeclaration) Kind() string { return "InterfaceDeclaration" }
 func (Comment) Kind() string              { return "Comment" }
 func (MethodType) Kind() string           { return "MethodType" }
+func (TypePair) Kind() string             { return "TypePair" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }

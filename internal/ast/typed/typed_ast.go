@@ -5,11 +5,11 @@ import (
 )
 
 type (
-	Type     ast.Type
-	BaseNode ast.BaseNode
+	Type     = ast.Type
+	BaseNode = ast.BaseNode
 )
 
-type Node interface{
+type Node interface {
 	BaseNode
 }
 
@@ -24,7 +24,7 @@ type Expression struct {
 	Expr ast.Expression
 }
 
-type Statement struct{
+type Statement struct {
 	BaseNode
 }
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env klar
+
+/* type A = B
+type B = C
+type C = A */
+
+type D {
+    name: E | Int
+}
+
+type E = D

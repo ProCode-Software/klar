@@ -148,12 +148,14 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 	}
 	deps := c.getTypeAliasDeps(alias, ctx) // Deps of aliases
 	c.mergeStructDeps(deps, intfs, ctx)
-	types, names := sortTypeDecls(deps, alias, intfs)
+	types, names, undef := sortTypeDecls(deps, alias, intfs)
 	for i, t := range types {
 		if t == nil {
 			// Not defined
+			name := names[i]
+			in := undef[name]
 			c.Error(errors.Undefined(
-				errors.ErrTypeUndefined, names[i], ranges.Range{},
+				errors.ErrTypeUndefined, name, traceUndefined(name, in),
 			))
 			continue
 		}

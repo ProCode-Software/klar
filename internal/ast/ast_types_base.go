@@ -89,6 +89,11 @@ func (e TypeAliasDeclaration) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e StructField) Base() BaseNode { return e.BaseNode }
+func (e StructField) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e MapLiteral) Base() BaseNode { return e.BaseNode }
 func (e MapLiteral) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
@@ -211,6 +216,11 @@ func (e Comment) SetPos(start, end lexer.Position) Node {
 }
 func (e MethodType) Base() BaseNode { return e.BaseNode }
 func (e MethodType) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
+func (e TypePair) Base() BaseNode { return e.BaseNode }
+func (e TypePair) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }

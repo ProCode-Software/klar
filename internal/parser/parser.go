@@ -62,6 +62,9 @@ func (p *Parser) Backup() {
 // Advance returns the current Token and increases the parser index.
 func (p *Parser) Advance() lexer.Token {
 	tok := p.CurrentToken()
+	if tok.Kind == lexer.EOF {
+		return tok
+	}
 	p.Index++
 	return tok
 }

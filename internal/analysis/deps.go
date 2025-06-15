@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
@@ -17,40 +18,23 @@ func getTypeDeps(t any) []string {
 	var deps []string
 	switch t := t.(type) {
 	case []ast.Type:
+		deps = make([]string, 0, len(t))
 		for _, v := range t {
 			deps = append(deps, getTypeDeps(v)...)
 		}
 	case []ast.TypePair:
+		deps = make([]string, 0, len(t))
 		for _, v := range t {
 			deps = append(deps, getTypeDeps(v.Value)...)
 		}
-	case ast.MethodType:
-		for _, v := range t.Parameters {
-			deps = append(deps, getTypeDeps(v.Type)...)
-		}
-		deps = append(deps, getTypeDeps(t.ReturnType)...)
-	case ast.TypePair:
-		return getTypeDeps(t.Value)
-	case ast.RestType:
-		return getTypeDeps(t.Value)
-	case ast.ListType:
-		return getTypeDeps(t.Value)
-	case ast.OptionalType:
-		return getTypeDeps(t.Value)
-	case ast.TupleType:
-		return getTypeDeps(t.Values)
-	case ast.FunctionType:
-		deps = append(deps, getTypeDeps(t.Parameters)...)
-		deps = append(deps, getTypeDeps(t.ReturnType)...)
-	case ast.GenericType:
-		deps = append(deps, getTypeDeps(t.Name)...)
-		deps = append(deps, getTypeDeps(t.Parameters)...)
-	case ast.UnionType:
-		return getTypeDeps(t.Options)
-	case ast.TypeAlias:
-		return []string{t.Identifier}
-	case ast.PrimitiveType, nil:
+	case nil:
 		return nil
+	case ast.Type:
+		aliases := ast.CollectTypeAliases(t)
+		deps = make([]string, 0, len(aliases))
+		for _, alias := range aliases {
+			deps = append(deps, alias.Identifier)
+		}
 	default:
 		panic(fmt.Sprintf("getTypeDeps: unhandled type %T", t))
 	}
@@ -98,7 +82,7 @@ func (c *Checker) getAllDeps(
 func (c *Checker) getTypeAliasDeps(
 	types []ast.TypeAliasDeclaration, ctx *Context,
 ) depMap {
-	typeDeps := make(map[string][]string, len(types))
+	typeDeps := make(depMap, len(types))
 	// Step 1: create list of all aliases each alias depends on
 	for _, t := range types {
 		typeDeps[t.Identifier] = getTypeDeps(t.Type)
@@ -139,7 +123,7 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 			list = append(list, param.Type)
 		}
 		list = append(list, t.ReturnType)
-	case ast.PrimitiveType:
+	case ast.PrimitiveType, ast.BadExpression:
 		break
 	default:
 		panic(fmt.Sprintf("getC1AndC2Deps: unhandled type %T", t))
@@ -152,11 +136,14 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 func (c *Checker) mergeStructDeps(
 	aliases depMap, intfs []ast.TypeDeclaration, ctx *Context,
 ) {
-	intfDeps := make(map[string][]string, len(intfs))
+	var (
+		intfDeps    = make(map[string][2][]string, len(intfs))
+		allIntfDeps = make(depMap, len(intfs))
+	)
+	// Step 1 - get direct dependencies. categorize into c1 and c2
 	for _, t := range intfs {
 		var (
 			name = t.Name()
-			deps []string
 			// c1: Generic, static, inherited dependencies
 			// c2: List, optional, union deps: cycle allowed
 			c1Deps, c2Deps []string
@@ -173,18 +160,31 @@ func (c *Checker) mergeStructDeps(
 				getC1AndC2Deps(f.Value, &c1Deps, &c2Deps)
 			}
 		}
-		deps = make([]string, 0, len(c1Deps)+len(c2Deps))
-		deps = append(deps, c1Deps...)
-		deps = append(deps, c2Deps...)
-		for _, list := range [][]string{c1Deps, c2Deps} {
-			for _, dep := range list {
-				intfDeps[name] = append(intfDeps[name],
-					c.getAllDeps(intfDeps, dep, name, 0, ctx)...)
+		intfDeps[name] = [2][]string{c1Deps, c2Deps}
+		// Preallocate full list
+		allIntfDeps[name] = make([]string, 0, len(c1Deps)+len(c2Deps))
+	}
+	// Step 2 - copy direct interface deps -> aliases
+	maps.Copy(aliases, allIntfDeps)
+	// Step 3 - loop over interfaces
+	for name, both := range intfDeps {
+		// c1, c2
+		for l, deps := range both {
+			for _, dep := range deps {
+				// Append direct dependency
+				allIntfDeps[name] = append(allIntfDeps[name], dep)
+
+				c.typeDepMode = l + 1 // set mode
+
+				allIntfDeps[name] = append(allIntfDeps[name],
+					c.getAllDeps(aliases, dep, name, 0, ctx)...,
+				)
+				c.typeDepMode = 0 // reset mode
 			}
 		}
-		intfDeps[name] = deps
+		// Reassign to all dependencies
+		aliases[name] = allIntfDeps[name]
 	}
-	maps.Copy(aliases, intfDeps)
 }
 
 /*
@@ -205,13 +205,14 @@ func sortTypeDecls(
 	depMap depMap,
 	aliases []ast.TypeAliasDeclaration,
 	intfs []ast.TypeDeclaration,
-) ([]ast.TypeDeclaration, []string) {
+) ([]ast.TypeDeclaration, []string, map[string]ast.TypeDeclaration) {
 	var (
 		total   = len(aliases) + len(intfs)
 		list    = make([]string, 0, total)
 		names   = make([]string, 0, total)
 		final   = make([]ast.TypeDeclaration, 0, total)
 		typeMap = make(map[string]ast.TypeDeclaration, total)
+		undef   = make(map[string]ast.TypeDeclaration)
 	)
 	// Create the map of types
 	for _, t := range aliases {
@@ -222,6 +223,7 @@ func sortTypeDecls(
 	}
 	// Add all dependencies into a flat list
 	for id, deps := range depMap {
+		checkDefined(id, deps, typeMap, undef)
 		list = append(list, append([]string{id}, deps...)...)
 	}
 	// Loop backwards for the final order
@@ -238,5 +240,31 @@ func sortTypeDecls(
 		names = append(names, name)
 		alreadyAdded[name] = true
 	}
-	return final, names
+	return final, names, undef
+}
+
+func checkDefined(
+	id string,
+	deps []string,
+	typeMap map[string]ast.TypeDeclaration,
+	undefMap map[string]ast.TypeDeclaration,
+) {
+	for _, dep := range deps {
+		if _, ok := typeMap[dep]; ok {
+			continue
+		}
+		if undefMap[dep] == nil {
+			undefMap[dep] = typeMap[id]
+		}
+	}
+}
+
+func traceUndefined(name string, t ast.TypeDeclaration) (r ranges.Range) {
+	for _, alias := range ast.CollectTypeAliases(t) {
+		if alias.Identifier == name {
+			return alias.Base().Range
+		}
+	}
+	// Should never happen
+	panic(fmt.Sprintf("traceUndefined: %s not found", name))
 }

@@ -13,11 +13,11 @@ type TypeDeclaration struct {
 }
 
 type Declaration struct {
-	Position ranges.Range
-	Type     types.Type
-	Constant bool
-	Value    RuntimeVal
-	Used     bool
+	Position   ranges.Range
+	Type       types.Type
+	Constant   bool
+	Value      RuntimeVal
+	Used       bool
 	Attributes map[string]any
 }
 
