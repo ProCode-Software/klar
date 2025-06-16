@@ -84,19 +84,23 @@ const (
 	_ BindingPower = AssignBindingPower + iota
 	DefaultTypeBindingPower
 	FunctionTypeBindingPower
+	VariadicTypeBindingPower
 	OptionalTypeBindingPower
 	UnionTypeBindingPower
+	GenericTypeBindingPower
+	MemberTypeBindingPower
 	PrimaryTypeBindingPower
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
-	lexer.Arrow:      FunctionTypeBindingPower,
-	lexer.Stroke:     UnionTypeBindingPower,
-	lexer.Question:   OptionalTypeBindingPower,
-	lexer.String:     PrimaryTypeBindingPower,
-	lexer.Numeric:    PrimaryTypeBindingPower,
+	lexer.Arrow:    FunctionTypeBindingPower,
+	lexer.Ellipsis: VariadicTypeBindingPower,
+	lexer.Question: OptionalTypeBindingPower,
+	lexer.Stroke:   UnionTypeBindingPower,
+	lexer.LessThan: GenericTypeBindingPower,
+	lexer.Dot:      MemberTypeBindingPower,
+
 	lexer.Boolean:    PrimaryTypeBindingPower,
 	lexer.Identifier: PrimaryTypeBindingPower,
-	lexer.Ellipsis:   PrimaryTypeBindingPower,
-	lexer.LessThan:   PrimaryTypeBindingPower,
+	lexer.Underscore: PrimaryTypeBindingPower,
 }

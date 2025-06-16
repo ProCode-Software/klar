@@ -83,6 +83,11 @@ type ParseError struct {
 	Params    map[string]any
 }
 
+func (e *ParseError) SetParam(key string, value any) ParseError {
+	e.Params[key] = value
+	return *e
+}
+
 func (e ParseError) Error() string {
 	var (
 		tok  = e.Token

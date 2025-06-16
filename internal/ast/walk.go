@@ -9,7 +9,7 @@ func Inspect(t Node, pred func(Node) bool) {
 		return
 	}
 	Walk(t, func(t Node) {
-		stop = pred(t)
+		stop = !pred(t)
 	})
 }
 

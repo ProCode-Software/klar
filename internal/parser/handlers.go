@@ -155,6 +155,8 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseTypeAlias()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
+	case lexer.Ellipsis:
+		res = p.ParseRestType()
 	default:
 		return nil, false
 	}
@@ -172,8 +174,12 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 		res = p.ParseGenericType(left, bp)
 	case lexer.Arrow:
 		res = p.ParseFunctionType(left, bp)
-	case lexer.Ellipsis:
-		res = p.ParseRestType(left, bp)
+	case lexer.Dot:
+		if left, ok := left.(ast.TypeAlias); !ok {
+			return nil, false
+		} else {
+			res = p.ParseTypeNamespace(left, bp)
+		}
 	default:
 		return left, false
 	}

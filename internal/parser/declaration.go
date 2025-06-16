@@ -38,7 +38,8 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		// Inherited struct
 		p.Advance()
 		for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
-			inherited = append(inherited, p.ParseTypeAlias())
+			// Alias or primitive only
+			inherited = append(inherited, p.ParseType(GenericTypeBindingPower))
 			if p.CurrentTokenKind() != lexer.LeftCurlyBrace {
 				p.Expect(lexer.Comma)
 			}

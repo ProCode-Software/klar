@@ -13,7 +13,7 @@ var defaultPos lexer.Position
 
 type (
 	Type    = types.Type
-	Context = runtime.Context
+	context = *runtime.Context
 )
 
 // A Checker type-checks a [ast.Program].
@@ -62,7 +62,7 @@ func (c *Checker) CheckProgram() {
 	c.Check(rootCtx, &c.Program.Body)
 }
 
-func (c *Checker) checkRedeclared(ok bool, ctx *Context, rang ranges.Range, name string) {
+func (c *Checker) checkRedeclared(ok bool, ctx context, rang ranges.Range, name string) {
 	if ok || ctx.TypeDeclarations[name] == nil {
 		return
 	}
@@ -70,7 +70,7 @@ func (c *Checker) checkRedeclared(ok bool, ctx *Context, rang ranges.Range, name
 	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
 }
 
-func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
+func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 	var (
 		foundDec bool
 		// Sort each statement so normal statements can reference functions before
@@ -161,27 +161,18 @@ func (c *Checker) Check(ctx *Context, body *[]ast.Statement) {
 		}
 		name := t.Name()
 		// Skip type cycles, would already be set to error type
-		if ctx.TypeDeclarations[name] != nil {
+		if ctx.TypeDeclarations[name].Type != nil {
 			continue
 		}
+		var res Type
 		switch t := t.(type) {
 		case ast.StructDeclaration:
+			res = c.ParseStruct(t, ctx)
 		case ast.InterfaceDeclaration:
+			res = c.ParseInterface(t, ctx)
 		case ast.TypeAliasDeclaration:
-			ctx.SetType(name, c.ParseType(t.Type, ctx))
+			res = c.ParseType(t.Type, ctx)
 		}
+		ctx.SetType(name, res)
 	}
 }
-
-/* switch dec := dec.(type) {
-case ast.VariableDeclaration:
-	var typ Type
-	if dec.ExplicitType == nil {
-		typ = c.InferType(dec.Value)
-	} else {
-		typ = c.CheckCompatible(dec.ExplicitType, c.InferType(dec.Value))
-	}
-	ctx.Declare(dec.Identifier, dec.Constant, typ, dec.Base().Start)
-case ast.EnumDeclaration:
-	// rootCtx.DeclareType(dec.)
-} */

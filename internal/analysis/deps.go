@@ -42,7 +42,7 @@ func getTypeDeps(t any) []string {
 }
 
 func (c *Checker) getAllDeps(
-	typeDeps depMap, dep, base string, level int, ctx *Context,
+	typeDeps depMap, dep, base string, level int, ctx context,
 ) []string {
 	depsOfDep := typeDeps[dep]
 	if len(depsOfDep) == 0 {
@@ -80,7 +80,7 @@ func (c *Checker) getAllDeps(
 }
 
 func (c *Checker) getTypeAliasDeps(
-	types []ast.TypeAliasDeclaration, ctx *Context,
+	types []ast.TypeAliasDeclaration, ctx context,
 ) depMap {
 	typeDeps := make(depMap, len(types))
 	// Step 1: create list of all aliases each alias depends on
@@ -134,7 +134,7 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 }
 
 func (c *Checker) mergeStructDeps(
-	aliases depMap, intfs []ast.TypeDeclaration, ctx *Context,
+	aliases depMap, intfs []ast.TypeDeclaration, ctx context,
 ) {
 	var (
 		intfDeps    = make(map[string][2][]string, len(intfs))
@@ -250,6 +250,9 @@ func checkDefined(
 	undefMap map[string]ast.TypeDeclaration,
 ) {
 	for _, dep := range deps {
+		if dep == selfDep {
+			continue
+		}
 		if _, ok := typeMap[dep]; ok {
 			continue
 		}

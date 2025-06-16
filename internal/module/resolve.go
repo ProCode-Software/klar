@@ -27,3 +27,11 @@ func JoinPath(base, module string) string {
 func IsWildcard(module string) bool {
 	return strings.HasSuffix(module, "*")
 }
+
+func ResolvePath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
+}

@@ -128,17 +128,19 @@ func (p *Parser) ParseInterface(name string, inherited []ast.Type) ast.Interface
 }
 
 func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) ast.FunctionType {
-	switch left.(type) {
-	case ast.TypeAlias, ast.PrimitiveType:
-		// Param must be in parentheses
-		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
+	var params []ast.Type
+	switch left := left.(type) {
 	case ast.TupleType:
+		params = left.Values
+	case ast.FunctionType:
+		// Allow (Int) -> (Int) -> Int
+		params = []ast.Type{left}
 	default:
-		p.Error(errors.UnexpectedToken(p.CurrentToken()))
+		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
 	}
 	p.Expect(lexer.Arrow)
 	return ast.FunctionType{
-		Parameters: left.(ast.TupleType).Values,
+		Parameters: params,
 		ReturnType: p.ParseType(DefaultTypeBindingPower),
 	}
 }
@@ -156,7 +158,13 @@ func (p *Parser) ParseTupleType() ast.TupleType {
 	return ast.TupleType{Values: params}
 }
 
-func (p *Parser) ParseRestType(left ast.Type, bp BindingPower) ast.RestType {
-	p.Advance()
-	return ast.RestType{Value: left}
+func (p *Parser) ParseRestType() ast.RestType {
+	p.Advance() // ...
+	return ast.RestType{Value: p.ParseType(VariadicTypeBindingPower)}
+}
+
+func (p *Parser) ParseTypeNamespace(left ast.TypeAlias, bp BindingPower) ast.TypeAlias {
+	p.Advance() // .
+	left.Namespace = p.Expect(lexer.Identifier).Source
+	return left
 }

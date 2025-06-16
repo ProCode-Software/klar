@@ -9,6 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/sanity-io/litter"
@@ -113,14 +114,15 @@ func runTokens(tokens []lexer.Token) {
 }
 
 func RunFile(path string) {
-	File = path
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
-		file, err = os.Open(path + ".klar")
+		path += ".klar"
+		file, err = os.Open(path)
 	}
+	File = module.ResolvePath(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cli.FileNotFound(path)
+			cli.FileNotFound(File)
 		}
 		cli.InternalError(err)
 	}

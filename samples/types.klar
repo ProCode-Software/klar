@@ -1,19 +1,22 @@
-#!/usr/bin/env klar
-
 /* type A = B
 type B = C
-type C = A */
-
-type D {
-    name: E | Int
-}
-
-type E = D
-
-
-for i in 5 = print("i is {i}")
-
+type C = A
+type D { name: E | Int }
+type E = D */
 
 for i in 5 {
-    print("i is {i}")
+    dict = #{ name: "John", age: dict.age + i, info... }
+}
+
+/* (name: String, age: Int) := ("John", 14)
+(name: String, age: Int) := dict
+
+for (key, value) in items {
+    
+} */
+
+
+type Person {
+    name: String
+    age: Int
 }

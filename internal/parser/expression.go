@@ -87,26 +87,46 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 
 func (p *Parser) ParseMap() ast.MapLiteral {
 	p.Expect(lexer.HashLeftCurlyBrace)
-	entries := []ast.Pair{}
+	var entries []ast.Pair
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
-		entry := ast.Pair{
-			Key: p.ParseExpression(ExpressionBindingPower),
+		switch {
+		// Shorthand: #{ :name } = #{ name: name }
+		case p.CurrentTokenKind() == lexer.Colon:
+			p.Advance()
+			key, val := p.expectShorthand()
+			entries = append(entries, ast.Pair{
+				Key:   key,
+				Value: val,
+			})
+		// Spread #{ key: 1, values... }
+		case p.Peek().Kind == lexer.Ellipsis:
+			expr := p.ParseExpression(ExpressionBindingPower)
+			if _, ok := expr.(ast.RestExpression); ok {
+				entries = append(entries, ast.Pair{
+					Key: expr,
+					Value: expr,
+				})
+				break
+			}
+			fallthrough
+		// Normal properties: quotes not required for non-reserved string key
+		default:
+			entry := ast.Pair{Key: p.ParseExpression(ExpressionBindingPower)}
+			p.Expect(lexer.Colon)
+			entry.Value = p.ParseExpression(ExpressionBindingPower)
+			entries = append(entries, entry)
 		}
-		p.Expect(lexer.Colon)
-		entry.Value = p.ParseExpression(ExpressionBindingPower)
-		entries = append(entries, entry)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
 		}
 	}
 	err := errors.ExpectedToken(lexer.RightCurlyBrace, p.CurrentToken())
-	err.Params["isMap"] = true
-	p.ExpectError(err, lexer.RightCurlyBrace)
+	p.ExpectError(err.SetParam("isMap", true), lexer.RightCurlyBrace)
 	return ast.MapLiteral{Entries: entries}
 }
 
 func (p *Parser) ParseList() ast.ListLiteral {
-	items := []ast.Expression{}
+	var items []ast.Expression
 	p.Expect(lexer.LeftBracket)
 	for p.WhileNotEndOr(lexer.RightBracket) {
 		items = append(items, p.ParseExpression(ExpressionBindingPower))
@@ -120,92 +140,85 @@ func (p *Parser) ParseList() ast.ListLiteral {
 
 // Parses an index or slice expression.
 //
-//	list[1]
-//	person.name
-//	list[1:3]
-//	list[:]
+//	list[0]    list.first
+//	list[1:3]  list[1:]
+//	list[:3]   list[:]
 func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expression {
-	computed := p.Advance().Kind == lexer.LeftBracket
 	var item ast.Expression
-	if !computed {
+	if p.Advance().Kind != lexer.LeftBracket {
 		// Allow use of keywords as fields
 		item = ast.Symbol{Identifier: p.expectNonNumericMapIdent().Source}
-	} else {
-		var (
-			leftExpr, rightExpr ast.Expression
-			isSlice             bool
-		)
-		// Slice [:3]
-		if p.CurrentTokenKind() == lexer.Colon {
-			isSlice = true
-			p.Advance()
-			if p.CurrentTokenKind() == lexer.RightBracket {
-				// Slice all [:]
-				return ast.SliceExpression{Object: leftExpr}
-			}
+		return ast.IndexExpression{
+			Object:   left,
+			Property: item,
+			Computed: false,
 		}
-		item = p.ParseExpression(ExpressionBindingPower)
-		if isSlice {
-			rightExpr = item
-		} else if p.CurrentTokenKind() == lexer.Colon {
-			isSlice = true
-			leftExpr = item
+	}
+	var (
+		leftExpr, rightExpr ast.Expression
+		isSlice             bool
+	)
+	// Slice [:3]
+	if p.CurrentTokenKind() == lexer.Colon {
+		isSlice = true
+		p.Advance()
+		if p.CurrentTokenKind() == lexer.RightBracket {
+			// Slice all [:]
 			p.Advance()
-			// Slice [1:]
-			if p.CurrentTokenKind() != lexer.RightBracket {
-				rightExpr = p.ParseExpression(ExpressionBindingPower)
-			}
+			return ast.SliceExpression{Object: leftExpr}
 		}
-		p.Expect(lexer.RightBracket)
-		if isSlice {
-			return ast.SliceExpression{
-				Object: left,
-				Index:  leftExpr,
-				Length: rightExpr,
-			}
+	}
+	// Expression
+	item = p.ParseExpression(ExpressionBindingPower)
+
+	if isSlice {
+		rightExpr = item
+	} else if p.CurrentTokenKind() == lexer.Colon {
+		isSlice = true
+		leftExpr = item
+		p.Advance()
+		// Slice [1:]
+		if p.CurrentTokenKind() != lexer.RightBracket {
+			rightExpr = p.ParseExpression(ExpressionBindingPower)
+		}
+	}
+	p.Expect(lexer.RightBracket)
+
+	if isSlice {
+		return ast.SliceExpression{
+			Object: left,
+			Index:  leftExpr,
+			Length: rightExpr,
 		}
 	}
 	return ast.IndexExpression{
 		Object:   left,
 		Property: item,
-		Computed: computed,
+		Computed: true,
 	}
 }
 
 func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) ast.CallExpression {
 	p.Expect(lexer.LeftParenthesis)
-	args := []ast.CallParam{}
+	var args []ast.CallParam
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		arg := ast.CallParam{}
-		if p.CurrentTokenKind() == lexer.Colon {
+		switch {
+		case p.CurrentTokenKind() == lexer.Colon:
 			// Shorthand label if name and variable/field matches
 			// 	person := Person()
 			//	person2.greet(:person)
 			// Equal to:
 			// 	person2.greet(person: person)
 			p.Advance()
-			sym, isOk := p.ParseExpression(CallBindingPower), false
-			switch sym := sym.(type) {
-			case ast.Symbol:
-				arg.Label = sym.Identifier
-				arg.Value = sym
-				isOk = true
-			case ast.IndexExpression:
-				if prop, ok := sym.Property.(ast.Symbol); ok {
-					arg.Label = prop.Identifier
-					arg.Value = sym
-					isOk = true
-				}
-			}
-			if !isOk {
-				p.Error(errors.Node(errors.ErrInvalidLabelShorthand, sym))
-			}
-		} else {
-			if p.Peek().Kind == lexer.Colon {
-				// Label (allow keywords)
-				arg.Label = p.expectNonNumericMapIdent().Source
-				p.Advance() // :
-			}
+			key, val := p.expectShorthand()
+			arg.Label, arg.Value = key.Identifier, val
+		case p.Peek().Kind == lexer.Colon:
+			// Label (allow keywords)
+			arg.Label = p.expectNonNumericMapIdent().Source
+			p.Advance() // :
+			fallthrough
+		default:
 			arg.Value = p.ParseExpression(ExpressionBindingPower)
 		}
 		args = append(args, arg)

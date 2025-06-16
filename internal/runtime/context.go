@@ -5,12 +5,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-type TypeDeclaration struct {
-	Type       types.Type
-	Used       bool
-	Position   ranges.Range
-	Attributes map[string]any
-}
+type TypeDeclaration = types.TypeDeclaration
 
 type Declaration struct {
 	Position   ranges.Range
@@ -29,11 +24,10 @@ type Context struct {
 }
 
 type Exportable interface {
-	Exportable()
+	Exportable_()
 }
 
-func (Declaration) Exportable()     {}
-func (TypeDeclaration) Exportable() {}
+func (Declaration) Exportable_()     {}
 
 type ContextMap map[int]*Context
 

@@ -8,6 +8,7 @@ import (
 
 // All AST tokens implement the Node interface.
 //
+//go:generate stringer -type=PrimitiveTypeName -linecomment
 //go:generate go run ../cmd/astgen ./ast_types_impl.go ./ast_types_base.go
 type Node interface {
 	Kind() string
@@ -172,7 +173,7 @@ type PrimitiveType struct {
 // A TypeAlias is a non-primitive type name
 type TypeAlias struct {
 	BaseNode
-	Identifier string
+	Namespace, Identifier string
 }
 
 // An OptionalType is a type marked with the suffix '?'. In Klar, this indicates
@@ -233,17 +234,19 @@ type TypeAnnotation struct {
 type PrimitiveTypeName int
 
 const (
-	PrimitiveString PrimitiveTypeName = iota
-	PrimitiveInt
-	PrimitiveFloat
-	PrimitiveBool
-	PrimitiveMap
-	PrimitiveNothing
-	PrimitiveResult
-	PrimitiveError
+	PrimitiveAny     PrimitiveTypeName = iota // Any
+	PrimitiveString                           // String
+	PrimitiveInt                              // Int
+	PrimitiveFloat                            // Float
+	PrimitiveBool                             // Bool
+	PrimitiveMap                              // Map
+	PrimitiveNothing                          // Nothing
+	PrimitiveResult                           // Result
+	PrimitiveError                            // Error
 )
 
 var PrimitiveTypeMap = map[string]PrimitiveTypeName{
+	"Any":     PrimitiveAny,
 	"String":  PrimitiveString,
 	"Int":     PrimitiveInt,
 	"Float":   PrimitiveFloat,
@@ -396,11 +399,6 @@ type CallParam struct {
 type CallExpression struct {
 	Callee Node
 	Args   []CallParam
-	BaseNode
-}
-
-type TypeCastSymbol struct {
-	Type Type
 	BaseNode
 }
 

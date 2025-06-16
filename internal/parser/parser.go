@@ -132,6 +132,29 @@ func (p *Parser) lastTokEnd() lexer.Position {
 	return ranges.FromToken(last).End
 }
 
+func (p *Parser) expectShorthand() (key ast.Symbol, value ast.Expression) {
+	sym, isOk := p.ParseExpression(CallBindingPower), false
+	switch sym := sym.(type) {
+	case ast.Symbol:
+		key = sym
+		value = sym
+		isOk = true
+	case ast.IndexExpression:
+		if sym.Computed {
+			break
+		}
+		if prop, ok := sym.Property.(ast.Symbol); ok {
+			key = prop
+			value = sym
+			isOk = true
+		}
+	}
+	if !isOk {
+		p.Error(errors.Node(errors.ErrInvalidLabelShorthand, sym))
+	}
+	return key, value
+}
+
 func copyPos[S, T ast.Node](from S, to T) T {
 	return to.SetPos(from.Base().Start, from.Base().End).(T)
 }

@@ -1,8 +1,6 @@
 import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
 import { include, match, merge } from 'vsxtools/tmLanguage'
 
-const BASE = [{ include: '$base' }]
-
 RegExp.prototype.toString = function () {
     return this.source
 }
@@ -29,16 +27,12 @@ const Punctuation = {
     },
 }
 
-const Identifier = /_?[\p{L}_][\p{L}\w_]*/u
-const IdCapture = /(_?[\p{L}_][\p{L}\w_]*)/u
-const Type = /([-\s\p{L}\w._,?<>\[\]\-()]+)/u
-/* const Type: string =
-    /(((?:_?[\p{L}_][\p{L}\w_]*\.)?_?[\p{L}_][\p{L}\w_]*(?:<[\s\p{L}\w._,?<>\[\]\-()]+>)?\??)|\[\s*REC\s*\]\??)/u.source.replaceAll(
-        'REC',
-        '\\g<2>'
-    ) // Supports namespaces */
+const Identifier = /_?[\p{L}_][\p{L}\w_]*/u,
+    IdCapture = /(_?[\p{L}_][\p{L}\w_]*)/u,
+    Type = /([-\s\p{L}\w._,?|<>\[\]\-()]+)/u
 
-const IncludeType = [{ name: 'entity.name.type.klar', patterns: [include('types')] }]
+const IncludeType = [{ name: 'entity.name.type.klar', patterns: [include('types')] }],
+    BASE = [{ include: '$base' }]
 
 const repository: Repository = {
     comments: {
@@ -334,7 +328,7 @@ const repository: Repository = {
     },
     interfaceTag: {
         begin: merge(
-            /(?<=\btype\b)\s*(#)?/,
+            /(?<=\btype\b)\s*(#)\s*/,
             IdCapture,
             String.raw`\s*(?:(:)\s*${IdCapture})?`
         ),

@@ -2,6 +2,7 @@
     "name": "klar",
     "displayName": "Klar",
     "description": "A programming language",
+    "publisher": "procode-software",
     "version": "0.0.1",
     "license": "BSD-3-Clause",
     "engines": {
