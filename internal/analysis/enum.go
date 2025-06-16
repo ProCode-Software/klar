@@ -54,6 +54,7 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 		case ast.Symbol:
 			// Wait for it to be assigned
 			pending[i.Identifier] = pendingItem{v.Identifier, v.Range}
+			continue
 		default:
 			c.Error(errors.Range(errors.ErrInvalidEnumValue, i.Range))
 		}
@@ -68,7 +69,9 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 		if v, ok := members[item.name]; ok {
 			members[k] = v
 		} else {
-			c.Error(errors.Range(errors.ErrEnumUndefined, item.pos))
+			err := errors.Undefined(errors.ErrEnumUndefined, item.name, item.pos)
+			err.SetParam("enumName", t.Identifier)
+			c.Error(err)
 		}
 	}
 	return types.Enum{

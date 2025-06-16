@@ -20,6 +20,15 @@ type ReferenceError struct {
 	ErrorCode ErrorCode
 	Range     ranges.Range
 	Hints     []string
+	Params    ErrorParams
+}
+
+func (e *ReferenceError) SetParam(key string, value any) ReferenceError {
+	if e.Params == nil {
+		e.Params = make(ErrorParams)
+	}
+	e.Params[key] = value
+	return *e
 }
 
 func (e ReferenceError) At() lexer.Position    { return e.Range.Start }
@@ -31,6 +40,12 @@ func (e ReferenceError) Error() string {
 	switch e.ErrorCode {
 	default:
 		return "ReferenceError: " + e.ErrorCode.String()
+	case ErrEnumUndefined:
+		return fmt.Sprintf(
+			"ReferenceError: Can't find item %s in enum %s",
+			QuoteString(e.Name),
+			QuoteString(param[string](e.Params, "enumName")),
+		)
 	case ErrTypeUndefined:
 		return fmt.Sprintf("ReferenceError: Can't find type %s in scope",
 			QuoteString(e.Name),

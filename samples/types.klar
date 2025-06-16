@@ -20,3 +20,9 @@ type Person {
     name: String
     age: Int
 }
+
+type Color {
+    | red
+    | orange = red
+    | yellow = orange
+}
