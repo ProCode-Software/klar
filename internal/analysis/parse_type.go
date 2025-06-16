@@ -161,14 +161,19 @@ func (c *Checker) parseInheritance(
 			s.Fields[k] = v
 			s.Order = append(s.Order, k)
 		}
-		for k, v := range inherited.GetMethods() {
-			if _, ok := s.Methods[k]; ok && !isIntf {
-				c.Error(errors.NamedTypeError(
-					errors.ErrConflictingInherit, k, item.Base().Range,
-				))
-				continue
+		for fnName, allOvlds := range inherited.GetMethods() {
+			for _, ovl := range allOvlds {
+				if _, exists := s.Methods[fnName].Get(ovl.Params); exists && !isIntf {
+					err := errors.NewTypeErr(
+						errors.ErrConflictingInherit, item.Base().Range,
+						errors.ErrorParams{"overload": &ovl},
+					)
+					err.Name = fnName
+					c.Error(err)
+					continue
+				}
+				s.Methods[fnName] = append(s.Methods[fnName], ovl)
 			}
-			s.Methods[k] = v
 		}
 	}
 	s.Implements = implements
@@ -176,7 +181,7 @@ func (c *Checker) parseInheritance(
 
 func (c *Checker) ParseStruct(d ast.StructDeclaration, ctx context) (s types.Struct) {
 	s.Fields = make(map[string]Type, len(d.Fields))
-	s.Methods = make(map[string]types.Function)
+	s.Methods = make(map[string]types.Overloads)
 	c.parseInheritance(&s, d.InheritedTypes, ctx, false)
 	s.Order = slices.Grow(s.Order, len(d.Fields))
 	for _, field := range d.Fields {
@@ -198,8 +203,8 @@ func (c *Checker) parseIntfMethod(meth ast.MethodType, ctx context) (f types.Fun
 		}
 		c.validateVariadicParam(i, len(meth.Parameters), param.Type)
 		f.Params = append(f.Params, types.Param{
-			Label: param.Label,
-			Type: typ,
+			Label:    param.Label,
+			Type:     typ,
 			Variadic: variadic,
 		})
 	}
@@ -211,13 +216,15 @@ func (c *Checker) ParseInterface(
 ) (i types.Interface) {
 	tmpStruct := types.Struct{
 		Fields:  make(map[string]Type, len(d.Fields)),
-		Methods: make(map[string]types.Function),
+		Methods: make(map[string]types.Overloads),
 	}
 	c.parseInheritance(&tmpStruct, d.InheritedTypes, ctx, true)
 	i.Fields, i.Methods = tmpStruct.Fields, tmpStruct.Methods
 	for _, field := range d.Fields {
 		if val, ok := field.Value.(ast.MethodType); ok {
-			i.Methods[field.Key] = c.parseIntfMethod(val, ctx)
+			i.Methods[field.Key] = append(
+				i.Methods[field.Key], c.parseIntfMethod(val, ctx),
+			)
 			continue
 		}
 		i.Fields[field.Key] = c.ParseType(field.Value, ctx)

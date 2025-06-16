@@ -89,6 +89,12 @@ func (e TypeError) Error() string {
 			QuoteString(types[0]), QuoteString(types[1]),
 		)
 	case ErrConflictingInherit:
+		if meth := param[*types.Function](p, "method"); meth != nil {
+			return fmt.Sprintf(
+				"TypeError: Method %s inherited from _ conflicts with already inherited method from _",
+				QuoteString(meth.StringNamed(e.Name)),
+			)
+		}
 		return fmt.Sprintf(
 			"TypeError: Field %s inherited from _ conflicts with already inherited field from _",
 			QuoteString(e.Name),
@@ -101,7 +107,7 @@ func (e TypeError) Error() string {
 		return fmt.Sprintf("TypeError: Type '%s' is not generic", p["type"])
 	case ErrWrongTypeParamLen:
 		return fmt.Sprintf(
-			"TypeError: Expected between %d and %d type parameters, but found %d",
+			"TypeError: Expected between %d and %d type parameters, but got %d",
 			param[int](p, "min"), param[int](p, "max"), param[int](p, "got"),
 		)
 	}

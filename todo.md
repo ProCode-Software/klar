@@ -14,5 +14,7 @@
 ## Analysis
 - handle `<self>` and recursive types in structs
 - handle recursive enum
+- maybe: int range in type:
+    Int<1, 10>, Int<0, _>, Int<_, 10>
 
 ## Other

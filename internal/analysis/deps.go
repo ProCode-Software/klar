@@ -200,6 +200,10 @@ For this example:
 
 the order would be: D, C, B, A.
 C should be declared first so it can be referenced by B, and B can be referenced by A.
+
+Iterate over each alias in the map (indefinite order) and add all dependencies
+to a list. For the final list, loop over the list backwards and insert non-duplicates
+for the final order.
 */
 func sortTypeDecls(
 	depMap depMap,

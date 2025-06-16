@@ -20,7 +20,7 @@ type Type interface {
 type HasFields interface {
 	Type
 	GetFields() map[string]Type
-	GetMethods() map[string]Function
+	GetMethods() map[string]Overloads
 }
 
 //go:generate stringer -type=CoreType -linecomment
@@ -57,6 +57,7 @@ type (
 	Tuple     struct{ Items []Type }
 	Union     struct{ Options []Type }
 	Optional  struct{ Underlying Type }
+	Generic   struct{ Name string }
 	Interface struct{ Struct }
 	Lambda    struct{ Function }
 	Map       struct{ KeyType, ValueType Type }
@@ -68,7 +69,7 @@ type Struct struct {
 	Implements []*TypeDeclaration
 	Order      []string
 	Fields     map[string]Type
-	Methods    map[string]Function
+	Methods    map[string]Overloads
 }
 type Ref struct {
 	Name  string
@@ -78,6 +79,8 @@ type Function struct {
 	Params []Param
 	Return Type
 }
+type Overloads []Function
+
 type Param struct {
 	Label    string
 	Type     Type
@@ -90,4 +93,22 @@ type Enum struct {
 type Value struct {
 	Type  Type
 	Value any
+}
+
+func (o Overloads) Get(params []Param) (matching *Function, found bool) {
+outer:
+	// Loop over each overload
+	for _, overload := range o {
+		if len(overload.Params) != len(params) {
+			continue
+		}
+		// Compare each param
+		for i, param := range params {
+			if overload.Params[i] != param {
+				continue outer
+			}
+		}
+		return &overload, true
+	}
+	return nil, false
 }

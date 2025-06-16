@@ -9,6 +9,10 @@ func stringGeneric(typ string, k, v Type) string {
 	return fmt.Sprintf("%s<%s, %s>", typ, k, v)
 }
 
+func (g Generic) String() string {
+	return g.Name
+}
+
 func (l List) String() string {
 	return fmt.Sprintf("[%s]", l.Of)
 }
@@ -44,11 +48,14 @@ func (t Tuple) String() string {
 func (l Lambda) String() string {
 	var b strings.Builder
 	b.WriteByte('(')
-	for i, item := range l.Params {
+	for i, param := range l.Params {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(fmt.Sprintf("%s", item.Type))
+		if param.Variadic {
+			b.WriteString("...")
+		}
+		b.WriteString(fmt.Sprintf("%s", param.Type))
 	}
 	b.WriteString(") -> ")
 	b.WriteString(fmt.Sprintf("%s", l.Return))
@@ -65,4 +72,31 @@ func (r Result) String() string {
 
 func (r Ref) String() string {
 	return r.Name
+}
+
+func (f Function) String() string {
+	var b strings.Builder
+	b.WriteByte('(')
+	for i, param := range f.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		if param.Label != "" {
+			b.WriteString(param.Label + ": ")
+		}
+		if param.Variadic {
+			b.WriteString("...")
+		}
+		b.WriteString(fmt.Sprintf("%s", param.Type))
+	}
+	b.WriteByte(')')
+	if f.Return != Nothing {
+		b.WriteString(" -> ")
+		b.WriteString(fmt.Sprintf("%s", f.Return))
+	}
+	return b.String()
+}
+
+func (f Function) StringNamed(name string) string {
+	return name + f.String()
 }
