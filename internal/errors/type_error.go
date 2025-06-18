@@ -31,11 +31,15 @@ const (
 
 	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
 	ErrConflictingInherit     // Name collision in struct inheritance
+	ErrNonStructReceiver      // Defining method on non-struct type
+	ErrMethodInOtherScope     // Method must be in the same scope as struct definition
+	ErrOverloadExists         // Overload already defined
 )
 
 type TypeError struct {
 	Name                  string
 	Range                 ranges.Range
+	Ranges                []ranges.Range
 	ErrorCode             ErrorCode
 	Params                ErrorParams
 	ExpectedType, GotType types.Type
@@ -74,30 +78,30 @@ func (e TypeError) Error() string {
 		case p["mode"] == 1:
 			return fmt.Sprintf(
 				"TypeError: Invalid recursive type in %s",
-				QuoteString(types[0]),
+				Quote(types[0]),
 			)
 		// Defined in terms of itself: type A = A
 		case p["isSelf"]:
 			return fmt.Sprintf(
 				"TypeError: Type %s references itself",
-				QuoteString(types[0]),
+				Quote(types[0]),
 			)
 		}
 		// Other cycle
 		return fmt.Sprintf(
 			"TypeError: Type cycle: %s and %s recursively reference each other",
-			QuoteString(types[0]), QuoteString(types[1]),
+			Quote(types[0]), Quote(types[1]),
 		)
 	case ErrConflictingInherit:
 		if meth := param[*types.Function](p, "method"); meth != nil {
 			return fmt.Sprintf(
 				"TypeError: Method %s inherited from _ conflicts with already inherited method from _",
-				QuoteString(meth.StringNamed(e.Name)),
+				Quote(meth.StringNamed(e.Name)),
 			)
 		}
 		return fmt.Sprintf(
 			"TypeError: Field %s inherited from _ conflicts with already inherited field from _",
-			QuoteString(e.Name),
+			Quote(e.Name),
 		)
 	case ErrVariadicLast:
 		return "TypeError: Variadic parameter must be the last parameter"
@@ -109,6 +113,12 @@ func (e TypeError) Error() string {
 		return fmt.Sprintf(
 			"TypeError: Expected between %d and %d type parameters, but got %d",
 			param[int](p, "min"), param[int](p, "max"), param[int](p, "got"),
+		)
+	case ErrNonStructReceiver:
+		return fmt.Sprintf(
+			"TypeError: Can't define method for %s: Type %s is not a struct",
+			Quote(e.Name),
+			QuoteType(e.GotType),
 		)
 	}
 }

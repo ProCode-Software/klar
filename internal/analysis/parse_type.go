@@ -24,10 +24,10 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 	case ast.TypeAlias:
 		name := t.Identifier
 		if decl, ok := ctx.ResolveType(name); !ok {
-			c.Error(errors.NamedTypeError(errors.ErrTypeUndefined, name, t.Range))
+			c.undefinedType(name, t.Range, ctx)
 			return types.InvalidType
 		} else {
-			return types.Ref{name, decl.Type}
+			return types.Ref{name, &decl.Type}
 		}
 	case ast.FunctionType:
 		var f types.Lambda
@@ -37,11 +37,11 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			_, variadic := paramType.(ast.RestType)
 			if variadic {
 				typ = c.ParseType(paramType.(ast.RestType).Value, ctx)
+				c.validateVariadicParam(i, len(t.Parameters), paramType)
 			} else {
 				typ = c.ParseType(paramType, ctx)
 			}
 			f.Params[i] = types.Param{Type: typ, Variadic: variadic}
-			c.validateVariadicParam(i, len(t.Parameters), paramType)
 		}
 		f.Return = c.ParseType(t.ReturnType, ctx)
 		return f
@@ -223,7 +223,10 @@ func (c *Checker) ParseInterface(
 	for _, field := range d.Fields {
 		if val, ok := field.Value.(ast.MethodType); ok {
 			i.Methods[field.Key] = append(
-				i.Methods[field.Key], c.parseIntfMethod(val, ctx),
+				i.Methods[field.Key], types.Overload{
+					Function: c.parseIntfMethod(val, ctx),
+					Position: val.Base().Range,
+				},
 			)
 			continue
 		}

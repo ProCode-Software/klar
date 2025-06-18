@@ -5,20 +5,21 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func QuoteString(s string) string {
+// QuoteToken add quotes around source code. By default, QuoteToken uses single quotes for source code, or backticks if the source contains single quotes.
+func Quote(s string) string {
 	if strings.Contains(s, "'") {
 		return "`" + s + "`"
 	}
 	return "'" + s + "'"
 }
 
-// Quotes add quotes around source code. By default, Quote uses single quotes for source code, or backticks if the source contains single quotes.
-func Quote(tok lexer.Token) string {
+func QuoteToken(tok lexer.Token) string {
 	switch tok.Kind {
 	default:
-		return QuoteString(tok.Source)
+		return Quote(tok.Source)
 	case lexer.Comma:
 		return "comma"
 	case lexer.Colon:
@@ -30,10 +31,14 @@ func Quote(tok lexer.Token) string {
 	}
 }
 
-func QuoteA(tok lexer.Token) string {
+func QuoteType(typ types.Type) string {
+	return Quote(fmt.Sprintf("%s", typ))
+}
+
+func NameToken(tok lexer.Token) string {
 	switch tok.Kind {
 	default:
-		return QuoteString(tok.Source)
+		return Quote(tok.Source)
 	case lexer.Comma:
 		return "a comma"
 	case lexer.EOF:
@@ -75,4 +80,12 @@ func FormatTokenType(tok lexer.TokenType) string {
 		return s
 	}
 	panic(fmt.Sprintf("cannot represent token type %s as string", tok))
+}
+
+func WithA(str string) string {
+	switch str[0] {
+	case 'a', 'e', 'i', 'o', 'u':
+		return "an " + str
+	}
+	return "a " + str
 }

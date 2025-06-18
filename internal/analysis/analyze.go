@@ -149,15 +149,13 @@ func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 	// Declare types first
 	deps := c.getTypeAliasDeps(alias, ctx) // Deps of aliases
 	c.mergeStructDeps(deps, intfs, ctx) // Add structs and interfaces
-	types, names, undef := sortTypeDecls(deps, alias, intfs)
+	types, names, undef := sortTypeDecls(deps, alias, intfs, ctx)
 	for i, t := range types {
 		if t == nil {
 			// Not defined
 			name := names[i]
 			in := undef[name]
-			c.Error(errors.Undefined(
-				errors.ErrTypeUndefined, name, traceUndefined(name, in),
-			))
+			c.undefinedType(name, traceUndefined(name, in), ctx)
 			// TODO: name hints
 			continue
 		}

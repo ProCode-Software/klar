@@ -209,6 +209,7 @@ func sortTypeDecls(
 	depMap depMap,
 	aliases []ast.TypeAliasDeclaration,
 	intfs []ast.TypeDeclaration,
+	ctx context,
 ) ([]ast.TypeDeclaration, []string, map[string]ast.TypeDeclaration) {
 	var (
 		total   = len(aliases) + len(intfs)
@@ -227,7 +228,7 @@ func sortTypeDecls(
 	}
 	// Add all dependencies into a flat list
 	for id, deps := range depMap {
-		checkDefined(id, deps, typeMap, undef)
+		checkDefined(id, deps, typeMap, undef, ctx)
 		list = append(list, append([]string{id}, deps...)...)
 	}
 	// Loop backwards for the final order
@@ -252,12 +253,16 @@ func checkDefined(
 	deps []string,
 	typeMap map[string]ast.TypeDeclaration,
 	undefMap map[string]ast.TypeDeclaration,
+	ctx context,
 ) {
 	for _, dep := range deps {
 		if dep == selfDep {
 			continue
 		}
 		if _, ok := typeMap[dep]; ok {
+			continue
+		}
+		if _, ok := ctx.ResolveType(dep); ok {
 			continue
 		}
 		if undefMap[dep] == nil {

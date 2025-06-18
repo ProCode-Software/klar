@@ -207,8 +207,19 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	// Params
 	p.Expect(lexer.LeftParenthesis)
 	var isTrailingType bool
+	applyType := func(t ast.Type, v ast.Expression) {
+		isTrailingType = false
+		for i := len(f.Parameters) - 1; i >= 0; i-- {
+			if f.Parameters[i].Type != nil {
+				break
+			}
+			f.Parameters[i].Type = t
+			f.Parameters[i].Default = v
+		}
+	}
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		param := ast.FunctionParam{}
+		param.BaseNode.Start = p.CurrentToken().Position
 
 		if p.Peek().Kind == lexer.Identifier {
 			// Optional label:
@@ -221,7 +232,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		if p.CurrentTokenKind() == lexer.Colon {
 			p.Advance()
 			param.Type = p.ParseType(DefaultTypeBindingPower)
-			isTrailingType = false
+			applyType(param.Type, nil)
 		} else {
 			isTrailingType = true
 		}
@@ -230,9 +241,9 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		if p.CurrentTokenKind() == lexer.Equal {
 			p.Advance()
 			param.Default = p.ParseExpression(DefaultBindingPower)
-			isTrailingType = false
+			applyType(param.Type, param.Default)
 		}
-
+		param.BaseNode.End = p.lastTokEnd()
 		f.Parameters = append(f.Parameters, param)
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)

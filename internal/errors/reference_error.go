@@ -43,12 +43,16 @@ func (e ReferenceError) Error() string {
 	case ErrEnumUndefined:
 		return fmt.Sprintf(
 			"ReferenceError: Can't find item %s in enum %s",
-			QuoteString(e.Name),
-			QuoteString(param[string](e.Params, "enumName")),
+			Quote(e.Name),
+			Quote(param[string](e.Params, "enumName")),
 		)
 	case ErrTypeUndefined:
 		return fmt.Sprintf("ReferenceError: Can't find type %s in scope",
-			QuoteString(e.Name),
+			Quote(e.Name),
+		)
+	case ErrVarUndefined:
+		return fmt.Sprintf("ReferenceError: Can't find %s in scope",
+			Quote(e.Name),
 		)
 	}
 }

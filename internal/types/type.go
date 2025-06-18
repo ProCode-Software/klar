@@ -73,13 +73,17 @@ type Struct struct {
 }
 type Ref struct {
 	Name  string
-	Value Type
+	Value *Type
 }
 type Function struct {
 	Params []Param
 	Return Type
 }
-type Overloads []Function
+type Overload struct {
+	Position ranges.Range
+	Function
+}
+type Overloads []Overload
 
 type Param struct {
 	Label    string
@@ -95,7 +99,7 @@ type Value struct {
 	Value any
 }
 
-func (o Overloads) Get(params []Param) (matching *Function, found bool) {
+func (o Overloads) Get(params []Param) (matching *Overload, found bool) {
 outer:
 	// Loop over each overload
 	for _, overload := range o {
@@ -111,4 +115,20 @@ outer:
 		return &overload, true
 	}
 	return nil, false
+}
+
+func (o *Overloads) Define(f Function, rang ranges.Range) (ok bool) {
+	if _, found := o.Get(f.Params); found {
+		return false
+	}
+	*o = append(*o, Overload{Function: f, Position: rang})
+	return true
+}
+
+func (s *Struct) DefineMethod(name string, f Function, rang ranges.Range) (ok bool) {
+	if overloads, found := s.Methods[name]; found {
+		return overloads.Define(f, rang)
+	}
+	s.Methods[name] = Overloads{{Function: f, Position: rang}}
+	return true
 }

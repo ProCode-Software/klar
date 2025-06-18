@@ -65,10 +65,10 @@ const (
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 
-	ErrRedeclaredVar // Can't redeclare variable
-	ErrRedeclaredType
-	ErrRedeclaredEnum
-	ErrVarSameNameAsFunc
+	ErrRedeclaredVar  // Can't redeclare variable or function
+	ErrRedeclaredType // Redeclared type
+	ErrRedeclaredEnum // Redeclared enum member
+	ErrMethAndFieldSameName
 )
 
 type ErrorParams map[string]any
@@ -77,6 +77,7 @@ type ErrorParams map[string]any
 type ParseError struct {
 	Position  lexer.Position
 	Range     ranges.Range
+	Ranges    []ranges.Range
 	ErrorCode ErrorCode
 	Token     lexer.Token
 	Node      ast.Node
@@ -102,7 +103,7 @@ func (e ParseError) Error() string {
 			)
 		}
 		return fmt.Sprintf("SyntaxError: %s: %s %s",
-			e.ErrorCode.String(), kind.String(), Quote(tok),
+			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
 	case ErrExpectedExpression:
 		return "SyntaxError: This isn't an expression"
@@ -132,7 +133,7 @@ func (e ParseError) Error() string {
 		}
 		return fmt.Sprintf(
 			"SyntaxError: I expected %s, but found %s instead",
-			expected, QuoteA(tok),
+			expected, NameToken(tok),
 		)
 	case ErrWildcardAndUnqImport:
 		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
@@ -159,7 +160,7 @@ func (e ParseError) Error() string {
 		case kind == lexer.Newline:
 			return "SyntaxError: Unexpected newline"
 		default:
-			return "SyntaxError: I didn't expect " + QuoteA(tok)
+			return "SyntaxError: I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("SyntaxError: The string starting at %s was left open", e.Position)
@@ -167,7 +168,7 @@ func (e ParseError) Error() string {
 		if kind == lexer.EndOfStatement {
 			return "SyntaxError: Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment, but found " + QuoteA(tok) + " instead"
+		return "SyntaxError: I expected a type assignment, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "SyntaxError: Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
@@ -222,14 +223,26 @@ func (e ParseError) Error() string {
 	case ErrImportsGoFirst:
 		return "SyntaxError: Imports must go before other declarations"
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
-		kind := map[ErrorCode]string{
-			ErrRedeclaredType: "Type",
-			ErrRedeclaredVar:  "Variable",
-			ErrRedeclaredEnum: "Enum member",
+		var (
+			code      = e.ErrorCode
+			origPos   = e.Params["origPos"]
+			name      = e.Params["name"].(string)
+			origType  = e.Params["origType"].(string)
+			newType   = e.Params["newType"].(string)
+			first, as string
+		)
+		switch code {
+		case ErrRedeclaredType:
+			first = "Type "
+		case ErrRedeclaredEnum:
+			first = "Enum member "
 		}
-		return fmt.Sprintf("SyntaxError: %s %s was already declared at %s",
-			kind[e.ErrorCode],
-			QuoteString(e.Params["name"].(string)), e.Params["origPos"],
+		if origType != newType {
+			as = " as " + WithA(origType)
+		}
+		return fmt.Sprintf("SyntaxError: %s%s was already declared%s at %s",
+			first,
+			Quote(name), as, origPos,
 		)
 	}
 }

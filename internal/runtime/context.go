@@ -7,6 +7,13 @@ import (
 
 type TypeDeclaration = types.TypeDeclaration
 
+type DeclType int
+
+const (
+	DeclTypeNormal DeclType = iota
+	DeclTypeType
+)
+
 type Declaration struct {
 	Position   ranges.Range
 	Type       types.Type
@@ -18,6 +25,7 @@ type Declaration struct {
 
 type Context struct {
 	Id               int
+	DeclTypes        map[string]DeclType
 	Declarations     map[string]*Declaration
 	TypeDeclarations map[string]*TypeDeclaration
 	Parent           int
@@ -27,7 +35,7 @@ type Exportable interface {
 	Exportable_()
 }
 
-func (Declaration) Exportable_()     {}
+func (Declaration) Exportable_() {}
 
 type ContextMap map[int]*Context
 
@@ -41,6 +49,7 @@ var (
 func NewContext(parent int) *Context {
 	ctx := &Context{
 		Id:               CurrContext,
+		DeclTypes:        make(map[string]DeclType),
 		Declarations:     make(map[string]*Declaration),
 		TypeDeclarations: make(map[string]*TypeDeclaration),
 		Parent:           parent,
@@ -58,10 +67,11 @@ func (c *Context) IsRoot() bool {
 func (c *Context) Declare(
 	name string, constant bool, typ types.Type, pos ranges.Range,
 ) bool {
-	if _, ok := c.Declarations[name]; ok {
+	if _, ok := c.DeclTypes[name]; ok {
 		// Already declared
 		return false
 	}
+	c.DeclTypes[name] = DeclTypeNormal
 	c.Declarations[name] = &Declaration{
 		Position: pos,
 		Type:     typ,
@@ -71,11 +81,50 @@ func (c *Context) Declare(
 	return true
 }
 
+// DeclareFuncType declares a function or overload in c with the value fn.
+//
+// If the overload exists, it returns 1 and the existing overload.
+//
+// If name is declared in the context but is not a function, DeclareFuncType returns
+// 2 and the existing declaration.
+//
+// Otherwise, DeclareFuncType returns (0, nil)
+func (c *Context) DeclareFuncType(name string, fn types.Function, rang ranges.Range) (err int, data any) {
+	if c.DeclTypes[name] != DeclTypeNormal {
+		// Declared as a type
+		return 2, c.TypeDeclarations[name]
+	}
+	if _, ok := c.Declarations[name]; !ok {
+		c.Declarations[name] = &Declaration{
+			Position: rang,
+			Type: types.Overloads{{
+				Function: fn,
+				Position: rang,
+			}},
+		}
+		return 0, nil
+	}
+	if overloads, ok := c.Declarations[name].Type.(types.Overloads); !ok {
+		// Already declared and not a function
+		return 2, c.Declarations[name]
+	} else {
+		ok = overloads.Define(fn, rang)
+		if !ok {
+			// Overload already declared
+			other, _ := overloads.Get(fn.Params)
+			return 1, other
+		}
+		c.Declarations[name].Type = overloads
+		return 0, nil
+	}
+}
+
 func (c *Context) DeclareType(name string, typ types.Type, pos ranges.Range) bool {
-	if _, ok := c.TypeDeclarations[name]; ok {
+	if _, ok := c.DeclTypes[name]; ok {
 		// Already declared
 		return false
 	}
+	c.DeclTypes[name] = DeclTypeType
 	c.TypeDeclarations[name] = &TypeDeclaration{
 		Type:     typ,
 		Position: pos,

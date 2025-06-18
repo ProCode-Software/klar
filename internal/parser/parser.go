@@ -126,7 +126,6 @@ func (p *Parser) expectNonNumericMapIdent() lexer.Token {
 	return p.Advance()
 }
 
-// Only works for single-line tokens
 func (p *Parser) lastTokEnd() lexer.Position {
 	last := p.Tokens[p.Index-1]
 	return ranges.FromToken(last).End
