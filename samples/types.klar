@@ -4,29 +4,28 @@ type C = A
 type D { name: E | Int }
 type E = D */
 
-for i in 5 {
-    dict = #{ name: "John", age: dict.age + i, info... }
-}
-
 /* (name: String, age: Int) := ("John", 14)
 (name: String, age: Int) := dict
 
 for (key, value) in items {
     
 } */
-
-
-type Person {
+/* type Person {
     name: String
     age: Int
 }
 
 type Color {
-    | red
-    | orange = red
-    | yellow = orange
+    | red | orange | yellow
+    | green | blue | purple
 }
 
-func x.the(name: Int) {
+type A: Color {} */
 
+func unwrap<T>(optional: T?) -> T {
+    x := 1
+    when optional {
+        ? -> panic("unwrap failed")
+        value -> return value
+    }
 }

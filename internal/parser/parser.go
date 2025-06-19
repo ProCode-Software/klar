@@ -178,6 +178,11 @@ func (p *Parser) savePos() lexer.Position {
 	return p.CurrentToken().Position
 }
 
+func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
+	rang := ranges.FromToken(tok)
+	return node.SetPos(rang.Start, rang.End).(T)
+}
+
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
 func (p *Parser) RemoveComments() (comments []ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {

@@ -66,12 +66,35 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 		members[i.Identifier] = last
 	}
 	for k, item := range pending {
-		if v, ok := members[item.name]; ok {
-			members[k] = v
-		} else {
-			err := errors.Undefined(errors.ErrEnumUndefined, item.name, item.pos)
-			err.SetParam("enumName", t.Identifier)
-			c.Error(err)
+		var (
+			name     = item.name
+			cycle    = []errors.CycleItem{{name, item.pos}}
+			cycleMap = make(map[string]bool)
+		)
+		for {
+			if cycleMap[name] {
+				// Cycle
+				err := errors.ReferenceError{
+					Name:      k,
+					Ranges:    errors.Ranges{cycle[len(cycle)-1].Position},
+					Range:     item.pos,
+					ErrorCode: errors.ErrEnumCycle,
+					Params:    errors.ErrorParams{"cycle": cycle},
+				}
+				c.Error(err)
+			} else if v, ok := members[name]; ok {
+				members[k] = v
+			} else if pi, ok := pending[name]; ok {
+				name = pi.name
+				cycle = append(cycle, errors.CycleItem{name, pending[name].pos})
+				cycleMap[name] = true
+				continue
+			} else {
+				err := errors.Undefined(errors.ErrEnumUndefined, name, item.pos)
+				err.SetParam("enumName", t.Identifier)
+				c.Error(err)
+			}
+			break
 		}
 	}
 	return types.Enum{

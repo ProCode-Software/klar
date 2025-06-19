@@ -16,7 +16,11 @@ type KlarError interface {
 }
 
 //go:generate stringer -type=ErrorCode
-type ErrorCode int
+type (
+	Ranges      = []ranges.Range
+	ErrorParams map[string]any
+	ErrorCode   int
+)
 
 const (
 	SyntaxErrorPrefix ErrorCode = iota * 100

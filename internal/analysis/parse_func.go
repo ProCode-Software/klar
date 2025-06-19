@@ -3,11 +3,22 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func (c *Checker) ParseFunction(d ast.FunctionDeclaration, ctx context) (f types.Function) {
+func (c *Checker) CheckFunction(
+	d ast.FunctionDeclaration,
+	selfType *types.Struct,
+	defCtx context,
+) (f types.Function) {
 	f.Params = make([]types.Param, len(d.Parameters))
+	ctx := runtime.NewContext(defCtx.Id)
+	// Declare generic parameters
+	for _, gen := range d.GenericParams {
+		name := gen.Identifier
+		ctx.DeclareType(name, types.Generic{name}, gen.Base().Range)
+	}
 	for i, decParam := range d.Parameters {
 		var (
 			paramType   Type
@@ -17,11 +28,11 @@ func (c *Checker) ParseFunction(d ast.FunctionDeclaration, ctx context) (f types
 			paramType = c.ParseType(decParam.Type.(ast.RestType).Value, ctx)
 			c.validateVariadicParam(i, len(d.Parameters), decParam.Type)
 		} else if decParam.Type == nil {
-			paramType = types.InvalidType
-			// Syntax error if type not provided
+			paramType = types.InvalidType // Syntax error if type not provided
 		} else {
 			paramType = c.ParseType(decParam.Type, ctx)
 		}
+		// TODO: check type of default value
 		f.Params[i] = types.Param{
 			Label:    decParam.Label,
 			Variadic: variadic,
@@ -32,43 +43,65 @@ func (c *Checker) ParseFunction(d ast.FunctionDeclaration, ctx context) (f types
 	if d.ReturnType != nil {
 		f.Return = c.ParseType(d.ReturnType, ctx)
 	}
+	// Self variable
+	if selfType != nil {
+		ctx.Declare("self", true, selfType, defaultRange)
+	}
+	// Check statements
+	_ = c.CheckStatements(d.Body, ctx)
 	return f
 }
 
-func (c *Checker) parseFuncDecls(funcs []ast.FunctionDeclaration, ctx context) {
-	for _, decl := range funcs {
-		var (
-			name = decl.Identifier
-			pos  = decl.Base().Range
-			f    = c.ParseFunction(decl, ctx)
-		)
-		if decl.Struct != nil {
-			// Method
-			receiver := decl.Struct.(ast.TypeAlias).Identifier
+func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
+	var (
+		name = decl.Identifier
+		pos  = decl.Base().Range
+		f    types.Function
+	)
+	if decl.Struct != nil {
+		// Method
+		receiver := decl.Struct.(ast.TypeAlias).Identifier
+		structDef, ok := ctx.TypeDeclarations[receiver]
+		if !ok {
 			structDef, found := ctx.ResolveType(receiver)
-			if !found {
-				c.undefinedType(receiver, decl.Struct.Base().Range, ctx)
-				continue
-			}
-			if str, ok := structDef.Type.(types.Struct); ok {
-				str.DefineMethod(name, f, pos)
-				structDef.Type = str
+			if found {
+				// Method outside struct scope
+				c.Error(errors.ParseError{
+					ErrorCode: errors.ErrMethodInOtherScope,
+					Range:     pos,
+					Ranges:    errors.Ranges{structDef.Position},
+					Params: errors.ErrorParams{
+						"name":       name,
+						"structName": receiver,
+					},
+				})
 			} else {
-				err := errors.TypeMismatch(nil, structDef.Type, decl.Struct.Base().Range)
-				err.ErrorCode = errors.ErrNonStructReceiver
-				err.Name = receiver
-				c.Error(err)
+				c.ErrUndefinedType(receiver, decl.Struct.Base().Range, ctx)
 			}
-			continue
+			return
 		}
-		switch err, data := ctx.DeclareFuncType(name, f, pos); err {
-		case 1:
-			// Overload exists
-			existingOvl := data.(types.Overload)
-			c.errOverloadExists(name, existingOvl, pos)
-		case 2:
-			// Alreay declared non-function
-			c.errRedeclared(errors.ErrRedeclaredVar, name, pos, "function", ctx)
+		if str, ok := structDef.Type.(types.Struct); ok {
+			f = c.CheckFunction(decl, &str, ctx)
+			str.DefineMethod(name, f, pos)
+			structDef.Type = str
+		} else {
+			c.Error(errors.TypeError{
+				ErrorCode: errors.ErrNonStructReceiver,
+				Name:      receiver,
+				Range:     decl.Struct.Base().Range,
+				GotType:   structDef.Type,
+			})
 		}
+		return
+	}
+	f = c.CheckFunction(decl, nil, ctx)
+	switch err, data := ctx.DeclareFuncType(name, f, pos); err {
+	case 1:
+		// Overload exists
+		existingOvl := data.(*types.Overload)
+		c.ErrOverloadExists(name, *existingOvl, pos)
+	case 2:
+		// Alreay declared non-function
+		c.ErrRedeclared(errors.ErrRedeclaredVar, name, pos, "function", ctx)
 	}
 }

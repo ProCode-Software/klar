@@ -69,9 +69,8 @@ const (
 	ErrRedeclaredType // Redeclared type
 	ErrRedeclaredEnum // Redeclared enum member
 	ErrMethAndFieldSameName
+	ErrMethodInOtherScope // Method must be in the same scope as struct definition
 )
-
-type ErrorParams map[string]any
 
 // A ParseError is a basic Klar parse error.
 type ParseError struct {
@@ -222,6 +221,11 @@ func (e ParseError) Error() string {
 		return "SyntaxError: Function parameters must have a type"
 	case ErrImportsGoFirst:
 		return "SyntaxError: Imports must go before other declarations"
+	case ErrMethodInOtherScope:
+		return fmt.Sprintf(
+			"SyntaxError: Method %s must be declared in the same scope as type %s",
+			e.Params["name"], e.Params["structName"],
+		)
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (
 			code      = e.ErrorCode

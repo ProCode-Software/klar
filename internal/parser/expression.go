@@ -393,16 +393,17 @@ loop:
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
+		p.Expect(lexer.EndOfStatement)
 	default:
-		res := p.ParseLED(DefaultBindingPower)
+		res := p.ParseStatement()
 		switch res := res.(type) {
 		// Allow some kinds of statements outside of braces
 		case ast.AssignmentStatement, ast.ReturnStatement,
 			ast.NextStatement, ast.UpdateStatement:
 			c.Body = []ast.Statement{res.(ast.Statement)}
 		// All expressions are allowed
-		case ast.Expression:
-			c.BodyExpr = res
+		case ast.ExpressionStatement:
+			c.BodyExpr = res.Expression
 		default:
 			// Expected expression error
 			p.errExpectedExpr(res)
@@ -428,7 +429,7 @@ func (p *Parser) ParseWhenBlock() ast.WhenExpression {
 	parseSeries(
 		p, &w.Cases,
 		func() ast.WhenCase { return p.parseWhenCase(lenSubj) },
-		lexer.RightCurlyBrace, lexer.EndOfStatement, true,
+		lexer.RightCurlyBrace, 0, true,
 	)
 	return w
 }

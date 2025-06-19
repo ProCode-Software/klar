@@ -127,14 +127,14 @@ func parseSeries[T any](
 	if end {
 		for p.WhileNot(until) {
 			*arr = append(*arr, with())
-			if p.CurrentTokenKind() != until {
+			if sepBy != 0 && p.CurrentTokenKind() != until {
 				p.Expect(sepBy)
 			}
 		}
 	} else {
 		for p.WhileNotEndOr(until) {
 			*arr = append(*arr, with())
-			if p.IsNotCurrentlyEndOr(until) {
+			if sepBy != 0 && p.IsNotCurrentlyEndOr(until) {
 				p.Expect(sepBy)
 			}
 		}

@@ -3,13 +3,12 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-var defaultPos lexer.Position
+var defaultRange ranges.Range
 
 type (
 	Type    = types.Type
@@ -39,21 +38,6 @@ func (c *Checker) Error(err errors.KlarError) {
 	c.Errors = append(c.Errors, err)
 	if c.OnError != nil {
 		c.OnError(err)
-	}
-}
-
-func (c *Checker) InferType(expr ast.Expression) Type {
-	if expr == nil {
-		return nil
-	}
-	return nil
-}
-
-func (c *Checker) CheckCompatible(t1, t2 Type) Type {
-	if t1 == t2 {
-		return t1
-	} else {
-		return types.InvalidType
 	}
 }
 
@@ -148,15 +132,18 @@ func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 	}
 	// Declare types first
 	deps := c.getTypeAliasDeps(alias, ctx) // Deps of aliases
-	c.mergeStructDeps(deps, intfs, ctx) // Add structs and interfaces
+	c.mergeStructDeps(deps, intfs, ctx)    // Add structs and interfaces
 	types, names, undef := sortTypeDecls(deps, alias, intfs, ctx)
 	for i, t := range types {
 		if t == nil {
-			// Not defined
 			name := names[i]
+			// Already declared type as a non-alias
+			if _, ok := ctx.ResolveType(name); ok {
+				continue
+			}
+			// Undefined
 			in := undef[name]
-			c.undefinedType(name, traceUndefined(name, in), ctx)
-			// TODO: name hints
+			c.ErrUndefinedType(name, traceUndefined(name, in), ctx)
 			continue
 		}
 		name := t.Name()
@@ -176,5 +163,7 @@ func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 		ctx.SetType(name, res)
 	}
 	// Declare functions and methods next
-	c.parseFuncDecls(funcs, ctx)
+	for _, decl := range funcs {
+		c.checkFuncDecl(decl, ctx)
+	}
 }

@@ -13,12 +13,11 @@ const (
 
 	ErrUntypedNil        // nil requires contextual type
 	ErrUntypedEmptyList  // Can't infer type from empty list
+	ErrUntypedEnum       // Shorthand enum syntax without enum type
 	ErrAssignToConst     // Attempted reassignment to constant reference
 	ErrUncheckedOptional // Required to check if optional is nil
 	ErrUncheckedResult   // Required to check Result for error
-	ErrUnusedLiteral     // Unused literal expression statement
-	ErrUnusedLastLit     // Same as above, but last statement in block
-	ErrTypeMismatch      // Type mismatch
+	ErrUnusedValue       // Unused literal expression statement
 	ErrTypeCycle         // Circular type reference
 	ErrInvalidRestType   // Rest type used where it is not supposed to
 	ErrInvalidRestExpr   // Rest expression used where it is not supposed to
@@ -32,8 +31,10 @@ const (
 	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
 	ErrConflictingInherit     // Name collision in struct inheritance
 	ErrNonStructReceiver      // Defining method on non-struct type
-	ErrMethodInOtherScope     // Method must be in the same scope as struct definition
 	ErrOverloadExists         // Overload already defined
+
+	ErrTypeMismatch    // Type mismatch
+	ErrWrongAssignType // Wrong type for assignment
 )
 
 type TypeError struct {
@@ -47,6 +48,9 @@ type TypeError struct {
 }
 
 func (e *TypeError) SetParam(key string, value any) TypeError {
+	if e.Params == nil {
+		e.Params = make(ErrorParams)
+	}
 	e.Params[key] = value
 	return *e
 }
@@ -59,6 +63,7 @@ func (e TypeError) Error() string {
 	var (
 		expType = e.ExpectedType
 		gotType = e.GotType
+		name    = e.Name
 		p       = e.Params
 	)
 	switch e.ErrorCode {
@@ -96,12 +101,12 @@ func (e TypeError) Error() string {
 		if meth := param[*types.Function](p, "method"); meth != nil {
 			return fmt.Sprintf(
 				"TypeError: Method %s inherited from _ conflicts with already inherited method from _",
-				Quote(meth.StringNamed(e.Name)),
+				Quote(meth.StringNamed(name)),
 			)
 		}
 		return fmt.Sprintf(
 			"TypeError: Field %s inherited from _ conflicts with already inherited field from _",
-			Quote(e.Name),
+			Quote(name),
 		)
 	case ErrVariadicLast:
 		return "TypeError: Variadic parameter must be the last parameter"
@@ -116,10 +121,17 @@ func (e TypeError) Error() string {
 		)
 	case ErrNonStructReceiver:
 		return fmt.Sprintf(
-			"TypeError: Can't define method for %s: Type %s is not a struct",
+			"TypeError: Can't define method on %s: Type %[1]s is %s and is not a struct",
 			Quote(e.Name),
 			QuoteType(e.GotType),
 		)
+	case ErrOverloadExists:
+		return fmt.Sprintf(
+			"TypeError: Overload %s was already defined at %s",
+			Quote(name), param[ranges.Range](p, "origPos").Start,
+		)
+	case ErrUnusedValue:
+		return "TypeError: This value is never used"
 	}
 }
 

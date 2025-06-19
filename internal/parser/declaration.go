@@ -180,23 +180,29 @@ func (p *Parser) ParseStruct(typeName, firstField string, inherited []ast.Type) 
 func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	p.Expect(lexer.Func)
 	f := ast.FunctionDeclaration{}
-	f.Identifier = p.Expect(lexer.Identifier).Source
+	rec := p.Expect(lexer.Identifier)
 
 	// Struct receiver
 	// 	func Person.greet()
 	if p.CurrentTokenKind() == lexer.Dot {
 		p.Advance()
-		f.Struct = ast.TypeAlias{Identifier: f.Identifier}
+		alias := ast.TypeAlias{Identifier: rec.Source}
+		f.Struct = rangeFromToken(alias, rec)
 		f.Identifier = p.Expect(lexer.Identifier).Source
+	} else {
+		f.Identifier = rec.Source
 	}
 	// Generic:
 	//	func get<T, U>(a: T, b: [U]) -> T
 	// Can't be assigned, only inferred
 	if p.CurrentTokenKind() == lexer.LessThan {
-		generics := []string{}
+		generics := []ast.Symbol{}
 		p.Advance()
 		for p.WhileNot(lexer.GreaterThan) {
-			generics = append(generics, p.Expect(lexer.Identifier).Source)
+			tok := p.Expect(lexer.Identifier)
+			item := ast.Symbol{Identifier: tok.Source}
+			item = rangeFromToken(item, tok)
+			generics = append(generics, item)
 			if p.CurrentTokenKind() != lexer.GreaterThan {
 				p.Expect(lexer.Comma)
 			}

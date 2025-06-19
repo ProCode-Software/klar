@@ -32,6 +32,9 @@ func QuoteToken(tok lexer.Token) string {
 }
 
 func QuoteType(typ types.Type) string {
+	if typ, ok := typ.(interface{ String() string }); ok {
+		return Quote(typ.String())
+	}
 	return Quote(fmt.Sprintf("%s", typ))
 }
 

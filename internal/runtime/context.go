@@ -146,6 +146,9 @@ func (c *Context) Resolve(name string) (d *Declaration, found bool) {
 func (c *Context) ResolveType(name string) (d *TypeDeclaration, found bool) {
 	if val, ok := c.TypeDeclarations[name]; ok {
 		val.Used = true
+		if alias, ok := val.Type.(types.Ref); ok {
+			return c.ResolveType(alias.Name)
+		}
 		return val, true
 	}
 	if c.Parent > -1 {

@@ -13,12 +13,19 @@ const (
 	ErrVarUndefined  // Variable doesn't exist
 	ErrEnumUndefined // Enum item doesn't exist
 	ErrTypeUndefined // Type doesn't exist
+	ErrEnumCycle     // Enum items refer to each other
 )
+
+type CycleItem struct {
+	Name     string
+	Position ranges.Range
+}
 
 type ReferenceError struct {
 	Name      string
 	ErrorCode ErrorCode
 	Range     ranges.Range
+	Ranges    Ranges
 	Hints     []string
 	Params    ErrorParams
 }
@@ -37,22 +44,26 @@ func (e ReferenceError) Code() ErrorCode       { return e.ErrorCode }
 func (e ReferenceError) GetHints() []string    { return e.Hints }
 
 func (e ReferenceError) Error() string {
+	name := Quote(e.Name)
 	switch e.ErrorCode {
 	default:
 		return "ReferenceError: " + e.ErrorCode.String()
 	case ErrEnumUndefined:
 		return fmt.Sprintf(
 			"ReferenceError: Can't find item %s in enum %s",
-			Quote(e.Name),
+			name,
 			Quote(param[string](e.Params, "enumName")),
 		)
 	case ErrTypeUndefined:
-		return fmt.Sprintf("ReferenceError: Can't find type %s in scope",
-			Quote(e.Name),
-		)
+		return fmt.Sprintf("ReferenceError: Can't find type %s in scope", name)
 	case ErrVarUndefined:
-		return fmt.Sprintf("ReferenceError: Can't find %s in scope",
-			Quote(e.Name),
+		return fmt.Sprintf("ReferenceError: Can't find %s in scope", name)
+	case ErrEnumCycle:
+		cycle := param[[]CycleItem](e.Params, "cycle")
+		return fmt.Sprintf(
+			"ReferenceError: Enum items %s and %s recursively reference each other",
+			name,
+			Quote(cycle[len(cycle)-1].Name),
 		)
 	}
 }

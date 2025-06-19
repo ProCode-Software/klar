@@ -19,8 +19,8 @@ type Type interface {
 }
 type HasFields interface {
 	Type
-	GetFields() map[string]Type
-	GetMethods() map[string]Overloads
+	GetFields() FieldMap
+	GetMethods() MethodMap
 }
 
 //go:generate stringer -type=CoreType -linecomment
@@ -38,6 +38,16 @@ const (
 
 	InvalidType // Invalid
 	Self
+)
+
+type Untyped int
+
+const (
+	UntypedInt Untyped = iota
+	UntypedFloat
+	UntypedNil
+	UntypedEmptyList
+	UntypedEnum
 )
 
 var PrimitiveMap = map[ast.PrimitiveTypeName]Type{
@@ -62,6 +72,9 @@ type (
 	Lambda    struct{ Function }
 	Map       struct{ KeyType, ValueType Type }
 	Result    struct{ SuccessType, FailureType Type }
+
+	FieldMap  = map[string]Type
+	MethodMap = map[string]Overloads
 )
 
 type Struct struct {
@@ -131,4 +144,9 @@ func (s *Struct) DefineMethod(name string, f Function, rang ranges.Range) (ok bo
 	}
 	s.Methods[name] = Overloads{{Function: f, Position: rang}}
 	return true
+}
+
+func IsUntyped(t Type) bool {
+	_, isUntyped := t.(Untyped)
+	return isUntyped
 }

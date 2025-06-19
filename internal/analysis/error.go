@@ -8,22 +8,41 @@ import (
 )
 
 // TODO: name hints in context
-func (c *Checker) undefinedType(name string, pos ranges.Range, _ context) {
-	c.Error(errors.Undefined(errors.ErrTypeUndefined, name, pos))
+func (c *Checker) ErrUndefinedType(name string, pos ranges.Range, ctx context) {
+	c.undefined(name, pos, true, ctx)
 }
 
-func (c *Checker) errOverloadExists(
+func (c *Checker) ErrUndefinedVar(name string, pos ranges.Range, ctx context) {
+	c.undefined(name, pos, false, ctx)
+}
+
+func (c *Checker) ErrNotInEnum(name string, pos ranges.Range, enum types.Enum) {
+	
+}
+
+func (c *Checker) undefined(name string, pos ranges.Range, isType bool, _ context) {
+	code := errors.ErrVarUndefined
+	if isType {
+		code = errors.ErrTypeUndefined
+	}
+	c.Error(errors.Undefined(code, name, pos))
+}
+
+func (c *Checker) ErrOverloadExists(
 	name string, existing types.Overload, pos ranges.Range,
 ) {
 	err := errors.TypeError{
 		Name:      existing.StringNamed(name),
 		Range:     pos,
 		ErrorCode: errors.ErrOverloadExists,
+		Params: errors.ErrorParams{
+			"origPos": existing.Position,
+		},
 	}
 	c.Error(err)
 }
 
-func (c *Checker) errRedeclared(
+func (c *Checker) ErrRedeclared(
 	code errors.ErrorCode,
 	name string,
 	newPos ranges.Range,
@@ -70,4 +89,7 @@ func typeof(t Type, isType bool) string {
 		return "enum"
 	}
 	return "type"
+}
+
+func (c *Checker) TypeMismatch(code errors.ErrorCode, name string, exp, got Type) {
 }

@@ -350,7 +350,7 @@ type FunctionDeclaration struct {
 	Public        bool
 	Identifier    string
 	Struct        Type
-	GenericParams []string
+	GenericParams []Symbol
 	Parameters    []FunctionParam
 	ReturnType    Type
 	Body          []Statement

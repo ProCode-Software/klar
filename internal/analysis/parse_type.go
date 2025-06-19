@@ -24,7 +24,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 	case ast.TypeAlias:
 		name := t.Identifier
 		if decl, ok := ctx.ResolveType(name); !ok {
-			c.undefinedType(name, t.Range, ctx)
+			c.ErrUndefinedType(name, t.Range, ctx)
 			return types.InvalidType
 		} else {
 			return types.Ref{name, &decl.Type}
@@ -144,12 +144,14 @@ func (c *Checker) parseInheritance(
 		case types.HasFields:
 			inherited = typeVal
 		default:
-			err := errors.NamedTypeError(
+			continue
+			// Can inherit other types
+			/* err := errors.NamedTypeError(
 				errors.ErrInheritNonStructOrIntf, name, item.Base().Range,
 			)
 			err.SetParam("type", decl.Type)
 			c.Error(err)
-			continue
+			continue */
 		}
 		for k, v := range inherited.GetFields() {
 			if _, ok := s.Fields[k]; ok && !isIntf {

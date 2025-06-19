@@ -90,7 +90,7 @@ func (f Function) String() string {
 		b.WriteString(fmt.Sprintf("%s", param.Type))
 	}
 	b.WriteByte(')')
-	if f.Return != Nothing {
+	if f.Return != Nothing && f.Return != nil {
 		b.WriteString(" -> ")
 		b.WriteString(fmt.Sprintf("%s", f.Return))
 	}
