@@ -69,32 +69,33 @@ func _() {
 	_ = x[ErrUncheckedOptional-105]
 	_ = x[ErrUncheckedResult-106]
 	_ = x[ErrUnusedValue-107]
-	_ = x[ErrUnusedLastLit-108]
-	_ = x[ErrTypeCycle-109]
-	_ = x[ErrInvalidRestType-110]
-	_ = x[ErrInvalidRestExpr-111]
-	_ = x[ErrNoGenerics-112]
-	_ = x[ErrVariadicLast-113]
-	_ = x[ErrWrongTypeParamLen-114]
-	_ = x[ErrInvalidEnumValue-115]
-	_ = x[ErrCannotInferEnumValue-116]
-	_ = x[ErrInheritNonStructOrIntf-117]
-	_ = x[ErrConflictingInherit-118]
-	_ = x[ErrNonStructReceiver-119]
-	_ = x[ErrOverloadExists-120]
-	_ = x[ErrTypeMismatch-121]
-	_ = x[ErrWrongAssignType-122]
+	_ = x[ErrTypeCycle-108]
+	_ = x[ErrInvalidRestType-109]
+	_ = x[ErrInvalidRestExpr-110]
+	_ = x[ErrNoGenerics-111]
+	_ = x[ErrVariadicLast-112]
+	_ = x[ErrWrongTypeParamLen-113]
+	_ = x[ErrInvalidEnumValue-114]
+	_ = x[ErrCannotInferEnumValue-115]
+	_ = x[ErrInheritNonStructOrIntf-116]
+	_ = x[ErrConflictingInherit-117]
+	_ = x[ErrNonStructReceiver-118]
+	_ = x[ErrOverloadExists-119]
+	_ = x[ErrTypeMismatch-120]
+	_ = x[ErrWrongAssignType-121]
+	_ = x[ErrNonBoolLogical-122]
+	_ = x[ErrMismatchedOp-123]
 }
 
 const (
 	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrMissingFuncParamTypeErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScope"
-	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedLiteralErrUnusedLastLitErrTypeCycleErrInvalidRestTypeErrInvalidRestExprErrNoGenericsErrVariadicLastErrWrongTypeParamLenErrInvalidEnumValueErrCannotInferEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrTypeMismatchErrWrongAssignType"
+	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedValueErrTypeCycleErrInvalidRestTypeErrInvalidRestExprErrNoGenericsErrVariadicLastErrWrongTypeParamLenErrInvalidEnumValueErrCannotInferEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOp"
 	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 )
 
 var (
 	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 105, 128, 146, 170, 194, 217, 236, 253, 270, 291, 313, 333, 352, 368, 383, 402, 419, 434, 448, 462, 478, 495, 513, 537, 560, 578, 599, 623, 638, 661, 682, 707, 733, 758, 778, 800, 816, 837, 857, 873, 890, 907, 930, 951}
-	_ErrorCode_index_1 = [...]uint16{0, 15, 28, 47, 61, 77, 97, 115, 131, 147, 159, 177, 195, 208, 223, 243, 262, 285, 310, 331, 351, 368, 383, 401}
+	_ErrorCode_index_1 = [...]uint16{0, 15, 28, 47, 61, 77, 97, 115, 129, 141, 159, 177, 190, 205, 225, 244, 267, 292, 313, 333, 350, 365, 383, 400, 415}
 	_ErrorCode_index_2 = [...]uint8{0, 20, 35, 51, 67, 79}
 )
 
@@ -102,7 +103,7 @@ func (i ErrorCode) String() string {
 	switch {
 	case 0 <= i && i <= 47:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
-	case 100 <= i && i <= 122:
+	case 100 <= i && i <= 123:
 		i -= 100
 		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
 	case 200 <= i && i <= 204:

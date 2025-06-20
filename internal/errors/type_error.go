@@ -35,6 +35,8 @@ const (
 
 	ErrTypeMismatch    // Type mismatch
 	ErrWrongAssignType // Wrong type for assignment
+	ErrNonBoolLogical
+	ErrMismatchedOp // Operands don't match
 )
 
 type TypeError struct {

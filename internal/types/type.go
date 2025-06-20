@@ -40,14 +40,15 @@ const (
 	Self
 )
 
-type Untyped int
+type (
+	Untyped     int
+	UntypedEnum struct{ Name string }
+)
 
 const (
-	UntypedInt Untyped = iota
-	UntypedFloat
+	UntypedInt Untyped = 11 + iota
 	UntypedNil
-	UntypedEmptyList
-	UntypedEnum
+	UntypedList // Empty list
 )
 
 var PrimitiveMap = map[ast.PrimitiveTypeName]Type{
@@ -144,9 +145,4 @@ func (s *Struct) DefineMethod(name string, f Function, rang ranges.Range) (ok bo
 	}
 	s.Methods[name] = Overloads{{Function: f, Position: rang}}
 	return true
-}
-
-func IsUntyped(t Type) bool {
-	_, isUntyped := t.(Untyped)
-	return isUntyped
 }

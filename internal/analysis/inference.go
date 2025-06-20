@@ -7,12 +7,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func (c *Checker) InferType(expr ast.Expression, ctx context) Type {
+func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 	switch expr := expr.(type) {
-	case ast.FloatLiteral:
-		return types.UntypedFloat
 	case ast.IntegerLiteral:
 		return types.UntypedInt
+	case ast.FloatLiteral:
+		return types.Float
 	case ast.StringLiteral:
 		return types.String
 	case ast.BooleanLiteral:
@@ -25,11 +25,11 @@ func (c *Checker) InferType(expr ast.Expression, ctx context) Type {
 		}
 		return decl.Type
 	case ast.EnumLiteral:
-		// Untyped enum
-		return types.UntypedEnum
+		return types.UntypedEnum{Name: expr.Name}
 	case ast.NilLiteral:
-		// Untyped nil
 		return types.UntypedNil
+	case ast.BadExpression:
+		return types.InvalidType
 	case ast.ListLiteral:
 		return c.CheckList(expr, ctx)
 	case ast.TupleLiteral:

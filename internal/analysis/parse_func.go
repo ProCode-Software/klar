@@ -40,15 +40,20 @@ func (c *Checker) CheckFunction(
 		}
 	}
 	// Nil if inferred
-	if d.ReturnType != nil {
+	inferReturn := d.ReturnType == nil
+	if !inferReturn {
 		f.Return = c.ParseType(d.ReturnType, ctx)
 	}
 	// Self variable
 	if selfType != nil {
-		ctx.Declare("self", true, selfType, defaultRange)
+		ctx.Declare("self", true, selfType, defaultRange) // todo: check if pointer selfType should be used
 	}
 	// Check statements
-	_ = c.CheckStatements(d.Body, ctx)
+	ctxInfo := contextInfo{
+		ReturnType: f.Return,
+		InferredReturn: inferReturn,
+	}
+	_ = c.CheckStatements(d.Body, ctxInfo, ctx)
 	return f
 }
 

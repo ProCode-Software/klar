@@ -166,4 +166,6 @@ func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 	for _, decl := range funcs {
 		c.checkFuncDecl(decl, ctx)
 	}
+	// Normal statements
+	c.CheckStatements(stmts, contextInfo{}, ctx)
 }

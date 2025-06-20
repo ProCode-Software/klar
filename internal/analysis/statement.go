@@ -9,15 +9,30 @@ type Return struct {
 	Node       ast.ReturnStatement
 	ReturnType Type
 }
+type contextInfo struct {
+	IsLoop         bool
+	ReturnType     Type
+	InferredReturn bool
+	doesReturn     bool
+}
 
-func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []Return) {
+func (c *Checker) CheckStatements(
+	body []ast.Statement, ctxInfo contextInfo, ctx context,
+) (returns []Return) {
+	ctxInfo.doesReturn = !ctxInfo.InferredReturn && ctxInfo.ReturnType == nil
 	for i, stmt := range body {
 		switch stmt := stmt.(type) {
 		case ast.VariableDeclaration:
 			c.CheckVarDecl(stmt, ctx)
+		case ast.AssignmentStatement:
+		case ast.ForStatement:
+		case ast.NextStatement:
+		case ast.ReturnStatement:
+		case ast.UpdateStatement:
 		case ast.ExpressionStatement:
 			switch expr := stmt.Expression.(type) {
-			case ast.WhenExpression, ast.CallExpression:
+			// Allowed expressions as statements
+			case ast.WhenExpression, ast.CallExpression, ast.BadExpression:
 			default:
 				// Unused statement
 				err := errors.NewTypeErr(errors.ErrUnusedValue, expr.Base().Range, nil)
@@ -26,6 +41,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 					err.Hint("Did you mean to return this expression?")
 				}
 				c.Error(err)
+				c.InferType(expr, ctx) // Just check it
 				continue
 			}
 		}

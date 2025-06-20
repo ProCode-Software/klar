@@ -100,3 +100,9 @@ func (f Function) String() string {
 func (f Function) StringNamed(name string) string {
 	return name + f.String()
 }
+
+func (u Untyped) String() string {
+	return map[Untyped]string{
+		UntypedInt: "Int", UntypedList: "[]", UntypedNil: "nil",
+	}[u]
+}
