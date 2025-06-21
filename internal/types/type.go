@@ -68,7 +68,6 @@ type (
 	Tuple     struct{ Items []Type }
 	Union     struct{ Options []Type }
 	Optional  struct{ Underlying Type }
-	Generic   struct{ Name string }
 	Interface struct{ Struct }
 	Lambda    struct{ Function }
 	Map       struct{ KeyType, ValueType Type }
@@ -88,6 +87,10 @@ type Struct struct {
 type Ref struct {
 	Name  string
 	Value *Type
+}
+type Generic struct {
+	Name string
+	Type Type
 }
 type Function struct {
 	Params []Param

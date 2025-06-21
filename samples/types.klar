@@ -23,7 +23,7 @@ type Color {
 type A: Color {} */
 
 func unwrap<T>(optional: T?) -> T {
-    x := true and true
+    x := true and 2
     // return x + 2
     /* when optional {
         ? -> panic("unwrap failed")

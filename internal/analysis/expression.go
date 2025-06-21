@@ -11,10 +11,13 @@ func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 	op := expr.Operator
 	switch {
 	case IsLogical(op):
-		//c.CheckSameType(expr.Left, expr.Right, types.Bool, ctx)
+		c.CheckLogicalExpr(expr.Left, expr.Right, op, ctx)
 		return types.Bool
-	case IsDistributive(op), IsRelational(op):
+	case IsDistributive(op):
 		return c.CheckSameType(expr.Left, expr.Right, op, ctx)
+	case IsRelational(op):
+		typ :=  c.CheckSameType(expr.Left, expr.Right, op, ctx)
+		return typ
 	case IsArithmetic(op):
 	}
 	return nil

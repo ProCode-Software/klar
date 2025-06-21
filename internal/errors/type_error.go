@@ -33,10 +33,12 @@ const (
 	ErrNonStructReceiver      // Defining method on non-struct type
 	ErrOverloadExists         // Overload already defined
 
-	ErrTypeMismatch    // Type mismatch
-	ErrWrongAssignType // Wrong type for assignment
-	ErrNonBoolLogical
-	ErrMismatchedOp // Operands don't match
+	ErrTypeMismatch         // Type mismatch
+	ErrWrongAssignType      // Wrong type for assignment
+	ErrNonBoolLogical       // Operands in logical expression must be boolean
+	ErrMismatchedOperands   // Operands don't match
+	ErrMismatchedDistrib // Distributive operands must be the same type
+	ErrUncomparableTypes    // Uncomparable types in relational expression
 )
 
 type TypeError struct {
@@ -134,6 +136,11 @@ func (e TypeError) Error() string {
 		)
 	case ErrUnusedValue:
 		return "TypeError: This value is never used"
+	case ErrMismatchedDistrib:
+		return fmt.Sprintf(
+			"TypeError: Operands in distributive expression must be the same type: found mismatched %s and %s",
+			QuoteType(expType), QuoteType(gotType),
+		)
 	}
 }
 

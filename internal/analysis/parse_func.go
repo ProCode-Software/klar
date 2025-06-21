@@ -17,7 +17,7 @@ func (c *Checker) CheckFunction(
 	// Declare generic parameters
 	for _, gen := range d.GenericParams {
 		name := gen.Identifier
-		ctx.DeclareType(name, types.Generic{name}, gen.Base().Range)
+		ctx.DeclareType(name, types.Generic{Name: name}, gen.Base().Range)
 	}
 	for i, decParam := range d.Parameters {
 		var (

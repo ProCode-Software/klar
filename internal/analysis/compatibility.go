@@ -24,7 +24,7 @@ func (c *Checker) ToTyped(typ, hint Type) (Type, errors.KlarError) {
 	return nil, nil
 }
 
-func (c *Checker) CheckCompatible(
+func (c *Checker) CheckCompatibleExpr(
 	expected Type, expr ast.Node, ctx context,
 ) (gotType Type, ok bool) {
 	gotType = c.InferType(expr, ctx)
@@ -34,26 +34,22 @@ func (c *Checker) CheckCompatible(
 func (c *Checker) CheckSameType(
 	left, right ast.Node, op lexer.TokenType, ctx context,
 ) Type {
-	var (
-		expType    Type
-		got1, got2 Type
-		ok1, ok2   bool
-		err        = func(exp, got Type, node ast.Node) {
-			c.Error(errors.TypeError{
-				ErrorCode:    errors.ErrMismatchedOp,
-				Range:        node.Base().Range,
-				ExpectedType: exp,
-				GotType:      got,
-				Params: errors.ErrorParams{"operator": op},
-			})
+	err := func(exp, got Type, node ast.Node) {
+		code := errors.ErrMismatchedOperands
+		if IsDistributive(op) {
+			code = errors.ErrMismatchedDistrib
 		}
-	)
-	expType, ok1 = c.InferType(left, ctx), true
-	got2, ok2 = c.CheckCompatible(got1, right, ctx)
-	if !ok1 {
-		err(expType, got1, left)
+		c.Error(errors.TypeError{
+			ErrorCode:    code,
+			Range:        node.Base().Range,
+			ExpectedType: exp,
+			GotType:      got,
+			Params:       errors.ErrorParams{"operator": op},
+		})
 	}
-	if !ok2 {
+	expType := c.InferType(left, ctx)
+	got2, ok := c.CheckCompatibleExpr(expType, right, ctx)
+	if !ok {
 		err(expType, got2, right)
 	}
 	return expType

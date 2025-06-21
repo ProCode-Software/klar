@@ -124,7 +124,11 @@ func PrintError(err KlarError, options PrintOptions) {
 		currLine, currCol int
 		b                 strings.Builder
 		lastTok           lexer.Token
+		highlightColor = cli.ANSIBoldRed
 	)
+	if _, isWarning := err.(Warning); isWarning {
+		highlightColor = cli.ANSIBoldYellow
+	}
 	for i, tok := range options.Tokens {
 		if tok.Position.Line > errPos.Line {
 			if i > 0 {
@@ -168,7 +172,7 @@ func PrintError(err KlarError, options PrintOptions) {
 		b.WriteString(add)
 		currCol = tok.Col + len(tok.Source)
 	}
-	line := ansi(cli.ANSIBoldRed, "^")
+	line := ansi(highlightColor, "^")
 	if err.AtRange().Start.Line > 0 {
 		rang := err.AtRange()
 		var len int
@@ -178,12 +182,12 @@ func PrintError(err KlarError, options PrintOptions) {
 			len = lastTok.Col - rang.Start.Col + 1
 		}
 		if len > 1 {
-			line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len)
+			line = strings.Repeat(ansi(highlightColor, "~"), len)
 		}
 	}
 	if err, ok := err.(ParseError); ok &&
 		errPos == err.Position && len(err.Token.Source) > 1 {
-		line = strings.Repeat(ansi(cli.ANSIBoldRed, "~"), len(err.Token.Source))
+		line = strings.Repeat(ansi(highlightColor, "~"), len(err.Token.Source))
 	}
 	b.WriteString(fmt.Sprintf("\n%[1]*[2]s"+line, 7+errPos.Col-1, " "))
 	out := strings.TrimPrefix(b.String(), "\n")

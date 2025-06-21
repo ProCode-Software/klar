@@ -16,7 +16,7 @@ func Print(msg string, detail ...any) {
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
 	str := ANSIBoldRed + errorType + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
-	if detail != nil && len(detail) > 0 {
+	if len(detail) > 0 {
 		str += fmt.Sprint(detail...)
 	}
 	fmt.Fprintln(os.Stderr, str)

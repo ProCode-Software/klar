@@ -54,7 +54,7 @@ func (c *Checker) CheckVarDecl(decl ast.VariableDeclaration, ctx context) {
 	name := decl.Identifier
 	if decl.ExplicitType != nil {
 		explType = c.ParseType(decl.ExplicitType, ctx)
-		_, ok := c.CheckCompatible(explType, decl.Value, ctx)
+		_, ok := c.CheckCompatibleExpr(explType, decl.Value, ctx)
 		if !ok {
 			c.TypeMismatch(errors.ErrWrongAssignType, name, actualType, explType)
 			actualType = explType

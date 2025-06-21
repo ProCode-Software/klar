@@ -9,8 +9,9 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[SyntaxErrorPrefix-0]
-	_ = x[TypeErrorPrefix-100]
-	_ = x[ReferenceErrorPrefix-200]
+	_ = x[WarningPrefix-100]
+	_ = x[TypeErrorPrefix-200]
+	_ = x[ReferenceErrorPrefix-300]
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrExpectedDotInBraceImport-3]
@@ -58,57 +59,68 @@ func _() {
 	_ = x[ErrRedeclaredEnum-45]
 	_ = x[ErrMethAndFieldSameName-46]
 	_ = x[ErrMethodInOtherScope-47]
-	_ = x[ErrVarUndefined-201]
-	_ = x[ErrEnumUndefined-202]
-	_ = x[ErrTypeUndefined-203]
-	_ = x[ErrEnumCycle-204]
-	_ = x[ErrUntypedNil-101]
-	_ = x[ErrUntypedEmptyList-102]
-	_ = x[ErrUntypedEnum-103]
-	_ = x[ErrAssignToConst-104]
-	_ = x[ErrUncheckedOptional-105]
-	_ = x[ErrUncheckedResult-106]
-	_ = x[ErrUnusedValue-107]
-	_ = x[ErrTypeCycle-108]
-	_ = x[ErrInvalidRestType-109]
-	_ = x[ErrInvalidRestExpr-110]
-	_ = x[ErrNoGenerics-111]
-	_ = x[ErrVariadicLast-112]
-	_ = x[ErrWrongTypeParamLen-113]
-	_ = x[ErrInvalidEnumValue-114]
-	_ = x[ErrCannotInferEnumValue-115]
-	_ = x[ErrInheritNonStructOrIntf-116]
-	_ = x[ErrConflictingInherit-117]
-	_ = x[ErrNonStructReceiver-118]
-	_ = x[ErrOverloadExists-119]
-	_ = x[ErrTypeMismatch-120]
-	_ = x[ErrWrongAssignType-121]
-	_ = x[ErrNonBoolLogical-122]
-	_ = x[ErrMismatchedOp-123]
+	_ = x[ErrVarUndefined-301]
+	_ = x[ErrEnumUndefined-302]
+	_ = x[ErrTypeUndefined-303]
+	_ = x[ErrEnumCycle-304]
+	_ = x[ErrUntypedNil-201]
+	_ = x[ErrUntypedEmptyList-202]
+	_ = x[ErrUntypedEnum-203]
+	_ = x[ErrAssignToConst-204]
+	_ = x[ErrUncheckedOptional-205]
+	_ = x[ErrUncheckedResult-206]
+	_ = x[ErrUnusedValue-207]
+	_ = x[ErrTypeCycle-208]
+	_ = x[ErrInvalidRestType-209]
+	_ = x[ErrInvalidRestExpr-210]
+	_ = x[ErrNoGenerics-211]
+	_ = x[ErrVariadicLast-212]
+	_ = x[ErrWrongTypeParamLen-213]
+	_ = x[ErrInvalidEnumValue-214]
+	_ = x[ErrCannotInferEnumValue-215]
+	_ = x[ErrInheritNonStructOrIntf-216]
+	_ = x[ErrConflictingInherit-217]
+	_ = x[ErrNonStructReceiver-218]
+	_ = x[ErrOverloadExists-219]
+	_ = x[ErrTypeMismatch-220]
+	_ = x[ErrWrongAssignType-221]
+	_ = x[ErrNonBoolLogical-222]
+	_ = x[ErrMismatchedOperands-223]
+	_ = x[ErrMismatchedDistrib-224]
+	_ = x[ErrUncomparableTypes-225]
+	_ = x[WarnNotEqualOr-101]
+	_ = x[WarnEqualAnd-102]
+	_ = x[WarnUnreachable-103]
+	_ = x[WarnUnused-104]
 }
 
 const (
 	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrMissingFuncParamTypeErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidConditionErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScope"
-	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedValueErrTypeCycleErrInvalidRestTypeErrInvalidRestExprErrNoGenericsErrVariadicLastErrWrongTypeParamLenErrInvalidEnumValueErrCannotInferEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOp"
-	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
+	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
+	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedValueErrTypeCycleErrInvalidRestTypeErrInvalidRestExprErrNoGenericsErrVariadicLastErrWrongTypeParamLenErrInvalidEnumValueErrCannotInferEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypes"
+	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 )
 
 var (
 	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 105, 128, 146, 170, 194, 217, 236, 253, 270, 291, 313, 333, 352, 368, 383, 402, 419, 434, 448, 462, 478, 495, 513, 537, 560, 578, 599, 623, 638, 661, 682, 707, 733, 758, 778, 800, 816, 837, 857, 873, 890, 907, 930, 951}
-	_ErrorCode_index_1 = [...]uint16{0, 15, 28, 47, 61, 77, 97, 115, 129, 141, 159, 177, 190, 205, 225, 244, 267, 292, 313, 333, 350, 365, 383, 400, 415}
-	_ErrorCode_index_2 = [...]uint8{0, 20, 35, 51, 67, 79}
+	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
+	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 77, 97, 115, 129, 141, 159, 177, 190, 205, 225, 244, 267, 292, 313, 333, 350, 365, 383, 400, 421, 441, 461}
+	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
 )
 
 func (i ErrorCode) String() string {
 	switch {
 	case 0 <= i && i <= 47:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
-	case 100 <= i && i <= 123:
+	case 100 <= i && i <= 104:
 		i -= 100
 		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
-	case 200 <= i && i <= 204:
+	case 200 <= i && i <= 225:
 		i -= 200
 		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
+	case 300 <= i && i <= 304:
+		i -= 300
+		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
 	default:
 		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
