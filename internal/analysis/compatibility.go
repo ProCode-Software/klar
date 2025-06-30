@@ -10,6 +10,7 @@ import (
 )
 
 func (c *Checker) IsCompatibleType(expType, gotType Type) bool {
+	
 	switch expType := expType.(type) {
 	case types.Union:
 		return slices.Contains(expType.Options, gotType)

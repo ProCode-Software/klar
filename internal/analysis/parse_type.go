@@ -12,7 +12,7 @@ import (
 
 func (c *Checker) validateVariadicParam(index int, len int, typ ast.Type) {
 	if index != len-1 {
-		c.Error(errors.NewTypeErr(errors.ErrVariadicLast, typ.Base().Range, nil))
+		c.Error(errors.RangedTypeError(errors.ErrVariadicLast, typ.Base().Range, nil))
 	}
 }
 
@@ -74,7 +74,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			if got >= min && got <= max {
 				return
 			}
-			c.Error(errors.NewTypeErr(
+			c.Error(errors.RangedTypeError(
 				errors.ErrWrongTypeParamLen, t.Base().Range,
 				errors.ErrorParams{"min": min, "max": max, "got": got},
 			))
@@ -105,7 +105,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			c.Error(err)
 		}
 	case ast.RestType:
-		c.Error(errors.NewTypeErr(errors.ErrInvalidRestType, t.Base().Range, nil))
+		c.Error(errors.RangedTypeError(errors.ErrInvalidRestType, t.Base().Range, nil))
 		return types.InvalidType
 	case ast.TupleType:
 		items := make([]Type, len(t.Values))
@@ -166,7 +166,7 @@ func (c *Checker) parseInheritance(
 		for fnName, allOvlds := range inherited.GetMethods() {
 			for _, ovl := range allOvlds {
 				if _, exists := s.Methods[fnName].Get(ovl.Params); exists && !isIntf {
-					err := errors.NewTypeErr(
+					err := errors.RangedTypeError(
 						errors.ErrConflictingInherit, item.Base().Range,
 						errors.ErrorParams{"overload": &ovl},
 					)

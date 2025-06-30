@@ -60,16 +60,17 @@ const (
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 
 	// When
-	ErrForInvalidCondition // Expected assignment or expression in for loop
+	ErrForInvalidCond // Expected assignment or expression in for loop
 	ErrInvalidPublic
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 
-	ErrRedeclaredVar  // Can't redeclare variable or function
-	ErrRedeclaredType // Redeclared type
-	ErrRedeclaredEnum // Redeclared enum member
-	ErrMethAndFieldSameName
-	ErrMethodInOtherScope // Method must be in the same scope as struct definition
+	ErrRedeclaredVar        // Can't redeclare variable or function
+	ErrRedeclaredType       // Redeclared type
+	ErrRedeclaredEnum       // Redeclared enum member
+	ErrMethAndFieldSameName // Field and method have the same name
+	ErrMethodInOtherScope   // Method must be in the same scope as struct definition
+	ErrProvenUnreachable    // Unreachable statement after return/break/next
 )
 
 // A ParseError is a basic Klar parse error.
@@ -80,6 +81,7 @@ type ParseError struct {
 	ErrorCode ErrorCode
 	Token     lexer.Token
 	Node      ast.Node
+	Hints     []string
 	Params    map[string]any
 }
 
@@ -198,7 +200,7 @@ func (e ParseError) Error() string {
 		default:
 			return "SyntaxError: Invalid string escape"
 		}
-	case ErrForInvalidCondition:
+	case ErrForInvalidCond:
 		return "SyntaxError: Expected an assignment or expression in for condition"
 	case ErrExpectedParamInGeneric:
 		return "SyntaxError: At least 1 type parameter is required in generic"
@@ -226,6 +228,8 @@ func (e ParseError) Error() string {
 			"SyntaxError: Method %s must be declared in the same scope as type %s",
 			e.Params["name"], e.Params["structName"],
 		)
+	case ErrProvenUnreachable:
+		return fmt.Sprintf("SyntaxError: Unreachable statement after '%s'", e.Params["type"])
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (
 			code      = e.ErrorCode

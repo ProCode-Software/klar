@@ -156,7 +156,8 @@ type Pair struct {
 // ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
 	lexer.Import, lexer.Func, lexer.When, lexer.Return, lexer.For, lexer.Next,
-	lexer.Type, lexer.Public, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or, lexer.In,
+	lexer.Type, lexer.Public, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or,
+	lexer.In, lexer.Break,
 }
 
 type Type interface {
@@ -367,6 +368,8 @@ type FunctionParam struct {
 }
 
 type NextStatement struct{ BaseNode }
+
+type BreakStatement struct{ BaseNode }
 
 type ListLiteral struct {
 	BaseNode

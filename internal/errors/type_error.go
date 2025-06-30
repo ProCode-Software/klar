@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -26,19 +27,19 @@ const (
 	ErrWrongTypeParamLen // Wrong number of generic params
 
 	ErrInvalidEnumValue     // Enum value must be literal string or number
-	ErrCannotInferEnumValue // Explicit enum value required for strings
 
 	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
 	ErrConflictingInherit     // Name collision in struct inheritance
 	ErrNonStructReceiver      // Defining method on non-struct type
 	ErrOverloadExists         // Overload already defined
 
-	ErrTypeMismatch         // Type mismatch
-	ErrWrongAssignType      // Wrong type for assignment
-	ErrNonBoolLogical       // Operands in logical expression must be boolean
-	ErrMismatchedOperands   // Operands don't match
-	ErrMismatchedDistrib // Distributive operands must be the same type
-	ErrUncomparableTypes    // Uncomparable types in relational expression
+	ErrTypeMismatch       // Type mismatch
+	ErrWrongAssignType    // Wrong type for assignment
+	ErrNonBoolLogical     // Operands in logical expression must be boolean
+	ErrMismatchedOperands // Operands don't match
+	ErrMismatchedDistrib  // Distributive operands must be the same type
+	ErrUncomparableTypes  // Uncomparable types in relational expression
+	ErrIntTimesString     // Wrong side for string multiplication
 )
 
 type TypeError struct {
@@ -141,6 +142,11 @@ func (e TypeError) Error() string {
 			"TypeError: Operands in distributive expression must be the same type: found mismatched %s and %s",
 			QuoteType(expType), QuoteType(gotType),
 		)
+	case ErrUncomparableTypes:
+		return fmt.Sprintf("TypeError: Can't compare type %s with %s operator",
+			QuoteType(gotType),
+			FormatTokenType(param[lexer.TokenType](p, "operator")),
+		)
 	}
 }
 
@@ -161,7 +167,7 @@ func NamedTypeError(code ErrorCode, name string, rang ranges.Range) TypeError {
 	}
 }
 
-func NewTypeErr(code ErrorCode, rang ranges.Range, params ErrorParams) TypeError {
+func RangedTypeError(code ErrorCode, rang ranges.Range, params ErrorParams) TypeError {
 	return TypeError{
 		ErrorCode: code,
 		Range:     rang,

@@ -224,6 +224,11 @@ func (e TypePair) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end
 	return e
 }
+func (e BreakStatement) Base() BaseNode { return e.BaseNode }
+func (e BreakStatement) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Start, e.BaseNode.End = start, end
+	return e
+}
 func (e PrimitiveType) Base() BaseNode { return e.BaseNode }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Start, e.BaseNode.End = start, end

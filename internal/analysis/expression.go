@@ -2,6 +2,8 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
@@ -10,13 +12,23 @@ type Expression = ast.Expression
 func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 	op := expr.Operator
 	switch {
+	case op == lexer.In:
+		
 	case IsLogical(op):
 		c.CheckLogicalExpr(expr.Left, expr.Right, op, ctx)
 		return types.Bool
 	case IsDistributive(op):
 		return c.CheckSameType(expr.Left, expr.Right, op, ctx)
 	case IsRelational(op):
-		typ :=  c.CheckSameType(expr.Left, expr.Right, op, ctx)
+		typ := c.CheckSameType(expr.Left, expr.Right, op, ctx)
+		if op != lexer.EqualEqual && op != lexer.NotEqual && !IsRelCompType(typ) {
+			c.Error(errors.TypeError{
+				GotType:   typ,
+				ErrorCode: errors.ErrUncomparableTypes,
+				Params:    errors.ErrorParams{"operator": op},
+				Range:     expr.Base().Range,
+			})
+		}
 		return typ
 	case IsArithmetic(op):
 	}

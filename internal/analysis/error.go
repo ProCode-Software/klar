@@ -17,7 +17,6 @@ func (c *Checker) ErrUndefinedVar(name string, pos ranges.Range, ctx context) {
 }
 
 func (c *Checker) ErrNotInEnum(name string, pos ranges.Range, enum types.Enum) {
-	
 }
 
 func (c *Checker) undefined(name string, pos ranges.Range, isType bool, _ context) {

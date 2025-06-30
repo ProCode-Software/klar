@@ -16,18 +16,37 @@ type contextInfo struct {
 	doesReturn     bool
 }
 
-func (c *Checker) CheckStatements(
-	body []ast.Statement, ctxInfo contextInfo, ctx context,
-) (returns []Return) {
-	ctxInfo.doesReturn = !ctxInfo.InferredReturn && ctxInfo.ReturnType == nil
+func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []Return) {
+	var unreachableStmt string
 	for i, stmt := range body {
+		if unreachableStmt != "" {
+			// Statement after return
+			err := errors.ParseError{
+				ErrorCode: errors.ErrProvenUnreachable,
+				Range:     stmt.Base().Range,
+				Params:    errors.ErrorParams{"type": unreachableStmt},
+			}
+			// Hint if user has line break between return and expression
+			if unreachableStmt == "return" &&
+				body[i-1].(ast.ReturnStatement).Value == nil {
+				if _, ok := stmt.(ast.ExpressionStatement); ok {
+					err.Hint("Line breaks aren't allowed between return statements; remove the newline if you meant to return this expression.")
+				}
+			}
+			c.Error(err)
+			break
+		}
 		switch stmt := stmt.(type) {
 		case ast.VariableDeclaration:
 			c.CheckVarDecl(stmt, ctx)
 		case ast.AssignmentStatement:
 		case ast.ForStatement:
 		case ast.NextStatement:
+			unreachableStmt = "next"
 		case ast.ReturnStatement:
+			unreachableStmt = "return"
+		case ast.BreakStatement:
+			unreachableStmt = "break"
 		case ast.UpdateStatement:
 		case ast.ExpressionStatement:
 			switch expr := stmt.Expression.(type) {
@@ -35,7 +54,7 @@ func (c *Checker) CheckStatements(
 			case ast.WhenExpression, ast.CallExpression, ast.BadExpression:
 			default:
 				// Unused statement
-				err := errors.NewTypeErr(errors.ErrUnusedValue, expr.Base().Range, nil)
+				err := errors.RangedTypeError(errors.ErrUnusedValue, expr.Base().Range, nil)
 				if !ctx.IsRoot() && i == len(body)-1 {
 					// TODO: only show if it's a valid type
 					err.Hint("Did you mean to return this expression?")

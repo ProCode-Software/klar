@@ -33,9 +33,9 @@ func IsDistributive(op lexer.TokenType) bool {
 	return op == lexer.And || op == lexer.Or
 }
 
-// IsComparableType returns true if t is a relationally comparable type. This only applies to
+// IsRelCompType returns true if t is a relationally comparable type. This only applies to
 // >, <, >=, and <= operators, because all types in Klar can be compared for equality
-func IsComparableType(t Type) bool {
+func IsRelCompType(t Type) bool {
 	switch t {
 	case types.Int, types.Float, types.UntypedInt:
 		return true
@@ -58,4 +58,50 @@ func (c *Checker) CheckLogicalExpr(
 	if !ok2 {
 		err(got2, right)
 	}
+}
+
+// Note: Per IEEE 754, floats can be divided by 0, resulting in infinity:
+//
+//	n / 0.0 = +Inf
+//	-n / 0.0 = -Inf
+//	-n / -0.0 = -Inf
+//
+// Dividing an Int by a 0 literal will raise a type error
+func (c *Checker) CheckArithmetic(
+	binExp ast.BinaryExpression, op lexer.TokenType, ctx context,
+) Type {
+	var (
+		leftNode, rightNode = binExp.Left, binExp.Right
+		left, right         = c.InferType(leftNode, ctx), c.InferType(rightNode, ctx)
+		result              = left
+		compat              = func(got, with Type) bool {
+			return c.IsCompatibleType(with, got)
+		}
+	)
+	checkSame := func() {
+		if c.IsCompatibleType(left, right) {
+			return
+		}
+		c.Error(errors.TypeError{
+			ErrorCode:    errors.ErrMismatchedOperands,
+			Range:        binExp.Base().Range,
+			ExpectedType: left,
+			GotType:      right,
+			Params:       errors.ErrorParams{"operator": op},
+		})
+	}
+	switch op {
+	case lexer.Plus:
+		// Add or concat
+		checkSame()
+
+	case lexer.Asterisk:
+		
+	default:
+		checkSame()
+	}
+	// If not a primitive, they must be the same type
+	// String * Int allowed, but not Int * String
+	// Only String, Int, Float, List, Map, and tuple support +
+	return result
 }

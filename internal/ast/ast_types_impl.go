@@ -45,6 +45,7 @@ func (InterfaceDeclaration) Kind() string { return "InterfaceDeclaration" }
 func (Comment) Kind() string              { return "Comment" }
 func (MethodType) Kind() string           { return "MethodType" }
 func (TypePair) Kind() string             { return "TypePair" }
+func (BreakStatement) Kind() string       { return "BreakStatement" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -103,6 +104,7 @@ func (StructDeclaration) stmt()    {}
 func (TypeAliasDeclaration) stmt() {}
 func (InterfaceDeclaration) stmt() {}
 func (ReturnStatement) stmt()      {}
+func (BreakStatement) stmt()       {}
 func (FunctionDeclaration) stmt()  {}
 func (NextStatement) stmt()        {}
 func (Attribute) stmt()            {}

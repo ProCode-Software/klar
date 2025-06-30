@@ -77,6 +77,7 @@ const (
 
 	// Keywords
 	And
+	Break
 	For
 	Func
 	Import
@@ -144,6 +145,7 @@ var OperatorMap = map[string]TokenType{
 
 var KeywordMap = map[string]TokenType{
 	"and":    And,
+	"break":  Break,
 	"for":    For,
 	"func":   Func,
 	"import": Import,

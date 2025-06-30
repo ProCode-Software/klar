@@ -192,6 +192,9 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 
 func (p *Parser) ParseReturnStatement() ast.ReturnStatement {
 	p.Expect(lexer.Return)
+	if p.CurrentTokenKind() == lexer.EndOfStatement {
+		return ast.ReturnStatement{}
+	}
 	return ast.ReturnStatement{
 		Value: p.ParseExpression(DefaultBindingPower),
 	}

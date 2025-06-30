@@ -137,6 +137,9 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 	case lexer.Next:
 		res = ast.NextStatement{}
 		p.Advance()
+	case lexer.Break:
+		res = ast.BreakStatement{}
+		p.Advance()
 	}
 	res = res.SetPos(startPos, p.savePos()).(ast.Statement)
 	return res, true

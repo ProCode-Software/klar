@@ -103,7 +103,7 @@ func (p *Parser) ParseMap() ast.MapLiteral {
 			expr := p.ParseExpression(ExpressionBindingPower)
 			if _, ok := expr.(ast.RestExpression); ok {
 				entries = append(entries, ast.Pair{
-					Key: expr,
+					Key:   expr,
 					Value: expr,
 				})
 				break
@@ -309,19 +309,14 @@ func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) ast.PipelineExpre
 loop:
 	for p.CurrentTokenKind() == lexer.Pipeline {
 		p.Advance()
-		switch p.CurrentTokenKind() {
+		// Return in a pipeline returns the previous result.
 		// Return should be the last step, without parameters, and should
 		// only be used in expression statements
-		case lexer.Return:
+		if p.CurrentTokenKind() == lexer.Return {
 			steps = append(steps, ast.ReturnStatement{})
 			break loop
-		// Same thing for next
-		case lexer.Next:
-			steps = append(steps, ast.NextStatement{})
-			break loop
-		default:
-			steps = append(steps, p.ParseExpression(bp))
 		}
+		steps = append(steps, p.ParseExpression(bp))
 	}
 	return ast.PipelineExpression{Steps: steps}
 }
@@ -400,7 +395,7 @@ loop:
 		// Allow some kinds of statements outside of braces
 		case ast.AssignmentStatement, ast.ReturnStatement,
 			ast.NextStatement, ast.UpdateStatement:
-			c.Body = []ast.Statement{res.(ast.Statement)}
+			c.Body = []ast.Statement{res}
 		// All expressions are allowed
 		case ast.ExpressionStatement:
 			c.BodyExpr = res.Expression

@@ -45,7 +45,8 @@ func (e ParseError) AtRange() ranges.Range {
 
 // SyntaxError
 func (e ParseError) Code() ErrorCode    { return e.ErrorCode }
-func (e ParseError) GetHints() []string { return nil }
+func (e ParseError) GetHints() []string { return e.Hints }
+func (e *ParseError) Hint(hint string)     { e.Hints = append(e.Hints, hint) }
 
 // TypeError
 func (e TypeError) At() lexer.Position    { return e.Range.Start }

@@ -49,11 +49,7 @@ func (c *Checker) CheckFunction(
 		ctx.Declare("self", true, selfType, defaultRange) // todo: check if pointer selfType should be used
 	}
 	// Check statements
-	ctxInfo := contextInfo{
-		ReturnType: f.Return,
-		InferredReturn: inferReturn,
-	}
-	_ = c.CheckStatements(d.Body, ctxInfo, ctx)
+	_ = c.CheckContext(ctx, &d.Body)
 	return f
 }
 

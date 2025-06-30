@@ -124,7 +124,7 @@ func PrintError(err KlarError, options PrintOptions) {
 		currLine, currCol int
 		b                 strings.Builder
 		lastTok           lexer.Token
-		highlightColor = cli.ANSIBoldRed
+		highlightColor    = cli.ANSIBoldRed
 	)
 	if _, isWarning := err.(Warning); isWarning {
 		highlightColor = cli.ANSIBoldYellow

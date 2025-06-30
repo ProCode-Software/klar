@@ -43,7 +43,7 @@ func (c *Checker) Error(err errors.KlarError) {
 
 func (c *Checker) CheckProgram() {
 	rootCtx := runtime.NewContext(-1)
-	c.Check(rootCtx, &c.Program.Body)
+	c.CheckContext(rootCtx, &c.Program.Body)
 }
 
 func (c *Checker) checkRedeclared(ok bool, ctx context, rang ranges.Range, name string) {
@@ -54,7 +54,7 @@ func (c *Checker) checkRedeclared(ok bool, ctx context, rang ranges.Range, name 
 	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
 }
 
-func (c *Checker) Check(ctx context, body *[]ast.Statement) {
+func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Return) {
 	var (
 		foundDec bool
 		// Sort each statement so normal statements can reference functions before
@@ -167,5 +167,6 @@ func (c *Checker) Check(ctx context, body *[]ast.Statement) {
 		c.checkFuncDecl(decl, ctx)
 	}
 	// Normal statements
-	c.CheckStatements(stmts, contextInfo{}, ctx)
+	returns = c.CheckStatements(stmts, ctx)
+	return
 }

@@ -36,4 +36,3 @@ func IsUntyped(t Type) bool {
 	}
 	return false
 }
-
