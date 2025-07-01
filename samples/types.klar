@@ -23,7 +23,7 @@ type Color {
 type A: Color {} */
 
 func unwrap<T>(optional: T?) -> T {
-   x := "string" == "world"
+    name := [1] + []
     // return x + 2
     /* when optional {
         ? -> panic("unwrap failed")

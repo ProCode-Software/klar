@@ -40,9 +40,13 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 		}
 		return types.Tuple{items}
 	case ast.MapLiteral:
-		return types.Map{}
+		return types.Map{} // TODO
 	case ast.BinaryExpression:
 		return c.CheckBinaryExpr(expr, ctx)
 	}
 	panic(fmt.Sprintf("cannot infer type of %T: not implemented", expr))
 }
+
+/* func (c *Checker) CreateUnion() types.Union {
+	
+} */

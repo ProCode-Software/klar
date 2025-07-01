@@ -12,34 +12,37 @@ import (
 const (
 	_ ErrorCode = TypeErrorPrefix + iota
 
-	ErrUntypedNil        // nil requires contextual type
-	ErrUntypedEmptyList  // Can't infer type from empty list
-	ErrUntypedEnum       // Shorthand enum syntax without enum type
-	ErrAssignToConst     // Attempted reassignment to constant reference
+	ErrUntypedNil       // nil requires contextual type
+	ErrUntypedEmptyList // Can't infer type from empty list
+	ErrUntypedEnum      // Shorthand enum syntax without enum type
+
 	ErrUncheckedOptional // Required to check if optional is nil
 	ErrUncheckedResult   // Required to check Result for error
 	ErrUnusedValue       // Unused literal expression statement
-	ErrTypeCycle         // Circular type reference
 	ErrInvalidRestType   // Rest type used where it is not supposed to
 	ErrInvalidRestExpr   // Rest expression used where it is not supposed to
-	ErrNoGenerics        // Only builtin types are generic
 	ErrVariadicLast      // Variadic param must be last
-	ErrWrongTypeParamLen // Wrong number of generic params
 
-	ErrInvalidEnumValue     // Enum value must be literal string or number
+	ErrTypeCycle         // Circular type reference
+	ErrNoGenerics        // Only builtin types are generic
+	ErrWrongTypeParamLen // Wrong number of generic params
+	ErrInvalidEnumValue  // Enum value must be literal string or number
 
 	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
 	ErrConflictingInherit     // Name collision in struct inheritance
 	ErrNonStructReceiver      // Defining method on non-struct type
 	ErrOverloadExists         // Overload already defined
 
-	ErrTypeMismatch       // Type mismatch
-	ErrWrongAssignType    // Wrong type for assignment
+	ErrAssignToConst   // Attempted reassignment to constant reference
+	ErrTypeMismatch    // Type mismatch
+	ErrWrongAssignType // Wrong type for assignment
+
 	ErrNonBoolLogical     // Operands in logical expression must be boolean
 	ErrMismatchedOperands // Operands don't match
 	ErrMismatchedDistrib  // Distributive operands must be the same type
 	ErrUncomparableTypes  // Uncomparable types in relational expression
 	ErrIntTimesString     // Wrong side for string multiplication
+	ErrInvalidOperation   // Operands are same type, but arithmetic not allowed on type
 )
 
 type TypeError struct {
@@ -175,10 +178,20 @@ func RangedTypeError(code ErrorCode, rang ranges.Range, params ErrorParams) Type
 	}
 }
 
-func NodeTypeErr(code ErrorCode, node ast.Node, params ErrorParams) TypeError {
+func NodeTypeError(code ErrorCode, node ast.Node, params ErrorParams) TypeError {
 	return TypeError{
 		ErrorCode: code,
 		Range:     node.Base().Range,
 		Params:    params,
+	}
+}
+
+func OperatorTypeError(rang ranges.Range, l, r types.Type, op lexer.TokenType) TypeError {
+	return TypeError{
+		ErrorCode:    ErrMismatchedOperands,
+		Range:        rang,
+		ExpectedType: l,
+		GotType:      r,
+		Params:       ErrorParams{"operator": op},
 	}
 }

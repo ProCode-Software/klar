@@ -67,28 +67,29 @@ func _() {
 	_ = x[ErrUntypedNil-201]
 	_ = x[ErrUntypedEmptyList-202]
 	_ = x[ErrUntypedEnum-203]
-	_ = x[ErrAssignToConst-204]
-	_ = x[ErrUncheckedOptional-205]
-	_ = x[ErrUncheckedResult-206]
-	_ = x[ErrUnusedValue-207]
-	_ = x[ErrTypeCycle-208]
-	_ = x[ErrInvalidRestType-209]
-	_ = x[ErrInvalidRestExpr-210]
+	_ = x[ErrUncheckedOptional-204]
+	_ = x[ErrUncheckedResult-205]
+	_ = x[ErrUnusedValue-206]
+	_ = x[ErrInvalidRestType-207]
+	_ = x[ErrInvalidRestExpr-208]
+	_ = x[ErrVariadicLast-209]
+	_ = x[ErrTypeCycle-210]
 	_ = x[ErrNoGenerics-211]
-	_ = x[ErrVariadicLast-212]
-	_ = x[ErrWrongTypeParamLen-213]
-	_ = x[ErrInvalidEnumValue-214]
-	_ = x[ErrCannotInferEnumValue-215]
-	_ = x[ErrInheritNonStructOrIntf-216]
-	_ = x[ErrConflictingInherit-217]
-	_ = x[ErrNonStructReceiver-218]
-	_ = x[ErrOverloadExists-219]
-	_ = x[ErrTypeMismatch-220]
-	_ = x[ErrWrongAssignType-221]
-	_ = x[ErrNonBoolLogical-222]
-	_ = x[ErrMismatchedOperands-223]
-	_ = x[ErrMismatchedDistrib-224]
-	_ = x[ErrUncomparableTypes-225]
+	_ = x[ErrWrongTypeParamLen-212]
+	_ = x[ErrInvalidEnumValue-213]
+	_ = x[ErrInheritNonStructOrIntf-214]
+	_ = x[ErrConflictingInherit-215]
+	_ = x[ErrNonStructReceiver-216]
+	_ = x[ErrOverloadExists-217]
+	_ = x[ErrAssignToConst-218]
+	_ = x[ErrTypeMismatch-219]
+	_ = x[ErrWrongAssignType-220]
+	_ = x[ErrNonBoolLogical-221]
+	_ = x[ErrMismatchedOperands-222]
+	_ = x[ErrMismatchedDistrib-223]
+	_ = x[ErrUncomparableTypes-224]
+	_ = x[ErrIntTimesString-225]
+	_ = x[ErrInvalidOperation-226]
 	_ = x[WarnNotEqualOr-101]
 	_ = x[WarnEqualAnd-102]
 	_ = x[WarnUnreachable-103]
@@ -98,14 +99,14 @@ func _() {
 const (
 	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrExpectedDotInBraceImportErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportPrefixDotErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedBraceErrMisplacedShebangErrInvalidNumberErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrMissingFuncParamTypeErrNotEnoughEnumItemsErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrExpectedParamInGenericErrParenRequiredFuncErrForInvalidCondErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachable"
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
-	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrAssignToConstErrUncheckedOptionalErrUncheckedResultErrUnusedValueErrTypeCycleErrInvalidRestTypeErrInvalidRestExprErrNoGenericsErrVariadicLastErrWrongTypeParamLenErrInvalidEnumValueErrCannotInferEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypes"
+	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrUnusedValueErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 )
 
 var (
 	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 105, 128, 146, 170, 194, 217, 236, 253, 270, 291, 313, 333, 352, 368, 383, 402, 419, 434, 448, 462, 478, 495, 513, 537, 560, 578, 599, 623, 638, 661, 682, 707, 733, 758, 778, 795, 811, 832, 852, 868, 885, 902, 925, 946, 966}
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
-	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 77, 97, 115, 129, 141, 159, 177, 190, 205, 225, 244, 267, 292, 313, 333, 350, 365, 383, 400, 421, 441, 461}
+	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 113, 131, 149, 164, 176, 189, 209, 228, 253, 274, 294, 311, 327, 342, 360, 377, 398, 418, 438, 455, 474}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
 )
 
@@ -116,7 +117,7 @@ func (i ErrorCode) String() string {
 	case 100 <= i && i <= 104:
 		i -= 100
 		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
-	case 200 <= i && i <= 225:
+	case 200 <= i && i <= 226:
 		i -= 200
 		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
 	case 300 <= i && i <= 304:

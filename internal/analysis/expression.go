@@ -13,14 +13,16 @@ func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 	op := expr.Operator
 	switch {
 	case op == lexer.In:
-		
+		// Always returns Bool
+		// Int in [Int] | (String | Int) in (String, Int) | K in Map<K, V>
+		return types.Bool
 	case IsLogical(op):
 		c.CheckLogicalExpr(expr.Left, expr.Right, op, ctx)
 		return types.Bool
 	case IsDistributive(op):
-		return c.CheckSameType(expr.Left, expr.Right, op, ctx)
+		return c.CheckSameType(expr, op, ctx)
 	case IsRelational(op):
-		typ := c.CheckSameType(expr.Left, expr.Right, op, ctx)
+		typ := c.CheckSameType(expr, op, ctx)
 		if op != lexer.EqualEqual && op != lexer.NotEqual && !IsRelCompType(typ) {
 			c.Error(errors.TypeError{
 				GotType:   typ,
@@ -31,6 +33,7 @@ func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 		}
 		return typ
 	case IsArithmetic(op):
+		return c.CheckArithmetic(expr, op, ctx)
 	}
 	return nil
 }

@@ -1,28 +1,114 @@
 package analysis
 
 import (
-	"slices"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func (c *Checker) IsCompatibleType(expType, gotType Type) bool {
-	
-	switch expType := expType.(type) {
+func resolveRefs(t Type) Type {
+	if ref, ok := t.(types.Ref); ok {
+		return *ref.Value
+	}
+	return t
+}
+
+func (c *Checker) IsCompatibleType(exp, got Type) bool {
+	// Always true if expected type is optional
+	switch got {
+	case types.UntypedNil:
+		switch exp := exp.(type) {
+		case types.Optional:
+			return true
+		case types.Union:
+			for _, opt := range exp.Options {
+				if c.IsCompatibleType(opt, got) {
+					return true
+				}
+			}
+		}
+	case types.UntypedList:
+		if _, ok := exp.(types.List); ok {
+			return true
+		}
+	}
+	got = c.ToTyped(got, exp)
+	switch exp := exp.(type) {
 	case types.Union:
-		return slices.Contains(expType.Options, gotType)
+		for _, opt := range exp.Options {
+			if c.IsCompatibleType(opt, got) {
+				return true
+			}
+		}
 	case types.List:
+		if got, ok := got.(types.List); ok {
+			return c.IsCompatibleType(exp.Of, got.Of)
+		}
+	case types.Optional:
+		return exp == got || c.IsCompatibleType(exp.Underlying, got)
+	case types.Tuple:
+		if got, ok := got.(types.Tuple); ok {
+			if len(got.Items) != len(exp.Items) {
+				return false
+			}
+			for i, gotItem := range got.Items {
+				if !c.IsCompatibleType(exp.Items[i], gotItem) {
+					return false
+				}
+			}
+			return true
+		}
+	case types.Untyped:
+		switch exp {
+		case types.UntypedInt:
+			return c.IsCompatibleType(types.Int, got) ||
+				c.IsCompatibleType(types.Float, got)
+		case types.UntypedList:
+			_, ok := got.(types.List)
+			return ok
+		}
 	default:
-		return expType == gotType
+		return exp == got
 	}
 	return false
 }
 
-func (c *Checker) ToTyped(typ, hint Type) (Type, errors.KlarError) {
-	return nil, nil
+func IsList(t Type) bool {
+	_, ok := resolveRefs(t).(types.List)
+	return ok
+}
+
+func IsMap(t Type) bool {
+	_, ok := resolveRefs(t).(types.Map)
+	return ok
+}
+
+func IsTuple(t Type) bool {
+	_, ok := resolveRefs(t).(types.Tuple)
+	return ok
+}
+
+func (c *Checker) ToTyped(typ, hint Type) Type {
+	switch typ := typ.(type) {
+	case types.Untyped:
+		switch typ {
+		case types.UntypedInt:
+			if hint == types.Float {
+				return types.Float
+			}
+			return types.Int
+		case types.UntypedList:
+			if IsList(hint) {
+				return hint
+			}
+			// error
+		case types.UntypedNil:
+			return hint
+		}
+		return hint
+	}
+	return typ
 }
 
 func (c *Checker) CheckCompatibleExpr(
@@ -33,25 +119,25 @@ func (c *Checker) CheckCompatibleExpr(
 }
 
 func (c *Checker) CheckSameType(
-	left, right ast.Node, op lexer.TokenType, ctx context,
+	expr ast.BinaryExpression, op lexer.TokenType, ctx context,
 ) Type {
-	err := func(exp, got Type, node ast.Node) {
+	var (
+		left, right = expr.Left, expr.Right
+		expType     = c.InferType(left, ctx)
+		got, ok     = c.CheckCompatibleExpr(expType, right, ctx)
+	)
+	if !ok {
 		code := errors.ErrMismatchedOperands
 		if IsDistributive(op) {
 			code = errors.ErrMismatchedDistrib
 		}
 		c.Error(errors.TypeError{
 			ErrorCode:    code,
-			Range:        node.Base().Range,
-			ExpectedType: exp,
+			Range:        expr.Base().Range,
+			ExpectedType: expType,
 			GotType:      got,
 			Params:       errors.ErrorParams{"operator": op},
 		})
-	}
-	expType := c.InferType(left, ctx)
-	got2, ok := c.CheckCompatibleExpr(expType, right, ctx)
-	if !ok {
-		err(expType, got2, right)
 	}
 	return expType
 }

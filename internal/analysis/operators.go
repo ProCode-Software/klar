@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -60,6 +62,14 @@ func (c *Checker) CheckLogicalExpr(
 	}
 }
 
+// Checking process:
+// 1. If *, require String * Int (not Int * String) or number
+//   - Error if String * negative integer
+//
+// 2. Require same type
+// 3. If +, require String, Int, Float, List, Map, or tuple
+// 4. Require number for any other operation
+//
 // Note: Per IEEE 754, floats can be divided by 0, resulting in infinity:
 //
 //	n / 0.0 = +Inf
@@ -74,34 +84,47 @@ func (c *Checker) CheckArithmetic(
 		leftNode, rightNode = binExp.Left, binExp.Right
 		left, right         = c.InferType(leftNode, ctx), c.InferType(rightNode, ctx)
 		result              = left
-		compat              = func(got, with Type) bool {
-			return c.IsCompatibleType(with, got)
-		}
+		errCode             = errors.ErrMismatchedOperands
 	)
-	checkSame := func() {
-		if c.IsCompatibleType(left, right) {
-			return
+	fmt.Println(left, right)
+	fmt.Printf("%T %T\n", left, right)
+	compat := func(got, with Type) bool { return c.IsCompatibleType(with, got) }
+	is := func(t Type) bool { return compat(left, t) }
+	// 1. String * Int
+	if op == lexer.Asterisk && compat(left, types.String) {
+		if compat(right, types.Int) {
+			return types.String // String * Int = String
 		}
-		c.Error(errors.TypeError{
-			ErrorCode:    errors.ErrMismatchedOperands,
-			Range:        binExp.Base().Range,
-			ExpectedType: left,
-			GotType:      right,
-			Params:       errors.ErrorParams{"operator": op},
-		})
+		goto mismatchedOperands // String * non-Int
 	}
-	switch op {
-	case lexer.Plus:
-		// Add or concat
-		checkSame()
+	// 2. Check same type
+	// TODO: Disregard generic or different list types
+	if !compat(right, left) {
+		goto mismatchedOperands
+	}
+	// 3. If +, require String, Int, Float, List, Map, or tuple
+	if op == lexer.Plus {
+		any := types.Optional{types.Any}
+		switch {
+		case is(types.Int), is(types.Float), is(types.Map{any, any}),
+			is(types.List{any}), IsTuple(left):
+			return left
+		default:
+			goto invalidOperation
+		}
+	}
+	// 4. Require number for any other operation
+	if is(types.Int) || is(types.Float) {
+		return result
+	}
+	goto invalidOperation
 
-	case lexer.Asterisk:
-		
-	default:
-		checkSame()
-	}
-	// If not a primitive, they must be the same type
-	// String * Int allowed, but not Int * String
-	// Only String, Int, Float, List, Map, and tuple support +
-	return result
+invalidOperation:
+	errCode = errors.ErrInvalidOperation
+	goto mismatchedOperands
+mismatchedOperands:
+	err := errors.OperatorTypeError(binExp.Base().Range, left, right, op)
+	err.ErrorCode = errCode
+	c.Error(err)
+	return types.InvalidType
 }
