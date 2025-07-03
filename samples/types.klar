@@ -23,10 +23,13 @@ type Color {
 type A: Color {} */
 
 func unwrap<T>(optional: T?) -> T {
-    name := [1] + []
+    name := 1 + 1
+    int: Int | Float := 2
+    b := x + [int, 2, 3]
     // return x + 2
     /* when optional {
         ? -> panic("unwrap failed")
         value -> return value
     } */
+    [1, 2, 3, 5]
 }

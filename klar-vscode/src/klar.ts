@@ -154,10 +154,7 @@ const repository: Repository = {
         'support.function.builtin.klar'
     ),
     castFunctions: {
-        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map)\b\??)|\[TYPE\])(\()/.source.replaceAll(
-            'TYPE',
-            Type.source
-        ),
+        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map)\b\??)|\[\g<1>\])(\()/,
         end: /\)/,
         beginCaptures: [
             {

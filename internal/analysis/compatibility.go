@@ -89,28 +89,6 @@ func IsTuple(t Type) bool {
 	return ok
 }
 
-func (c *Checker) ToTyped(typ, hint Type) Type {
-	switch typ := typ.(type) {
-	case types.Untyped:
-		switch typ {
-		case types.UntypedInt:
-			if hint == types.Float {
-				return types.Float
-			}
-			return types.Int
-		case types.UntypedList:
-			if IsList(hint) {
-				return hint
-			}
-			// error
-		case types.UntypedNil:
-			return hint
-		}
-		return hint
-	}
-	return typ
-}
-
 func (c *Checker) CheckCompatibleExpr(
 	expected Type, expr ast.Node, ctx context,
 ) (gotType Type, ok bool) {

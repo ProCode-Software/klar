@@ -104,10 +104,10 @@ func (c *Checker) CheckArithmetic(
 	}
 	// 3. If +, require String, Int, Float, List, Map, or tuple
 	if op == lexer.Plus {
-		any := types.Optional{types.Any}
+		// any := types.Optional{types.Any}
 		switch {
-		case is(types.Int), is(types.Float), is(types.Map{any, any}),
-			is(types.List{any}), IsTuple(left):
+		case is(types.Int), is(types.Float), IsMap(left),
+			IsList(left), IsTuple(left):
 			return left
 		default:
 			goto invalidOperation

@@ -43,20 +43,53 @@ func (c *Checker) CheckList(expr ast.ListLiteral, ctx context) Type {
 		// Untyped empty list
 		return types.UntypedList
 	}
-	itemTypes := make(map[Type]bool, len(expr.Items))
-	union := make([]Type, 0, len(expr.Items))
+	var (
+		length    = len(expr.Items)
+		itemTypes = make(map[Type]bool, length)
+		typed     = make([]Type, 0, length)
+		untyped   = make(map[types.Untyped]bool, length)
+	)
+	// 1. Infer each item type
 	for _, item := range expr.Items {
 		typ := c.InferType(item, ctx)
-		if !itemTypes[typ] {
-			union = append(union, typ)
-			itemTypes[typ] = true
+		if typ, ok := typ.(types.Untyped); ok {
+			// If untyped, add to untyped group
+			untyped[typ] = true
+		} else {
+			// Otherwise, it is a type of the final list
+			typed = append(typed, typ)
+			if !itemTypes[typ] {
+				itemTypes[typ] = true
+			}
 		}
 	}
-	var ofType Type = types.Union{union}
-	if len(union) == 1 {
+	// 2. Check each typed item if it is an Int, Float, Optional, or List
+	for _, t := range typed {
+		types.WalkUnionOptional(&t, func(t *types.Type) {
+			switch *t {
+			case types.Int, types.Float:
+				delete(untyped, types.UntypedInt)
+			default:
+				switch (*t).(type) {
+				case types.List:
+					delete(untyped, types.UntypedList)
+				case types.Optional:
+					delete(untyped, types.UntypedNil)
+				}
+			}
+		})
+	}
+	// 3. Make the final union
+	// Add remaining untyped types
+	for untypedItem := range untyped {
+		typed = append(typed, untypedItem)
+	}
+	var ofType Type = types.Union{typed}
+	ofType = types.FlattenUnion(ofType.(types.Union))
+	if len(typed) == 1 {
 		// If one type, just that type
-		ofType = union[0]
-	} else if len(union) > 3 {
+		ofType = typed[0]
+	} else if len(typed) > 3 {
 		// If more than 3 different types, just use any
 		ofType = types.Any
 	}

@@ -23,7 +23,7 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 			c.ErrUndefinedVar(expr.Identifier, expr.Base().Range, ctx)
 			return types.InvalidType
 		}
-		return decl.Type
+		return types.Ref{Name: expr.Identifier, Value: &decl.Type}
 	case ast.EnumLiteral:
 		return types.UntypedEnum{Name: expr.Name}
 	case ast.NilLiteral:
@@ -48,5 +48,42 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 }
 
 /* func (c *Checker) CreateUnion() types.Union {
-	
+
 } */
+
+func (c *Checker) ToTyped(t, hint Type) Type {
+	var hasFloat bool
+	var lastUnion *Type
+	var unionItems []*Type
+	check := func() {
+		for _, typePtr := range unionItems {
+			if *typePtr != types.UntypedInt {
+				continue
+			}
+			if hasFloat {
+				*typePtr = types.Float
+			} else {
+				*typePtr = types.Int
+			}
+		}
+		unionItems = unionItems[:0]
+		lastUnion = nil
+		hasFloat = false
+	}
+	t = types.Walk(t, func(t, parent *Type) {
+		if parent == nil || (lastUnion != nil && parent != lastUnion) {
+			return
+		}
+		if _, isUnion := (*parent).(types.Union); !isUnion {
+			check()
+			return
+		}
+		lastUnion = parent
+		if *t == types.Float {
+			hasFloat = true
+		}
+		unionItems = append(unionItems, t)
+	})
+	check()
+	return t
+}
