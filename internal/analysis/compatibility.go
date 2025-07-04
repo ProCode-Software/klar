@@ -111,7 +111,7 @@ func (c *Checker) CheckSameType(
 		}
 		c.Error(errors.TypeError{
 			ErrorCode:    code,
-			Range:        expr.Base().Range,
+			Range:        expr.GetRange(),
 			ExpectedType: expType,
 			GotType:      got,
 			Params:       errors.ErrorParams{"operator": op},

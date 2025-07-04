@@ -56,7 +56,7 @@ const (
 	ErrNotEnoughEnumItems      // At least two enum members required
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
-	ErrExpectedParamInGeneric  // At least one parameter requried in generic
+	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 
 	// When
@@ -202,7 +202,7 @@ func (e ParseError) Error() string {
 		}
 	case ErrForInvalidCond:
 		return "SyntaxError: Expected an assignment or expression in for condition"
-	case ErrExpectedParamInGeneric:
+	case ErrEmptyGeneric:
 		return "SyntaxError: At least 1 type parameter is required in generic"
 	case ErrInvalidPublic:
 		return "SyntaxError: Expected a declaration after public modifier"
@@ -290,8 +290,8 @@ func Node(err ErrorCode, node ast.Node) ParseError {
 	return ParseError{
 		ErrorCode: err,
 		Node:      node,
-		Range:     node.Base().Range,
-		Position:  node.Base().Start,
+		Range:     node.GetRange(),
+		Position:  node.GetRange().Start,
 	}
 }
 

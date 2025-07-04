@@ -73,7 +73,7 @@ func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Re
 		var (
 			isImport, ok bool
 			id           string
-			pos          = dec.Base().Range
+			pos          = dec.GetRange()
 		)
 		switch dec := dec.(type) {
 		// Imports are only parsed at the top-level, but they must go

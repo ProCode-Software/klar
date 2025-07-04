@@ -61,9 +61,10 @@ func (t *ArgTable) Parse() {
 			currArg = arg
 		case currArg != "":
 			if t.Definitions[arg].Type == TypeBoolFlag {
-				if arg == "true" {
+				switch arg {
+				case "true":
 					t.Flags[currArg] = true
-				} else if arg == "false" {
+				case "false":
 					t.Flags[currArg] = false
 				}
 			} else {

@@ -23,7 +23,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 			// Statement after return
 			err := errors.ParseError{
 				ErrorCode: errors.ErrProvenUnreachable,
-				Range:     stmt.Base().Range,
+				Range:     stmt.GetRange(),
 				Params:    errors.ErrorParams{"type": unreachableStmt},
 			}
 			// Hint if user has line break between return and expression
@@ -54,7 +54,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 			case ast.WhenExpression, ast.CallExpression, ast.BadExpression:
 			default:
 				// Unused statement
-				err := errors.RangedTypeError(errors.ErrUnusedValue, expr.Base().Range, nil)
+				err := errors.RangedTypeError(errors.ErrUnusedValue, expr.GetRange(), nil)
 				if !ctx.IsRoot() && i == len(body)-1 {
 					// TODO: only show if it's a valid type
 					err.Hint("Did you mean to return this expression?")
@@ -82,7 +82,7 @@ func (c *Checker) CheckVarDecl(decl ast.VariableDeclaration, ctx context) {
 		// Infer type
 		actualType = c.InferType(decl.Value, ctx)
 	}
-	if ok := ctx.Declare(name, decl.Constant, actualType, decl.Base().Range); !ok {
-		c.ErrRedeclared(errors.ErrRedeclaredVar, name, decl.Base().Range, "variable", ctx)
+	if ok := ctx.Declare(name, decl.Constant, actualType, decl.GetRange()); !ok {
+		c.ErrRedeclared(errors.ErrRedeclaredVar, name, decl.GetRange(), "variable", ctx)
 	}
 }

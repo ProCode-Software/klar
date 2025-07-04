@@ -1,6 +1,9 @@
 package types
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 func Walk(t Type, fn func(t, parent *Type)) Type {
 	walk(&t, nil, fn)
@@ -92,19 +95,18 @@ func WalkUnionOptional(node *Type, fn func(*Type)) {
 }
 
 func FlattenUnion(union Union) Union {
-	itemTypes := make(map[Type]bool, len(union.Options))
 	options := make([]Type, len(union.Options))
 	for _, option := range union.Options {
 		if opt, ok := option.(Union); ok {
 			options = append(options, FlattenUnion(opt).Options...)
 		} else {
-			options = append(options, opt)
+			options = append(options, option)
 		}
 	}
-	final := make([]Type, len(options))
+	final := make([]Type, 0, len(options))
 	for _, opt := range options {
-		if !itemTypes[opt] {
-			itemTypes[opt] = true
+		fmt.Printf("%#v\n", opt)
+		if opt != nil && !slices.Contains(final, opt) {
 			final = append(final, opt)
 		}
 	}

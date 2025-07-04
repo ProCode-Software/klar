@@ -12,12 +12,12 @@ import (
 //go:generate go run ../cmd/astgen ./ast_types_impl.go ./ast_types_base.go
 type Node interface {
 	Kind() string
-	Base() BaseNode
+	GetRange() ranges.Range
 	SetPos(start, end lexer.Position) Node
 }
 
 type BaseNode struct {
-	ranges.Range
+	Range ranges.Range
 }
 
 // All EOS-terminated statement AST tokens implement the Statement interface.
@@ -355,7 +355,7 @@ type FunctionDeclaration struct {
 	Parameters    []FunctionParam
 	ReturnType    Type
 	Body          []Statement
-	Expression
+	Expression    Expression
 	BaseNode
 }
 
@@ -464,7 +464,7 @@ type Attribute struct {
 
 type RestExpression struct {
 	BaseNode
-	Left bool
+	Left bool 
 	Expr Expression
 }
 

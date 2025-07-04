@@ -196,7 +196,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	//	func get<T, U>(a: T, b: [U]) -> T
 	// Can't be assigned, only inferred
 	if p.CurrentTokenKind() == lexer.LessThan {
-		generics := []ast.Symbol{}
+		generics := make([]ast.Symbol, 0, 1)
 		p.Advance()
 		for p.WhileNot(lexer.GreaterThan) {
 			tok := p.Expect(lexer.Identifier)
@@ -207,7 +207,11 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 				p.Expect(lexer.Comma)
 			}
 		}
-		p.Expect(lexer.GreaterThan)
+		gt := p.Expect(lexer.GreaterThan)
+		if len(generics) == 0 {
+			p.Error(errors.Token(errors.ErrEmptyGeneric, gt))
+			generics = nil
+		}
 		f.GenericParams = generics
 	}
 	// Params
@@ -225,7 +229,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	}
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		param := ast.FunctionParam{}
-		param.BaseNode.Start = p.CurrentToken().Position
+		param.BaseNode.Range.Start = p.CurrentToken().Position
 
 		if p.Peek().Kind == lexer.Identifier {
 			// Optional label:
@@ -249,7 +253,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 			param.Default = p.ParseExpression(DefaultBindingPower)
 			applyType(param.Type, param.Default)
 		}
-		param.BaseNode.End = p.lastTokEnd()
+		param.BaseNode.Range.End = p.lastTokEnd()
 		f.Parameters = append(f.Parameters, param)
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)

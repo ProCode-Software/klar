@@ -63,7 +63,8 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) ast.GenericTyp
 	p.Expect(lexer.LessThan)
 	if p.CurrentTokenKind() == lexer.GreaterThan {
 		// At least 1 parameter required
-		p.Error(errors.Token(errors.ErrExpectedParamInGeneric, p.CurrentToken()))
+		p.Error(errors.Token(errors.ErrEmptyGeneric, p.CurrentToken()))
+		params = nil
 	}
 	for p.WhileNotEndOr(lexer.GreaterThan) {
 		params = append(params, p.ParseType(DefaultTypeBindingPower))

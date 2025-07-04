@@ -12,7 +12,7 @@ import (
 
 func (c *Checker) validateVariadicParam(index int, len int, typ ast.Type) {
 	if index != len-1 {
-		c.Error(errors.RangedTypeError(errors.ErrVariadicLast, typ.Base().Range, nil))
+		c.Error(errors.RangedTypeError(errors.ErrVariadicLast, typ.GetRange(), nil))
 	}
 }
 
@@ -75,7 +75,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 				return
 			}
 			c.Error(errors.RangedTypeError(
-				errors.ErrWrongTypeParamLen, t.Base().Range,
+				errors.ErrWrongTypeParamLen, t.GetRange(),
 				errors.ErrorParams{"min": min, "max": max, "got": got},
 			))
 		}
@@ -98,14 +98,14 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		if invalid || !isPrim {
 			err := errors.TypeError{
 				ErrorCode: errors.ErrNoGenerics,
-				Range:     t.Base().Range,
+				Range:     t.GetRange(),
 				Params:    errors.ErrorParams{"type": c.ParseType(t.Name, ctx)},
 			}
 			err.Hint("Only 'Map' and 'Result' types are generic")
 			c.Error(err)
 		}
 	case ast.RestType:
-		c.Error(errors.RangedTypeError(errors.ErrInvalidRestType, t.Base().Range, nil))
+		c.Error(errors.RangedTypeError(errors.ErrInvalidRestType, t.GetRange(), nil))
 		return types.InvalidType
 	case ast.TupleType:
 		items := make([]Type, len(t.Values))
@@ -147,7 +147,7 @@ func (c *Checker) parseInheritance(
 			continue
 			// Can inherit other types
 			/* err := errors.NamedTypeError(
-				errors.ErrInheritNonStructOrIntf, name, item.Base().Range,
+				errors.ErrInheritNonStructOrIntf, name, item.GetRange(),
 			)
 			err.SetParam("type", decl.Type)
 			c.Error(err)
@@ -156,7 +156,7 @@ func (c *Checker) parseInheritance(
 		for k, v := range inherited.GetFields() {
 			if _, ok := s.Fields[k]; ok && !isIntf {
 				c.Error(errors.NamedTypeError(
-					errors.ErrConflictingInherit, k, item.Base().Range,
+					errors.ErrConflictingInherit, k, item.GetRange(),
 				))
 				continue
 			}
@@ -167,7 +167,7 @@ func (c *Checker) parseInheritance(
 			for _, ovl := range allOvlds {
 				if _, exists := s.Methods[fnName].Get(ovl.Params); exists && !isIntf {
 					err := errors.RangedTypeError(
-						errors.ErrConflictingInherit, item.Base().Range,
+						errors.ErrConflictingInherit, item.GetRange(),
 						errors.ErrorParams{"overload": &ovl},
 					)
 					err.Name = fnName
@@ -227,7 +227,7 @@ func (c *Checker) ParseInterface(
 			i.Methods[field.Key] = append(
 				i.Methods[field.Key], types.Overload{
 					Function: c.parseIntfMethod(val, ctx),
-					Position: val.Base().Range,
+					Position: val.GetRange(),
 				},
 			)
 			continue

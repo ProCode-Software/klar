@@ -20,7 +20,7 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 	case ast.Symbol:
 		decl, found := ctx.Resolve(expr.Identifier)
 		if !found {
-			c.ErrUndefinedVar(expr.Identifier, expr.Base().Range, ctx)
+			c.ErrUndefinedVar(expr.Identifier, expr.GetRange(), ctx)
 			return types.InvalidType
 		}
 		return types.Ref{Name: expr.Identifier, Value: &decl.Type}

@@ -155,7 +155,7 @@ func (p *Parser) expectShorthand() (key ast.Symbol, value ast.Expression) {
 }
 
 func copyPos[S, T ast.Node](from S, to T) T {
-	return to.SetPos(from.Base().Start, from.Base().End).(T)
+	return to.SetPos(from.GetRange().Start, from.GetRange().End).(T)
 }
 
 // Expect advances the parser if the current token is of typ, otherwise throws err.

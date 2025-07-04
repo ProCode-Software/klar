@@ -181,7 +181,7 @@ func RangedTypeError(code ErrorCode, rang ranges.Range, params ErrorParams) Type
 func NodeTypeError(code ErrorCode, node ast.Node, params ErrorParams) TypeError {
 	return TypeError{
 		ErrorCode: code,
-		Range:     node.Base().Range,
+		Range:     node.GetRange(),
 		Params:    params,
 	}
 }

@@ -38,7 +38,7 @@ func (e ParseError) At() lexer.Position {
 
 func (e ParseError) AtRange() ranges.Range {
 	if ranges.IsZeroPosition(e.Range.Start) && e.Node != nil {
-		return e.Node.Base().Range
+		return e.Node.GetRange()
 	}
 	return e.Range
 }
@@ -46,7 +46,7 @@ func (e ParseError) AtRange() ranges.Range {
 // SyntaxError
 func (e ParseError) Code() ErrorCode    { return e.ErrorCode }
 func (e ParseError) GetHints() []string { return e.Hints }
-func (e *ParseError) Hint(hint string)     { e.Hints = append(e.Hints, hint) }
+func (e *ParseError) Hint(hint string)  { e.Hints = append(e.Hints, hint) }
 
 // TypeError
 func (e TypeError) At() lexer.Position    { return e.Range.Start }

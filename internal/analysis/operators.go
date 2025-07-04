@@ -50,7 +50,7 @@ func (c *Checker) CheckLogicalExpr(
 	left, right ast.Node, op lexer.TokenType, ctx context,
 ) {
 	err := func(got Type, node ast.Node) {
-		c.Error(errors.TypeMismatch(types.Bool, got, node.Base().Range))
+		c.Error(errors.TypeMismatch(types.Bool, got, node.GetRange()))
 	}
 	got1, ok1 := c.CheckCompatibleExpr(types.Bool, left, ctx)
 	got2, ok2 := c.CheckCompatibleExpr(types.Bool, right, ctx)
@@ -123,7 +123,7 @@ invalidOperation:
 	errCode = errors.ErrInvalidOperation
 	goto mismatchedOperands
 mismatchedOperands:
-	err := errors.OperatorTypeError(binExp.Base().Range, left, right, op)
+	err := errors.OperatorTypeError(binExp.GetRange(), left, right, op)
 	err.ErrorCode = errCode
 	c.Error(err)
 	return types.InvalidType

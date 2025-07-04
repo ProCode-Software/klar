@@ -93,7 +93,7 @@ func (p *Parser) handleLED(
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
 	}
-	res = res.SetPos(left.Base().Start, p.lastTokEnd())
+	res = res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }
 
@@ -186,6 +186,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	default:
 		return left, false
 	}
-	res = res.SetPos(left.Base().Start, p.lastTokEnd()).(ast.Type)
+	res = res.SetPos(left.GetRange().Start, p.lastTokEnd()).(ast.Type)
 	return res, true
 }

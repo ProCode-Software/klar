@@ -28,7 +28,7 @@ func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 				GotType:   typ,
 				ErrorCode: errors.ErrUncomparableTypes,
 				Params:    errors.ErrorParams{"operator": op},
-				Range:     expr.Base().Range,
+				Range:     expr.GetRange(),
 			})
 		}
 		return typ

@@ -17,7 +17,7 @@ func (c *Checker) CheckFunction(
 	// Declare generic parameters
 	for _, gen := range d.GenericParams {
 		name := gen.Identifier
-		ctx.DeclareType(name, types.Generic{Name: name}, gen.Base().Range)
+		ctx.DeclareType(name, types.Generic{Name: name}, gen.GetRange())
 	}
 	for i, decParam := range d.Parameters {
 		var (
@@ -56,7 +56,7 @@ func (c *Checker) CheckFunction(
 func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
 	var (
 		name = decl.Identifier
-		pos  = decl.Base().Range
+		pos  = decl.GetRange()
 		f    types.Function
 	)
 	if decl.Struct != nil {
@@ -77,7 +77,7 @@ func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
 					},
 				})
 			} else {
-				c.ErrUndefinedType(receiver, decl.Struct.Base().Range, ctx)
+				c.ErrUndefinedType(receiver, decl.Struct.GetRange(), ctx)
 			}
 			return
 		}
@@ -89,7 +89,7 @@ func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
 			c.Error(errors.TypeError{
 				ErrorCode: errors.ErrNonStructReceiver,
 				Name:      receiver,
-				Range:     decl.Struct.Base().Range,
+				Range:     decl.Struct.GetRange(),
 				GotType:   structDef.Type,
 			})
 		}

@@ -1,3 +1,8 @@
+import klar.fs
+
+
+String(fs.readFileBuffer())
+
 /* type A = B
 type B = C
 type C = A
@@ -25,11 +30,22 @@ type A: Color {} */
 func unwrap<T>(optional: T?) -> T {
     name := 1 + 1
     int: Int | Float := 2
+    x := 2
     b := x + [int, 2, 3]
     // return x + 2
     /* when optional {
         ? -> panic("unwrap failed")
         value -> return value
     } */
-    [1, 2, 3, 5]
 }
+
+
+type Point {
+    x: Int
+    y: Int
+}
+
+/* func Point(x, y: Int = 10) {
+    self.x = x
+    self.y = y
+} */

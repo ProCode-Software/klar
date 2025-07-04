@@ -42,7 +42,7 @@ func (p *Parser) errExpectedExpr(got ast.Node) {
 	p.Error(errors.ParseError{
 		ErrorCode: errors.ErrExpectedExpression,
 		Node:      got,
-		Range:     got.Base().Range,
+		Range:     got.GetRange(),
 	})
 }
 
@@ -70,7 +70,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 			continue
 		}
 	}
-	// left = left.SetPos(left.Base().Start, p.savePos())
+	// left = left.SetPos(left.GetRange().Start, p.savePos())
 	return left
 }
 

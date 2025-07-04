@@ -2,275 +2,278 @@
 
 package ast
 
-import "github.com/ProCode-Software/klar/internal/lexer"
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
 
-func (e Program) Base() BaseNode { return e.BaseNode }
+func (e Program) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e Program) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e StringLiteral) Base() BaseNode { return e.BaseNode }
+func (e StringLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e StringLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e FloatLiteral) Base() BaseNode { return e.BaseNode }
+func (e FloatLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e FloatLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e IntegerLiteral) Base() BaseNode { return e.BaseNode }
+func (e IntegerLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e IntegerLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e BooleanLiteral) Base() BaseNode { return e.BaseNode }
+func (e BooleanLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e BooleanLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e NilLiteral) Base() BaseNode { return e.BaseNode }
+func (e NilLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e NilLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ExpressionStatement) Base() BaseNode { return e.BaseNode }
+func (e ExpressionStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ExpressionStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e BinaryExpression) Base() BaseNode { return e.BaseNode }
+func (e BinaryExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e BinaryExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e VariableDeclaration) Base() BaseNode { return e.BaseNode }
+func (e VariableDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e VariableDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e AssignmentStatement) Base() BaseNode { return e.BaseNode }
+func (e AssignmentStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e AssignmentStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e UnaryExpression) Base() BaseNode { return e.BaseNode }
+func (e UnaryExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e UnaryExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e Symbol) Base() BaseNode { return e.BaseNode }
+func (e Symbol) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e Symbol) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ImportStatement) Base() BaseNode { return e.BaseNode }
+func (e ImportStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ImportStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TypeAnnotation) Base() BaseNode { return e.BaseNode }
+func (e TypeAnnotation) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TypeAnnotation) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e EnumDeclaration) Base() BaseNode { return e.BaseNode }
+func (e EnumDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e EnumDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e StructDeclaration) Base() BaseNode { return e.BaseNode }
+func (e StructDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e StructDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TypeAliasDeclaration) Base() BaseNode { return e.BaseNode }
+func (e TypeAliasDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TypeAliasDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e StructField) Base() BaseNode { return e.BaseNode }
+func (e StructField) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e StructField) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e MapLiteral) Base() BaseNode { return e.BaseNode }
+func (e MapLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e MapLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TupleLiteral) Base() BaseNode { return e.BaseNode }
+func (e TupleLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TupleLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ReturnStatement) Base() BaseNode { return e.BaseNode }
+func (e ReturnStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ReturnStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e FunctionDeclaration) Base() BaseNode { return e.BaseNode }
+func (e FunctionDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e FunctionDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e NextStatement) Base() BaseNode { return e.BaseNode }
+func (e NextStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e NextStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ListLiteral) Base() BaseNode { return e.BaseNode }
+func (e ListLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ListLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e IndexExpression) Base() BaseNode { return e.BaseNode }
+func (e IndexExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e IndexExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e CallExpression) Base() BaseNode { return e.BaseNode }
+func (e CallExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e CallExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e EnumLiteral) Base() BaseNode { return e.BaseNode }
+func (e EnumLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e EnumLiteral) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ForStatement) Base() BaseNode { return e.BaseNode }
+func (e ForStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ForStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e UpdateStatement) Base() BaseNode { return e.BaseNode }
+func (e UpdateStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e UpdateStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e Discard) Base() BaseNode { return e.BaseNode }
+func (e Discard) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e Discard) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e WhenExpression) Base() BaseNode { return e.BaseNode }
+func (e WhenExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e WhenExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e LambdaExpression) Base() BaseNode { return e.BaseNode }
+func (e LambdaExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e LambdaExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TypeTuple) Base() BaseNode { return e.BaseNode }
+func (e TypeTuple) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TypeTuple) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e Attribute) Base() BaseNode { return e.BaseNode }
+func (e Attribute) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e Attribute) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e RangeExpression) Base() BaseNode { return e.BaseNode }
+func (e RangeExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e RangeExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e RestExpression) Base() BaseNode { return e.BaseNode }
+func (e RestExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e RestExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e PipelineExpression) Base() BaseNode { return e.BaseNode }
+func (e PipelineExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e PipelineExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e BadExpression) Base() BaseNode { return e.BaseNode }
+func (e BadExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e BadExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e SliceExpression) Base() BaseNode { return e.BaseNode }
+func (e SliceExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e SliceExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ParenExpression) Base() BaseNode { return e.BaseNode }
+func (e ParenExpression) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ParenExpression) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e InterfaceDeclaration) Base() BaseNode { return e.BaseNode }
+func (e InterfaceDeclaration) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e InterfaceDeclaration) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e Comment) Base() BaseNode { return e.BaseNode }
+func (e Comment) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e Comment) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e MethodType) Base() BaseNode { return e.BaseNode }
+func (e MethodType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e MethodType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TypePair) Base() BaseNode { return e.BaseNode }
+func (e TypePair) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TypePair) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e BreakStatement) Base() BaseNode { return e.BaseNode }
+func (e BreakStatement) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e BreakStatement) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e PrimitiveType) Base() BaseNode { return e.BaseNode }
+func (e PrimitiveType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TypeAlias) Base() BaseNode { return e.BaseNode }
+func (e TypeAlias) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TypeAlias) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e OptionalType) Base() BaseNode { return e.BaseNode }
+func (e OptionalType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e OptionalType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e ListType) Base() BaseNode { return e.BaseNode }
+func (e ListType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e ListType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e RestType) Base() BaseNode { return e.BaseNode }
+func (e RestType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e RestType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e TupleType) Base() BaseNode { return e.BaseNode }
+func (e TupleType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e TupleType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e FunctionType) Base() BaseNode { return e.BaseNode }
+func (e FunctionType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e FunctionType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e GenericType) Base() BaseNode { return e.BaseNode }
+func (e GenericType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e GenericType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
-func (e UnionType) Base() BaseNode { return e.BaseNode }
+func (e UnionType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e UnionType) SetPos(start, end lexer.Position) Node {
-	e.BaseNode.Start, e.BaseNode.End = start, end
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }

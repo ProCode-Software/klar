@@ -274,7 +274,7 @@ func checkDefined(
 func traceUndefined(name string, t ast.TypeDeclaration) (r ranges.Range) {
 	for _, alias := range ast.CollectTypeAliases(t) {
 		if alias.Identifier == name {
-			return alias.Base().Range
+			return alias.GetRange()
 		}
 	}
 	// Should never happen

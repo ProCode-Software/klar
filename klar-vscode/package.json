@@ -16,21 +16,28 @@
         "@vscode/vsce": "3.3.2"
     },
     "scripts": {
-        "watch": "vsxtools build-grammar src/klar.ts syntaxes/klar.tmLanguage.json --watch",
+        "watch": "bun run watch-klar & bun run watch-klarml",
+        "watch-klar": "vsxtools build-grammar src/klar.ts syntaxes/klar.tmLanguage.json --watch",
+        "watch-klarml": "vsxtools build-grammar src/klarml.ts syntaxes/klarml.tmLanguage.json --watch",
         "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository"
     },
     "contributes": {
         "languages": [
             {
                 "id": "klar",
-                "aliases": [
-                    "Klar",
-                    "klar"
-                ],
-                "extensions": [
-                    ".klar"
-                ],
+                "aliases": [ "Klar", "klar" ],
+                "extensions": [ ".klar" ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "klarmarkup",
+                "aliases": [
+                    "Klar Markup",
+                    "klar-markup",
+                    "klarml"
+                ],
+                "extensions": [ ".klarml", "glas.pack" ],
+                "configuration": "./klarml.language-configuration.json"
             }
         ],
         "grammars": [
@@ -38,6 +45,11 @@
                 "language": "klar",
                 "scopeName": "source.klar",
                 "path": "./syntaxes/klar.tmLanguage.json"
+            },
+            {
+                "language": "klarmarkup",
+                "scopeName": "source.klarmarkup",
+                "path": "./syntaxes/klarml.tmLanguage.json"
             }
         ]
     }
