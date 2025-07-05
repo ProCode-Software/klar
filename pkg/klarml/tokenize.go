@@ -11,7 +11,7 @@ type lexer struct {
 	Position
 }
 
-func (l *lexer) Next() byte {
+func (l *lexer) Shift() byte {
 	current := l.Current()
 	l.Index++
 	if l.Bytes[l.Index] == '\n' {
@@ -30,21 +30,35 @@ func (l *lexer) Backup() {
 func newToken(pos Position, kind TokenType, src string) Token {
 	return Token{Position: pos, Kind: kind, Source: src}
 }
+func isDigit(b byte) bool {
+	return b >= '0' && b <= '9'
+}
 
 func (l *lexer) Peek() byte     { return l.Bytes[l.Index+1] }
 func (l *lexer) Current() byte  { return l.Bytes[l.Index] }
 func (l *lexer) HasBytes() bool { return l.Index < len(l.Bytes) }
 
-var wasNewline bool
+var wasColon bool
 
 func (l *lexer) Tokenize() Token {
-	pos := l.Position
-	b := l.Next()
-	defer func() { wasNewline = false }()
+	var (
+		_colon bool
+		pos    = l.Position
+		b      = l.Shift()
+	)
+	defer func() {
+		if !_colon {
+			wasColon = false
+		}
+	}()
 	switch b {
 	case ':':
+		_colon = true
 		return newToken(pos, Colon, ":")
 	case '-':
+		if next := l.Peek(); isDigit(next) || next == '.' {
+			break
+		}
 		return newToken(pos, Hyphen, "-")
 	case '{':
 		return newToken(pos, LeftBrace, "{")
@@ -52,19 +66,18 @@ func (l *lexer) Tokenize() Token {
 		return newToken(pos, RightBrace, "}")
 	case '.':
 		return newToken(pos, Period, ".")
+	case ',':
+		return newToken(pos, Comma, ",")
 	case '$':
 		return newToken(pos, Dollar, "$")
 	case '\n':
-		wasNewline = true
 		return newToken(pos, Newline, "\n")
-	case '=':
-		return newToken(pos, Equal, "=")
 	case '@':
 		return l.ParseNamespace(pos)
 	case '/':
 		next := l.Peek()
 		if next == '/' || next == '*' {
-			l.Next()
+			l.Shift()
 			return l.ParseComment(pos, next == '*')
 		}
 	case '"', '\'':
@@ -72,37 +85,31 @@ func (l *lexer) Tokenize() Token {
 	}
 	r := rune(b)
 	switch {
-	case unicode.IsLetter(r):
+	case unicode.IsLetter(r) && !wasColon:
 		return l.ParseIdent(pos, b)
-	case unicode.IsDigit(r), r == '_', r == '+', r == '.':
+	case unicode.IsDigit(r), r == '_', r == '+', r == '.', r == '-':
 		return l.ParseIdent(pos, b)
 	case unicode.IsSpace(r):
-		if wasNewline {
-			return l.Tokenize()
-		}
-		fallthrough
+		return l.Tokenize()
 	default:
 		return l.ParseUnquoted(pos, b)
 	}
 }
 
 var allowedInVar = map[rune]bool{
-	'.': true, '+': true, '-': true, '_': true,
+	'.': true, '+': true, '-': true, '_': true, '\\': true,
 }
 
 func (l *lexer) ParseNamespace(start Position) Token {
 	ident := l.ParseIdent(l.Position, '@').Source
-	return newToken(start, Namespace, ident)
+	return newToken(start, TokenNamespace, ident)
 }
 
-// var: /(\$)(\.?[-\p{L}\w_]+)/u,
-// ns: /@[\p{L}\w\d_.+-]+/u
-// key: /[-\p{L}\w._/+$@]+/
 func (l *lexer) ParseString(start Position, first byte) Token {
 	var b strings.Builder
 	var isEscape bool
 	for l.HasBytes() {
-		c := l.Next()
+		c := l.Shift()
 		if c == '\\' {
 			isEscape = !isEscape
 		} else if c == first && !isEscape {
@@ -122,29 +129,43 @@ func (l *lexer) ParseString(start Position, first byte) Token {
 
 func (l *lexer) ParseNumber(start Position, first byte) Token {
 	var b strings.Builder
-	var hadDecimal bool
+	var hadDecimal, hadUnderscore bool
 	b.WriteByte(first)
 	for l.HasBytes() {
 		c := l.Current()
-		if (c >= '0' && c <= '9') || c == '_' || (c == '.' && !hadDecimal) {
-			b.WriteByte(c)
-			l.Next()
+		if c == '_' && !hadUnderscore {
+			hadUnderscore = true
+		} else if c == '.' && !hadDecimal && !hadUnderscore {
+			hadDecimal = true
+		} else if isDigit(c) {
 		} else {
 			break
 		}
+		hadUnderscore = false
+		b.WriteByte(c)
+		l.Shift()
 	}
 	return newToken(start, Numeric, b.String())
 }
 
 func (l *lexer) ParseUnquoted(start Position, first byte) Token {
 	var b strings.Builder
+	var isEscape bool
 	b.WriteByte(first)
+loop:
 	for l.HasBytes() {
 		c := l.Current()
-		if c == '\n' {
-			break
+		switch c {
+		case '\n':
+			break loop
+		case '\\':
+			isEscape = !isEscape
+		case '@', ',':
+			if !isEscape {
+				break loop
+			}
 		}
-		l.Next()
+		l.Shift()
 		b.WriteByte(c)
 	}
 	tok := newToken(start, Identifier, b.String())
@@ -154,15 +175,22 @@ func (l *lexer) ParseUnquoted(start Position, first byte) Token {
 
 func (l *lexer) ParseIdent(start Position, first byte) Token {
 	var b strings.Builder
+	var isEscape bool
 	b.WriteByte(first)
 	for l.HasBytes() {
-		c := rune(l.Current())
-		if unicode.IsLetter(c) || unicode.IsDigit(c) || allowedInVar[c] {
-			b.WriteRune(c)
-			l.Next()
-		} else {
-			break
+		currByte := l.Current()
+		c := rune(currByte)
+		switch {
+		case c == '\\':
+			isEscape = true
+			fallthrough
+		case isEscape, unicode.IsLetter(c), unicode.IsDigit(c), allowedInVar[c]:
+			b.WriteByte(currByte)
+			l.Shift()
+			isEscape = false
+			continue
 		}
+		break
 	}
 	return newToken(start, Identifier, b.String())
 }
@@ -173,16 +201,16 @@ func (l *lexer) ParseComment(start Position, isBlock bool) Token {
 	for l.HasBytes() {
 		c := l.Current()
 		switch {
-		case isBlock && c == '/' && l.Next() == '*':
+		case isBlock && c == '/' && l.Shift() == '*':
 			cmtLevel++
-			l.Next()
-			l.Next()
+			l.Shift()
+			l.Shift()
 			b.WriteString("/*")
 			continue
-		case isBlock && c == '*' && l.Next() == '/':
+		case isBlock && c == '*' && l.Shift() == '/':
 			cmtLevel--
-			l.Next()
-			l.Next()
+			l.Shift()
+			l.Shift()
 			if cmtLevel == 0 {
 				tok := newToken(start, Identifier, b.String())
 				tok.Attributes = CommentAttrs{Block: true}
@@ -191,14 +219,14 @@ func (l *lexer) ParseComment(start Position, isBlock bool) Token {
 			b.WriteString("*/")
 			continue
 		case !isBlock && c == '\n':
-			l.Next()
+			l.Shift()
 			b.WriteByte('\n')
 			tok := newToken(start, Identifier, b.String())
 			tok.Attributes = CommentAttrs{Block: false}
 			return tok
 		}
 		b.WriteByte(c)
-		l.Next()
+		l.Shift()
 	}
 	tok := newToken(start, Identifier, b.String())
 	tok.Attributes = CommentAttrs{

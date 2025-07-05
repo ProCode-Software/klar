@@ -1,5 +1,5 @@
 import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
-import { include, match, merge } from 'vsxtools/tmLanguage'
+import { include, match } from 'vsxtools/tmLanguage'
 
 RegExp.prototype.toString = function () {
     return this.source
@@ -21,10 +21,11 @@ const repository = {
         ],
     },
     properties: {
-        begin: /^\s*(-*)\s*(?:([-\p{L}\w._/+$@]+)\s*(:)\s*)?/u,
+        begin: /^\s*(-*)\s*(?:(\$\s*)?([-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
         end: /$/,
         beginCaptures: [
             { name: 'punctuation.definition.block.sequence.item.klarmarkup' },
+            { name: 'punctuation.definition.variable.klar' },
             { name: 'support.type.property-name.klarmarkup' },
             { name: 'punctuation.separator.key-value.klarmarkup' },
             { include: '#values' },
@@ -39,7 +40,7 @@ const repository = {
         contentName: 'string.quoted.klarmarkup',
         patterns: [include('strings')],
     },
-    namespaces: match(/@[\p{L}\w\d_.+-]+/u, 'support.class.klarmarkup'),
+    namespaces: match(/@[\p{L}\w\d_.+-\\]+/u, 'support.class.klarmarkup'),
     strings: {
         patterns: [match(/\\./, 'constant.character.escape.klarmarkup')],
     },
@@ -66,27 +67,17 @@ const repository = {
         ],
     },
     array: match(/,/, 'punctuation.separator.comma.klarmarkup'),
-    variableDeclarations: {
-        begin: /^\s*(\$)([-\p{L}\w_]+)\s*(=)/u,
-        end: /$/,
-        beginCaptures: [
-            { name: 'punctuation.definition.variable.klarmarkup' },
-            { name: 'variable.other.klarmarkup' },
-            { name: 'keyword.operator.assignment.klarmarkup' },
-        ],
-        patterns: [include('values')],
-    },
     variables: {
         patterns: [
             {
-                match: /(\$)(\.?[-\p{L}\w_]+)/u,
+                match: /(\$)(\.?[-\p{L}\w_\\]+)/u,
                 captures: [
                     { name: 'punctuation.definition.variable.klarmarkup' },
                     { name: 'variable.other.klarmarkup' },
                 ],
             },
             {
-                match: /(\$\{)\s*(\.?[-\p{L}\w_]+)\s*(\})/u,
+                match: /(\$\{)\s*(\.?[-\p{L}\w_\\]+)\s*(\})/u,
                 captures: [
                     { name: 'punctuation.definition.variable.klarmarkup' },
                     { name: 'variable.other.klarmarkup' },
@@ -102,8 +93,8 @@ const repository = {
             'namespaces',
             'variables',
             'stringLiterals',
-            'rawStrings',
             'array',
+            'rawStrings',
         ].map(include),
     },
 } satisfies Repository
@@ -111,6 +102,6 @@ const repository = {
 export default {
     name: 'Klar Markup',
     scopeName: 'source.klarmarkup',
-    patterns: ['comments', 'variableDeclarations', 'properties', 'values'].map(include),
+    patterns: ['comments', 'properties', 'values'].map(include),
     repository,
 } satisfies TextMateLanguage

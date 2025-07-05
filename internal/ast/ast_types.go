@@ -464,7 +464,7 @@ type Attribute struct {
 
 type RestExpression struct {
 	BaseNode
-	Left bool 
+	Left bool
 	Expr Expression
 }
 

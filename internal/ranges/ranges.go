@@ -74,6 +74,7 @@ func AddPosition(p Position, n Position) Position {
 func Between(r1, r2 Range) Range {
 	return Range{Start: r1.Start, End: r2.End}
 }
+
 func BetweenPos(r1, r2 Position) Range {
 	return Range{Start: r1, End: r2}
 }
