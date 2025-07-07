@@ -40,17 +40,17 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.When:
 		if p.isWhenGuard {
 			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.CurrentToken()))
-			return ast.BadExpression{Token: kind}, true
+			return &ast.BadExpression{Token: kind}, true
 		}
 		res = p.ParseWhenBlock()
 	case lexer.Underscore:
 		if !p.isWhenCase {
 			return nil, false
 		}
-		res = ast.Discard{}
+		res = &ast.Discard{}
 		p.Advance()
 	}
-	res = setPos(res, startPos, p.lastTokEnd())
+	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -62,7 +62,7 @@ func (p *Parser) handleLED(
 		return left, false
 
 	case lexer.Minus:
-		if _, ok := left.(ast.Symbol); ok && p.isAttribute {
+		if _, ok := left.(*ast.Symbol); ok && p.isAttribute {
 			res = p.ParseVersion(left, bp)
 			break
 		}
@@ -102,12 +102,12 @@ func (p *Parser) handleLED(
 		res = p.ParsePipeline(left, bp)
 	// Version
 	case lexer.Numeric:
-		if _, ok := left.(ast.Symbol); !ok || !p.isAttribute {
+		if _, ok := left.(*ast.Symbol); !ok || !p.isAttribute {
 			return left, false
 		}
 		res = p.ParseVersion(left, bp)
 	}
-	res = setPos(res, left.GetRange().Start, p.lastTokEnd())
+	res.SetPos( left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }
 
@@ -149,13 +149,13 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 	case lexer.For:
 		res = p.ParseForStatement()
 	case lexer.Next:
-		res = ast.NextStatement{}
+		res = &ast.NextStatement{}
 		p.Advance()
 	case lexer.Break:
-		res = ast.BreakStatement{}
+		res = &ast.BreakStatement{}
 		p.Advance()
 	}
-	res = setPos(res, startPos, p.lastTokEnd())
+	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -177,7 +177,7 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	default:
 		return nil, false
 	}
-	res = setPos(res, startPos, p.lastTokEnd())
+	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -192,7 +192,7 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	case lexer.Arrow:
 		res = p.ParseFunctionType(left, bp)
 	case lexer.Dot:
-		if left, ok := left.(ast.TypeAlias); !ok {
+		if left, ok := left.(*ast.TypeAlias); !ok {
 			return nil, false
 		} else {
 			res = p.ParseTypeNamespace(left, bp)
@@ -200,6 +200,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	default:
 		return left, false
 	}
-	res = setPos(res, left.GetRange().Start, p.lastTokEnd())
+	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }

@@ -21,7 +21,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		panic("ParseType: nil type")
 	}
 	switch t := t.(type) {
-	case ast.TypeAlias:
+	case *ast.TypeAlias:
 		name := t.Identifier
 		if decl, ok := ctx.ResolveType(name); !ok {
 			c.ErrUndefinedType(name, t.Range, ctx)
@@ -29,14 +29,14 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		} else {
 			return types.Ref{name, &decl.Type}
 		}
-	case ast.FunctionType:
+	case *ast.FunctionType:
 		var f types.Lambda
 		f.Params = make([]types.Param, len(t.Parameters))
 		for i, paramType := range t.Parameters {
 			var typ Type
-			_, variadic := paramType.(ast.RestType)
+			_, variadic := paramType.(*ast.RestType)
 			if variadic {
-				typ = c.ParseType(paramType.(ast.RestType).Value, ctx)
+				typ = c.ParseType(paramType.(*ast.RestType).Value, ctx)
 				c.validateVariadicParam(i, len(t.Parameters), paramType)
 			} else {
 				typ = c.ParseType(paramType, ctx)
@@ -45,24 +45,24 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		}
 		f.Return = c.ParseType(t.ReturnType, ctx)
 		return f
-	case ast.PrimitiveType:
+	case *ast.PrimitiveType:
 		return types.PrimitiveMap[t.Primitive]
-	case ast.UnionType:
+	case *ast.UnionType:
 		items := make([]Type, len(t.Options))
 		for i, opt := range t.Options {
 			items[i] = c.ParseType(opt, ctx)
 		}
 		return types.Union{Options: items}
-	case ast.OptionalType:
+	case *ast.OptionalType:
 		return types.Optional{Underlying: c.ParseType(t.Value, ctx)}
-	case ast.BadExpression:
+	case *ast.BadExpression:
 		return types.InvalidType
-	case ast.ListType:
+	case *ast.ListType:
 		return types.List{Of: c.ParseType(t.Value, ctx)}
-	case ast.GenericType:
+	case *ast.GenericType:
 		// Must be Result or Map
 		var invalid bool
-		prim, isPrim := t.Name.(ast.PrimitiveType)
+		prim, isPrim := t.Name.(*ast.PrimitiveType)
 		parseWithDefault := func(index int, def Type) Type {
 			if index >= len(t.Parameters) {
 				return def
@@ -104,10 +104,10 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			err.Hint("Only 'Map' and 'Result' types are generic")
 			c.Error(err)
 		}
-	case ast.RestType:
+	case *ast.RestType:
 		c.Error(errors.RangedTypeError(errors.ErrInvalidRestType, t.GetRange(), nil))
 		return types.InvalidType
-	case ast.TupleType:
+	case *ast.TupleType:
 		items := make([]Type, len(t.Values))
 		for i, item := range t.Values {
 			items[i] = c.ParseType(item, ctx)
@@ -126,9 +126,9 @@ func (c *Checker) parseInheritance(
 	for _, item := range inheritedTypes {
 		var name string
 		switch item := item.(type) {
-		case ast.TypeAlias:
+		case *ast.TypeAlias:
 			name = item.Identifier
-		case ast.PrimitiveType:
+		case *ast.PrimitiveType:
 			// TODO: inheriting primitive types
 			continue
 		}
@@ -181,7 +181,7 @@ func (c *Checker) parseInheritance(
 	s.Implements = implements
 }
 
-func (c *Checker) ParseStruct(d ast.StructDeclaration, ctx context) (s types.Struct) {
+func (c *Checker) ParseStruct(d *ast.StructDeclaration, ctx context) (s types.Struct) {
 	s.Fields = make(map[string]Type, len(d.Fields))
 	s.Methods = make(map[string]types.Overloads)
 	c.parseInheritance(&s, d.InheritedTypes, ctx, false)
@@ -193,13 +193,13 @@ func (c *Checker) ParseStruct(d ast.StructDeclaration, ctx context) (s types.Str
 	return s
 }
 
-func (c *Checker) parseIntfMethod(meth ast.MethodType, ctx context) (f types.Function) {
+func (c *Checker) parseIntfMethod(meth *ast.MethodType, ctx context) (f types.Function) {
 	f.Params = make([]types.Param, len(meth.Parameters))
 	for i, param := range meth.Parameters {
 		var typ Type
-		_, variadic := param.Type.(ast.RestType)
+		_, variadic := param.Type.(*ast.RestType)
 		if variadic {
-			typ = c.ParseType(param.Type.(ast.RestType).Value, ctx)
+			typ = c.ParseType(param.Type.(*ast.RestType).Value, ctx)
 		} else {
 			typ = c.ParseType(param.Type, ctx)
 		}
@@ -214,7 +214,7 @@ func (c *Checker) parseIntfMethod(meth ast.MethodType, ctx context) (f types.Fun
 }
 
 func (c *Checker) ParseInterface(
-	d ast.InterfaceDeclaration, ctx context,
+	d *ast.InterfaceDeclaration, ctx context,
 ) (i types.Interface) {
 	tmpStruct := types.Struct{
 		Fields:  make(map[string]Type, len(d.Fields)),
@@ -223,7 +223,7 @@ func (c *Checker) ParseInterface(
 	c.parseInheritance(&tmpStruct, d.InheritedTypes, ctx, true)
 	i.Fields, i.Methods = tmpStruct.Fields, tmpStruct.Methods
 	for _, field := range d.Fields {
-		if val, ok := field.Value.(ast.MethodType); ok {
+		if val, ok := field.Value.(*ast.MethodType); ok {
 			i.Methods[field.Key] = append(
 				i.Methods[field.Key], types.Overload{
 					Function: c.parseIntfMethod(val, ctx),

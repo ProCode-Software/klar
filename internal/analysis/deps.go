@@ -80,7 +80,7 @@ func (c *Checker) getAllDeps(
 }
 
 func (c *Checker) getTypeAliasDeps(
-	types []ast.TypeAliasDeclaration, ctx context,
+	types []*ast.TypeAliasDeclaration, ctx context,
 ) depMap {
 	typeDeps := make(depMap, len(types))
 	// Step 1: create list of all aliases each alias depends on
@@ -100,30 +100,30 @@ func (c *Checker) getTypeAliasDeps(
 func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 	var list []ast.Type
 	switch t := typ.(type) {
-	case ast.GenericType:
+	case *ast.GenericType:
 		list = append(list, t.Parameters...)
 		list = append(list, t.Name)
-	case ast.ListType:
+	case *ast.ListType:
 		*c2Arr = append(*c2Arr, getTypeDeps(t.Value)...)
-	case ast.OptionalType:
+	case *ast.OptionalType:
 		*c2Arr = append(*c2Arr, getTypeDeps(t.Value)...)
-	case ast.UnionType:
+	case *ast.UnionType:
 		*c2Arr = append(*c2Arr, getTypeDeps(t.Options)...)
-	case ast.FunctionType:
+	case *ast.FunctionType:
 		list = append(list, t.Parameters...)
 		list = append(list, t.ReturnType)
-	case ast.RestType:
+	case *ast.RestType:
 		list = append(list, t.Value)
-	case ast.TupleType:
+	case *ast.TupleType:
 		list = append(list, t.Values...)
-	case ast.TypeAlias:
+	case *ast.TypeAlias:
 		*c1Arr = append(*c1Arr, t.Identifier)
-	case ast.MethodType:
+	case *ast.MethodType:
 		for _, param := range t.Parameters {
 			list = append(list, param.Type)
 		}
 		list = append(list, t.ReturnType)
-	case ast.PrimitiveType, ast.BadExpression:
+	case *ast.PrimitiveType, *ast.BadExpression:
 		break
 	default:
 		panic(fmt.Sprintf("getC1AndC2Deps: unhandled type %T", t))
@@ -149,12 +149,12 @@ func (c *Checker) mergeStructDeps(
 			c1Deps, c2Deps []string
 		)
 		switch t := t.(type) {
-		case ast.StructDeclaration:
+		case *ast.StructDeclaration:
 			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
 			for _, f := range t.Fields {
 				getC1AndC2Deps(f.Type, &c1Deps, &c2Deps)
 			}
-		case ast.InterfaceDeclaration:
+		case *ast.InterfaceDeclaration:
 			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
 			for _, f := range t.Fields {
 				getC1AndC2Deps(f.Value, &c1Deps, &c2Deps)
@@ -207,7 +207,7 @@ for the final order.
 */
 func sortTypeDecls(
 	depMap depMap,
-	aliases []ast.TypeAliasDeclaration,
+	aliases []*ast.TypeAliasDeclaration,
 	intfs []ast.TypeDeclaration,
 	ctx context,
 ) ([]ast.TypeDeclaration, []string, map[string]ast.TypeDeclaration) {

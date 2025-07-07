@@ -60,7 +60,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 	)
 	switch token.Kind {
 	case lexer.Identifier:
-		return ast.Symbol{Identifier: src}
+		return &ast.Symbol{Identifier: src}
 	case lexer.Numeric:
 		format := token.Attributes["format"].(int)
 		switch {
@@ -72,7 +72,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		case strings.Contains(src, "."),
 			format != lexer.NumberFormatHex && strings.ContainsAny(src, "eE"):
 			// Exponents are floats
-			return ast.FloatLiteral{
+			return &ast.FloatLiteral{
 				Source: src,
 				Value: unwrap(strconv.ParseFloat(src, 64)),
 			}
@@ -81,7 +81,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		case len(src) > 1 && (src[1] == '_' || lexer.IsDigit(rune(src[1]))):
 			src = strings.TrimLeft(src, "0")
 		}
-		return ast.IntegerLiteral{
+		return &ast.IntegerLiteral{
 			Format: format,
 			Source: src,
 			Value:  unwrap(strconv.ParseInt(src, 0, 0)),
@@ -90,22 +90,20 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 		if token.Attributes["unterminated"] == true {
 			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 			// Quotes removed below, so add them here
-			token.Source = token.Source + string(token.Source[0])
+			token.Source += string(token.Source[0])
 		}
 		escapes := p.parseStringEscapes(token)
-		return ast.StringLiteral{
+		return &ast.StringLiteral{
 			QuoteStyle: token.Attributes["quoteStyle"].(rune),
 			Content:    token.Source[1 : len(token.Source)-1], // Remove quotes
 			Escapes:    escapes,
 		}
 	case lexer.Boolean:
-		return ast.BooleanLiteral{
-			Value: src == "true",
-		}
+		return &ast.BooleanLiteral{Value: src == "true",}
 	case lexer.HashLeftCurlyBrace:
 		return p.ParseMap()
 	case lexer.Nil:
-		return ast.NilLiteral{}
+		return &ast.NilLiteral{}
 	}
 	return nil
 }

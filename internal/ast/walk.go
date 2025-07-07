@@ -27,41 +27,41 @@ func Walk(t Node, visitor func(Node)) {
 	}
 	visitor(t)
 	switch t := t.(type) {
-	case OptionalType:
+	case* OptionalType:
 		Walk(t.Value, visitor)
-	case ListType:
+	case* ListType:
 		Walk(t.Value, visitor)
-	case TupleType:
+	case* TupleType:
 		walkList(t.Values, visitor)
-	case UnionType:
+	case* UnionType:
 		walkList(t.Options, visitor)
-	case FunctionType:
+	case* FunctionType:
 		walkList(t.Parameters, visitor)
 		Walk(t.ReturnType, visitor)
-	case GenericType:
+	case* GenericType:
 		Walk(t.Name, visitor)
 		walkList(t.Parameters, visitor)
-	case MethodType:
+	case* MethodType:
 		for _, p := range t.Parameters {
 			Walk(p.Type, visitor)
 		}
 		Walk(t.ReturnType, visitor)
-	case TypeAlias, PrimitiveType, BadExpression:
+	case* TypeAlias, *PrimitiveType, *BadExpression:
 		return
-	case RestType:
+	case* RestType:
 		Walk(t.Value, visitor)
-	case TypeAliasDeclaration:
+	case* TypeAliasDeclaration:
 		Walk(t.Type, visitor)
-	case StructDeclaration:
+	case* StructDeclaration:
 		walkList(t.InheritedTypes, visitor)
 		walkList(t.Fields, visitor)
-	case InterfaceDeclaration:
+	case* InterfaceDeclaration:
 		walkList(t.InheritedTypes, visitor)
 		walkList(t.Fields, visitor)
-	case StructField:
+	case* StructField:
 		Walk(t.Type, visitor)
 		Walk(t.Value, visitor)
-	case TypePair:
+	case* TypePair:
 		Walk(t.Value, visitor)
 	default:
 		panic(fmt.Sprintf("Walk: unhandled type %T", t))
@@ -79,9 +79,9 @@ func WalkAll(n Node) (nodes []Node) {
 func CollectTypeNames(t Node) (types []Type) {
 	Walk(t, func(t Node) {
 		switch t := t.(type) {
-		case TypeAlias:
+		case* TypeAlias:
 			types = append(types, t)
-		case PrimitiveType:
+		case* PrimitiveType:
 			types = append(types, t)
 		}
 	})
@@ -89,9 +89,9 @@ func CollectTypeNames(t Node) (types []Type) {
 }
 
 // CollectTypeAliases walks t, returning all [TypeAlias].
-func CollectTypeAliases(t Node) (types []TypeAlias) {
+func CollectTypeAliases(t Node) (types []*TypeAlias) {
 	Walk(t, func(t Node) {
-		if t, ok := t.(TypeAlias); ok {
+		if t, ok := t.(*TypeAlias); ok {
 			types = append(types, t)
 		}
 	})

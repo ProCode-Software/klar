@@ -78,7 +78,7 @@ func (c *Checker) CheckLogicalExpr(
 //
 // Dividing an Int by a 0 literal will raise a type error
 func (c *Checker) CheckArithmetic(
-	binExp ast.BinaryExpression, op lexer.TokenType, ctx context,
+	binExp *ast.BinaryExpression, op lexer.TokenType, ctx context,
 ) Type {
 	var (
 		leftNode, rightNode = binExp.Left, binExp.Right

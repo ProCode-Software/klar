@@ -30,7 +30,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	case lexer.Equal:
 		// Type alias
 		p.Advance()
-		return ast.TypeAliasDeclaration{
+		return &ast.TypeAliasDeclaration{
 			Identifier: name.Source,
 			Type:       p.ParseType(DefaultTypeBindingPower),
 		}
@@ -54,7 +54,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		if p.CurrentTokenKind() == lexer.RightCurlyBrace {
 			// Empty struct
 			p.Advance()
-			return ast.StructDeclaration{
+			return &ast.StructDeclaration{
 				Identifier:     name.Source,
 				InheritedTypes: inherited,
 			}
@@ -84,11 +84,16 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			return p.ParseStruct(name.Source, fieldName, inherited)
 		} else {
 			p.Error(errors.Token(errors.ErrCannotTellStructOrEnum, fieldName))
+			// We have to return something
+			field := rangeFromToken(
+				&ast.StructField{Identifier: fieldName.Source}, fieldName,
+			)
+			return &ast.StructDeclaration{Fields: []*ast.StructField{field}}
 		}
 	case lexer.EndOfStatement:
 		// Type tag if interface
 		if isIntf {
-			return ast.InterfaceDeclaration{
+			return &ast.InterfaceDeclaration{
 				Tag:            true,
 				Identifier:     name.Source,
 				InheritedTypes: inherited,
@@ -99,26 +104,25 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		// Some other token or unassigned type (if EOS)
 		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.CurrentToken()))
 		p.Advance()
-		return ast.TypeAliasDeclaration{Identifier: name.Source}
+		return &ast.TypeAliasDeclaration{Identifier: name.Source}
 	}
-	panic("unhandled value in type declaration")
 }
 
 func (p *Parser) ParseEnum(
 	typeName string, firstItem lexer.Token, inherited []ast.Type,
-) ast.EnumDeclaration {
+) *ast.EnumDeclaration {
 	var (
 		isFirst = true
-		items   []ast.EnumItem
+		items   []*ast.EnumItem
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		var item ast.EnumItem
+		var item *ast.EnumItem
 		if isFirst {
-			item = rangeFromToken(ast.EnumItem{Identifier: firstItem.Source}, firstItem)
+			item = rangeFromToken(&ast.EnumItem{Identifier: firstItem.Source}, firstItem)
 			isFirst = false
 		} else {
 			tok := p.Expect(lexer.Identifier)
-			item = rangeFromToken(ast.EnumItem{Identifier: tok.Source}, tok)
+			item = rangeFromToken(&ast.EnumItem{Identifier: tok.Source}, tok)
 		}
 		if p.CurrentTokenKind() == lexer.LeftParenthesis {
 			p.Advance()
@@ -135,7 +139,7 @@ func (p *Parser) ParseEnum(
 			p.Advance()
 			item.Value = p.ParseExpression(PrimaryBindingPower)
 		}
-		item = markEndPos(p, item)
+		markEndPos(p, item)
 		items = append(items, item)
 		if p.CurrentTokenKind() == lexer.EndOfStatement {
 			p.Advance()
@@ -146,7 +150,7 @@ func (p *Parser) ParseEnum(
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
-	return ast.EnumDeclaration{
+	return &ast.EnumDeclaration{
 		Identifier: typeName,
 		Values:     items,
 		Inherited:  inherited,
@@ -155,23 +159,23 @@ func (p *Parser) ParseEnum(
 
 func (p *Parser) ParseStruct(
 	typeName string, firstField lexer.Token, inherited []ast.Type,
-) ast.StructDeclaration {
+) *ast.StructDeclaration {
 	var (
 		isFirst = true
-		fields  []ast.StructField
+		fields  []*ast.StructField
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		var field ast.StructField
+		var field *ast.StructField
 		if isFirst {
 			// First is currently at colon
-			field = ast.StructField{Identifier: firstField.Source}
+			field = &ast.StructField{Identifier: firstField.Source}
 			field = rangeFromToken(field, firstField)
 			isFirst = false
 		} else {
 			if !p.isMapIdentifier() {
 				p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
 			}
-			field = ast.StructField{Identifier: p.Advance().Source}
+			field = &ast.StructField{Identifier: p.Advance().Source}
 		}
 		// Type
 		p.ExpectError(errors.Token(
@@ -183,30 +187,30 @@ func (p *Parser) ParseStruct(
 			p.Advance()
 			field.Value = p.ParseExpression(DefaultBindingPower)
 		}
-		field = markEndPos(p, field)
+		markEndPos(p, field)
 		fields = append(fields, field)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
-	return ast.StructDeclaration{
+	return &ast.StructDeclaration{
 		Identifier:     typeName,
 		InheritedTypes: inherited,
 		Fields:         fields,
 	}
 }
 
-func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
+func (p *Parser) ParseFuncDeclaration() *ast.FunctionDeclaration {
 	p.Expect(lexer.Func)
-	f := ast.FunctionDeclaration{}
+	f := &ast.FunctionDeclaration{}
 	rec := p.Expect(lexer.Identifier)
 
 	// Struct receiver
 	// 	func Person.greet()
 	if p.CurrentTokenKind() == lexer.Dot {
 		p.Advance()
-		alias := ast.TypeAlias{Identifier: rec.Source}
+		alias := &ast.TypeAlias{Identifier: rec.Source}
 		f.Struct = rangeFromToken(alias, rec)
 		f.Identifier = p.Expect(lexer.Identifier).Source
 	} else {
@@ -216,11 +220,11 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	//	func get<T, U>(a: T, b: [U]) -> T
 	// Can't be assigned, only inferred
 	if p.CurrentTokenKind() == lexer.LessThan {
-		generics := make([]ast.Symbol, 0, 1)
+		generics := make([]*ast.Symbol, 0, 1)
 		p.Advance()
 		for p.WhileNot(lexer.GreaterThan) {
 			tok := p.Expect(lexer.Identifier)
-			item := ast.Symbol{Identifier: tok.Source}
+			item := &ast.Symbol{Identifier: tok.Source}
 			item = rangeFromToken(item, tok)
 			generics = append(generics, item)
 			if p.CurrentTokenKind() != lexer.GreaterThan {
@@ -248,7 +252,7 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 		}
 	}
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
-		param := ast.FunctionParam{}
+		param := &ast.FunctionParam{}
 		param.BaseNode.Range.Start = p.CurrentToken().Position
 
 		if peek := p.Peek().Kind; peek == lexer.Identifier ||
@@ -310,8 +314,9 @@ func (p *Parser) ParseFuncDeclaration() ast.FunctionDeclaration {
 	return f
 }
 
-func (p *Parser) ParseAttribute() (d ast.Attribute) {
+func (p *Parser) ParseAttribute() *ast.Attribute {
 	p.Expect(lexer.At)
+	d := &ast.Attribute{}
 	p.isAttribute = true
 	d.Decorator = p.Expect(lexer.Identifier).Source
 	if p.CurrentTokenKind() == lexer.LeftParenthesis {
@@ -326,7 +331,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 	p.Expect(lexer.Public)
 	stmt := p.ParseStatement()
 	if pub, ok := stmt.(ast.Publicizable); ok {
-		stmt = pub.Publicize() // Set Public to true
+		pub.Publicize() // Set Public to true
 	} else {
 		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
 	}

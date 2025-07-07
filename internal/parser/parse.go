@@ -10,7 +10,7 @@ import (
 
 // Parse parses tokens into a Program. If continueOnErr is true, the parser will
 // not stop parsing on a syntax error.
-func (p *Parser) Parse() (program ast.Program) {
+func (p *Parser) Parse() *ast.Program {
 	var (
 		body     = make([]ast.Statement, 0, len(p.Tokens)/2)
 		comments = p.RemoveComments() // Move comments
@@ -26,8 +26,8 @@ func (p *Parser) Parse() (program ast.Program) {
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
-	prog := ast.Program{Body: body, Comments: comments}
-	prog = setPos(prog, p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position)
+	prog := &ast.Program{Body: body, Comments: comments}
+	prog.SetPos(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position)
 	return prog
 }
 
@@ -50,7 +50,7 @@ func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	expr := p.ParseLED(bp)
 	if _, ok := expr.(ast.Expression); !ok {
 		p.errExpectedExpr(expr)
-		return ast.BadExpression{Value: expr}
+		return &ast.BadExpression{Value: expr}
 	}
 	return expr.(ast.Expression)
 }
@@ -60,7 +60,7 @@ func (p *Parser) ParseLED(bp BindingPower) ast.Node {
 	left, handled := p.handleNUD(kind)
 	if !handled {
 		p.unknownTokenErr()
-		return ast.BadExpression{Token: kind}
+		return &ast.BadExpression{Token: kind}
 	}
 	for BindingPowerMap[p.CurrentTokenKind()] > bp {
 		kind = p.CurrentTokenKind()
@@ -101,7 +101,9 @@ func (p *Parser) ParseStatement() ast.Statement {
 		return res
 	// Then it is an expression
 	case ast.Expression:
-		return copyPos(res, ast.ExpressionStatement{Expression: res})
+		stmt := &ast.ExpressionStatement{Expression: res}
+		copyPos(res, stmt)
+		return stmt
 	// I don't know what this is. If this occurs, then it is a bug.
 	default:
 		panic(fmt.Sprintf("node %v is neither an expression nor statement", res))

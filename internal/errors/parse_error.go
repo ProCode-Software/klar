@@ -244,7 +244,7 @@ func (e ParseError) error() string {
 		)
 	case ErrInvalidVersionLit:
 		return fmt.Sprintf("Invalid version literal '%s'",
-			e.Node.(ast.VersionLiteral).Version,
+			e.Node.(*ast.VersionLiteral).Version,
 		)
 	case ErrProvenUnreachable:
 		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])

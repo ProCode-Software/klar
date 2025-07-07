@@ -7,7 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
+func (c *Checker) parseEnum(t *ast.EnumDeclaration) types.Enum {
 	type pendingItem struct {
 		name string
 		pos  ranges.Range
@@ -40,18 +40,18 @@ func (c *Checker) parseEnum(t ast.EnumDeclaration) types.Enum {
 				// First enum member, int by default
 				last, currType = 0, types.Int
 			}
-		case ast.IntegerLiteral:
+		case *ast.IntegerLiteral:
 			// Allow ints for floats
 			if expType == types.Float {
 				last, currType = float64(v.Value), types.Float
 			} else {
 				last, currType = v.Value, types.Int
 			}
-		case ast.FloatLiteral:
+		case *ast.FloatLiteral:
 			last, currType = v.Value, types.Float
-		case ast.StringLiteral:
+		case *ast.StringLiteral:
 			last, currType = v.Content, types.String
-		case ast.Symbol:
+		case *ast.Symbol:
 			// Wait for it to be assigned
 			pending[i.Identifier] = pendingItem{v.Identifier, v.Range}
 			continue

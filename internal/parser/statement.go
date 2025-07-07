@@ -9,7 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.TypeAnnotation {
+func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) *ast.TypeAnnotation {
 	// LHS must be a Symbol or index
 	if _, ok := left.(ast.Assignable); !ok {
 		p.Error(errors.ParseError{
@@ -23,7 +23,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Type
 	if !p.isWhenCase && p.CurrentTokenKind() != lexer.ColonEqual {
 		p.Error(errors.ExpectedToken(lexer.ColonEqual, p.CurrentToken()))
 	}
-	return ast.TypeAnnotation{
+	return &ast.TypeAnnotation{
 		Variable: left.(ast.Expression),
 		Type:     typ,
 	}
@@ -38,11 +38,11 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		var explicitType ast.Type
 		switch annot := left.(type) {
 		case ast.Assignable:
-		case ast.TypeAnnotation:
+		case *ast.TypeAnnotation:
 			explicitType = annot.Type
 			left = annot.Variable
 		default:
-			left = ast.BadExpression{Value: left}
+			left = &ast.BadExpression{Value: left}
 		}
 		// Constants are ALL_CAPS
 		// Limitation: if the name is written in a script without distinct
@@ -50,12 +50,12 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		// is just not constant.
 		
 		var isConst bool
-		if symbol, ok := left.(ast.Symbol); ok {
+		if symbol, ok := left.(*ast.Symbol); ok {
 			id := symbol.Identifier
 			upper := strings.ToUpper(id)
 			isConst = id == upper && upper != strings.ToLower(id)
 		}
-		return ast.VariableDeclaration{
+		return &ast.VariableDeclaration{
 			Assignee:     left,
 			Constant:     isConst,
 			Value:        rhs,
@@ -63,19 +63,19 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		}
 	}
 	if !p.validateAssignable(left) {
-		left = ast.BadExpression{Value: left}
+		left = &ast.BadExpression{Value: left}
 	}
-	return ast.AssignmentStatement{
+	return &ast.AssignmentStatement{
 		Assignee: left.(ast.Assignable),
 		Operator: op,
 		Value:    rhs,
 	}
 }
 
-func (p *Parser) ParseImportStatement() ast.ImportStatement {
+func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	var (
 		module, alias string
-		unqualImports []ast.UnqualifiedImport
+		unqualImports []*ast.UnqualifiedImport
 		isWildcard    bool
 	)
 	// Skip import keyword
@@ -155,7 +155,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 					alias = name
 					continue
 				}
-				unqualImports = append(unqualImports, ast.UnqualifiedImport{
+				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
 					Alias:      alias,
 					Identifier: p.CurrentToken().Source,
@@ -165,7 +165,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 				if alias != "" {
 					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.CurrentToken()))
 				}
-				unqualImports = append(unqualImports, ast.UnqualifiedImport{
+				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
 					Wildcard:   true,
 				})
@@ -192,7 +192,7 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 		p.Expect(lexer.RightCurlyBrace)
 	}
 
-	return ast.ImportStatement{
+	return &ast.ImportStatement{
 		UnqualifiedImports: unqualImports,
 		Alias:              alias,
 		Module:             module,
@@ -200,23 +200,24 @@ func (p *Parser) ParseImportStatement() ast.ImportStatement {
 	}
 }
 
-func (p *Parser) ParseReturnStatement() ast.ReturnStatement {
+func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	p.Expect(lexer.Return)
 	if p.CurrentTokenKind() == lexer.EndOfStatement {
-		return ast.ReturnStatement{}
+		return &ast.ReturnStatement{}
 	}
-	return ast.ReturnStatement{
+	return &ast.ReturnStatement{
 		Value: p.ParseExpression(DefaultBindingPower),
 	}
 }
 
-func (p *Parser) ParsePostfix(left ast.Expression) ast.UpdateStatement {
+func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
 	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus).Kind
-	return ast.UpdateStatement{Operator: op, Left: left}
+	return &ast.UpdateStatement{Operator: op, Left: left}
 }
 
-func (p *Parser) ParseForStatement() (f ast.ForStatement) {
+func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
+	f := &ast.ForStatement{}
 	next := p.Peek().Kind
 	switch {
 	case p.CurrentTokenKind() == lexer.LeftCurlyBrace:

@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Checker) CheckFunction(
-	d ast.FunctionDeclaration,
+	d *ast.FunctionDeclaration,
 	selfType *types.Struct,
 	defCtx context,
 ) (f types.Function) {
@@ -22,10 +22,10 @@ func (c *Checker) CheckFunction(
 	for i, decParam := range d.Parameters {
 		var (
 			paramType   Type
-			_, variadic = decParam.Type.(ast.RestType)
+			_, variadic = decParam.Type.(*ast.RestType)
 		)
 		if variadic {
-			paramType = c.ParseType(decParam.Type.(ast.RestType).Value, ctx)
+			paramType = c.ParseType(decParam.Type.(*ast.RestType).Value, ctx)
 			c.validateVariadicParam(i, len(d.Parameters), decParam.Type)
 		} else if decParam.Type == nil {
 			paramType = types.InvalidType // Syntax error if type not provided
@@ -53,7 +53,7 @@ func (c *Checker) CheckFunction(
 	return f
 }
 
-func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
+func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) {
 	var (
 		name = decl.Identifier
 		pos  = decl.GetRange()
@@ -61,7 +61,7 @@ func (c *Checker) checkFuncDecl(decl ast.FunctionDeclaration, ctx context) {
 	)
 	if decl.Struct != nil {
 		// Method
-		receiver := decl.Struct.(ast.TypeAlias).Identifier
+		receiver := decl.Struct.(*ast.TypeAlias).Identifier
 		structDef, ok := ctx.TypeDeclarations[receiver]
 		if !ok {
 			structDef, found := ctx.ResolveType(receiver)

@@ -3,7 +3,7 @@
 - maybe: ..< operator
 - [done] indentation for `` string
 ## Parser
-- switch concrete type for ast.Node to pointer
+- [done] switch concrete type for ast.Node to pointer
     (e.g. Node is pointer to *BinaryExpression)
 - [done] regex literals
 - [done] version literals in attributes
@@ -17,6 +17,10 @@
     ```
 - [done] handle eos between param label and name
 - multi-variable assignments
+- list casting
+    ```klar
+    [Int](list)
+    ```
 - map, tuple, and list destructure assignment
 - in when case, map destructuring
 - [1/2] `for` loop

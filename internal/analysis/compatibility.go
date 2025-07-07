@@ -97,7 +97,7 @@ func (c *Checker) CheckCompatibleExpr(
 }
 
 func (c *Checker) CheckSameType(
-	expr ast.BinaryExpression, op lexer.TokenType, ctx context,
+	expr *ast.BinaryExpression, op lexer.TokenType, ctx context,
 ) Type {
 	var (
 		left, right = expr.Left, expr.Right

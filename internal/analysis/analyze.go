@@ -60,13 +60,13 @@ func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Re
 		// Sort each statement so normal statements can reference functions before
 		// they are declared. Same thing for functions referencing alias and for
 		// structs/interfaces referencing type alias
-		alias []ast.TypeAliasDeclaration
-		attrs []ast.Attribute
-		funcs []ast.FunctionDeclaration
+		alias []*ast.TypeAliasDeclaration
+		attrs []*ast.Attribute
+		funcs []*ast.FunctionDeclaration
 		intfs []ast.TypeDeclaration // Structs and interfaces
 		stmts = make([]ast.Statement, 0, len(*body))
 		// Only at top-level
-		imports []ast.ImportStatement
+		imports []*ast.ImportStatement
 		exports []ast.Publicizable
 	)
 	for _, dec := range *body {
@@ -80,7 +80,7 @@ func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Re
 		// before other declarations.
 		// Resolve all modules before type-checking so they can be referenced
 		// by the current module.
-		case ast.ImportStatement:
+		case *ast.ImportStatement:
 			imports = append(imports, dec)
 			isImport = true
 			if foundDec {
@@ -88,31 +88,31 @@ func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Re
 			}
 			continue
 		// Declare enums first since they don't depend on other types
-		case ast.EnumDeclaration:
+		case *ast.EnumDeclaration:
 			id = dec.Identifier
 			ok = ctx.DeclareType(id, c.parseEnum(dec), pos)
 		// Types don't have to be declared before they can be used.
 		// in structs and type aliases. No recursive types in aliases
-		case ast.TypeAliasDeclaration:
+		case *ast.TypeAliasDeclaration:
 			ok = ctx.DeclareType(dec.Identifier, nil, pos)
 			id = dec.Identifier
 			alias = append(alias, dec)
 		// Structs and interfaces may recursively reference themselves with
 		// limitations.
-		case ast.StructDeclaration, ast.InterfaceDeclaration:
+		case *ast.StructDeclaration, *ast.InterfaceDeclaration:
 			d := dec.(ast.TypeDeclaration)
 			id = d.Name()
 			ok = ctx.DeclareType(id, nil, pos)
 			intfs = append(intfs, d)
 		// Functions may redeclare themselves with different parameters/overloads
-		case ast.FunctionDeclaration:
+		case *ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
 		// Attributes attach to declarations
 		// @target - sets the target runtime for a declaration
 		// @deprecated - warn when referenced
 		// @added - version when added
 		// @external - external implementation
-		case ast.Attribute:
+		case *ast.Attribute:
 			attrs = append(attrs, dec)
 		default:
 			stmts = append(stmts, dec)
@@ -153,11 +153,11 @@ func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Re
 		}
 		var res Type
 		switch t := t.(type) {
-		case ast.StructDeclaration:
+		case *ast.StructDeclaration:
 			res = c.ParseStruct(t, ctx)
-		case ast.InterfaceDeclaration:
+		case *ast.InterfaceDeclaration:
 			res = c.ParseInterface(t, ctx)
-		case ast.TypeAliasDeclaration:
+		case *ast.TypeAliasDeclaration:
 			res = c.ParseType(t.Type, ctx)
 		}
 		ctx.SetType(name, res)

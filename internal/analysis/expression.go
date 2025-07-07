@@ -9,7 +9,7 @@ import (
 
 type Expression = ast.Expression
 
-func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
+func (c *Checker) CheckBinaryExpr(expr *ast.BinaryExpression, ctx context) Type {
 	op := expr.Operator
 	switch {
 	case op == lexer.In:
@@ -38,7 +38,7 @@ func (c *Checker) CheckBinaryExpr(expr ast.BinaryExpression, ctx context) Type {
 	return nil
 }
 
-func (c *Checker) CheckList(expr ast.ListLiteral, ctx context) Type {
+func (c *Checker) CheckList(expr *ast.ListLiteral, ctx context) Type {
 	if len(expr.Items) == 0 {
 		// Untyped empty list
 		return types.UntypedList

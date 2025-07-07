@@ -132,18 +132,18 @@ func (p *Parser) lastTokEnd() lexer.Position {
 	return ranges.FromToken(last).End
 }
 
-func (p *Parser) expectShorthand() (key ast.Symbol, value ast.Expression) {
+func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 	sym, isOk := p.ParseExpression(CallBindingPower), false
 	switch sym := sym.(type) {
-	case ast.Symbol:
+	case *ast.Symbol:
 		key = sym
 		value = sym
 		isOk = true
-	case ast.IndexExpression:
+	case *ast.IndexExpression:
 		if sym.Computed {
 			break
 		}
-		if prop, ok := sym.Property.(ast.Symbol); ok {
+		if prop, ok := sym.Property.(*ast.Symbol); ok {
 			key = prop
 			value = sym
 			isOk = true
@@ -176,29 +176,22 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 }
 
 // Range utils
-func (p *Parser) savePos() lexer.Position {
-	return p.CurrentToken().Position
-}
-
-func markEndPos[T ast.Node](p *Parser, node T) T {
-	return node.SetPos(node.GetRange().Start, p.lastTokEnd()).(T)
-}
-
-func setPos[T ast.Node](n T, start, end lexer.Position) T {
-	return n.SetPos(start, end).(T)
+func markEndPos[T ast.Node](p *Parser, node T) {
+	node.SetPos(node.GetRange().Start, p.lastTokEnd())
 }
 
 func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
 	rang := ranges.FromToken(tok)
-	return node.SetPos(rang.Start, rang.End).(T)
+	node.SetPos(rang.Start, rang.End)
+	return node
 }
 
-func copyPos[F, T ast.Node](from F, to T) T {
-	return to.SetPos(from.GetRange().Start, from.GetRange().End).(T)
+func copyPos[F, T ast.Node](from F, to T) {
+	to.SetPos(from.GetRange().Start, from.GetRange().End)
 }
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
-func (p *Parser) RemoveComments() (comments []ast.Comment) {
+func (p *Parser) RemoveComments() (comments []*ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
 		tok := p.Tokens[i]
 		switch tok.Kind {
@@ -215,7 +208,7 @@ func (p *Parser) RemoveComments() (comments []ast.Comment) {
 					Position:  tok.Position,
 				})
 			}
-			comments = append(comments, ast.Comment{
+			comments = append(comments, &ast.Comment{
 				Value:    tok.Source,
 				Type:     tok.Kind,
 				BaseNode: ast.BaseNode{ranges.FromToken(tok)},

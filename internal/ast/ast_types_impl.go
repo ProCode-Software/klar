@@ -1,5 +1,10 @@
 package ast
 
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
+
 // AST items
 func (Program) Kind() string              { return "Program" }
 func (StringLiteral) Kind() string        { return "StringLiteral" }
@@ -145,35 +150,14 @@ func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
 
 // Publicizable declarations
-func (d VariableDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
+func (node *BaseNode) SetPos(start, end lexer.Position) {
+	node.Range.Start = start
+	node.Range.End = end
 }
+func (node *BaseNode) GetRange() ranges.Range { return node.Range }
 
-func (d EnumDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
-}
-
-func (d FunctionDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
-}
-
-func (d StructDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
-}
-
-func (d TypeAliasDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
-}
-
-func (d InterfaceDeclaration) Publicize() Publicizable {
-	d.Public = true
-	return d
-}
+func (node *BasePublic) IsPublic() bool { return node.IsPublic() }
+func (node *BasePublic) Publicize()     { node.Public = true }
 
 func (d VariableDeclaration) IsPublic() bool  { return d.Public }
 func (d EnumDeclaration) IsPublic() bool      { return d.Public }

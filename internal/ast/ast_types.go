@@ -9,14 +9,16 @@ import (
 // All AST tokens implement the Node interface.
 //
 //go:generate stringer -type=PrimitiveTypeName -linecomment
-//go:generate go run ../cmd/astgen ./ast_types_impl.go ./ast_types_base.go
 type Node interface {
 	GetRange() ranges.Range
-	SetPos(start, end lexer.Position) Node
+	SetPos(start, end lexer.Position)
 }
 
 type BaseNode struct {
 	Range ranges.Range
+}
+type BasePublic struct {
+	Public bool
 }
 
 // All EOS-terminated statement AST tokens implement the Statement interface.
@@ -42,7 +44,7 @@ type BadExpression struct {
 type Program struct {
 	BaseNode
 	Body     []Statement
-	Comments []Comment
+	Comments []*Comment
 }
 
 // An ExpressionStatement is an expression used as a statement.
@@ -140,7 +142,7 @@ type Assignable interface {
 // Calling the Publicizable will set the Public field to true on the declaration.
 type Publicizable interface {
 	Statement
-	Publicize() Publicizable
+	Publicize()
 	IsPublic() bool
 }
 
@@ -148,7 +150,7 @@ type Publicizable interface {
 // todo: multiple assignees
 type VariableDeclaration struct {
 	BaseNode
-	Public       bool
+	BasePublic
 	Assignee     Expression
 	Value        Expression
 	Constant     bool // Constant if Identifier is capitalized
@@ -163,6 +165,7 @@ type AssignmentStatement struct {
 }
 
 type Pair struct {
+	BaseNode
 	Key, Value Expression
 }
 
@@ -231,7 +234,7 @@ type UnionType struct {
 type MethodType struct {
 	BaseNode
 	ReturnType Type
-	Parameters []MethodTypeParam
+	Parameters []*MethodTypeParam
 }
 type MethodTypeParam struct {
 	Label, Identifier string
@@ -284,7 +287,7 @@ type ImportStatement struct {
 	Module             string
 	Alias              string // Only if there are no unqualified imports
 	Wildcard           bool
-	UnqualifiedImports []UnqualifiedImport
+	UnqualifiedImports []*UnqualifiedImport
 }
 
 type UnqualifiedImport struct {
@@ -302,19 +305,19 @@ type TypeDeclaration interface {
 }
 
 type InterfaceDeclaration struct {
-	Public         bool
+	BasePublic
 	Identifier     string
 	InheritedTypes []Type
 	Tag            bool // If empty
-	Fields         []TypePair
+	Fields         []*TypePair
 	BaseNode
 }
 
 type StructDeclaration struct {
-	Public         bool
+	BasePublic
 	Identifier     string
 	InheritedTypes []Type // Type alias or primitive
-	Fields         []StructField
+	Fields         []*StructField
 	BaseNode
 }
 type StructField struct {
@@ -326,10 +329,10 @@ type StructField struct {
 }
 
 type EnumDeclaration struct {
-	Public     bool
+	BasePublic
 	Identifier string
 	Inherited  []Type
-	Values     []EnumItem
+	Values     []*EnumItem
 	BaseNode
 }
 type EnumItem struct {
@@ -340,14 +343,14 @@ type EnumItem struct {
 }
 
 type TypeAliasDeclaration struct {
-	Public     bool
+	BasePublic
 	Identifier string
 	Type       Type
 	BaseNode
 }
 
 type MapLiteral struct {
-	Entries []Pair
+	Entries []*Pair
 	BaseNode
 }
 
@@ -363,11 +366,11 @@ type ReturnStatement struct {
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
-	Public        bool
+	BasePublic
 	Identifier    string
 	Struct        Type
-	GenericParams []Symbol
-	Parameters    []FunctionParam
+	GenericParams []*Symbol
+	Parameters    []*FunctionParam
 	ReturnType    Type
 	Body          []Statement
 	Expression    Expression
@@ -416,7 +419,7 @@ type CallParam struct {
 
 type CallExpression struct {
 	Callee Node
-	Args   []CallParam
+	Args   []*CallParam
 	BaseNode
 }
 
@@ -448,7 +451,7 @@ type ForStatement struct {
 type WhenExpression struct {
 	BaseNode
 	Subjects []Expression
-	Cases    []WhenCase
+	Cases    []*WhenCase
 }
 
 type WhenCase struct {
@@ -461,12 +464,12 @@ type WhenCase struct {
 
 type TypeTuple struct {
 	BaseNode
-	Params []TypePair
+	Params []*TypePair
 }
 
 type LambdaExpression struct {
 	BaseNode
-	Params   []TypePair
+	Params   []*TypePair
 	Body     []Statement
 	ExprBody Expression
 }
@@ -474,7 +477,7 @@ type LambdaExpression struct {
 type Attribute struct {
 	BaseNode
 	Decorator string
-	Args      []CallParam
+	Args      []*CallParam
 }
 
 type RestExpression struct {

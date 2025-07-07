@@ -28,8 +28,8 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 			}
 			// Hint if user has line break between return and expression
 			if unreachableStmt == "return" &&
-				body[i-1].(ast.ReturnStatement).Value == nil {
-				if _, ok := stmt.(ast.ExpressionStatement); ok {
+				body[i-1].(*ast.ReturnStatement).Value == nil {
+				if _, ok := stmt.(*ast.ExpressionStatement); ok {
 					err.Hint("Line breaks aren't allowed between return statements; remove the newline if you meant to return this expression.")
 				}
 			}
@@ -37,21 +37,21 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 			break
 		}
 		switch stmt := stmt.(type) {
-		case ast.VariableDeclaration:
+		case *ast.VariableDeclaration:
 			c.CheckVarDecl(stmt, ctx)
-		case ast.AssignmentStatement:
-		case ast.ForStatement:
-		case ast.NextStatement:
+		case *ast.AssignmentStatement:
+		case *ast.ForStatement:
+		case *ast.NextStatement:
 			unreachableStmt = "next"
-		case ast.ReturnStatement:
+		case *ast.ReturnStatement:
 			unreachableStmt = "return"
-		case ast.BreakStatement:
+		case *ast.BreakStatement:
 			unreachableStmt = "break"
-		case ast.UpdateStatement:
-		case ast.ExpressionStatement:
+		case *ast.UpdateStatement:
+		case *ast.ExpressionStatement:
 			switch expr := stmt.Expression.(type) {
 			// Allowed expressions as statements
-			case ast.WhenExpression, ast.CallExpression, ast.BadExpression:
+			case *ast.WhenExpression, *ast.CallExpression, *ast.BadExpression:
 			default:
 				// Unused statement
 				err := errors.RangedTypeError(errors.ErrUnusedValue, expr.GetRange(), nil)
@@ -68,9 +68,9 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 	return
 }
 
-func (c *Checker) CheckVarDecl(decl ast.VariableDeclaration, ctx context) {
+func (c *Checker) CheckVarDecl(decl *ast.VariableDeclaration, ctx context) {
 	var explType, actualType Type
-	name := decl.Assignee.(ast.Symbol).Identifier // todo: implement other types
+	name := decl.Assignee.(*ast.Symbol).Identifier // todo: implement other types
 	if decl.ExplicitType != nil {
 		explType = c.ParseType(decl.ExplicitType, ctx)
 		_, ok := c.CheckCompatibleExpr(explType, decl.Value, ctx)
