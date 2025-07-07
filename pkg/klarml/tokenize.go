@@ -87,7 +87,7 @@ func (l *lexer) Tokenize() Token {
 	switch {
 	case unicode.IsLetter(r) && !wasColon:
 		return l.ParseIdent(pos, b)
-	case unicode.IsDigit(r), r == '_', r == '+', r == '.', r == '-':
+	case isDigit(b), r == '_', r == '+', r == '.', r == '-':
 		return l.ParseIdent(pos, b)
 	case unicode.IsSpace(r):
 		return l.Tokenize()

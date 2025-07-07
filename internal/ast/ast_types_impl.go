@@ -46,6 +46,9 @@ func (Comment) Kind() string              { return "Comment" }
 func (MethodType) Kind() string           { return "MethodType" }
 func (TypePair) Kind() string             { return "TypePair" }
 func (BreakStatement) Kind() string       { return "BreakStatement" }
+func (RegexLiteral) Kind() string         { return "RegexLiteral" }
+func (EnumItem) Kind() string             { return "EnumItem" }
+func (VersionLiteral) Kind() string       { return "VersionLiteral" }
 
 // Implementations for types
 func (PrimitiveType) Kind() string { return "PrimitiveType" }
@@ -91,6 +94,8 @@ func (PipelineExpression) expr() {}
 func (BadExpression) expr()      {}
 func (SliceExpression) expr()    {}
 func (ParenExpression) expr()    {}
+func (RegexLiteral) expr()       {}
+func (VersionLiteral) expr()     {}
 
 // Statement
 func (VariableDeclaration) stmt()  {}

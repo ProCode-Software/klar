@@ -74,6 +74,7 @@ const (
 	Ellipsis // ...
 	Arrow    // ->
 	Pipeline // |>
+	Backslash // \
 
 	// Keywords
 	And

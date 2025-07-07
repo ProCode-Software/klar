@@ -11,7 +11,6 @@ import (
 //go:generate stringer -type=PrimitiveTypeName -linecomment
 //go:generate go run ../cmd/astgen ./ast_types_impl.go ./ast_types_base.go
 type Node interface {
-	Kind() string
 	GetRange() ranges.Range
 	SetPos(start, end lexer.Position) Node
 }
@@ -63,6 +62,7 @@ type IntegerLiteral struct {
 	BaseNode
 	Format int
 	Value  int64
+	Source string
 }
 
 type BooleanLiteral struct {
@@ -77,7 +77,18 @@ type NilLiteral struct {
 
 type FloatLiteral struct {
 	BaseNode
-	Value float64
+	Value  float64
+	Source string
+}
+
+type RegexLiteral struct {
+	BaseNode
+	Source, Flags string
+}
+
+type VersionLiteral struct {
+	BaseNode
+	Version string
 }
 
 type Comment struct {
@@ -133,10 +144,12 @@ type Publicizable interface {
 	IsPublic() bool
 }
 
+// todo: specify indices that are constant if not symbol
+// todo: multiple assignees
 type VariableDeclaration struct {
 	BaseNode
 	Public       bool
-	Identifier   string
+	Assignee     Expression
 	Value        Expression
 	Constant     bool // Constant if Identifier is capitalized
 	ExplicitType Type
@@ -227,7 +240,7 @@ type MethodTypeParam struct {
 }
 type TypeAnnotation struct {
 	BaseNode
-	Variable Symbol
+	Variable Expression
 	Type     Type
 }
 
@@ -315,12 +328,14 @@ type StructField struct {
 type EnumDeclaration struct {
 	Public     bool
 	Identifier string
+	Inherited  []Type
 	Values     []EnumItem
 	BaseNode
 }
 type EnumItem struct {
 	Identifier string
 	Value      Expression
+	Parameters []Type
 	BaseNode
 }
 

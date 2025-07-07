@@ -66,7 +66,9 @@ func (l *Lexer) Tokenize() *Token {
 				continue
 			}
 			return tok
-		// Single-character operators
+		// Single-character tokens and operators
+		case '\\':
+			return NewToken(pos, Backslash, `\`)
 		case '@':
 			return NewToken(pos, At, "@")
 		case '*':
@@ -100,7 +102,7 @@ func (l *Lexer) Tokenize() *Token {
 			if handleReadError(err) {
 				return NewToken(pos, Dot, ".")
 			}
-			if unicode.IsDigit(rune(next[1])) {
+			if IsDigit(rune(next[1])) {
 				return l.ParseNumber(pos)
 			}
 			if next[1] == '.' {
@@ -120,7 +122,7 @@ func (l *Lexer) Tokenize() *Token {
 		switch {
 		case unicode.IsSpace(r):
 			continue
-		case unicode.IsDigit(r):
+		case IsDigit(r):
 			return l.ParseNumber(pos)
 		case unicode.IsLetter(r), r == '_':
 			tt, val := l.ParseIdentifier()
@@ -190,4 +192,8 @@ func (l *Lexer) prevCol() Position {
 	p := l.Pos
 	l.Pos.Col++
 	return p
+}
+
+func IsDigit(r rune) bool {
+	return r >= '0' && r <= '9'
 }

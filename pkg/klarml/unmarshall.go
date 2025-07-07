@@ -23,7 +23,8 @@ func tryUnmarshaller(rv reflect.Value, data Node) (ok bool, err error) {
 }
 
 func UnmarshallDocument(doc Document, dst any) error {
-	const prefix = "klarml.Unmarshall: "
+	panic(errors.New("not implemented"))
+	/* const prefix = "klarml.Unmarshall: "
 	rv := reflect.ValueOf(dst)
 	rt := reflect.TypeOf(dst)
 	switch {
@@ -48,33 +49,7 @@ func UnmarshallDocument(doc Document, dst any) error {
 	typeElem := rt.Elem()
 	switch node := doc.Body.(type) {
 	case Object:
-		switch typeElem.Kind() {
-		case reflect.Struct:
-		case reflect.Map:
-		case reflect.Interface:
-			
-		default:
-			return fmt.Errorf(prefix+"cannot unmarshall object into type %T", rv)
-		}
-		// Map fields in struct
-		fields := make(map[string]reflect.Value)
-		for i := 0; i < typeElem.NumField(); i++ {
-			currField := typeElem.Field(i)
-			val, ok := currField.Tag.Lookup("klarml")
-			if ok {
-				fields[val] = elem.Field(i)
-			}
-		}
-		// Assign from document
-		for _, prop := range node.Properties {
-			name, value := prop.Key, prop.Value
-			propVal, ok := fields[name]
-			if !ok {
-				continue
-			}
-			propType := propVal.Type()
-			
-		}
+		
 	case StringLiteral:
 		if elem.Kind() != reflect.String {
 			return fmt.Errorf(prefix+"cannot unmarshall string into non-string %T", rv)
@@ -83,7 +58,7 @@ func UnmarshallDocument(doc Document, dst any) error {
 		if !elem.CanFloat() {
 			return fmt.Errorf(prefix+"cannot unmarshall number into non-numeric type %T", rv)
 		}
-	}
+	} */
 	return nil
 }
 

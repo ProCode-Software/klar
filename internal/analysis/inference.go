@@ -17,6 +17,8 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 		return types.String
 	case ast.BooleanLiteral:
 		return types.Bool
+	case ast.RegexLiteral:
+		return types.Regex
 	case ast.Symbol:
 		decl, found := ctx.Resolve(expr.Identifier)
 		if !found {

@@ -10,11 +10,11 @@ var IsHandledNUD = []lexer.TokenType{
 	lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil,
 	lexer.Minus, lexer.Plus, lexer.Not,
 	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
-	lexer.Dot, lexer.Ellipsis, lexer.When,
+	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash,
 }
 
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
-	startPos := p.savePos()
+	startPos := p.CurrentToken().Position
 	switch kind {
 	default:
 		return nil, false
@@ -35,6 +35,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
+	case lexer.Slash:
+		res = p.ParseRegexLiteral()
 	case lexer.When:
 		if p.isWhenGuard {
 			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.CurrentToken()))
@@ -48,7 +50,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = ast.Discard{}
 		p.Advance()
 	}
-	res = res.SetPos(startPos, p.lastTokEnd())
+	res = setPos(res, startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -59,9 +61,15 @@ func (p *Parser) handleLED(
 	default:
 		return left, false
 
+	case lexer.Minus:
+		if _, ok := left.(ast.Symbol); ok && p.isAttribute {
+			res = p.ParseVersion(left, bp)
+			break
+		}
+		fallthrough
 	case
 		// Arithmetic
-		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
+		lexer.Plus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
 		// Relational
 		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
 		lexer.EqualEqual, lexer.NotEqual, lexer.In,
@@ -92,8 +100,14 @@ func (p *Parser) handleLED(
 		res = p.ParseRange(left, bp)
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
+	// Version
+	case lexer.Numeric:
+		if _, ok := left.(ast.Symbol); !ok || !p.isAttribute {
+			return left, false
+		}
+		res = p.ParseVersion(left, bp)
 	}
-	res = res.SetPos(left.GetRange().Start, p.lastTokEnd())
+	res = setPos(res, left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }
 
@@ -110,7 +124,7 @@ func (p *Parser) validateAssignable(left ast.Node) bool {
 
 // handleStatement covers all keywords
 func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast.Statement, handled bool) {
-	startPos := p.savePos()
+	startPos := p.CurrentToken().Position
 	switch kind {
 	default:
 		if !isTopLevel {
@@ -141,7 +155,7 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		res = ast.BreakStatement{}
 		p.Advance()
 	}
-	res = res.SetPos(startPos, p.savePos()).(ast.Statement)
+	res = setPos(res, startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -150,7 +164,7 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 // =================
 
 func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool) {
-	startPos := p.savePos()
+	startPos := p.CurrentToken().Position
 	switch kind {
 	case lexer.LeftBracket:
 		res = p.ParseListType()
@@ -163,7 +177,7 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	default:
 		return nil, false
 	}
-	res = res.SetPos(startPos, p.lastTokEnd()).(ast.Type)
+	res = setPos(res, startPos, p.lastTokEnd())
 	return res, true
 }
 
@@ -186,6 +200,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	default:
 		return left, false
 	}
-	res = res.SetPos(left.GetRange().Start, p.lastTokEnd()).(ast.Type)
+	res = setPos(res, left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }

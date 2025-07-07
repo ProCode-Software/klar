@@ -17,11 +17,12 @@ func _() {
 	_ = x[Error-7]
 	_ = x[InvalidType-8]
 	_ = x[Self-9]
+	_ = x[Regex-10]
 }
 
-const _CoreType_name = "AnyStringIntFloatBoolNothingErrorInvalidSelf"
+const _CoreType_name = "AnyStringIntFloatBoolNothingErrorInvalidSelfDon't want to make this primitive"
 
-var _CoreType_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 33, 40, 44}
+var _CoreType_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 33, 40, 44, 77}
 
 func (i CoreType) String() string {
 	i -= 1

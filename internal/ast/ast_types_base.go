@@ -232,6 +232,21 @@ func (e BreakStatement) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
 	return e
 }
+func (e RegexLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
+func (e RegexLiteral) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
+	return e
+}
+func (e EnumItem) GetRange() ranges.Range { return e.BaseNode.Range }
+func (e EnumItem) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
+	return e
+}
+func (e VersionLiteral) GetRange() ranges.Range { return e.BaseNode.Range }
+func (e VersionLiteral) SetPos(start, end lexer.Position) Node {
+	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end
+	return e
+}
 func (e PrimitiveType) GetRange() ranges.Range { return e.BaseNode.Range }
 func (e PrimitiveType) SetPos(start, end lexer.Position) Node {
 	e.BaseNode.Range.Start, e.BaseNode.Range.End = start, end

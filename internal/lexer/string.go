@@ -174,11 +174,11 @@ There are three types of strings in Klar:
 */
 func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 	var (
-		esc              string
-		b                Builder
-		isEscape, unterm bool
-		escapes          = make(EscapeMap)
-		escStart, end    Position
+		esc                         string
+		b                           Builder
+		isEscape, isNewline, unterm bool
+		escapes                     = make(EscapeMap)
+		escStart, end               Position
 	)
 	escape := func(typ EscapeType, err EscapeError) {
 		e := StringEscape{Type: typ, Value: `\` + esc, Invalid: err}
@@ -249,12 +249,22 @@ loop:
 				b.WriteRune(r)
 				break loop
 			}
+			isNewline = true
+			b.WriteRune(r)
+			continue loop
 		default:
-			if isEscape {
+			switch {
+			case isEscape:
 				escape(EscCharacter, ErrEscapeUnknown)
+			case unicode.IsSpace(r):
+				// Strip leading spaces from backtick string
+				if isNewline && l.Pos.Col-1 <= pos.Col {
+					continue loop
+				}
 			}
 		}
 		b.WriteRune(r)
+		isNewline = false
 	}
 	str := string(delim) + b.String()
 

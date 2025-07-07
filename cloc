@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-git ls-files "*.${1:-go}" |
-    xargs cat |
-    grep -v '^\s*//' | 
-    grep -cv '^\s*$'
+if [[ $1 == "-l" ]]; then
+    git ls-files "*.${2:-go}" | xargs -I {} wc -l {} | sort -nr | head -n 10
+else
+    git ls-files "*.${1:-go}" |
+        xargs cat |
+        grep -v '^\s*//' |
+        grep -cv '^\s*$'
+fi

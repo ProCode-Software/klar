@@ -27,7 +27,7 @@ func (p *Parser) Parse() (program ast.Program) {
 		body = append(body, p.ParseTopLevelStatement())
 	}
 	prog := ast.Program{Body: body, Comments: comments}
-	prog = prog.SetPos(p.Tokens[0].Position, p.savePos()).(ast.Program)
+	prog = setPos(prog, p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position)
 	return prog
 }
 

@@ -20,6 +20,7 @@ type Parser struct {
 	// Conditional flags
 	isWhenGuard bool // Disable some types of expressions
 	isWhenCase  bool // Allow '_'
+	isAttribute bool
 }
 
 // New returns a new [Parser] that reads from tokens.
@@ -154,17 +155,17 @@ func (p *Parser) expectShorthand() (key ast.Symbol, value ast.Expression) {
 	return key, value
 }
 
-func copyPos[S, T ast.Node](from S, to T) T {
-	return to.SetPos(from.GetRange().Start, from.GetRange().End).(T)
-}
-
 // Expect advances the parser if the current token is of typ, otherwise throws err.
 func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.CurrentToken()
 	got := token.Kind
 	if !slices.Contains(need, got) {
+		parseErr, _ := err.(ParseError)
 		if err == nil {
 			err = errors.ExpectedToken(need[0], token)
+		} else if parseErr.Token.Kind == 0 {
+			parseErr.Token = token
+			err = parseErr
 		}
 		p.Error(err.(ParseError))
 	}
@@ -174,13 +175,26 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	return p.Advance()
 }
 
+// Range utils
 func (p *Parser) savePos() lexer.Position {
 	return p.CurrentToken().Position
+}
+
+func markEndPos[T ast.Node](p *Parser, node T) T {
+	return node.SetPos(node.GetRange().Start, p.lastTokEnd()).(T)
+}
+
+func setPos[T ast.Node](n T, start, end lexer.Position) T {
+	return n.SetPos(start, end).(T)
 }
 
 func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
 	rang := ranges.FromToken(tok)
 	return node.SetPos(rang.Start, rang.End).(T)
+}
+
+func copyPos[F, T ast.Node](from F, to T) T {
+	return to.SetPos(from.GetRange().Start, from.GetRange().End).(T)
 }
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.

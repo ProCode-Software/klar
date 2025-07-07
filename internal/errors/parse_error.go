@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -30,6 +31,7 @@ const (
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
+	ErrUnterminatedRegex   // Missing / in regex literal
 	ErrMisplacedShebang
 
 	// Literal
@@ -44,6 +46,7 @@ const (
 	ErrExpectedBinary
 	ErrExpectedDecimal
 	ErrExpectedParamInLambda
+	ErrInvalidVersionLit // Invalid version literal syntax
 
 	ErrExpectedSymbolAssign  // Assignment to non-variable or property
 	ErrReservedKeyword       // Reserved keyword used as an identifier
@@ -54,7 +57,9 @@ const (
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
+	ErrEnumParamAndValue       // Enum items with parameters can't have a value assigned
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
+	ErrCannotTellStructOrEnum  // Don't know if enum or struct from one identifier
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
@@ -91,6 +96,10 @@ func (e *ParseError) SetParam(key string, value any) ParseError {
 }
 
 func (e ParseError) Error() string {
+	return "SyntaxError: " + e.error()
+}
+
+func (e ParseError) error() string {
 	var (
 		tok  = e.Token
 		kind = tok.Kind
@@ -99,22 +108,23 @@ func (e ParseError) Error() string {
 	switch e.ErrorCode {
 	default:
 		if e.Node != nil {
+			kind := reflect.TypeOf(e.Node).Name()
 			return fmt.Sprintf(
-				"SyntaxError: %s: in %s", e.ErrorCode.String(), e.Node.Kind(),
+				"%s: in %s", e.ErrorCode.String(), kind,
 			)
 		}
-		return fmt.Sprintf("SyntaxError: %s: %s %s",
+		return fmt.Sprintf("%s: %s %s",
 			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
 	case ErrExpectedExpression:
-		return "SyntaxError: This isn't an expression"
+		return "This isn't an expression"
 	case ErrExpectedSymbolAssign:
 		return "Can't assign to this kind of expression"
 	case ErrExpectedToken:
 		expToken := e.Params["expected"].(lexer.TokenType)
 		expected := FormatTokenType(expToken)
 		if src == ";" {
-			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+			return "Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		}
 		switch expToken {
 		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan, lexer.RightBracket:
@@ -128,108 +138,116 @@ func (e ParseError) Error() string {
 			if e.Params["isMap"] == true {
 				begin = lexer.HashLeftCurlyBrace
 			}
-			return fmt.Sprintf("SyntaxError: Expected %s to close %s",
+			return fmt.Sprintf("Expected %s to close %s",
 				expected, FormatTokenType(begin),
 			)
 		}
 		return fmt.Sprintf(
-			"SyntaxError: I expected %s, but found %s instead",
+			"I expected %s, but found %s instead",
 			expected, NameToken(tok),
 		)
 	case ErrWildcardAndUnqImport:
-		return "SyntaxError: Can't have both '*' and unqualified import in import statement"
+		return "Can't have both '*' and unqualified import in import statement"
 	case ErrImportTooManyWildcard:
-		return "SyntaxError: There can only be one '*' in module name"
+		return "There can only be one '*' in module name"
 	case ErrWildcardAndAlias:
-		return "SyntaxError: Can't use '*' with alias in unqualified import"
+		return "Can't use '*' with alias in unqualified import"
 	case ErrExpectedDotInBraceImport:
-		return "SyntaxError: There should be a '.' before '{' in unqualified import statement"
+		return "There should be a '.' before '{' in unqualified import statement"
 	case ErrEmptyUnqImport:
-		return "SyntaxError: Expected at least 1 unqualified import"
+		return "Expected at least 1 unqualified import"
 	case ErrImportExpectedModule:
-		return "SyntaxError: I expected a module name before '.{' in unqualified import"
+		return "I expected a module name before '.{' in unqualified import"
 	case ErrImportInvalidWildcard:
-		return "SyntaxError: '*' should the the last sub-namespace of a module"
+		return "'*' should the the last sub-namespace of a module"
 	case ErrImportPrefixDot:
-		return "SyntaxError: A module name can't start with '.'"
+		return "A module name can't start with '.'"
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
-			return "SyntaxError: Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+			return "Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
 		case kind == lexer.EOF:
-			return "SyntaxError: Unexpected end of file"
+			return "Unexpected end of file"
 		case kind == lexer.Newline:
-			return "SyntaxError: Unexpected newline"
+			return "Unexpected newline"
 		default:
-			return "SyntaxError: I didn't expect " + NameToken(tok)
+			return "I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf("SyntaxError: The string starting at %s was left open", e.Position)
+		return fmt.Sprintf("The string starting at %s was left open", e.Position)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.EndOfStatement {
-			return "SyntaxError: Types must be assigned a value"
+			return "Types must be assigned a value"
 		}
-		return "SyntaxError: I expected a type assignment, but found " + NameToken(tok) + " instead"
+		return "I expected a type assignment, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
-		return "SyntaxError: Struct fields need an explicit type"
+		return "Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
-		return "SyntaxError: This enum must have at least 2 items, but it has only 1"
+		return "This enum must have at least 2 items, but it has only 1"
 	case ErrExpectedHex:
-		return "SyntaxError: I expected a hexadecimal digit (0-9, a-f or A-F)"
+		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 	case ErrExpectedBinary:
-		return "SyntaxError: I expected a binary digit (0-1)"
+		return "I expected a binary digit (0-1)"
 	case ErrExpectedOctal:
-		return "SyntaxError: I expected an octal digit (0-7)"
+		return "I expected an octal digit (0-7)"
 	case ErrExpectedDecimal:
-		return "SyntaxError: I expected a decimal digit (0-9)"
+		return "I expected a decimal digit (0-9)"
 	case ErrUnicodeEscTooBig:
-		return "SyntaxError: This Unicode escape should be in the range 0 to 10FFFF"
+		return "This Unicode escape should be in the range 0 to 10FFFF"
 	case ErrStringEscape:
 		reason := e.Params["reason"].(lexer.EscapeError)
 		kind := e.Params["type"].(lexer.EscapeType)
 		switch reason {
 		case lexer.ErrEscapeExpHex:
-			return "SyntaxError: I expected a hexadecimal digit (0-9, a-f or A-F)"
+			return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 		case lexer.ErrEscapeUnknown:
-			return "SyntaxError: I don't understand this escape code"
+			return "I don't understand this escape code"
 		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
 			if kind == lexer.EscUnicode {
-				return "SyntaxError: Expected between 1-6 hex digits in Unicode escape"
+				return "Expected between 1-6 hex digits in Unicode escape"
 			}
-			return "SyntaxError: I expected an expression"
+			return "I expected an expression"
 		default:
-			return "SyntaxError: Invalid string escape"
+			return "Invalid string escape"
 		}
 	case ErrForInvalidCond:
-		return "SyntaxError: Expected an assignment or expression in for condition"
+		return "Expected an assignment or expression in for condition"
 	case ErrEmptyGeneric:
-		return "SyntaxError: At least 1 type parameter is required in generic"
+		return "At least 1 type parameter is required in generic"
 	case ErrInvalidPublic:
-		return "SyntaxError: Expected a declaration after public modifier"
+		return "Expected a declaration after public modifier"
 	case ErrTrailingSep:
-		return "SyntaxError: An underscore can't be at the end of a number"
+		return "An underscore can't be at the end of a number"
 	case ErrConsecutiveSep:
-		return "SyntaxError: Numbers can't have consecutive underscores"
+		return "Numbers can't have consecutive underscores"
 	case ErrMisplacedSep:
-		return "SyntaxError: An underscore isn't allowed here"
+		return "An underscore isn't allowed here"
 	case ErrNotAllowedInGuard:
-		return "SyntaxError: Case guards can't contain when expressions"
+		return "Case guards can't contain when expressions"
 	case ErrUnterminatedComment:
-		return "SyntaxError: The comment starting at " + e.Position.String() +
+		return "The comment starting at " + e.Position.String() +
 			" was left open"
 	case ErrMisplacedShebang:
-		return "SyntaxError: Shebang must be on the first line of the file (without any lines or spaces before)"
+		return "Shebang must be on the first line of the file (without any lines or spaces before)"
+	case ErrCannotTellStructOrEnum:
+		return "Expected ':' for struct field, or '|' or '=' for enum member"
+	case ErrEnumParamAndValue:
+		return "Enum members can't have both parameters and a value"
 	case ErrMissingFuncParamType:
-		return "SyntaxError: Function parameters must have a type"
+		return "Function parameters must have a type"
 	case ErrImportsGoFirst:
-		return "SyntaxError: Imports must go before other declarations"
+		return "Imports must go before other declarations"
 	case ErrMethodInOtherScope:
 		return fmt.Sprintf(
-			"SyntaxError: Method %s must be declared in the same scope as type %s",
+			"Method %s must be declared in the same scope as type %s",
 			e.Params["name"], e.Params["structName"],
 		)
+	case ErrInvalidVersionLit:
+		return fmt.Sprintf("Invalid version literal '%s'",
+			e.Node.(ast.VersionLiteral).Version,
+		)
 	case ErrProvenUnreachable:
-		return fmt.Sprintf("SyntaxError: Unreachable statement after '%s'", e.Params["type"])
+		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (
 			code      = e.ErrorCode
@@ -248,7 +266,7 @@ func (e ParseError) Error() string {
 		if origType != newType {
 			as = " as " + WithA(origType)
 		}
-		return fmt.Sprintf("SyntaxError: %s%s was already declared%s at %s",
+		return fmt.Sprintf("%s%s was already declared%s at %s",
 			first,
 			Quote(name), as, origPos,
 		)

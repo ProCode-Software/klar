@@ -193,17 +193,20 @@ const repository: Repository = {
         ],
         patterns: [
             {
-                begin: `(?<=^|[(,])\\s*(\\b${Identifier.source}\\b)?\\s*(${Identifier.source})\\s*(:)\\s*${Type}\\s*(=)?`,
-                end: /(?=\)|,)/,
+                match: /(?<=^|[(,])\s*(\bident\b\s*)?(\bident)\s*(?:(:)\s*type(?:\s*(=)(.*?))?)?\s*(?=\)|,)/.source
+                    .replaceAll('ident', Identifier.source)
+                    .replaceAll('type', Type.source),
                 captures: [
                     { name: 'entity.other.attribute-name.klar' },
                     { name: 'variable.other.klar' },
                     { name: Punctuation.colonType },
                     ...IncludeType,
                     { name: Punctuation.equalSign },
+                    { patterns: BASE },
                 ],
                 patterns: BASE,
             },
+            Punctuation.comma,
         ],
     },
     types: {
@@ -381,11 +384,20 @@ const repository: Repository = {
     enums: {
         patterns: [
             {
-                match: merge(IdCapture, /(?:\s*(=)\s*(.+)\s*(?=$|}|\|))?/),
+                match: merge(
+                    IdCapture,
+                    '\\s*(?:',
+                    /(?:(=)\s*(.+?))/,
+                    /|(\()(.*?)(\))/,
+                    ')?\\s*(?=$|}|\\|)'
+                ),
                 captures: [
                     { name: 'variable.other.enummember.klar' },
                     { name: Punctuation.equalSign },
                     { patterns: BASE },
+                    { name: Punctuation.parenthesis.begin },
+                    { name: 'entity.name.type.klar', patterns: [include('types')] },
+                    { name: Punctuation.parenthesis.end },
                 ],
             },
             match(/\|/, 'keyword.operator.type.klar'),
@@ -393,7 +405,7 @@ const repository: Repository = {
     },
     interfaces: {
         begin: `(?<=^|{)\\s*(${Identifier.source})\\s*(\\()`,
-        end: String.raw`(\))(?:\s*(->)\s*${Type})?`,
+        end: String.raw`(\))\s*(?!\|)(?:(->)\s*${Type})?`,
         beginCaptures: [
             { name: 'entity.name.function.member.klar' },
             { name: Punctuation.parenthesis.begin },
@@ -447,21 +459,34 @@ const repository: Repository = {
         name: 'meta.attribute.klar',
         patterns: [include('labels'), ...BASE],
     },
+    regex: {
+        begin: /(?<!\w\s*)\//,
+        end: /(\/)([a-z]*)/,
+        beginCaptures: [{ name: 'punctuation.definition.regexp.begin.klar' }],
+        endCaptures: [
+            { name: 'punctuation.definition.regexp.end.klar' },
+            { name: 'keyword.other.regexp.flag.klar' },
+        ],
+        name: 'string.regexp.klar',
+        patterns: [{ include: 'source.js.regexp' }],
+    },
 } satisfies Repository
 
 const klar: TextMateLanguage = {
     name: 'Klar',
     patterns: [
         include('comments'),
+        include('regex'),
         include('strings'),
         include('booleans'),
         include('keywords'),
         include('operators'),
         include('numbers'),
 
+        include('structs'),
+        include('interfaceTag'),
         include('castFunctions'),
         include('functionDeclarations'),
-        include('structs'),
         include('interfaceTag'),
         include('typeAliasDeclarations'),
         include('importStatements'),

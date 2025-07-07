@@ -16,14 +16,16 @@
         "@vscode/vsce": "3.3.2"
     },
     "scripts": {
-        "watch": "bun run watch-klar & bun run watch-klarml",
+        "watch": "bun watch-klar & bun watch-klarml & bun watch-codeblock",
         "watch-klar": "vsxtools build-grammar src/klar.ts syntaxes/klar.tmLanguage.json --watch",
         "watch-klarml": "vsxtools build-grammar src/klarml.ts syntaxes/klarml.tmLanguage.json --watch",
+        "watch-codeblock": "vsxtools build-grammar src/codeblock.ts syntaxes/codeblock.tmLanguage.json --watch",
         "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository"
     },
     "contributes": {
         "languages": [
             {
+                "firstLine": "^#!\\/usr\\/bin\\env\\s+klar",
                 "id": "klar",
                 "aliases": [ "Klar", "klar" ],
                 "extensions": [ ".klar" ],
@@ -34,7 +36,8 @@
                 "aliases": [
                     "Klar Markup",
                     "klar-markup",
-                    "klarml"
+                    "klarml",
+                    "klarmarkup"
                 ],
                 "extensions": [ ".klarml", "glas.pack" ],
                 "configuration": "./klarml.language-configuration.json"
@@ -50,6 +53,15 @@
                 "language": "klarmarkup",
                 "scopeName": "source.klarmarkup",
                 "path": "./syntaxes/klarml.tmLanguage.json"
+            },
+            {
+                "scopeName": "markdown.klar.codeblock",
+                "path": "./syntaxes/codeblock.tmLanguage.json",
+                "injectTo": [ "text.html.markdown" ],
+                "embeddedLanguages": {
+                    "meta.embedded.block.klar": "klar",
+                    "meta.embedded.block.klarmarkup": "klarmarkup"
+                }
             }
         ]
     }

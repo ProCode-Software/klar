@@ -20,7 +20,7 @@ func (d *decoder) Object(node Object, rv reflect.Value) error {
 	case reflect.Struct:
 	case reflect.Map:
 	case reflect.Interface:
-		
+
 	default:
 		return d.TypeError("object", rt)
 	}
@@ -34,7 +34,7 @@ func (d *decoder) Object(node Object, rv reflect.Value) error {
 		}
 	}
 	// Assign from document
-	for _, prop := range node.Properties {
+	/* for _, prop := range node.Properties {
 		name, value := prop.Key, prop.Value
 		propVal, ok := fields[name]
 		if !ok {
@@ -42,6 +42,6 @@ func (d *decoder) Object(node Object, rv reflect.Value) error {
 		}
 		propType := propVal.Type()
 		
-	}
+	} */
 	return nil
 }

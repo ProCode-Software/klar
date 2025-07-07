@@ -184,8 +184,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
 				l.Reader.ReadRune()
-				if handleReadError(err) || next[1] == '\n' ||
-					unicode.IsDigit(rune(next[1])) {
+				if handleReadError(err) || next[1] == '\n' || IsDigit(rune(next[1])) {
 					// Trailing decimal point at EOF
 					isDecimal = true
 					b.WriteRune(r)
@@ -196,13 +195,13 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			// Underscore separators: no consecutive, must be in between digits
 			if last == '_' {
 				newError(ErrIntMisplacedSeparator, b)
-			} else if format == NumberFormatDecimal && !unicode.IsDigit(rune(last)) {
+			} else if format == NumberFormatDecimal && !IsDigit(rune(last)) {
 				newError(ErrIntMisplacedSeparator, b)
 			}
 			b.WriteRune(r)
 		default:
 			switch {
-			case !unicode.IsDigit(r):
+			case !IsDigit(r):
 				return false
 			case
 				format == NumberFormatDecimal,
@@ -232,6 +231,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
 	id := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
+		// Use unicode.IsDigit to allow digit in any language
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			b.WriteRune(r)
 			return true

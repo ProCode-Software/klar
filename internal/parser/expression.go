@@ -1,11 +1,14 @@
 package parser
 
 import (
+	"bytes"
 	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) ast.BinaryExpression {
@@ -147,7 +150,8 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 	var item ast.Expression
 	if p.Advance().Kind != lexer.LeftBracket {
 		// Allow use of keywords as fields
-		item = ast.Symbol{Identifier: p.expectNonNumericMapIdent().Source}
+		tok := p.expectNonNumericMapIdent()
+		item = rangeFromToken(ast.Symbol{Identifier: tok.Source}, tok)
 		return ast.IndexExpression{
 			Object:   left,
 			Property: item,
@@ -368,7 +372,7 @@ loop:
 		case lexer.Comma:
 			p.Advance()
 		default:
-			p.Expect(lexer.Arrow)
+			break loop
 		}
 	}
 	c.Options = orOpts
@@ -427,4 +431,96 @@ func (p *Parser) ParseWhenBlock() ast.WhenExpression {
 		lexer.RightCurlyBrace, 0, true,
 	)
 	return w
+}
+
+func (p *Parser) ParseRegexLiteral() (r ast.RegexLiteral) {
+	var (
+		isEscape bool
+		b        strings.Builder
+		lastPos  lexer.Position
+		space    = []byte(" ")
+	)
+	slashCol := p.Expect(lexer.Slash).Position.Col
+	for p.HasTokens() {
+		if curr := p.CurrentTokenKind(); curr == lexer.Slash && !isEscape {
+			break
+		} else if curr == lexer.Backslash {
+			isEscape = !isEscape
+		}
+		// Including tokens of any kind, including illegal
+		tok := p.Advance()
+		offset := tok.Col - slashCol - 1
+
+		switch {
+		case tok.Source == "\n":
+			continue
+		case tok.Line == lastPos.Line:
+			// Add spaces between tokens
+			b.Write(bytes.Repeat(space, tok.Col-lastPos.Col))
+		case lastPos.Col == 0:
+		case offset > 0:
+			// Trim whitespace from start of line if aligned with beginning /
+			// similar to backtick strings
+			b.Write(bytes.Repeat(space, offset))
+		}
+		b.WriteString(tok.Source)
+		lastPos = ranges.FromToken(tok).End
+	}
+	r.Source = b.String()
+	endPos := p.Expect(lexer.Slash).Position
+	// Manually add EOS because regex ends in / which is operator
+	if curr := p.CurrentToken(); curr.Position.Line != endPos.Line {
+		p.Tokens = slices.Insert(
+			p.Tokens, p.Index,
+			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
+		)
+	} else if curr.Kind == lexer.Identifier {
+		r.Flags = p.Advance().Source
+	}
+	return r
+}
+
+func (p *Parser) ParseVersion(left ast.Node, bp BindingPower) ast.Node {
+	var (
+		b     strings.Builder
+		err   bool
+		first = left.(ast.Symbol).Identifier
+	)
+	expect := func(kind lexer.TokenType) string {
+		tok := p.Advance()
+		if tok.Kind != kind {
+			err = true
+		}
+		return tok.Source
+	}
+	// Check first part of version
+	if first[0] != 'v' || len(first) < 2 {
+		err = true
+	} else {
+		for _, c := range first[1:] {
+			if !lexer.IsDigit(c) {
+				err = true
+				break
+			}
+		}
+	}
+	b.WriteString(first)
+	for p.CurrentTokenKind() == lexer.Numeric {
+		b.WriteString(p.Advance().Source)
+	}
+	if p.CurrentTokenKind() == lexer.Minus {
+		b.WriteString(p.Advance().Source)
+		b.WriteString(expect(lexer.Identifier))
+		if p.CurrentTokenKind() == lexer.Minus {
+			b.WriteString(p.Advance().Source)
+			b.WriteString(expect(lexer.Numeric))
+		}
+	}
+	ver := ast.VersionLiteral{Version: b.String()}
+	ver = setPos(ver, left.GetRange().Start, p.lastTokEnd())
+	if err {
+		p.Error(errors.Node(errors.ErrInvalidVersionLit, ver))
+		return ast.BadExpression{Value: ver}
+	}
+	return ver
 }

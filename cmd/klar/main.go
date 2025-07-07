@@ -42,7 +42,9 @@ func main() {
 	case "repl":
 		StartRepl()
 	case "test", "install", "build":
-		cli.Error(fmt.Sprintf("Command '%s' is not implemented yet.", cmd), "")
+		cli.Error("Not implemented: ",
+			fmt.Sprintf("Command '%s' is not implemented yet.", cmd),
+		)
 	case "help", "--help", "-h":
 		showHelp()
 	}

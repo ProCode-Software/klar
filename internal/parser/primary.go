@@ -3,7 +3,6 @@ package parser
 import (
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -74,15 +73,17 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 			format != lexer.NumberFormatHex && strings.ContainsAny(src, "eE"):
 			// Exponents are floats
 			return ast.FloatLiteral{
+				Source: src,
 				Value: unwrap(strconv.ParseFloat(src, 64)),
 			}
 		// Go parses 0 prefix as octal
 		// Also check if prefix is not 0o, 0b, or 0x
-		case len(src) > 1 && (src[1] == '_' || unicode.IsDigit(rune(src[1]))):
+		case len(src) > 1 && (src[1] == '_' || lexer.IsDigit(rune(src[1]))):
 			src = strings.TrimLeft(src, "0")
 		}
 		return ast.IntegerLiteral{
 			Format: format,
+			Source: src,
 			Value:  unwrap(strconv.ParseInt(src, 0, 0)),
 		}
 	case lexer.String:

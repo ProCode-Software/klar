@@ -24,7 +24,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Type
 		p.Error(errors.ExpectedToken(lexer.ColonEqual, p.CurrentToken()))
 	}
 	return ast.TypeAnnotation{
-		Variable: left.(ast.Symbol),
+		Variable: left.(ast.Expression),
 		Type:     typ,
 	}
 }
@@ -44,10 +44,20 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		default:
 			left = ast.BadExpression{Value: left}
 		}
-		id := left.(ast.Symbol).Identifier
+		// Constants are ALL_CAPS
+		// Limitation: if the name is written in a script without distinct
+		// capital letters, we can't tell if it is all caps or not, so it
+		// is just not constant.
+		
+		var isConst bool
+		if symbol, ok := left.(ast.Symbol); ok {
+			id := symbol.Identifier
+			upper := strings.ToUpper(id)
+			isConst = id == upper && upper != strings.ToLower(id)
+		}
 		return ast.VariableDeclaration{
-			Identifier:   id,
-			Constant:     strings.ToUpper(id) == id, // Constants are ALL_CAPS
+			Assignee:     left,
+			Constant:     isConst,
 			Value:        rhs,
 			ExplicitType: explicitType,
 		}

@@ -5,8 +5,8 @@ struct Person {
     var age: Int
     var gender: Gender?
 
-    func greet(person otherPerson: String) {
-        print("Hello \(otherPerson)! My name is \(name).")
+    func greet(_ otherPerson: String) {
+        print("Hello \(otherPerson)! My name is \(self.name).")
     }
 }
 
@@ -15,4 +15,4 @@ var people: [Person] = [
     Person(name: "Jane", age: 32, gender: .female),
 ]
 print(people)
-people[0].greet(person: "Lucy")
+people[0].greet("Lucy")

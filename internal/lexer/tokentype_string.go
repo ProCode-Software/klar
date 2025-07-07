@@ -59,23 +59,24 @@ func _() {
 	_ = x[Ellipsis-49]
 	_ = x[Arrow-50]
 	_ = x[Pipeline-51]
-	_ = x[And-52]
-	_ = x[Break-53]
-	_ = x[For-54]
-	_ = x[Func-55]
-	_ = x[Import-56]
-	_ = x[In-57]
-	_ = x[Next-58]
-	_ = x[Or-59]
-	_ = x[Public-60]
-	_ = x[Return-61]
-	_ = x[Type-62]
-	_ = x[When-63]
+	_ = x[Backslash-52]
+	_ = x[And-53]
+	_ = x[Break-54]
+	_ = x[For-55]
+	_ = x[Func-56]
+	_ = x[Import-57]
+	_ = x[In-58]
+	_ = x[Next-59]
+	_ = x[Or-60]
+	_ = x[Public-61]
+	_ = x[Return-62]
+	_ = x[Type-63]
+	_ = x[When-64]
 }
 
-const _TokenType_name = "EOFEndOfStatementIllegalNewlineCommaDotLineCommentBlockCommentHashbangColonLeftBracketRightBracketLeftParenthesisRightParenthesisLeftCurlyBraceRightCurlyBraceHashLeftCurlyBraceAtHashIdentifierNumericBooleanNilStringUnderscorePlusMinusAsteriskSlashPercentCaretEqualColonEqualPlusEqualMinusEqualPlusPlusMinusMinusEqualEqualNotEqualGreaterThanLessThanGreaterEqualToLessEqualToAndAndOrOrNotStrokeQuestionEllipsisArrowPipelineAndBreakForFuncImportInNextOrPublicReturnTypeWhen"
+const _TokenType_name = "EOFEndOfStatementIllegalNewlineCommaDotLineCommentBlockCommentHashbangColonLeftBracketRightBracketLeftParenthesisRightParenthesisLeftCurlyBraceRightCurlyBraceHashLeftCurlyBraceAtHashIdentifierNumericBooleanNilStringUnderscorePlusMinusAsteriskSlashPercentCaretEqualColonEqualPlusEqualMinusEqualPlusPlusMinusMinusEqualEqualNotEqualGreaterThanLessThanGreaterEqualToLessEqualToAndAndOrOrNotStrokeQuestionEllipsisArrowPipelineBackslashAndBreakForFuncImportInNextOrPublicReturnTypeWhen"
 
-var _TokenType_index = [...]uint16{0, 3, 17, 24, 31, 36, 39, 50, 62, 70, 75, 86, 98, 113, 129, 143, 158, 176, 178, 182, 192, 199, 206, 209, 215, 225, 229, 234, 242, 247, 254, 259, 264, 274, 283, 293, 301, 311, 321, 329, 340, 348, 362, 373, 379, 383, 386, 392, 400, 408, 413, 421, 424, 429, 432, 436, 442, 444, 448, 450, 456, 462, 466, 470}
+var _TokenType_index = [...]uint16{0, 3, 17, 24, 31, 36, 39, 50, 62, 70, 75, 86, 98, 113, 129, 143, 158, 176, 178, 182, 192, 199, 206, 209, 215, 225, 229, 234, 242, 247, 254, 259, 264, 274, 283, 293, 301, 311, 321, 329, 340, 348, 362, 373, 379, 383, 386, 392, 400, 408, 413, 421, 430, 433, 438, 441, 445, 451, 453, 457, 459, 465, 471, 475, 479}
 
 func (i TokenType) String() string {
 	i -= 1
