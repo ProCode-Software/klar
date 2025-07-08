@@ -104,12 +104,12 @@ type CommentType = lexer.TokenType
 
 type BinaryExpression struct {
 	Left, Right Node
-	Operator    lexer.TokenType
+	Operator    lexer.Token
 	BaseNode
 }
 
 type UnaryExpression struct {
-	Operator lexer.TokenType
+	Operator lexer.Token
 	Right    Node
 	BaseNode
 }
@@ -284,8 +284,7 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 //	import fetch: klar.http.requests.{get}
 type ImportStatement struct {
 	BaseNode
-	Module             string
-	Alias              string // Only if there are no unqualified imports
+	Module, Alias      *Symbol // Alias is nil if no unqualified imports
 	Wildcard           bool
 	UnqualifiedImports []*UnqualifiedImport
 }
@@ -367,7 +366,7 @@ type ReturnStatement struct {
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
 	BasePublic
-	Identifier    string
+	Identifier    *Symbol
 	Struct        Type
 	GenericParams []*Symbol
 	Parameters    []*FunctionParam
@@ -375,6 +374,14 @@ type FunctionDeclaration struct {
 	Body          []Statement
 	Expression    Expression
 	BaseNode
+}
+
+type FunctionAlias struct {
+	BaseNode
+	BasePublic
+	Struct     Type
+	Identifier *Symbol
+	Alias      *Symbol
 }
 
 type FunctionParam struct {
@@ -499,4 +506,10 @@ type PipelineExpression struct {
 type ParenExpression struct {
 	Expr Expression
 	BaseNode
+}
+
+type ListCastExpression struct {
+	BaseNode
+	Type Type
+	Args []*CallParam
 }

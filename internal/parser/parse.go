@@ -126,16 +126,24 @@ func parseSeries[T any](
 	with func() T, until, sepBy lexer.TokenType,
 	end bool,
 ) {
+	parse := func() T {
+		start := p.CurrentToken().Position
+		item := with()
+		if n, ok := any(item).(ast.Node); ok && n.GetRange().IsZero() {
+			item = markStartEndPos(p, n, start).(T)
+		}
+		return item
+	}
 	if end {
 		for p.WhileNot(until) {
-			*arr = append(*arr, with())
+			*arr = append(*arr, parse())
 			if sepBy != 0 && p.CurrentTokenKind() != until {
 				p.Expect(sepBy)
 			}
 		}
 	} else {
 		for p.WhileNotEndOr(until) {
-			*arr = append(*arr, with())
+			*arr = append(*arr, parse())
 			if sepBy != 0 && p.IsNotCurrentlyEndOr(until) {
 				p.Expect(sepBy)
 			}

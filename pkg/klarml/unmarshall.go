@@ -6,8 +6,6 @@ import (
 	"reflect"
 )
 
-
-
 type Unmarshaller interface {
 	UnmarshalKlarMarkup(Node) error
 }
@@ -49,7 +47,7 @@ func UnmarshallDocument(doc Document, dst any) error {
 	typeElem := rt.Elem()
 	switch node := doc.Body.(type) {
 	case Object:
-		
+
 	case StringLiteral:
 		if elem.Kind() != reflect.String {
 			return fmt.Errorf(prefix+"cannot unmarshall string into non-string %T", rv)

@@ -39,6 +39,8 @@ func (e ParseError) At() lexer.Position {
 func (e ParseError) AtRange() ranges.Range {
 	if ranges.IsZeroPosition(e.Range.Start) && e.Node != nil {
 		return e.Node.GetRange()
+	} else if !ranges.IsZeroPosition(e.Token.Position) {
+		return ranges.FromToken(e.Token)
 	}
 	return e.Range
 }

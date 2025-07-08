@@ -157,6 +157,8 @@ func PrintError(err KlarError, options PrintOptions) {
 		switch {
 		case !options.Color:
 			add = tok.Source
+		case err.AtRange().RangeIn(ranges.FromToken(tok)):
+			add = ansi(cli.ANSIRed, tok.Source)
 		case tok.Kind != lexer.Identifier:
 			fallthrough
 		default:

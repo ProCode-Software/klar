@@ -7,7 +7,9 @@ import (
 )
 
 type (
-	Node interface{ node() }
+	Node interface {
+		At() ranges.Range
+	}
 	Type = types.Type
 )
 
@@ -39,39 +41,56 @@ type TypeDecl interface {
 	Declaration
 	GetType() Type
 }
+type BaseDecl struct {
+	Name string
+}
 
 type FunctionDecl struct {
 	BaseNode
 	Name       string
 	Params     []FuncParam
 	ReturnType Type
+	Body       Context
+}
+type FuncParam struct {
+	BaseNode
+	Label, Var string
+	Type       Type
+	Default    Expression
 }
 
 type VariableDecl struct {
 	BaseNode
-	Constant bool
-	Name     string
-	Type     Type
-	Value    Expression
+	Idents          Expression
+	ConstantIndices []int
+	Type            Type
+	Value           Expression
 }
 
 type EnumDecl struct {
 	BaseNode
+	BaseDecl
 	ValueType Type
-	Items     map[string]any
+	Items     map[string]EnumItem
+}
+
+type EnumItem struct {
+	BaseNode
+	Value  any
+	Params []Type
 }
 
 type TypeAliasDecl struct {
 	BaseNode
-	Name string
+	BaseDecl
 	Type Type
 }
 
 type StructInterfaceDecl struct {
 	BaseNode
+	BaseDecl
 	Inherited
 	Interface bool
-	Name      string
 	Fields    map[string]Type
 	Methods   map[string]types.Overloads
 }
@@ -89,12 +108,4 @@ type Expression struct {
 	Expr ast.Expression
 }
 
-type Statement struct {
-	BaseNode
-}
-
-type FuncParam struct {
-	BaseNode
-	Label, Var string
-	Type       Type
-}
+type Statement = ast.Statement

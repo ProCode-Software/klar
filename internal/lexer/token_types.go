@@ -71,9 +71,9 @@ const (
 	Question // ?
 
 	// Misc
-	Ellipsis // ...
-	Arrow    // ->
-	Pipeline // |>
+	Ellipsis  // ...
+	Arrow     // ->
+	Pipeline  // |>
 	Backslash // \
 
 	// Keywords

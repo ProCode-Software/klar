@@ -16,10 +16,8 @@ const (
 	ErrExpectedToken // Expected kind of token but got different type
 
 	// Import
-	ErrExpectedDotInBraceImport // Dot required before brace in unqualified import
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
 	ErrImportExpectedModule     // Unqualified import without module name
-	ErrImportPrefixDot          // Module name beginning with .
 	ErrImportInvalidWildcard    // Wildcard must be last part of module
 	ErrImportTooManyWildcard    // More than 1 wildcard
 	ErrWildcardAndUnqImport     // Using unqualified import with wildcard
@@ -30,12 +28,10 @@ const (
 	// Punctuation
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
-	ErrUnterminatedBrace   // Missing end of [, (, {, or < (generic)
 	ErrUnterminatedRegex   // Missing / in regex literal
 	ErrMisplacedShebang
 
 	// Literal
-	ErrInvalidNumber    // Invalid number format
 	ErrStringEscape     // Invalid string escape
 	ErrUnicodeEscTooBig // Unicode escape over 0x10FFFF
 	ErrConsecutiveSep   // Number has consecutive _
@@ -45,14 +41,15 @@ const (
 	ErrExpectedOctal
 	ErrExpectedBinary
 	ErrExpectedDecimal
-	ErrExpectedParamInLambda
-	ErrInvalidVersionLit // Invalid version literal syntax
+	ErrExpectedParamInLambda // Non-variable or variable tuple used in lambda
+	ErrInvalidVersionLit     // Invalid version literal syntax
 
 	ErrExpectedSymbolAssign  // Assignment to non-variable or property
 	ErrReservedKeyword       // Reserved keyword used as an identifier
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel          // Function label can't be number
+	ErrGenericInFuncAlias // Function aliases can't have generics
 	ErrMissingFuncParamType  // Required function parameter type
 
 	// Type
@@ -73,9 +70,11 @@ const (
 	ErrRedeclaredVar        // Can't redeclare variable or function
 	ErrRedeclaredType       // Redeclared type
 	ErrRedeclaredEnum       // Redeclared enum member
+	ErrRedeclaredField // Struct or interface field redeclared
 	ErrMethAndFieldSameName // Field and method have the same name
 	ErrMethodInOtherScope   // Method must be in the same scope as struct definition
 	ErrProvenUnreachable    // Unreachable statement after return/break/next
+	ErrUnusedValue       // Unused literal expression statement
 )
 
 // A ParseError is a basic Klar parse error.
@@ -135,7 +134,7 @@ func (e ParseError) error() string {
 				lexer.RightBracket:     lexer.LeftBracket,
 			}
 			begin := beginMap[expToken]
-			if e.Params["isMap"] == true {
+			if e.Params != nil && e.Params["isMap"] == true {
 				begin = lexer.HashLeftCurlyBrace
 			}
 			return fmt.Sprintf("Expected %s to close %s",
@@ -152,16 +151,14 @@ func (e ParseError) error() string {
 		return "There can only be one '*' in module name"
 	case ErrWildcardAndAlias:
 		return "Can't use '*' with alias in unqualified import"
-	case ErrExpectedDotInBraceImport:
-		return "There should be a '.' before '{' in unqualified import statement"
 	case ErrEmptyUnqImport:
 		return "Expected at least 1 unqualified import"
 	case ErrImportExpectedModule:
 		return "I expected a module name before '.{' in unqualified import"
 	case ErrImportInvalidWildcard:
-		return "'*' should the the last sub-namespace of a module"
-	case ErrImportPrefixDot:
-		return "A module name can't start with '.'"
+		return "'*' should be at the end of the module name"
+	case ErrAliasInUnqualifiedImport:
+		return "Can't use alias with an unqualified import"
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
@@ -175,6 +172,8 @@ func (e ParseError) error() string {
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("The string starting at %s was left open", e.Position)
+	case ErrUnterminatedRegex:
+		return fmt.Sprintf("The regular expression starting at %s was left open", e.Position)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.EndOfStatement {
 			return "Types must be assigned a value"
@@ -223,7 +222,7 @@ func (e ParseError) error() string {
 	case ErrMisplacedSep:
 		return "An underscore isn't allowed here"
 	case ErrNotAllowedInGuard:
-		return "Case guards can't contain when expressions"
+		return "Case guards can't contain 'when' expressions"
 	case ErrUnterminatedComment:
 		return "The comment starting at " + e.Position.String() +
 			" was left open"
@@ -237,6 +236,11 @@ func (e ParseError) error() string {
 		return "Function parameters must have a type"
 	case ErrImportsGoFirst:
 		return "Imports must go before other declarations"
+	case ErrInvalidLabelShorthand:
+		if e.Params["computed"] == true {
+			return "A label shorthand can't be a computed property"
+		}
+		return "Only variables and properties can be used as label shorthands"
 	case ErrMethodInOtherScope:
 		return fmt.Sprintf(
 			"Method %s must be declared in the same scope as type %s",
@@ -246,8 +250,29 @@ func (e ParseError) error() string {
 		return fmt.Sprintf("Invalid version literal '%s'",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
+	case ErrExpectedParamInLambda:
+		return "Expected a parameter name in lambda"
+	case ErrParenRequiredFunc:
+		return "Parentheses are required around function parameter types"
 	case ErrProvenUnreachable:
 		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
+	case ErrReservedKeyword:
+		return fmt.Sprintf(
+			"Can't use %s as an identifier because it is a reserved keyword",
+			QuoteToken(tok),
+		)
+	case ErrGenericInFuncAlias:
+		return "Generic parameters aren't allowed in function aliases"
+	case ErrUnderscoreWithRest:
+		return "'_' not allowed with rest expression, use '...' instead"
+	case ErrUnusedValue:
+		return "TypeError: This value is never used"
+	case ErrRedeclaredField:
+		kind := "Field"
+		if e.Params["kind"] == "enum" {
+			kind = "Enum item"
+		}
+		return fmt.Sprintf("TypeError: %s %s was already declared", kind, QuoteToken(tok))
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (
 			code      = e.ErrorCode

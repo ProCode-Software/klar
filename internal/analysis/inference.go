@@ -34,6 +34,8 @@ func (c *Checker) InferType(expr ast.Node, ctx context) Type {
 		return types.InvalidType
 	case *ast.ListLiteral:
 		return c.CheckList(expr, ctx)
+	case *ast.ListCastExpression:
+		return types.List{c.ParseType(expr.Type, ctx)}
 	case *ast.TupleLiteral:
 		items := make([]Type, len(expr.Values))
 		for i, item := range expr.Values {

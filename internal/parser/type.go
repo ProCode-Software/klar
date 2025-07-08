@@ -77,58 +77,6 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericTy
 	return &ast.GenericType{Name: left, Parameters: params}
 }
 
-func (p *Parser) ParseInterface(name string, inherited []ast.Type) *ast.InterfaceDeclaration {
-	var fields []*ast.TypePair
-	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
-		field := &ast.TypePair{
-			Key: p.expectMapIdent().Source,
-			// If not ident, then it is unmatched
-		}
-		if p.CurrentTokenKind() == lexer.LeftParenthesis {
-			// Parse function: #{ Kind() -> string }
-			fn := &ast.MethodType{}
-			p.Advance() // (
-			parseSeries(p, &fn.Parameters, func() *ast.MethodTypeParam {
-				var label, name string
-				if p.Peek().Kind == lexer.Identifier {
-					// Label: fib(length length: Int)
-					label = p.expectNonNumericMapIdent().Source
-					name = p.Expect(lexer.Identifier).Source
-					p.Expect(lexer.Colon)
-				} else if p.Peek().Kind == lexer.Colon {
-					// Declared wih a name
-					name = p.Expect(lexer.Identifier).Source
-					p.Expect(lexer.Colon)
-				}
-				// Type
-				return &ast.MethodTypeParam{
-					Type:       p.ParseType(CallBindingPower),
-					Label:      label,
-					Identifier: name,
-				}
-			}, lexer.RightParenthesis, lexer.Comma, false)
-			if p.CurrentTokenKind() == lexer.Arrow {
-				p.Advance()
-				fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
-			}
-			field.Value = fn
-		} else {
-			p.Expect(lexer.Colon)
-			field.Value = p.ParseType(DefaultTypeBindingPower)
-		}
-		fields = append(fields, field)
-		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
-			p.Expect(lexer.EndOfStatement, lexer.Comma)
-		}
-	}
-	p.Expect(lexer.RightCurlyBrace)
-	return &ast.InterfaceDeclaration{
-		Identifier:     name,
-		InheritedTypes: inherited,
-		Fields:         fields,
-	}
-}
-
 func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.FunctionType {
 	var params []ast.Type
 	switch left := left.(type) {

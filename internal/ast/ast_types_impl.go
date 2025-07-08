@@ -5,66 +5,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// AST items
-func (Program) Kind() string              { return "Program" }
-func (StringLiteral) Kind() string        { return "StringLiteral" }
-func (FloatLiteral) Kind() string         { return "FloatLiteral" }
-func (IntegerLiteral) Kind() string       { return "IntegerLiteral" }
-func (BooleanLiteral) Kind() string       { return "BooleanLiteral" }
-func (NilLiteral) Kind() string           { return "NilLiteral" }
-func (ExpressionStatement) Kind() string  { return "ExpressionStatement" }
-func (BinaryExpression) Kind() string     { return "BinaryExpression" }
-func (VariableDeclaration) Kind() string  { return "VariableDeclaration" }
-func (AssignmentStatement) Kind() string  { return "AssignmentStatement" }
-func (UnaryExpression) Kind() string      { return "UnaryExpression" }
-func (Symbol) Kind() string               { return "Symbol" }
-func (ImportStatement) Kind() string      { return "ImportStatement" }
-func (TypeAnnotation) Kind() string       { return "TypeAnnotation" }
-func (EnumDeclaration) Kind() string      { return "EnumDeclaration" }
-func (StructDeclaration) Kind() string    { return "StructDeclaration" }
-func (TypeAliasDeclaration) Kind() string { return "TypeAliasDeclaration" }
-func (StructField) Kind() string          { return "StructField" }
-func (MapLiteral) Kind() string           { return "MapLiteral" }
-func (TupleLiteral) Kind() string         { return "TupleLiteral" }
-func (ReturnStatement) Kind() string      { return "ReturnStatement" }
-func (FunctionDeclaration) Kind() string  { return "FunctionDeclaration" }
-func (NextStatement) Kind() string        { return "NextStatement" }
-func (ListLiteral) Kind() string          { return "ListLiteral" }
-func (IndexExpression) Kind() string      { return "IndexExpression" }
-func (CallExpression) Kind() string       { return "CallExpression" }
-func (EnumLiteral) Kind() string          { return "EnumValue" }
-func (ForStatement) Kind() string         { return "ForStatement" }
-func (UpdateStatement) Kind() string      { return "UpdateStatement" }
-func (Discard) Kind() string              { return "Discard" }
-func (WhenExpression) Kind() string       { return "WhenExpression" }
-func (LambdaExpression) Kind() string     { return "LambdaExpression" }
-func (TypeTuple) Kind() string            { return "TypeTuple" }
-func (Attribute) Kind() string            { return "Attribute" }
-func (RangeExpression) Kind() string      { return "RangeExpression" }
-func (RestExpression) Kind() string       { return "RestExpression" }
-func (PipelineExpression) Kind() string   { return "PipelineExpression" }
-func (BadExpression) Kind() string        { return "BadExpression" }
-func (SliceExpression) Kind() string      { return "SliceExpression" }
-func (ParenExpression) Kind() string      { return "ParenExpression" }
-func (InterfaceDeclaration) Kind() string { return "InterfaceDeclaration" }
-func (Comment) Kind() string              { return "Comment" }
-func (MethodType) Kind() string           { return "MethodType" }
-func (TypePair) Kind() string             { return "TypePair" }
-func (BreakStatement) Kind() string       { return "BreakStatement" }
-func (RegexLiteral) Kind() string         { return "RegexLiteral" }
-func (EnumItem) Kind() string             { return "EnumItem" }
-func (VersionLiteral) Kind() string       { return "VersionLiteral" }
-
-// Implementations for types
-func (PrimitiveType) Kind() string { return "PrimitiveType" }
-func (TypeAlias) Kind() string     { return "TypeAlias" }
-func (OptionalType) Kind() string  { return "OptionalType" }
-func (ListType) Kind() string      { return "ListType" }
-func (RestType) Kind() string      { return "RestType" }
-func (TupleType) Kind() string     { return "TupleType" }
-func (FunctionType) Kind() string  { return "FunctionType" }
-func (GenericType) Kind() string   { return "GenericType" }
-func (UnionType) Kind() string     { return "UnionType" }
+// Base
+func (node *BaseNode) SetPos(start, end lexer.Position) {
+	node.Range.Start = start
+	node.Range.End = end
+}
+func (node *BaseNode) GetRange() ranges.Range { return node.Range }
 
 // String escapes
 func (BadEscape) stringEsc()           {}
@@ -101,6 +47,7 @@ func (SliceExpression) expr()    {}
 func (ParenExpression) expr()    {}
 func (RegexLiteral) expr()       {}
 func (VersionLiteral) expr()     {}
+func (ListCastExpression) expr() {}
 
 // Statement
 func (VariableDeclaration) stmt()  {}
@@ -118,6 +65,7 @@ func (BreakStatement) stmt()       {}
 func (FunctionDeclaration) stmt()  {}
 func (NextStatement) stmt()        {}
 func (Attribute) stmt()            {}
+func (FunctionAlias) stmt()        {}
 
 // Type
 func (PrimitiveType) _type() {}
@@ -150,12 +98,6 @@ func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
 
 // Publicizable declarations
-func (node *BaseNode) SetPos(start, end lexer.Position) {
-	node.Range.Start = start
-	node.Range.End = end
-}
-func (node *BaseNode) GetRange() ranges.Range { return node.Range }
-
 func (node *BasePublic) IsPublic() bool { return node.IsPublic() }
 func (node *BasePublic) Publicize()     { node.Public = true }
 

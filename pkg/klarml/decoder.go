@@ -8,12 +8,15 @@ import (
 type decoder struct {
 	caller string
 }
+
 func (d *decoder) TypeError(got string, rt reflect.Type) error {
 	return fmt.Errorf("%s: cannot unmarshall input type %s into expected type %T", d.caller, got, rt)
 }
+
 func (d *decoder) String(node Node, rv reflect.Value) error {
 	return nil
 }
+
 func (d *decoder) Object(node Object, rv reflect.Value) error {
 	rt := rv.Type()
 	switch rt.Kind() {
@@ -41,7 +44,7 @@ func (d *decoder) Object(node Object, rv reflect.Value) error {
 			continue
 		}
 		propType := propVal.Type()
-		
+
 	} */
 	return nil
 }

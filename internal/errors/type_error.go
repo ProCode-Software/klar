@@ -18,7 +18,6 @@ const (
 
 	ErrUncheckedOptional // Required to check if optional is nil
 	ErrUncheckedResult   // Required to check Result for error
-	ErrUnusedValue       // Unused literal expression statement
 	ErrInvalidRestType   // Rest type used where it is not supposed to
 	ErrInvalidRestExpr   // Rest expression used where it is not supposed to
 	ErrVariadicLast      // Variadic param must be last
@@ -138,8 +137,6 @@ func (e TypeError) Error() string {
 			"TypeError: Overload %s was already defined at %s",
 			Quote(name), param[ranges.Range](p, "origPos").Start,
 		)
-	case ErrUnusedValue:
-		return "TypeError: This value is never used"
 	case ErrMismatchedDistrib:
 		return fmt.Sprintf(
 			"TypeError: Operands in distributive expression must be the same type: found mismatched %s and %s",

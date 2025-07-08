@@ -54,7 +54,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []
 			case *ast.WhenExpression, *ast.CallExpression, *ast.BadExpression:
 			default:
 				// Unused statement
-				err := errors.RangedTypeError(errors.ErrUnusedValue, expr.GetRange(), nil)
+				err := errors.Range(errors.ErrUnusedValue, expr.GetRange())
 				if !ctx.IsRoot() && i == len(body)-1 {
 					// TODO: only show if it's a valid type
 					err.Hint("Did you mean to return this expression?")

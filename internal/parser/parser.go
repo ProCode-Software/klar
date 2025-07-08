@@ -133,7 +133,8 @@ func (p *Parser) lastTokEnd() lexer.Position {
 }
 
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
-	sym, isOk := p.ParseExpression(CallBindingPower), false
+	var isOk, isComputed bool
+	sym := p.ParseExpression(CallBindingPower)
 	switch sym := sym.(type) {
 	case *ast.Symbol:
 		key = sym
@@ -150,9 +151,23 @@ func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 		}
 	}
 	if !isOk {
-		p.Error(errors.Node(errors.ErrInvalidLabelShorthand, sym))
+		err := errors.Node(errors.ErrInvalidLabelShorthand, sym)
+		err.Params = errors.ErrorParams{"computed": isComputed}
+		p.Error(err)
 	}
 	return key, value
+}
+
+func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType) lexer.Token {
+	err := ParseError{ErrorCode: code}
+	return p.ExpectError(err, need...)
+}
+
+func (p *Parser) ExpectVarName() lexer.Token {
+	if slices.Contains(ast.ReservedIdent, p.CurrentTokenKind()) {
+		return p.ExpectErrorCode(errors.ErrReservedKeyword, lexer.Identifier)
+	}
+	return p.Expect(lexer.Identifier)
 }
 
 // Expect advances the parser if the current token is of typ, otherwise throws err.
@@ -176,8 +191,14 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 }
 
 // Range utils
-func markEndPos[T ast.Node](p *Parser, node T) {
+func markEndPos[T ast.Node](p *Parser, node T) T {
 	node.SetPos(node.GetRange().Start, p.lastTokEnd())
+	return node
+}
+
+func markStartEndPos[T ast.Node](p *Parser, node T, start lexer.Position) T {
+	node.SetPos(start, p.lastTokEnd())
+	return node
 }
 
 func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
@@ -186,8 +207,9 @@ func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
 	return node
 }
 
-func copyPos[F, T ast.Node](from F, to T) {
+func copyPos[F, T ast.Node](from F, to T) T {
 	to.SetPos(from.GetRange().Start, from.GetRange().End)
+	return to
 }
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.

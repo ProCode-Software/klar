@@ -48,7 +48,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		// Limitation: if the name is written in a script without distinct
 		// capital letters, we can't tell if it is all caps or not, so it
 		// is just not constant.
-		
+
 		var isConst bool
 		if symbol, ok := left.(*ast.Symbol); ok {
 			id := symbol.Identifier
@@ -74,26 +74,45 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	var (
-		module, alias string
+		b             strings.Builder
+		module        = &ast.Symbol{}
+		alias         *ast.Symbol
 		unqualImports []*ast.UnqualifiedImport
 		isWildcard    bool
+		modStart      lexer.Position
 	)
 	// Skip import keyword
 	p.Expect(lexer.Import)
 
 	// Parse maybe alias
-	module = p.Expect(lexer.Identifier).Source
-	if p.CurrentTokenKind() == lexer.Equal {
-		alias, module = module, alias
-		p.Advance()
+	if p.Peek().Kind == lexer.Equal {
+		tok := p.Expect(lexer.Identifier)
+		alias = rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
+		p.Advance() // =
 	}
 
-	for p.HasTokens() && p.IsCurrently(lexer.Identifier, lexer.Dot) {
-		module += p.Advance().Source
+	// First part of module
+	first := p.Expect(lexer.Identifier)
+	b.WriteString(first.Source)
+	modStart = first.Position
+
+	for p.WhileNot(lexer.EndOfStatement) {
+		if p.CurrentTokenKind() == lexer.Dot {
+			p.Advance()
+			if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+				break
+			}
+			b.WriteByte('*')
+			if p.CurrentTokenKind() == lexer.Asterisk {
+				break
+			}
+		}
+		b.WriteString(p.Expect(lexer.Identifier).Source)
 	}
+	module.SetPos(modStart, p.lastTokEnd())
+
+	// Wildcard
 	if p.CurrentTokenKind() == lexer.Asterisk {
-		// Wildcard
-		module += "*"
 		isWildcard = true
 		p.Tokens = slices.Insert(p.Tokens, p.Index+1, lexer.Token{
 			Kind:   lexer.EndOfStatement,
@@ -105,30 +124,27 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		})
 		p.Advance()
 	}
-	// Module name begins with .
-	if module[0] == '.' {
-		p.Error(errors.ParseError{
-			ErrorCode: errors.ErrImportPrefixDot,
-			Params:    map[string]any{"module": module},
-		})
-		module = module[1:]
-	}
+	module.Identifier = b.String()
 
 	// Unqualified import
-	if !isWildcard && p.CurrentTokenKind() == lexer.LeftCurlyBrace {
-		p.Expect(lexer.LeftCurlyBrace)
-		// import module{...} instead of module.{...}
-		if module[len(module)-1] != '.' {
-			p.Error(errors.Token(
-				errors.ErrExpectedDotInBraceImport, p.PeekBehind(),
-			))
-		} else {
-			module = module[:len(module)-1]
+	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+		if isWildcard {
+			// Wildcard and unqualified import
+			// import module.*.{...}
 		}
+		p.Expect(lexer.LeftCurlyBrace)
 		// Empty import
-		if p.CurrentTokenKind() == lexer.RightBracket {
+		if p.CurrentTokenKind() == lexer.RightCurlyBrace {
 			p.Error(errors.Token(errors.ErrEmptyUnqImport, p.CurrentToken()))
 		}
+
+		// Alias and unqualified import
+		if alias != nil {
+			p.Error(errors.Token(
+				errors.ErrAliasInUnqualifiedImport, p.PeekBehind(),
+			))
+		}
+		module.Identifier = module.Identifier[:len(module.Identifier)-1]
 
 		var (
 			wasTypeKw, isTypeImport bool

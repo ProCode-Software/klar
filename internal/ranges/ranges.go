@@ -80,12 +80,15 @@ func BetweenPos(r1, r2 Position) Range {
 }
 
 // In reports whether p is in the range r.
-func (r Range) In(p Position) bool {
+func (r Range) PosIn(p Position) bool {
 	if p.Line < r.Start.Line || p.Line > r.End.Line {
 		return false
 	}
 	return p.Col >= r.Start.Col &&
 		p.Col <= r.End.Col
+}
+func (r Range) RangeIn(r2 Range) bool {
+	return r.PosIn(r2.Start) && r.PosIn(r2.End)
 }
 
 func (r Range) IsSingleLine() bool {
@@ -101,4 +104,8 @@ func (r Range) LineLength() int {
 
 func (r Range) String() string {
 	return fmt.Sprintf("%s:%s", r.Start, r.End)
+}
+
+func (r Range) IsZero() bool {
+	return IsZeroPosition(r.Start) && IsZeroPosition(r.End)
 }

@@ -10,7 +10,7 @@ import (
 type Expression = ast.Expression
 
 func (c *Checker) CheckBinaryExpr(expr *ast.BinaryExpression, ctx context) Type {
-	op := expr.Operator
+	op := expr.Operator.Kind
 	switch {
 	case op == lexer.In:
 		// Always returns Bool

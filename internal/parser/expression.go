@@ -16,13 +16,13 @@ func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.Bina
 	right := p.ParseExpression(bp)
 	return &ast.BinaryExpression{
 		Left:     left,
-		Operator: op.Kind,
+		Operator: op,
 		Right:    right,
 	}
 }
 
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
-	op := p.Advance().Kind
+	op := p.Advance()
 	right := p.ParseExpression(UnaryBindingPower)
 	return &ast.UnaryExpression{Operator: op, Right: right}
 }
@@ -34,10 +34,8 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		p.Advance()
 		return &ast.TupleLiteral{}
 	}
-	var (
-		expr  ast.Expression
-		first = p.CurrentToken()
-	)
+	var expr ast.Expression
+	first := p.CurrentToken()
 	if first.Kind == lexer.Underscore {
 		expr = &ast.Discard{}
 	} else {
@@ -198,6 +196,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 	var args []*ast.CallParam
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		arg := &ast.CallParam{}
+		arg.Range.Start = p.CurrentToken().Position
 		switch {
 		case p.CurrentTokenKind() == lexer.Colon:
 			// Shorthand label if name and variable/field matches
@@ -216,6 +215,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 		default:
 			arg.Value = p.ParseExpression(ExpressionBindingPower)
 		}
+		markEndPos(p, arg)
 		args = append(args, arg)
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
@@ -240,15 +240,18 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 		l.Params = left.Params
 	case *ast.TupleLiteral:
 		for _, param := range left.Values {
+			var pair *ast.TypePair
 			switch param := param.(type) {
 			case *ast.Symbol:
-				l.Params = append(l.Params, &ast.TypePair{Key: param.Identifier})
+				pair = &ast.TypePair{Key: param.Identifier}
 			// Allow (_, b) -> ...
 			case *ast.Discard:
-				l.Params = append(l.Params, &ast.TypePair{Key: "_"})
+				pair = &ast.TypePair{Key: "_"}
 			default:
 				p.Error(errors.Node(errors.ErrExpectedParamInLambda, param))
+				continue
 			}
+			l.Params = append(l.Params, copyPos(param, pair))
 		}
 	default:
 		p.Error(errors.Node(errors.ErrExpectedParamInLambda, left))
@@ -318,24 +321,26 @@ loop:
 }
 
 func (p *Parser) parseCaseSubExpr() ast.Expression {
-	tok := p.CurrentTokenKind()
-	switch tok {
+	tok := p.CurrentToken()
+	var res ast.Expression
+	switch tok.Kind {
 	// Relational operators don't need explicit LHS
 	// 	when x {
 	// 		< 5 -> ...
 	// }
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In:
-		return p.ParseBinaryExpression(nil, BindingPowerMap[tok])
+		res = p.ParseBinaryExpression(nil, BindingPowerMap[tok.Kind])
 	case lexer.Question:
 		p.Advance()
-		return &ast.NilLiteral{Shorthand: true}
+		res = &ast.NilLiteral{Shorthand: true}
 	case lexer.Underscore:
 		p.Advance()
-		return &ast.Discard{}
+		res = &ast.Discard{}
 	default:
-		return p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
+		res = p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
 	}
+	return markStartEndPos(p, res, tok.Position)
 }
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
@@ -516,4 +521,14 @@ func (p *Parser) ParseVersion(left ast.Node, bp BindingPower) ast.Node {
 		return &ast.BadExpression{Value: ver}
 	}
 	return ver
+}
+
+func (p *Parser) ParseListCast() *ast.ListCastExpression {
+	p.Expect(lexer.LeftBracket)
+	typ := p.ParseType(DefaultTypeBindingPower)
+	p.Expect(lexer.RightBracket)
+	return &ast.ListCastExpression{
+		Type: typ,
+		Args:  p.ParseCallExpression(nil, CallBindingPower).Args,
+	}
 }

@@ -44,7 +44,7 @@ func (c *Context) ResolveVars() (errors []error) {
 			if currentNs != "" {
 				handler := c.Namespaces[currentNs]
 				handler(n)
-				currentNs = ""	
+				currentNs = ""
 			}
 		}
 		return *n, nil

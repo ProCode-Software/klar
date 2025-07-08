@@ -97,7 +97,7 @@ func runTokens(tokens []lexer.Token) {
 		}
 	} else {
 		litter.Config.StripPackageNames = true
-		litter.Dump(program)
+		// litter.Dump(program)
 	}
 
 	// Typecheck

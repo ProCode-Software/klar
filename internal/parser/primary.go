@@ -74,7 +74,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 			// Exponents are floats
 			return &ast.FloatLiteral{
 				Source: src,
-				Value: unwrap(strconv.ParseFloat(src, 64)),
+				Value:  unwrap(strconv.ParseFloat(src, 64)),
 			}
 		// Go parses 0 prefix as octal
 		// Also check if prefix is not 0o, 0b, or 0x
@@ -99,7 +99,7 @@ func (p *Parser) ParsePrimaryExpression() ast.Node {
 			Escapes:    escapes,
 		}
 	case lexer.Boolean:
-		return &ast.BooleanLiteral{Value: src == "true",}
+		return &ast.BooleanLiteral{Value: src == "true"}
 	case lexer.HashLeftCurlyBrace:
 		return p.ParseMap()
 	case lexer.Nil:

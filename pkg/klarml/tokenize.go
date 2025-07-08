@@ -30,6 +30,7 @@ func (l *lexer) Backup() {
 func newToken(pos Position, kind TokenType, src string) Token {
 	return Token{Position: pos, Kind: kind, Source: src}
 }
+
 func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }

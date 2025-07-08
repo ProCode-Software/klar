@@ -30,7 +30,11 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.HashLeftCurlyBrace:
 		res = p.ParseMap()
 	case lexer.LeftBracket:
-		res = p.ParseList()
+		if p.isListCast() {
+			res = p.ParseListCast()
+		} else {
+			res = p.ParseList()
+		}
 	case lexer.Dot:
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
@@ -107,7 +111,7 @@ func (p *Parser) handleLED(
 		}
 		res = p.ParseVersion(left, bp)
 	}
-	res.SetPos( left.GetRange().Start, p.lastTokEnd())
+	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }
 
@@ -202,4 +206,20 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
+}
+
+func (p *Parser) isListCast() bool {
+	i := p.Index
+	for ; p.HasTokens(); i++ {
+		tok := p.Tokens[i]
+		switch tok.Kind {
+		case lexer.RightBracket:
+			return p.Tokens[i+1].Kind == lexer.LeftParenthesis
+		case lexer.Stroke, lexer.Question:
+			return true
+		case lexer.Comma:
+			return false
+		}
+	}
+	return false
 }

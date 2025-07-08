@@ -37,6 +37,7 @@ func Parse(bytes []byte) (Document, []error) {
 	tokens := Tokenize(bytes)
 	return ParseTokens(tokens)
 }
+
 // Parse reads a markup document from reader, returning the parsed abstract
 // syntax tree (AST) and any errors that occured while parsing.
 func ParseReader(reader io.Reader) (Document, []error) {
