@@ -39,7 +39,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		p.Advance()
 		for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
 			// Alias or generic
-			inherited = append(inherited, p.ParseType(UnionTypeBindingPower))
+			inherited = append(inherited, p.ParseType(PrimaryTypeBindingPower))
 			if p.CurrentTokenKind() != lexer.LeftCurlyBrace {
 				p.Expect(lexer.Comma)
 			}
@@ -325,7 +325,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
 		}
 		alias := &ast.Symbol{Identifier: p.Expect(lexer.Identifier).Source}
-		return &ast.FunctionAlias{
+		return &ast.FuncAliasDeclaration{
 			Identifier: f.Identifier,
 			Struct:     f.Struct,
 			Alias:      rangeFromToken(alias, rec),
@@ -423,10 +423,14 @@ func (p *Parser) ParseAttribute() *ast.Attribute {
 func (p *Parser) ParsePublicModifier() ast.Statement {
 	p.Expect(lexer.Public)
 	stmt := p.ParseStatement()
-	if pub, ok := stmt.(ast.Publicizable); ok {
-		pub.Publicize() // Set Public to true
-	} else {
+	switch stmt.(type) {
+	case *ast.EnumDeclaration, *ast.FunctionDeclaration,
+		*ast.InterfaceDeclaration, ast.TypeDeclaration,
+		*ast.StructDeclaration, *ast.TypeAliasDeclaration,
+		*ast.VariableDeclaration, *ast.FuncAliasDeclaration:
+		return &ast.PublicDeclaration{Declaration: stmt}
+	default:
 		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
+		return &ast.BadExpression{Value: stmt}
 	}
-	return stmt
 }

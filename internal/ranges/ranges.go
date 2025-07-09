@@ -87,6 +87,7 @@ func (r Range) PosIn(p Position) bool {
 	return p.Col >= r.Start.Col &&
 		p.Col <= r.End.Col
 }
+
 func (r Range) RangeIn(r2 Range) bool {
 	return r.PosIn(r2.Start) && r.PosIn(r2.End)
 }

@@ -9,7 +9,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/internal/paths"
+	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/sanity-io/litter"
@@ -20,6 +21,7 @@ const INCLUDE_COMMENTS = true
 var (
 	File        string
 	rootProgram ast.Program
+	double, _   = target.FromCurrent()
 )
 
 func tryPipe() {
@@ -101,8 +103,9 @@ func runTokens(tokens []lexer.Token) {
 	}
 
 	// Typecheck
-	errors := analysis.CheckProgram(rootProgram, analysis.CheckOptions{
-		ContinueOnError: true,
+	_, errors := analysis.CheckProgram(rootProgram, analysis.CheckOptions{
+		FilePath: File,
+		Target:   double,
 	})
 	if len(errors) > 0 {
 		for _, err := range errors {
@@ -119,7 +122,7 @@ func RunFile(path string) {
 		path += ".klar"
 		file, err = os.Open(path)
 	}
-	File = module.ResolvePath(path)
+	File = paths.Full(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			cli.FileNotFound(File)

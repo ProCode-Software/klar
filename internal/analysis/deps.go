@@ -280,3 +280,28 @@ func traceUndefined(name string, t ast.TypeDeclaration) (r ranges.Range) {
 	// Should never happen
 	panic(fmt.Sprintf("traceUndefined: %s not found", name))
 }
+
+func (c *Checker) SortTypes(names map[string]ast.TypeDeclaration) []string {
+	deps := make(depMap, len(names))
+	collectInherited := func(list []ast.Type, c1 *[]string) {
+		for _, obj := range list {
+			*c1 = append(*c1, )
+		}
+	}
+	for name, node := range names {
+		var c1, c2 []string
+		switch node := node.(type) {
+		case *ast.StructDeclaration:
+		case *ast.InterfaceDeclaration:
+		case *ast.EnumDeclaration:
+			for _, obj := range node.Inherited {
+				if obj, ok := obj.(*ast.TypeAlias); ok {
+					c1 = append(c1, obj.Identifier)
+				}
+			}
+		case *ast.TypeAliasDeclaration:
+			getC1AndC2Deps(node.Type, &c1, &c1)
+		}
+		
+	}
+}

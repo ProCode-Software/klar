@@ -17,9 +17,6 @@ type Node interface {
 type BaseNode struct {
 	Range ranges.Range
 }
-type BasePublic struct {
-	Public bool
-}
 
 // All EOS-terminated statement AST tokens implement the Statement interface.
 type Statement interface {
@@ -138,19 +135,16 @@ type Assignable interface {
 	assignable()
 }
 
-// Publicizable is any declaration that allows the `public` modifier.
-// Calling the Publicizable will set the Public field to true on the declaration.
-type Publicizable interface {
-	Statement
-	Publicize()
-	IsPublic() bool
+type PublicDeclaration struct {
+	BaseNode
+	Declaration Statement
 }
 
 // todo: specify indices that are constant if not symbol
 // todo: multiple assignees
 type VariableDeclaration struct {
 	BaseNode
-	BasePublic
+
 	Assignee     Expression
 	Value        Expression
 	Constant     bool // Constant if Identifier is capitalized
@@ -304,7 +298,6 @@ type TypeDeclaration interface {
 }
 
 type InterfaceDeclaration struct {
-	BasePublic
 	Identifier     string
 	InheritedTypes []Type
 	Tag            bool // If empty
@@ -313,7 +306,6 @@ type InterfaceDeclaration struct {
 }
 
 type StructDeclaration struct {
-	BasePublic
 	Identifier     string
 	InheritedTypes []Type // Type alias or primitive
 	Fields         []*StructField
@@ -328,7 +320,6 @@ type StructField struct {
 }
 
 type EnumDeclaration struct {
-	BasePublic
 	Identifier string
 	Inherited  []Type
 	Values     []*EnumItem
@@ -342,7 +333,6 @@ type EnumItem struct {
 }
 
 type TypeAliasDeclaration struct {
-	BasePublic
 	Identifier string
 	Type       Type
 	BaseNode
@@ -365,7 +355,6 @@ type ReturnStatement struct {
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
-	BasePublic
 	Identifier    *Symbol
 	Struct        Type
 	GenericParams []*Symbol
@@ -376,9 +365,9 @@ type FunctionDeclaration struct {
 	BaseNode
 }
 
-type FunctionAlias struct {
+type FuncAliasDeclaration struct {
 	BaseNode
-	BasePublic
+
 	Struct     Type
 	Identifier *Symbol
 	Alias      *Symbol

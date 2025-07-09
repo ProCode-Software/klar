@@ -50,6 +50,7 @@ func (VersionLiteral) expr()     {}
 func (ListCastExpression) expr() {}
 
 // Statement
+func (BadExpression) stmt()        {}
 func (VariableDeclaration) stmt()  {}
 func (UpdateStatement) stmt()      {}
 func (ForStatement) stmt()         {}
@@ -65,7 +66,8 @@ func (BreakStatement) stmt()       {}
 func (FunctionDeclaration) stmt()  {}
 func (NextStatement) stmt()        {}
 func (Attribute) stmt()            {}
-func (FunctionAlias) stmt()        {}
+func (FuncAliasDeclaration) stmt() {}
+func (PublicDeclaration) stmt()    {}
 
 // Type
 func (PrimitiveType) _type() {}
@@ -96,14 +98,3 @@ func (IndexExpression) assignable() {}
 func (SliceExpression) assignable() {}
 func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
-
-// Publicizable declarations
-func (node *BasePublic) IsPublic() bool { return node.IsPublic() }
-func (node *BasePublic) Publicize()     { node.Public = true }
-
-func (d VariableDeclaration) IsPublic() bool  { return d.Public }
-func (d EnumDeclaration) IsPublic() bool      { return d.Public }
-func (d FunctionDeclaration) IsPublic() bool  { return d.Public }
-func (d StructDeclaration) IsPublic() bool    { return d.Public }
-func (d TypeAliasDeclaration) IsPublic() bool { return d.Public }
-func (d InterfaceDeclaration) IsPublic() bool { return d.Public }

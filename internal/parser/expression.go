@@ -529,6 +529,6 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	p.Expect(lexer.RightBracket)
 	return &ast.ListCastExpression{
 		Type: typ,
-		Args:  p.ParseCallExpression(nil, CallBindingPower).Args,
+		Args: p.ParseCallExpression(nil, CallBindingPower).Args,
 	}
 }

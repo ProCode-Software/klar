@@ -6,10 +6,10 @@ import (
 )
 
 type TypeDeclaration struct {
-	Type       Type
-	Used       bool
-	Position   ranges.Range
-	Attributes map[string]any
+	Type     Type
+	Used     bool
+	Position ranges.Range
+	Info     any
 }
 
 func (TypeDeclaration) Exportable_() {}

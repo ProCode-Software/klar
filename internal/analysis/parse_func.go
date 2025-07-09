@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/ast/typed"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
@@ -49,11 +50,11 @@ func (c *Checker) CheckFunction(
 		ctx.Declare("self", true, selfType, defaultRange) // todo: check if pointer selfType should be used
 	}
 	// Check statements
-	_ = c.CheckContext(ctx, &d.Body)
+	_, _ = c.CheckContext(ctx, d.Body)
 	return f
 }
 
-func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) {
+func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typed.FunctionDecl {
 	var (
 		name = decl.Identifier
 		pos  = decl.GetRange()
@@ -83,7 +84,7 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) {
 		}
 		if str, ok := structDef.Type.(types.Struct); ok {
 			f = c.CheckFunction(decl, &str, ctx)
-			str.DefineMethod(name, f, pos)
+			str.DefineMethod(name.Identifier, f, pos)
 			structDef.Type = str
 		} else {
 			c.Error(errors.TypeError{
@@ -96,13 +97,13 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) {
 		return
 	}
 	f = c.CheckFunction(decl, nil, ctx)
-	switch err, data := ctx.DeclareFuncType(name, f, pos); err {
+	switch err, data := ctx.DeclareFuncType(name.Identifier, f, pos); err {
 	case 1:
 		// Overload exists
 		existingOvl := data.(*types.Overload)
-		c.ErrOverloadExists(name, *existingOvl, pos)
+		c.ErrOverloadExists(name.Identifier, *existingOvl, pos)
 	case 2:
 		// Alreay declared non-function
-		c.ErrRedeclared(errors.ErrRedeclaredVar, name, pos, "function", ctx)
+		c.ErrRedeclared(errors.ErrRedeclaredVar, name.Identifier, pos, "function", ctx)
 	}
 }

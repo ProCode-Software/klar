@@ -49,7 +49,7 @@ const (
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel          // Function label can't be number
-	ErrGenericInFuncAlias // Function aliases can't have generics
+	ErrGenericInFuncAlias    // Function aliases can't have generics
 	ErrMissingFuncParamType  // Required function parameter type
 
 	// Type
@@ -70,11 +70,12 @@ const (
 	ErrRedeclaredVar        // Can't redeclare variable or function
 	ErrRedeclaredType       // Redeclared type
 	ErrRedeclaredEnum       // Redeclared enum member
-	ErrRedeclaredField // Struct or interface field redeclared
+	ErrRedeclaredField      // Struct or interface field redeclared
 	ErrMethAndFieldSameName // Field and method have the same name
 	ErrMethodInOtherScope   // Method must be in the same scope as struct definition
 	ErrProvenUnreachable    // Unreachable statement after return/break/next
-	ErrUnusedValue       // Unused literal expression statement
+	ErrUnusedValue          // Unused literal expression statement
+	ErrReturnOutsideFunc    // Return statement not allowed outside of function
 )
 
 // A ParseError is a basic Klar parse error.

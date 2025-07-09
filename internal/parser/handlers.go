@@ -210,16 +210,26 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 
 func (p *Parser) isListCast() bool {
 	i := p.Index
-	for ; p.HasTokens(); i++ {
+	brackCount := 0
+loop:
+	for ; ; i++ {
 		tok := p.Tokens[i]
 		switch tok.Kind {
 		case lexer.RightBracket:
-			return p.Tokens[i+1].Kind == lexer.LeftParenthesis
+			brackCount--
+			if brackCount == 0 {
+				break loop
+			}
+		case lexer.LeftBracket:
+			brackCount++
 		case lexer.Stroke, lexer.Question:
 			return true
-		case lexer.Comma:
+		default:
 			return false
+		case lexer.LeftParenthesis, lexer.RightParenthesis,
+			lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
+			lexer.Dot, lexer.Arrow, lexer.Ellipsis, lexer.Comma:
 		}
 	}
-	return false
+	return p.Tokens[i+1].Kind == lexer.LeftParenthesis
 }

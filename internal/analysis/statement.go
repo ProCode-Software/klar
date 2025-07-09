@@ -2,11 +2,12 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/ast/typed"
 	"github.com/ProCode-Software/klar/internal/errors"
 )
 
 type Return struct {
-	Node       ast.ReturnStatement
+	Node       *ast.ReturnStatement
 	ReturnType Type
 }
 type contextInfo struct {
@@ -16,7 +17,9 @@ type contextInfo struct {
 	doesReturn     bool
 }
 
-func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (returns []Return) {
+func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
+	stmts []typed.Statement, returns []Return,
+) {
 	var unreachableStmt string
 	for i, stmt := range body {
 		if unreachableStmt != "" {

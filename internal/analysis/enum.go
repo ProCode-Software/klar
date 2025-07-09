@@ -7,7 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-func (c *Checker) parseEnum(t *ast.EnumDeclaration) types.Enum {
+func (c *Checker) ParseEnum(t *ast.EnumDeclaration, ctx context) types.Enum {
 	type pendingItem struct {
 		name string
 		pos  ranges.Range

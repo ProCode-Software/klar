@@ -1,10 +1,15 @@
 package typed
 
-import "github.com/ProCode-Software/klar/internal/ranges"
+import "fmt"
 
 func (d BaseDecl) GetName() string {
 	return d.Name
 }
-func (n BaseNode) At() ranges.Range {
-	return n.Position
+
+func (d *VariableDecl) GetName() string {
+	return fmt.Sprint(d.Idents)
 }
+
+// Statements
+func (d BaseDecl) stmt()      {}
+func (d *VariableDecl) stmt() {}

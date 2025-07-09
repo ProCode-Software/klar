@@ -15,12 +15,12 @@ const (
 )
 
 type Declaration struct {
-	Position   ranges.Range
-	Type       types.Type
-	Constant   bool
-	Value      RuntimeVal
-	Used       bool
-	Attributes map[string]any
+	Position ranges.Range
+	Type     types.Type
+	Constant bool
+	Value    RuntimeVal
+	Used     bool
+	Info     any
 }
 
 type Context struct {

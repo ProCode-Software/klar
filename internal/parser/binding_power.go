@@ -100,7 +100,6 @@ var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.LessThan: GenericTypeBindingPower,
 	lexer.Dot:      MemberTypeBindingPower,
 
-	lexer.Boolean:    PrimaryTypeBindingPower,
 	lexer.Identifier: PrimaryTypeBindingPower,
 	lexer.Underscore: PrimaryTypeBindingPower,
 }

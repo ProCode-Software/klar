@@ -2,9 +2,11 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/ast/typed"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
+	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
@@ -17,11 +19,13 @@ type (
 
 // A Checker type-checks a [ast.Program].
 type Checker struct {
-	Errors          []errors.KlarError
-	Exports         map[string]runtime.Exportable
-	Program         ast.Program
-	OnError         func(err errors.KlarError)
-	ContinueOnError bool
+	Errors  []errors.KlarError
+	Exports map[string]runtime.Exportable
+	Program ast.Program
+	OnError func(err errors.KlarError)
+
+	FilePath string
+	Target   target.Double
 
 	typeDepMode int
 }
@@ -41,9 +45,71 @@ func (c *Checker) Error(err errors.KlarError) {
 	}
 }
 
-func (c *Checker) CheckProgram() {
+func (c *Checker) toTypedExports(
+	exports []*ast.PublicDeclaration, asStmt []ast.Statement, ctx context,
+) []typed.Declaration {
+	items := make([]typed.Declaration, len(exports))
+	typedCtx, returns := c.CheckContext(ctx, asStmt)
+	// Error if there are return statements (because top level)
+	for _, ret := range returns {
+		c.Error(errors.Node(errors.ErrReturnOutsideFunc, ret.Node))
+	}
+
+	for _, funct := range typedCtx.Functions {
+		items = append(items, funct)
+	}
+	for _, typ := range typedCtx.Types {
+		items = append(items, typ)
+	}
+	for _, vari := range typedCtx.Statements {
+		items = append(items, vari.(*typed.VariableDecl))
+	}
+	return items
+}
+
+func (c *Checker) CheckProgram() *typed.Program {
 	rootCtx := runtime.NewContext(-1)
-	c.CheckContext(rootCtx, &c.Program.Body)
+	var (
+		foundDec    bool
+		imports     []*ast.ImportStatement
+		exports     []*ast.PublicDeclaration
+		attrs       []*ast.Attribute
+		exportStmts []ast.Statement
+		others      []ast.Statement
+	)
+	for _, stmt := range c.Program.Body {
+		switch stmt := stmt.(type) {
+		// Resolve all modules before type-checking so they can be referenced
+		// by the current module.
+		case *ast.ImportStatement:
+			imports = append(imports, stmt)
+			if foundDec {
+				c.Error(errors.Node(errors.ErrImportsGoFirst, stmt))
+			}
+		case *ast.PublicDeclaration:
+			exports = append(exports, stmt)
+			exportStmts = append(exportStmts, stmt.Declaration)
+			foundDec = true
+		case *ast.Attribute:
+			attrs = append(attrs, stmt)
+		default:
+			others = append(others, stmt)
+			foundDec = true
+		}
+	}
+	typedExports := c.toTypedExports(exports, exportStmts, rootCtx)
+
+	typedCtx, returns := c.CheckContext(rootCtx, c.Program.Body)
+	// No returns outside top level
+	for _, ret := range returns {
+		c.Error(errors.Node(errors.ErrReturnOutsideFunc, ret.Node))
+	}
+	return &typed.Program{
+		Context:  *typedCtx,
+		Imports:  imports,
+		Exports:  typedExports,
+		BaseNode: c.Program.BaseNode,
+	}
 }
 
 func (c *Checker) checkRedeclared(ok bool, ctx context, rang ranges.Range, name string) {
@@ -54,119 +120,84 @@ func (c *Checker) checkRedeclared(ok bool, ctx context, rang ranges.Range, name 
 	c.Error(errors.Redeclared(name, "Type", lastPos, rang))
 }
 
-func (c *Checker) CheckContext(ctx context, body *[]ast.Statement) (returns []Return) {
+func (c *Checker) CheckContext(ctx context, body []ast.Statement) (*typed.Context, []Return) {
 	var (
-		foundDec bool
-		// Sort each statement so normal statements can reference functions before
-		// they are declared. Same thing for functions referencing alias and for
-		// structs/interfaces referencing type alias
-		alias []*ast.TypeAliasDeclaration
-		attrs []*ast.Attribute
-		funcs []*ast.FunctionDeclaration
-		intfs []ast.TypeDeclaration // Structs and interfaces
-		stmts = make([]ast.Statement, 0, len(*body))
-		// Only at top-level
-		imports []*ast.ImportStatement
-		exports []ast.Publicizable
+		// Sort in a specific order so normal statements can reference types, etc.
+		// The order is:
+		//	1. types (each sorted by references)
+		//	2. functions (each sorted by references)
+		//  3. normal statements
+		typs      []ast.TypeDeclaration
+		funcs     []*ast.FunctionDeclaration
+		funcAlias []*ast.FuncAliasDeclaration
+		stmts     = make([]ast.Statement, 0, len(body))
+		typeNames = make(map[string]ast.TypeDeclaration)
 	)
-	for _, dec := range *body {
-		var (
-			isImport, ok bool
-			id           string
-			pos          = dec.GetRange()
-		)
+	for _, dec := range body {
 		switch dec := dec.(type) {
-		// Imports are only parsed at the top-level, but they must go
-		// before other declarations.
-		// Resolve all modules before type-checking so they can be referenced
-		// by the current module.
-		case *ast.ImportStatement:
-			imports = append(imports, dec)
-			isImport = true
-			if foundDec {
-				c.Error(errors.Node(errors.ErrImportsGoFirst, dec))
+		case ast.TypeDeclaration:
+			name := dec.Name()
+			if last, exists := typeNames[name]; exists {
+				c.Error(errors.Redeclared(name, "Type", last.GetRange(), dec.GetRange()))
+				continue
 			}
-			continue
-		// Declare enums first since they don't depend on other types
-		case *ast.EnumDeclaration:
-			id = dec.Identifier
-			ok = ctx.DeclareType(id, c.parseEnum(dec), pos)
-		// Types don't have to be declared before they can be used.
-		// in structs and type aliases. No recursive types in aliases
-		case *ast.TypeAliasDeclaration:
-			ok = ctx.DeclareType(dec.Identifier, nil, pos)
-			id = dec.Identifier
-			alias = append(alias, dec)
-		// Structs and interfaces may recursively reference themselves with
-		// limitations.
-		case *ast.StructDeclaration, *ast.InterfaceDeclaration:
-			d := dec.(ast.TypeDeclaration)
-			id = d.Name()
-			ok = ctx.DeclareType(id, nil, pos)
-			intfs = append(intfs, d)
-		// Functions may redeclare themselves with different parameters/overloads
+			typeNames[name] = dec
+			typs = append(typs, dec)
 		case *ast.FunctionDeclaration:
 			funcs = append(funcs, dec)
-		// Attributes attach to declarations
-		// @target - sets the target runtime for a declaration
-		// @deprecated - warn when referenced
-		// @added - version when added
-		// @external - external implementation
-		case *ast.Attribute:
-			attrs = append(attrs, dec)
+		case *ast.FuncAliasDeclaration:
+			funcAlias = append(funcAlias, dec)
 		default:
 			stmts = append(stmts, dec)
 		}
-		if id != "" {
-			c.checkRedeclared(ok, ctx, pos, id)
-		}
-		if !ctx.IsRoot() {
-			continue
-		}
-		if dec, ok := dec.(ast.Publicizable); ok && dec.IsPublic() {
-			exports = append(exports, dec)
-		}
-		if !isImport {
-			foundDec = true
-		}
 	}
-	// Declare types first
-	deps := c.getTypeAliasDeps(alias, ctx) // Deps of aliases
-	c.mergeStructDeps(deps, intfs, ctx)    // Add structs and interfaces
-	types, names, undef := sortTypeDecls(deps, alias, intfs, ctx)
-	for i, t := range types {
-		if t == nil {
-			name := names[i]
-			// Already declared type as a non-alias
-			if _, ok := ctx.ResolveType(name); ok {
-				continue
-			}
-			// Undefined
-			in := undef[name]
-			c.ErrUndefinedType(name, traceUndefined(name, in), ctx)
+	sortedTypeNames := c.SortTypes(typeNames)
+	for _, name := range sortedTypeNames {
+		if _, ok := typeNames[name]; !ok {
+			// The type will be resolved later. It may be in another context
 			continue
 		}
-		name := t.Name()
-		// Skip type cycles, would already be set to error type
-		if ctx.TypeDeclarations[name].Type != nil {
-			continue
-		}
-		var res Type
-		switch t := t.(type) {
+		decl := typeNames[name]
+		var val types.Type
+		switch decl := decl.(type) {
 		case *ast.StructDeclaration:
-			res = c.ParseStruct(t, ctx)
+			val = c.ParseStruct(decl, ctx)
 		case *ast.InterfaceDeclaration:
-			res = c.ParseInterface(t, ctx)
+			val = c.ParseInterface(decl, ctx)
+		case *ast.EnumDeclaration:
+			val = c.ParseEnum(decl, ctx)
 		case *ast.TypeAliasDeclaration:
-			res = c.ParseType(t.Type, ctx)
+			val = c.ParseType(decl.Type, ctx)
 		}
-		ctx.SetType(name, res)
+		ctx.DeclareType(name, val, decl.GetRange())
 	}
 	// Declare functions and methods next
-	for _, decl := range funcs {
-		c.checkFuncDecl(decl, ctx)
+	typedFuncs := make([]*typed.FunctionDecl, len(funcs))
+	for i, decl := range funcs {
+		typedFuncs[i] = c.checkFuncDecl(decl, ctx)
 	}
 	// Normal statements
-	returns = c.CheckStatements(stmts, ctx)
-	return
+	typedStmts, returns := c.CheckStatements(stmts, ctx)
+	return &typed.Context{
+		Types:      nil,
+		Functions:  typedFuncs,
+		Statements: typedStmts,
+	}, returns
 }
+
+/* 		case *ast.EnumDeclaration:
+   			id = dec.Identifier
+   			ok = ctx.DeclareType(id, c.parseEnum(dec), pos)
+   		// Types don't have to be declared before they can be used.
+   		// in structs and type aliases. No recursive types in aliases
+   		case *ast.TypeAliasDeclaration:
+   			ok = ctx.DeclareType(dec.Identifier, nil, pos)
+   			id = dec.Identifier
+   			alias = append(alias, dec)
+   		// Structs and interfaces may recursively reference themselves with
+   		// limitations.
+   		case *ast.StructDeclaration, *ast.InterfaceDeclaration:
+   			d := dec.(ast.TypeDeclaration)
+   			id = d.Name()
+   			ok = ctx.DeclareType(id, nil, pos)
+   			intfs = append(intfs, d) */
