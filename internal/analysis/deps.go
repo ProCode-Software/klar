@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"maps"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -10,92 +9,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
-type depMap map[string][]string
+type (
+	depMap        map[string][]string
+	groupedDepMap map[string][2][]string
+)
 
 const selfDep = "<self>"
-
-func getTypeDeps(t any) []string {
-	var deps []string
-	switch t := t.(type) {
-	case []ast.Type:
-		deps = make([]string, 0, len(t))
-		for _, v := range t {
-			deps = append(deps, getTypeDeps(v)...)
-		}
-	case []ast.TypePair:
-		deps = make([]string, 0, len(t))
-		for _, v := range t {
-			deps = append(deps, getTypeDeps(v.Value)...)
-		}
-	case nil:
-		return nil
-	case ast.Type:
-		aliases := ast.CollectTypeAliases(t)
-		deps = make([]string, 0, len(aliases))
-		for _, alias := range aliases {
-			deps = append(deps, alias.Identifier)
-		}
-	default:
-		panic(fmt.Sprintf("getTypeDeps: unhandled type %T", t))
-	}
-	return deps
-}
-
-func (c *Checker) getAllDeps(
-	typeDeps depMap, dep, base string, level int, ctx context,
-) []string {
-	depsOfDep := typeDeps[dep]
-	if len(depsOfDep) == 0 {
-		return nil
-	}
-	list := make([]string, 0, len(depsOfDep))
-	for _, dep2 := range depsOfDep {
-		if dep2 == base {
-			// Cycle allowed in structs as array, optional, or union type
-			if c.typeDepMode == 2 {
-				list = append(list, selfDep)
-				continue
-			}
-			// Cycle
-			ctx.SetType(base, types.InvalidType)
-			ctx.SetType(dep2, types.InvalidType)
-			err := errors.TypeError{
-				ErrorCode: errors.ErrTypeCycle,
-				Range:     ctx.TypeDeclarations[dep2].Position,
-				Params: errors.ErrorParams{
-					"mode":   c.typeDepMode,
-					"isSelf": level == 0,
-					"types":  [2]string{base, dep},
-				},
-			}
-			if c.typeDepMode == 1 {
-				err.Hint("Structs and interfaces may refer to themselves inside list, optional, or union types.")
-			}
-			c.Error(err)
-			return nil
-		}
-		list = append(list, c.getAllDeps(typeDeps, dep2, base, level+1, ctx)...)
-	}
-	return list
-}
-
-func (c *Checker) getTypeAliasDeps(
-	types []*ast.TypeAliasDeclaration, ctx context,
-) depMap {
-	typeDeps := make(depMap, len(types))
-	// Step 1: create list of all aliases each alias depends on
-	for _, t := range types {
-		typeDeps[t.Identifier] = getTypeDeps(t.Type)
-	}
-	// Step 2: add the dependencies of those aliases
-	// getAllDeps recursively adds deps
-	for t, deps := range typeDeps {
-		for _, dep := range deps {
-			typeDeps[t] = append(typeDeps[t], c.getAllDeps(typeDeps, dep, t, 0, ctx)...)
-		}
-	}
-	return typeDeps
-}
 
 func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 	var list []ast.Type
@@ -104,11 +23,13 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 		list = append(list, t.Parameters...)
 		list = append(list, t.Name)
 	case *ast.ListType:
-		*c2Arr = append(*c2Arr, getTypeDeps(t.Value)...)
+		getC1AndC2Deps(t.Value, c2Arr, c2Arr)
 	case *ast.OptionalType:
-		*c2Arr = append(*c2Arr, getTypeDeps(t.Value)...)
+		getC1AndC2Deps(t.Value, c2Arr, c2Arr)
 	case *ast.UnionType:
-		*c2Arr = append(*c2Arr, getTypeDeps(t.Options)...)
+		for _, opt := range t.Options {
+			getC1AndC2Deps(opt, c2Arr, c2Arr)
+		}
 	case *ast.FunctionType:
 		list = append(list, t.Parameters...)
 		list = append(list, t.ReturnType)
@@ -133,60 +54,6 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 	}
 }
 
-func (c *Checker) mergeStructDeps(
-	aliases depMap, intfs []ast.TypeDeclaration, ctx context,
-) {
-	var (
-		intfDeps    = make(map[string][2][]string, len(intfs))
-		allIntfDeps = make(depMap, len(intfs))
-	)
-	// Step 1 - get direct dependencies. categorize into c1 and c2
-	for _, t := range intfs {
-		var (
-			name = t.Name()
-			// c1: Generic, static, inherited dependencies
-			// c2: List, optional, union deps: cycle allowed
-			c1Deps, c2Deps []string
-		)
-		switch t := t.(type) {
-		case *ast.StructDeclaration:
-			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
-			for _, f := range t.Fields {
-				getC1AndC2Deps(f.Type, &c1Deps, &c2Deps)
-			}
-		case *ast.InterfaceDeclaration:
-			c1Deps = append(c1Deps, getTypeDeps(t.InheritedTypes)...)
-			for _, f := range t.Fields {
-				getC1AndC2Deps(f.Value, &c1Deps, &c2Deps)
-			}
-		}
-		intfDeps[name] = [2][]string{c1Deps, c2Deps}
-		// Preallocate full list
-		allIntfDeps[name] = make([]string, 0, len(c1Deps)+len(c2Deps))
-	}
-	// Step 2 - copy direct interface deps -> aliases
-	maps.Copy(aliases, allIntfDeps)
-	// Step 3 - loop over interfaces
-	for name, both := range intfDeps {
-		// c1, c2
-		for l, deps := range both {
-			for _, dep := range deps {
-				// Append direct dependency
-				allIntfDeps[name] = append(allIntfDeps[name], dep)
-
-				c.typeDepMode = l + 1 // set mode
-
-				allIntfDeps[name] = append(allIntfDeps[name],
-					c.getAllDeps(aliases, dep, name, 0, ctx)...,
-				)
-				c.typeDepMode = 0 // reset mode
-			}
-		}
-		// Reassign to all dependencies
-		aliases[name] = allIntfDeps[name]
-	}
-}
-
 /*
 Sort them in the order that they should be declared in so types can reference each other.
 Throws an error if there is a cycle.
@@ -205,103 +72,151 @@ Iterate over each alias in the map (indefinite order) and add all dependencies
 to a list. For the final list, loop over the list backwards and insert non-duplicates
 for the final order.
 */
-func sortTypeDecls(
-	depMap depMap,
-	aliases []*ast.TypeAliasDeclaration,
-	intfs []ast.TypeDeclaration,
-	ctx context,
-) ([]ast.TypeDeclaration, []string, map[string]ast.TypeDeclaration) {
+func sortDeps(depMap groupedDepMap) []string {
 	var (
-		total   = len(aliases) + len(intfs)
-		list    = make([]string, 0, total)
-		names   = make([]string, 0, total)
-		final   = make([]ast.TypeDeclaration, 0, total)
-		typeMap = make(map[string]ast.TypeDeclaration, total)
-		undef   = make(map[string]ast.TypeDeclaration)
+		total        = len(depMap)
+		list         = make([]string, 0, total) // List that we're adding to
+		final        = make([]string, total)
+		alreadyAdded = make(map[string]bool, total)
 	)
-	// Create the map of types
-	for _, t := range aliases {
-		typeMap[t.Name()] = t
-	}
-	for _, t := range intfs {
-		typeMap[t.Name()] = t
-	}
 	// Add all dependencies into a flat list
-	for id, deps := range depMap {
-		checkDefined(id, deps, typeMap, undef, ctx)
-		list = append(list, append([]string{id}, deps...)...)
+	for id, both := range depMap {
+		list = append(list, id) // Append self
+		for _, group := range both {
+			list = append(list, group...) // Append others
+		}
 	}
 	// Loop backwards for the final order
-	alreadyAdded := make(map[string]bool, len(list))
 	for i := len(list) - 1; i >= 0; i-- {
 		if len(final) == total {
-			break
+			return final
 		}
 		name := list[i]
 		if alreadyAdded[name] {
 			continue
 		}
-		final = append(final, typeMap[name])
-		names = append(names, name)
+		final = append(final, name)
 		alreadyAdded[name] = true
 	}
-	return final, names, undef
+	return final
 }
 
-func checkDefined(
-	id string,
-	deps []string,
-	typeMap map[string]ast.TypeDeclaration,
-	undefMap map[string]ast.TypeDeclaration,
-	ctx context,
-) {
-	for _, dep := range deps {
-		if dep == selfDep {
-			continue
-		}
-		if _, ok := typeMap[dep]; ok {
-			continue
-		}
-		if _, ok := ctx.ResolveType(dep); ok {
-			continue
-		}
-		if undefMap[dep] == nil {
-			undefMap[dep] = typeMap[id]
-		}
-	}
+type stackItem struct {
+	Name string
+	Pos  ranges.Range
 }
 
-func traceUndefined(name string, t ast.TypeDeclaration) (r ranges.Range) {
-	for _, alias := range ast.CollectTypeAliases(t) {
-		if alias.Identifier == name {
-			return alias.GetRange()
-		}
-	}
-	// Should never happen
-	panic(fmt.Sprintf("traceUndefined: %s not found", name))
-}
-
-func (c *Checker) SortTypes(names map[string]ast.TypeDeclaration) []string {
-	deps := make(depMap, len(names))
+func (c *Checker) SortTypes(names map[string]ast.TypeDeclaration, ctx context) []string {
+	deps := make(groupedDepMap, len(names))
+	allDeps := make(depMap, len(names))
 	collectInherited := func(list []ast.Type, c1 *[]string) {
 		for _, obj := range list {
-			*c1 = append(*c1, )
+			*c1 = append(*c1, obj.(*ast.TypeAlias).Identifier)
 		}
 	}
+	// Get direct references
 	for name, node := range names {
 		var c1, c2 []string
 		switch node := node.(type) {
 		case *ast.StructDeclaration:
+			collectInherited(node.InheritedTypes, &c1)
+			for _, field := range node.Fields {
+				getC1AndC2Deps(field.Type, &c1, &c2)
+			}
 		case *ast.InterfaceDeclaration:
+			collectInherited(node.InheritedTypes, &c1)
+			for _, field := range node.Fields {
+				getC1AndC2Deps(field.Value, &c1, &c2)
+			}
 		case *ast.EnumDeclaration:
-			for _, obj := range node.Inherited {
-				if obj, ok := obj.(*ast.TypeAlias); ok {
-					c1 = append(c1, obj.Identifier)
+			collectInherited(node.Inherited, &c1)
+			for _, item := range node.Values {
+				for _, param := range item.Parameters {
+					getC1AndC2Deps(param, &c1, &c1)
 				}
 			}
 		case *ast.TypeAliasDeclaration:
 			getC1AndC2Deps(node.Type, &c1, &c1)
 		}
-		
+		deps[name] = [2][]string{c1, c2}
 	}
+	// Add all subdependencies
+	for name, both := range deps {
+		for mode, group := range both {
+			for _, depInGroup := range group {
+				// If depInGroup == name, it is directly referencing itself
+				stack := []string{name}
+				allDeps[name] = append(allDeps[name], c.getAllDeps(
+					deps,        // Dependency map
+					names[name], // Declaration node
+					&stack,      // Default stack
+					depInGroup,  // Current direct dependencies
+					name, mode, ctx,
+				)...)
+			}
+		}
+	}
+	return sortDeps(deps)
+}
+
+// Mode:
+// 0 - non-struct without recursion;
+// 1 - struct without recursion;
+// 2 - struct with recursion
+func (c *Checker) getAllDeps(
+	depMap groupedDepMap,
+	decl ast.TypeDeclaration,
+	stack *[]string, // For tracking cycles
+	dep,
+	base string, // Type that we're getting all dependencies for
+	mode int, // If set to 2, recursion is allowed
+	ctx context,
+) []string {
+	modeIndex := max(0, mode-1)
+	depsOfDep := depMap[dep][modeIndex]
+	if len(depsOfDep) == 0 {
+		return nil
+	}
+	*stack = append(*stack, dep)
+	list := make([]string, 0, len(depsOfDep))
+	for _, depOfDep := range depsOfDep {
+		if depOfDep == base {
+			// Cycle allowed in structs as array, optional, or union type
+			if mode == 2 {
+				list = append(list, selfDep)
+				continue
+			}
+			// Cycle
+			c.cycleErr(depMap, *stack, mode, decl, ctx)
+			return nil
+		}
+		list = append(list, c.getAllDeps(
+			depMap, decl, stack, depOfDep, base, mode, ctx,
+		)...)
+	}
+	return list
+}
+
+// TODO: trace the cycle
+// Error: Type cycle
+// A references B here
+// B references A here
+func (c *Checker) cycleErr(
+	depMap groupedDepMap, stack []string, mode int, decl ast.TypeDeclaration, ctx context,
+) {
+	for _, stackItem := range stack {
+		ctx.DeclareType(stackItem, types.InvalidType, ranges.Range{})
+	}
+	err := errors.TypeError{
+		ErrorCode: errors.ErrTypeCycle,
+		Range:     decl.GetRange(),
+		Params: errors.ErrorParams{
+			"mode":  mode,
+			"stack": stack,
+		},
+	}
+	if mode == 1 {
+		err.Hint("Structs and interfaces may refer to themselves inside list, optional, or union types.")
+	}
+	c.Error(err)
 }

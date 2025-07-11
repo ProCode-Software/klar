@@ -70,8 +70,7 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 				// Method outside struct scope
 				c.Error(errors.ParseError{
 					ErrorCode: errors.ErrMethodInOtherScope,
-					Range:     pos,
-					Ranges:    errors.Ranges{structDef.Position},
+					Ranges:    errors.Ranges{pos, structDef.Position},
 					Params: errors.ErrorParams{
 						"name":       name,
 						"structName": receiver,
@@ -80,7 +79,7 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 			} else {
 				c.ErrUndefinedType(receiver, decl.Struct.GetRange(), ctx)
 			}
-			return
+			return nil
 		}
 		if str, ok := structDef.Type.(types.Struct); ok {
 			f = c.CheckFunction(decl, &str, ctx)
@@ -94,7 +93,7 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 				GotType:   structDef.Type,
 			})
 		}
-		return
+		return nil
 	}
 	f = c.CheckFunction(decl, nil, ctx)
 	switch err, data := ctx.DeclareFuncType(name.Identifier, f, pos); err {
@@ -106,4 +105,5 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 		// Alreay declared non-function
 		c.ErrRedeclared(errors.ErrRedeclaredVar, name.Identifier, pos, "function", ctx)
 	}
+	return nil
 }

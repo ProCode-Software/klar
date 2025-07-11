@@ -3,7 +3,6 @@ package errors
 import (
 	"fmt"
 
-	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -22,10 +21,12 @@ type CycleItem struct {
 }
 
 type ReferenceError struct {
+	File      string
 	Name      string
 	ErrorCode ErrorCode
 	Range     ranges.Range
 	Ranges    Ranges
+	Details   []ErrorDetail
 	Hints     []string
 	Params    ErrorParams
 }
@@ -37,11 +38,6 @@ func (e *ReferenceError) SetParam(key string, value any) ReferenceError {
 	e.Params[key] = value
 	return *e
 }
-
-func (e ReferenceError) At() lexer.Position    { return e.Range.Start }
-func (e ReferenceError) AtRange() ranges.Range { return e.Range }
-func (e ReferenceError) Code() ErrorCode       { return e.ErrorCode }
-func (e ReferenceError) GetHints() []string    { return e.Hints }
 
 func (e ReferenceError) Error() string {
 	name := Quote(e.Name)

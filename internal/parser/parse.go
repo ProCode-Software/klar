@@ -17,7 +17,7 @@ func (p *Parser) Parse() *ast.Program {
 	)
 	p.InsertEOS() // Add the "semicolons"
 	for p.HasTokens() {
-		if !p.Options.ContinueOnError && len(p.Errors) > 0 {
+		if p.Options.StopOnError && len(p.Errors) > 0 {
 			break
 		}
 		if p.CurrentTokenKind() == lexer.EndOfStatement {

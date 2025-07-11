@@ -28,8 +28,6 @@ const (
 	lineNumberColor       = cli.ANSIDim
 )
 
-type TokenColorMap = map[lexer.TokenType]string
-
 var TokenColors = TokenColorMap{
 	lexer.BlockComment: tokenColorComment,
 	lexer.LineComment:  tokenColorComment,
@@ -56,31 +54,6 @@ var TokenColors = TokenColorMap{
 	lexer.RightBracket:       tokenColorPunc,
 	lexer.RightCurlyBrace:    tokenColorPunc,
 	lexer.RightParenthesis:   tokenColorPunc,
-}
-
-var BuiltinFuncs = map[string]bool{
-	"print": true, "panic": true, "assert": true, "TODO": true,
-}
-var BuiltinTypes = ast.PrimitiveTypeMap
-
-func init() {
-	for _, op := range lexer.OperatorMap {
-		if _, exists := TokenColors[op]; !exists {
-			TokenColors[op] = tokenColorOperator
-		}
-	}
-	for _, kw := range lexer.KeywordMap {
-		if _, exists := TokenColors[kw]; !exists {
-			TokenColors[kw] = tokenColorKeyword
-		}
-	}
-}
-
-type PrintOptions struct {
-	Tokens   []lexer.Token
-	Color    bool
-	MaxLines int
-	Semantic bool // Determine colour by neighbouring tokens
 }
 
 func ansi(code string, str string) string {
@@ -117,7 +90,7 @@ func addSpace(num int) string {
 	return strings.Repeat(" ", num)
 }
 
-func PrintError(err KlarError, options PrintOptions) {
+func _PrintError(err KlarError, options PrintOptions) {
 	var (
 		errPos            = err.At()
 		minPos            = ranges.Sub(errPos, options.MaxLines-1, 0)

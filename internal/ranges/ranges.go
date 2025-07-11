@@ -5,6 +5,7 @@ package ranges
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -109,4 +110,25 @@ func (r Range) String() string {
 
 func (r Range) IsZero() bool {
 	return IsZeroPosition(r.Start) && IsZeroPosition(r.End)
+}
+
+func (r Range) Lines() int {
+	return r.End.Col - r.Start.Col + 1
+}
+
+func Sort(ranges ...Range) []Range {
+	slices.SortFunc(ranges, func(a, b Range) int {
+		if a.Start.Line < b.Start.Line {
+			return -1
+		} else if a.Start.Line > b.Start.Line {
+			return 1
+		}
+		if a.Start.Col < b.Start.Col {
+			return -1
+		} else if a.Start.Col > b.Start.Col {
+			return 1
+		}
+		return 0
+	})
+	return ranges
 }

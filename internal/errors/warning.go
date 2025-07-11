@@ -5,10 +5,12 @@ import "github.com/ProCode-Software/klar/internal/ranges"
 type Warning struct {
 	ErrorCode ErrorCode
 	Name      string
+	File      string
 	Range     ranges.Range
 	Ranges    []ranges.Range
 	Params    ErrorParams
 	Hints     []string
+	Details   []ErrorDetail
 }
 
 const (

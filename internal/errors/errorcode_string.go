@@ -63,6 +63,7 @@ func _() {
 	_ = x[ErrMethodInOtherScope-49]
 	_ = x[ErrProvenUnreachable-50]
 	_ = x[ErrUnusedValue-51]
+	_ = x[ErrReturnOutsideFunc-52]
 	_ = x[ErrVarUndefined-301]
 	_ = x[ErrEnumUndefined-302]
 	_ = x[ErrTypeUndefined-303]
@@ -99,14 +100,14 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrInvalidVersionLitErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrGenericInFuncAliasErrMissingFuncParamTypeErrNotEnoughEnumItemsErrEnumParamAndValueErrExpectedTypeAssignmentErrCannotTellStructOrEnumErrRequiredStructFieldTypeErrEmptyGenericErrParenRequiredFuncErrForInvalidCondErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrRedeclaredFieldErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValue"
+	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrExpectedParamInLambdaErrInvalidVersionLitErrExpectedSymbolAssignErrReservedKeywordErrExpectedExpressionErrInvalidLabelShorthandErrInvalidLabelErrGenericInFuncAliasErrMissingFuncParamTypeErrNotEnoughEnumItemsErrEnumParamAndValueErrExpectedTypeAssignmentErrCannotTellStructOrEnumErrRequiredStructFieldTypeErrEmptyGenericErrParenRequiredFuncErrForInvalidCondErrInvalidPublicErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrRedeclaredFieldErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFunc"
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 101, 125, 149, 172, 191, 208, 225, 246, 268, 288, 307, 322, 341, 358, 373, 387, 401, 417, 434, 452, 476, 496, 519, 537, 558, 582, 597, 618, 641, 662, 682, 707, 732, 758, 773, 793, 810, 826, 847, 867, 883, 900, 917, 935, 958, 979, 999, 1013}
+	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 101, 125, 149, 172, 191, 208, 225, 246, 268, 288, 307, 322, 341, 358, 373, 387, 401, 417, 434, 452, 476, 496, 519, 537, 558, 582, 597, 618, 641, 662, 682, 707, 732, 758, 773, 793, 810, 826, 847, 867, 883, 900, 917, 935, 958, 979, 999, 1013, 1033}
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
@@ -114,7 +115,7 @@ var (
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 51:
+	case 0 <= i && i <= 52:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 104:
 		i -= 100

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -37,64 +36,25 @@ func tryPipe() {
 	os.Exit(0)
 }
 
-var printOptions = errors.PrintOptions{
-	Color:    true,
-	MaxLines: 5,
-	Semantic: true,
+var errPrinter = errors.Printer{
+	Color:     true,
+	MaxLines:  3,
+	IsRuntime: false,
 }
 
-func stack(err errors.KlarError) string {
-	var (
-		colon = cli.Color(cli.ANSIDim, ":")
-		file  = cli.Color(cli.ANSICyan, File)
-		pos   = err.At()
-		num   = func(n int) string {
-			return cli.Color(cli.ANSIYellow, fmt.Sprint(n))
-		}
-	)
-	return fmt.Sprint("    " +
-		cli.Color(cli.ANSIDim, "File: ") + file +
-		colon + num(pos.Line) +
-		colon + num(pos.Col),
-	)
-}
-
-func throw(anyError error) {
-	if !parser.IsKlarError(anyError) {
-		panic(anyError)
+func throw(err error) {
+	if !parser.IsKlarError(err) {
+		cli.InternalError(err)
 	}
-	var (
-		arr   = strings.SplitAfterN(anyError.Error(), ": ", 3)
-		first = arr[0]
-		err   = anyError.(errors.KlarError)
-		stack = stack(err)
-	)
-	errors.PrintError(err, printOptions)
-	if len(arr) < 2 {
-		cli.Error(first)
-	} else {
-		errName := strings.TrimSuffix(first, ": ")
-		if len(arr) < 3 {
-			cli.CustomError(errName, arr[1])
-		} else {
-			cli.CustomError(errName, arr[1], arr[2])
-		}
-	}
-	for _, hint := range err.GetHints() {
-		cli.HintIndent(hint)
-	}
-	fmt.Println(stack)
+	errPrinter.PrintError(err.(errors.KlarError))
 }
 
 func runTokens(tokens []lexer.Token) {
-	printOptions.Tokens = tokens
-	p := parser.NewParser(tokens, parser.ParseOptions{
-		ContinueOnError: false,
-	})
-	program := p.Parse()
+	errPrinter.LoadTokens(tokens)
+	program, parseErrs := parser.Parse(tokens, nil)
 	rootProgram.Body = append(rootProgram.Body, program.Body...)
-	if len(p.Errors) > 0 {
-		for _, err := range p.Errors {
+	if len(parseErrs) > 0 {
+		for _, err := range parseErrs {
 			throw(err)
 		}
 	} else {
@@ -103,12 +63,12 @@ func runTokens(tokens []lexer.Token) {
 	}
 
 	// Typecheck
-	_, errors := analysis.CheckProgram(rootProgram, analysis.CheckOptions{
+	_, typeErrs := analysis.CheckProgram(rootProgram, analysis.CheckOptions{
 		FilePath: File,
 		Target:   double,
 	})
-	if len(errors) > 0 {
-		for _, err := range errors {
+	if len(typeErrs) > 0 {
+		for _, err := range typeErrs {
 			throw(err)
 		}
 	} else {

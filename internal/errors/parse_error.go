@@ -87,6 +87,7 @@ type ParseError struct {
 	Token     lexer.Token
 	Node      ast.Node
 	Hints     []string
+	File      string
 	Params    map[string]any
 }
 

@@ -39,6 +39,20 @@ func NewChecker(program ast.Program) *Checker {
 }
 
 func (c *Checker) Error(err errors.KlarError) {
+	switch newErr := err.(type) {
+	case errors.ParseError:
+		newErr.File = c.FilePath
+		err = newErr
+	case errors.TypeError:
+		newErr.File = c.FilePath
+		err = newErr
+	case errors.ReferenceError:
+		newErr.File = c.FilePath
+		err = newErr
+	case errors.Warning:
+		newErr.File = c.FilePath
+		err = newErr
+	}
 	c.Errors = append(c.Errors, err)
 	if c.OnError != nil {
 		c.OnError(err)
@@ -133,6 +147,7 @@ func (c *Checker) CheckContext(ctx context, body []ast.Statement) (*typed.Contex
 		stmts     = make([]ast.Statement, 0, len(body))
 		typeNames = make(map[string]ast.TypeDeclaration)
 	)
+	// Group each statement
 	for _, dec := range body {
 		switch dec := dec.(type) {
 		case ast.TypeDeclaration:
@@ -151,13 +166,15 @@ func (c *Checker) CheckContext(ctx context, body []ast.Statement) (*typed.Contex
 			stmts = append(stmts, dec)
 		}
 	}
-	sortedTypeNames := c.SortTypes(typeNames)
+	// Sort the type declarations in dependency order. Types that reference other
+	// types are declared last.
+	sortedTypeNames := c.SortTypes(typeNames, ctx)
 	for _, name := range sortedTypeNames {
-		if _, ok := typeNames[name]; !ok {
-			// The type will be resolved later. It may be in another context
+		decl, ok := typeNames[name]
+		if !ok {
+			// The type will be resolved when it is parsed. It may be in another context
 			continue
 		}
-		decl := typeNames[name]
 		var val types.Type
 		switch decl := decl.(type) {
 		case *ast.StructDeclaration:

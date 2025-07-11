@@ -6,12 +6,7 @@ import (
 
 type ParseError = errors.ParseError
 
-type Settings struct {
-	ContinueOnError bool
-	OnError         func(e ParseError)
-}
-
 type ParseOptions struct {
-	ContinueOnError bool
-	OnError         func(e ParseError)
+	StopOnError bool
+	OnError     func(e ParseError)
 }

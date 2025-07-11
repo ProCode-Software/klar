@@ -15,6 +15,7 @@ type Parser struct {
 	Options ParseOptions
 	Tokens  []lexer.Token
 	Index   int
+	File    string
 	Errors  []ParseError
 
 	// Conditional flags
@@ -243,6 +244,7 @@ func (p *Parser) RemoveComments() (comments []*ast.Comment) {
 }
 
 func (p *Parser) Error(err errors.ParseError) {
+	err.File = p.File
 	p.Errors = append(p.Errors, err)
 	if p.Options.OnError != nil {
 		p.Options.OnError(err)

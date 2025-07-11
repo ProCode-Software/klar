@@ -45,13 +45,16 @@ const (
 )
 
 type TypeError struct {
+	File string
+	ErrorCode             ErrorCode
 	Name                  string
 	Range                 ranges.Range
-	Ranges                []ranges.Range
-	ErrorCode             ErrorCode
-	Params                ErrorParams
 	ExpectedType, GotType types.Type
-	Hints                 []string
+	Params                ErrorParams
+
+	Ranges  Ranges
+	Details []ErrorDetail
+	Hints   []string
 }
 
 func (e *TypeError) SetParam(key string, value any) TypeError {
