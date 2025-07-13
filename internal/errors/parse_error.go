@@ -82,11 +82,11 @@ const (
 type ParseError struct {
 	Position  lexer.Position
 	Range     ranges.Range
-	Ranges    []ranges.Range
 	ErrorCode ErrorCode
 	Token     lexer.Token
 	Node      ast.Node
 	Hints     []string
+	Details   []Detail
 	File      string
 	Params    map[string]any
 }
@@ -268,7 +268,7 @@ func (e ParseError) error() string {
 	case ErrUnderscoreWithRest:
 		return "'_' not allowed with rest expression, use '...' instead"
 	case ErrUnusedValue:
-		return "TypeError: This value is never used"
+		return "This value is never used"
 	case ErrRedeclaredField:
 		kind := "Field"
 		if e.Params["kind"] == "enum" {

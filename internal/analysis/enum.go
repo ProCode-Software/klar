@@ -75,8 +75,9 @@ func (c *Checker) ParseEnum(t *ast.EnumDeclaration, ctx context) types.Enum {
 			if cycleMap[name] {
 				// Cycle
 				err := errors.ReferenceError{
-					Name:      k,
-					Ranges:    errors.Ranges{item.pos, cycle[len(cycle)-1].Position},
+					Name:  k,
+					Range: item.pos,
+					// Ranges:    errors.Ranges{item.pos, cycle[len(cycle)-1].Position},
 					ErrorCode: errors.ErrEnumCycle,
 					Params:    errors.ErrorParams{"cycle": cycle},
 				}

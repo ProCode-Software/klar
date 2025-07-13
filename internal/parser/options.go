@@ -7,6 +7,7 @@ import (
 type ParseError = errors.ParseError
 
 type ParseOptions struct {
+	File        string
 	StopOnError bool
 	OnError     func(e ParseError)
 }

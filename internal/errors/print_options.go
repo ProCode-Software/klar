@@ -11,14 +11,14 @@ const (
 	colorDefault  = ansi.Reset
 	colorKeyword  = ansi.Red
 	colorOperator = ansi.Red
-	colorNumber   = ansi.Yellow
+	colorNumber   = ansi.Cyan
 	colorString   = ansi.Green
-	colorBoolean  = ansi.Yellow
+	colorBoolean  = colorNumber
 	colorComment  = ansi.Dim
 	colorPunct    = ansi.Dim
-	colorType     = ansi.Blue
+	colorType     = ansi.Yellow
 	colorFunc     = ansi.Magenta
-	colorBuiltin  = ansi.Yellow
+	colorBuiltin  = ansi.Blue
 	colorIllegal  = colorDefault
 )
 

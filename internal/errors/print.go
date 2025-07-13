@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
@@ -15,9 +16,11 @@ import (
 )
 
 type Printer struct {
-	Color       bool
-	MaxLines    int
-	TokenColors map[lexer.TokenType]string
+	Color         bool
+	MaxLines      int
+	TokenColors   map[lexer.TokenType]string
+	TypeColor     string
+	FunctionColor string
 
 	tokens    []lexer.Token
 	IsRuntime bool
@@ -27,6 +30,8 @@ func (p *Printer) LoadTokens(tokens []lexer.Token) {
 	p.tokens = tokens
 	if p.TokenColors == nil {
 		p.TokenColors = defaultColors
+		p.TypeColor = colorType
+		p.FunctionColor = colorFunc
 	}
 }
 
@@ -46,8 +51,8 @@ func GetMessage(err KlarError) string {
 	default:
 		title, msg = "Error", first
 	}
-	return ansi.BoldRed + title + ansi.ResetBold + ": " +
-		ansi.Bold + msg + ansi.ResetBold + desc + ansi.Reset
+	return ansi.BoldRed + title + ansi.ResetBoldDim + ": " +
+		ansi.ResetBold + msg + ansi.ResetBold + desc + ansi.Reset
 }
 
 func ColorizeLine(file string, pos lexer.Position) string {
@@ -66,47 +71,6 @@ func ColorizeLine(file string, pos lexer.Position) string {
 	return b.String()
 }
 
-/* func (p *Printer) groupRanges(err KlarError) []ranges.Range {
-	first := err.At()
-	var currLint int
-	var groups [][]ranges.Range
-	for _, r := range err.GetRanges() {
-	}
-} */
-
-func (p *Printer) colorize(tok lexer.Token) string {
-	return ansi.Color(p.TokenColors[tok.Kind], tok.Source)
-}
-
-func (p *Printer) canGroupRanges(err KlarError) bool {
-	all := []ranges.Range{err.At()}
-	all = append(all, err.GetRanges()...)
-	var lines int
-	for _, r := range all {
-		if r.IsZero() {
-			continue
-		}
-		lines += r.Lines()
-		if lines > p.MaxLines+1 {
-			return false
-		}
-	}
-	return true
-}
-
-func firstLine(err KlarError) int {
-	earliest := err.At().Start.Line
-	for _, r := range err.GetRanges() {
-		if r.IsZero() {
-			continue
-		}
-		if line := r.Start.Line; line < earliest {
-			earliest = line
-		}
-	}
-	return earliest
-}
-
 func isSingleChar(r ranges.Range) bool {
 	return r.IsSingleLine() && r.End.Col == r.Start.Col+1
 }
@@ -115,26 +79,55 @@ func space(n int) []byte {
 	return bytes.Repeat([]byte{' '}, n)
 }
 
-func orderedRanges(err KlarError) (all []ranges.Range) {
-	r := err.GetRanges()
-	all = make([]ranges.Range, 1, len(r)+1)
-	all[0] = err.At()
-	all = append(all, err.GetRanges()...)
-	all = ranges.Sort(all...)
-	return
+func (p *Printer) prevTok(i int) (tok lexer.TokenType) {
+	if len(p.tokens) < 1 {
+		return
+	}
+	return p.tokens[i-1].Kind
+}
+
+func (p *Printer) nextTok(i int) (tok lexer.TokenType) {
+	if len(p.tokens) < i+1 {
+		return
+	}
+	return p.tokens[i+1].Kind
+}
+
+func isPrimitive(name string) bool {
+	_, ok := ast.PrimitiveTypeMap[name]
+	return ok
+}
+
+func (p *Printer) colorize(i int) string {
+	tok := p.tokens[i]
+	color := p.TokenColors[tok.Kind]
+	next := p.nextTok(i)
+	prev := p.prevTok(i)
+	switch {
+	case tok.Kind != lexer.Identifier:
+		break
+	case prev == lexer.Func,
+		next == lexer.LeftParenthesis:
+		color = p.FunctionColor
+	case isPrimitive(tok.Source),
+		prev == lexer.Arrow && next == lexer.LeftCurlyBrace,
+		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:
+		color = p.TypeColor
+	}
+	return ansi.Color(color, tok.Source)
 }
 
 func (p *Printer) PrintError(err KlarError) {
 	var (
-		b                  strings.Builder
-		start              = max(1, firstLine(err)-p.MaxLines)
-		end                = start + p.MaxLines
-		lastCol            = 1
-		currTok, currRange int
-		digitLen           = len(strconv.Itoa(end))
-		lineColor          = ansi.Blue
-		allRanges          = orderedRanges(err)
-		box                = func(char rune) {
+		b         strings.Builder
+		currTok   int
+		at        = err.At()
+		start     = max(1, at.Start.Line-p.MaxLines+1)
+		end       = start + p.MaxLines - 1
+		lastCol   = 1
+		digitLen  = len(strconv.Itoa(end))
+		lineColor = ansi.Blue
+		box       = func(char rune) {
 			b.WriteString(ansi.Color(lineColor, string(char)))
 		}
 	)
@@ -158,41 +151,47 @@ func (p *Printer) PrintError(err KlarError) {
 	}
 
 	// Print each line
-	for line := start; line < end; line++ {
+	for line := start; line <= end; line++ {
 		if currTok >= len(p.tokens) {
 			break
 		}
+		// Line number
 		b.WriteString(fmt.Sprintf("%s%*d ", lineColor, digitLen, line))
 		box(icons.BoxLeft)
 		b.WriteByte(' ')
-		for ; currTok < len(p.tokens) &&
-			p.tokens[currTok].Line == line; currTok++ {
+		// Each token on line
+		for ; currTok < len(p.tokens) && p.tokens[currTok].Line == line; currTok++ {
 			tok := p.tokens[currTok]
 			if tok.Source == "\n" {
 				continue
 			}
 			tokRange := ranges.FromToken(tok)
-			var color string
-			if r := allRanges[currRange]; r.RangeIn(tokRange) {
-				color = ansi.Red
-			}
 			b.Write(space(tok.Col - lastCol))
-			b.WriteString(color + p.colorize(tok) + ansi.Reset)
-
+			if at.RangeIn(tokRange) {
+				b.WriteString(ansi.Color(ansi.Red, tok.Source))
+			} else {
+				b.WriteString(p.colorize(currTok))
+			}
 			lastCol = ranges.FromToken(tok).End.Col
 		}
 		b.WriteByte('\n')
-		if r := allRanges[currRange]; !r.IsZero() && r.Start.Line == line {
+		// Error highlight
+		if at.Start.Line == line {
+			var highlight string
+			if isSingleChar(at) {
+				highlight = "^"
+			} else {
+				hlen := at.End.Col - at.Start.Col
+				if !at.IsSingleLine() {
+					hlen = lastCol - at.Start.Col
+				}
+				highlight = strings.Repeat("~", hlen)
+			}
 			b.Write(space(digitLen + 1))
 			box(icons.BoxLeft)
 			b.WriteByte(' ')
-			if isSingleChar(r) {
-				b.Write(space(r.Start.Col - 1))
-				b.WriteString(ansi.Color(ansi.Red, "^"))
-			} else {
-				b.Write(space(r.Start.Col - 1))
-				b.WriteString(ansi.Color(ansi.Red, strings.Repeat("~", r.End.Col-r.Start.Col)))
-			}
+			b.Write(space(at.Start.Col - 1))
+			b.WriteString(ansi.Color(ansi.Red+ansi.Bold, highlight))
 			b.WriteByte('\n')
 		}
 		lastCol = 1

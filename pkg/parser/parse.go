@@ -8,8 +8,8 @@ import (
 )
 
 type (
-	ParseError   = errors.ParseError
-	ParseOptions = parser.ParseOptions
+	ParseError = errors.ParseError
+	Options    = parser.ParseOptions
 )
 
 func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
@@ -18,8 +18,7 @@ func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
 	if options == nil {
 		options = &parser.ParseOptions{}
 	}
-	p := parser.New(tokens)
-	p.Options = *options
+	p := parser.New(tokens, options)
 	program = p.Parse()
 	errors = p.Errors
 	return

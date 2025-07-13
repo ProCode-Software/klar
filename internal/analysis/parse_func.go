@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/ast/typed"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -68,9 +70,13 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 			structDef, found := ctx.ResolveType(receiver)
 			if found {
 				// Method outside struct scope
+				// other: structDef.Position
 				c.Error(errors.ParseError{
 					ErrorCode: errors.ErrMethodInOtherScope,
-					Ranges:    errors.Ranges{pos, structDef.Position},
+					Details: []errors.Detail{{
+						Range:       structDef.Position,
+						Description: fmt.Sprintf("%s was declared here", errors.Quote(receiver)),
+					}},
 					Params: errors.ErrorParams{
 						"name":       name,
 						"structName": receiver,

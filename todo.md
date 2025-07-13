@@ -25,3 +25,9 @@
 
 ## Other
 - target property in manifest for defining target platform per module
+
+
+## Build Ideas
+- Dev server for testing JS projects
+- Packages that just import globals like `import node`
+- Similar: `klar.build` for build constants so `when build.isJavaScript` or `build.target`

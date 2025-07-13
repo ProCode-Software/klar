@@ -45,15 +45,14 @@ const (
 )
 
 type TypeError struct {
-	File string
+	File                  string
 	ErrorCode             ErrorCode
 	Name                  string
 	Range                 ranges.Range
 	ExpectedType, GotType types.Type
 	Params                ErrorParams
 
-	Ranges  Ranges
-	Details []ErrorDetail
+	Details []Detail
 	Hints   []string
 }
 

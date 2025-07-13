@@ -14,9 +14,9 @@ const (
 	Italic    = "\033[3m"
 	Underline = "\033[4m"
 
-	BoldRed    = "\033[1;31m"
-	BoldYellow = "\033[1;33m"
-	BoldDim    = "\033[1;2m"
+	BoldRed      = "\033[1;31m"
+	BoldYellow   = "\033[1;33m"
+	BoldDim      = "\033[1;2m"
 	ResetBold    = "\033[0;1m"
 	ResetBoldDim = "\033[0;1;2m"
 )

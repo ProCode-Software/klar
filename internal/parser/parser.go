@@ -25,12 +25,14 @@ type Parser struct {
 }
 
 // New returns a new [Parser] that reads from tokens.
-func New(tokens []lexer.Token) *Parser {
+func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	t := make([]lexer.Token, len(tokens))
 	copy(t, tokens)
 	return &Parser{
-		Tokens: t,
-		Index:  0,
+		Tokens:  t,
+		Index:   0,
+		File:    options.File,
+		Options: *options,
 	}
 }
 

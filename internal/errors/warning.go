@@ -7,10 +7,9 @@ type Warning struct {
 	Name      string
 	File      string
 	Range     ranges.Range
-	Ranges    []ranges.Range
 	Params    ErrorParams
 	Hints     []string
-	Details   []ErrorDetail
+	Details   []Detail
 }
 
 const (

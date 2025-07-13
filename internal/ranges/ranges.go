@@ -105,7 +105,7 @@ func (r Range) LineLength() int {
 }
 
 func (r Range) String() string {
-	return fmt.Sprintf("%s:%s", r.Start, r.End)
+	return fmt.Sprintf("%s-%s", r.Start, r.End)
 }
 
 func (r Range) IsZero() bool {

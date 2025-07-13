@@ -25,8 +25,7 @@ type ReferenceError struct {
 	Name      string
 	ErrorCode ErrorCode
 	Range     ranges.Range
-	Ranges    Ranges
-	Details   []ErrorDetail
+	Details   []Detail
 	Hints     []string
 	Params    ErrorParams
 }

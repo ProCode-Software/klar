@@ -65,7 +65,7 @@ func (p *Parser) newInterpParser(tokens []lexer.Token) (*Parser, BindingPower) {
 		Kind: lexer.EOF,
 		// Position: tokens[len(tokens)-1].Attributes["end"].(lexer.Position),
 	})
-	ep := New(tokens)
+	ep := New(tokens, &p.Options)
 	ep.RemoveComments()
 	ep.InsertEOS()
 	// Allow type pattern matching in when cases

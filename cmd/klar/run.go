@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -51,10 +52,15 @@ func throw(err error) {
 
 func runTokens(tokens []lexer.Token) {
 	errPrinter.LoadTokens(tokens)
-	program, parseErrs := parser.Parse(tokens, nil)
+	program, parseErrs := parser.Parse(tokens, &parser.Options{
+		File: File,
+	})
 	rootProgram.Body = append(rootProgram.Body, program.Body...)
 	if len(parseErrs) > 0 {
-		for _, err := range parseErrs {
+		for i, err := range parseErrs {
+			if i != 0 {
+				fmt.Println()
+			}
 			throw(err)
 		}
 	} else {
@@ -68,7 +74,10 @@ func runTokens(tokens []lexer.Token) {
 		Target:   double,
 	})
 	if len(typeErrs) > 0 {
-		for _, err := range typeErrs {
+		for i, err := range typeErrs {
+			if i != 0 {
+				fmt.Println()
+			}
 			throw(err)
 		}
 	} else {
@@ -78,7 +87,7 @@ func runTokens(tokens []lexer.Token) {
 
 func RunFile(path string) {
 	file, err := os.Open(path)
-	if os.IsNotExist(err) {
+	if os.IsNotExist(err) && !strings.HasSuffix(strings.ToLower(path), ".klar") {
 		path += ".klar"
 		file, err = os.Open(path)
 	}
@@ -103,8 +112,8 @@ func handleError(err error) {
 }
 
 func RunString(program string) {
-	if File != "<repl>" {
-		File = "<string>"
+	if File != "repl" {
+		File = "string"
 	}
 	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
 	handleError(err)

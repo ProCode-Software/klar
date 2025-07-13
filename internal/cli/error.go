@@ -56,6 +56,7 @@ func InvalidUsage(usage string) {
 
 func FileNotFound(path string) {
 	Error("File not found: ", path)
+	os.Exit(2)
 }
 
 func HintIndent(hint string) {
