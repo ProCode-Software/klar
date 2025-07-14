@@ -32,7 +32,7 @@ func tryPipe() {
 	// Is pipe
 	tokens, err := parser.TokenizeFile(os.Stdin, INCLUDE_COMMENTS)
 	File = "stdin"
-	handleError(err)
+	handleErr(err)
 	runTokens(tokens)
 	os.Exit(0)
 }
@@ -105,17 +105,12 @@ func RunFile(path string) {
 	runTokens(tokens)
 }
 
-func handleError(err error) {
-	if err != nil {
-		cli.InternalError(err)
-	}
-}
 
 func RunString(program string) {
 	if File != "repl" {
 		File = "string"
 	}
 	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
-	handleError(err)
+	handleErr(err)
 	runTokens(tokens)
 }

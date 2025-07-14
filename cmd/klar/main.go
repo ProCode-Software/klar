@@ -41,7 +41,9 @@ func main() {
 		RunFile(cmd)
 	case "repl":
 		StartRepl()
-	case "test", "install", "build":
+	case "build":
+		RunBuild()
+	case "test", "install":
 		cli.Error("Not implemented: ",
 			fmt.Sprintf("Command '%s' is not implemented yet.", cmd),
 		)

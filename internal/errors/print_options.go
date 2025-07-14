@@ -2,23 +2,23 @@ package errors
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
 // Token colors
 const (
-	colorDefault  = ansi.Reset
-	colorKeyword  = ansi.Red
-	colorOperator = ansi.Red
-	colorNumber   = ansi.Cyan
-	colorString   = ansi.Green
+	colorDefault  = cli.ANSIReset
+	colorKeyword  = cli.ANSIRed
+	colorOperator = cli.ANSIRed
+	colorNumber   = cli.ANSICyan
+	colorString   = cli.ANSIGreen
 	colorBoolean  = colorNumber
-	colorComment  = ansi.Dim
-	colorPunct    = ansi.Dim
-	colorType     = ansi.Yellow
-	colorFunc     = ansi.Magenta
-	colorBuiltin  = ansi.Blue
+	colorComment  = cli.ANSIDim
+	colorPunct    = cli.ANSIDim
+	colorType     = cli.ANSIYellow
+	colorFunc     = cli.ANSIMagenta
+	colorBuiltin  = cli.ANSIBlue
 	colorIllegal  = colorDefault
 )
 

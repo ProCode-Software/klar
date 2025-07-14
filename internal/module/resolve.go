@@ -1,4 +1,4 @@
-package resolve
+package module
 
 import (
 	"errors"
@@ -9,12 +9,12 @@ import (
 
 const ManifestName = "glas.pack"
 
-type Package struct {
+type ResolvedPackage struct {
 	Dir     string
-	Modules []*Module
+	Modules []*ResolvedModule
 }
 
-type Module struct {
+type ResolvedModule struct {
 	Name     string
 	Dir      string
 	LastMod  string
