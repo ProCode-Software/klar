@@ -9,6 +9,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -50,19 +51,19 @@ func GetMessage(err KlarError) string {
 	default:
 		title, msg = "Error", first
 	}
-	return cli.ANSIBoldRed + title + cli.ANSIResetBoldDim + ": " +
-		cli.ANSIResetBold + msg + cli.ANSIResetBold + desc + cli.ANSIReset
+	return ansi.CodeBoldRed + title + ansi.CodeResetBoldDim + ": " +
+		ansi.CodeResetBold + msg + ansi.CodeResetBold + desc + ansi.CodeReset
 }
 
 func ColorizeLine(file string, pos lexer.Position) string {
 	var (
 		b         strings.Builder
-		colon     = cli.Color(cli.ANSIDim, ":")
+		colon     = ansi.Dim(":")
 		formatPos = func(pos int) string {
-			return cli.Color(cli.ANSIYellow, strconv.Itoa(pos))
+			return ansi.Yellow(strconv.Itoa(pos))
 		}
 	)
-	b.WriteString(cli.Color(cli.ANSICyan, file))
+	b.WriteString(ansi.Cyan(file))
 	b.WriteString(colon)
 	b.WriteString(formatPos(pos.Line))
 	b.WriteString(colon)
@@ -113,7 +114,7 @@ func (p *Printer) colorize(i int) string {
 		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:
 		color = p.TypeColor
 	}
-	return cli.Color(color, tok.Source)
+	return ansi.Color(color, tok.Source)
 }
 
 func (p *Printer) PrintError(err KlarError) {
@@ -125,13 +126,13 @@ func (p *Printer) PrintError(err KlarError) {
 		end       = start + p.MaxLines - 1
 		lastCol   = 1
 		digitLen  = len(strconv.Itoa(end))
-		lineColor = cli.ANSIBlue
+		lineColor = ansi.CodeBlue
 		box       = func(char rune) {
-			b.WriteString(cli.Color(lineColor, string(char)))
+			b.WriteString(ansi.Color(lineColor, string(char)))
 		}
 	)
 	if p.IsRuntime {
-		lineColor = cli.ANSIMagenta
+		lineColor = ansi.CodeMagenta
 	}
 	// Error file path
 	b.Write(space(digitLen + 1))
@@ -167,7 +168,7 @@ func (p *Printer) PrintError(err KlarError) {
 			tokRange := ranges.FromToken(tok)
 			b.Write(space(tok.Col - lastCol))
 			if at.RangeIn(tokRange) {
-				b.WriteString(cli.Color(cli.ANSIRed, tok.Source))
+				b.WriteString(ansi.Red(tok.Source))
 			} else {
 				b.WriteString(p.colorize(currTok))
 			}
@@ -190,7 +191,7 @@ func (p *Printer) PrintError(err KlarError) {
 			box(icons.BoxLeft)
 			b.WriteByte(' ')
 			b.Write(space(at.Start.Col - 1))
-			b.WriteString(cli.Color(cli.ANSIRed+cli.ANSIBold, highlight))
+			b.WriteString(ansi.BoldRed(highlight))
 			b.WriteByte('\n')
 		}
 		lastCol = 1

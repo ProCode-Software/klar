@@ -3,7 +3,11 @@ package cli
 import (
 	"fmt"
 	"os"
+
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 )
+
+var Colors ansi.Colors
 
 func IsREPL() bool {
 	return os.Getenv("KLAR_REPL") == "1"
@@ -15,7 +19,7 @@ func Print(msg string, detail ...any) {
 
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
-	str := ANSIBoldRed + errorType + ANSIResetBoldDim + ": " + ANSIResetBold + msg + ANSIReset
+	str := ansi.BoldRed(errorType) + ansi.BoldDim(": ") + ansi.Bold(msg)
 	if len(detail) > 0 {
 		str += fmt.Sprint(detail...)
 	}
@@ -49,8 +53,12 @@ func InternalError(err any) {
 	Failure("Internal Error: ", err)
 }
 
-func InvalidUsage(usage string) {
-	Print("Invalid usage", "Usage: "+usage)
+func InvalidUsage(title, passed, usage string) {
+	Print(
+		title+": ", ansi.Yellow(passed)+"\n\n"+
+			ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
+			"Use "+ansi.Cyan("'--help'")+" for more information.",
+	)
 	os.Exit(2)
 }
 
@@ -60,5 +68,5 @@ func FileNotFound(path string) {
 }
 
 func HintIndent(hint string) {
-	Custom(ANSIBlue+"    Hint", "", hint)
+	Custom(ansi.Blue("    Hint"), "", hint)
 }

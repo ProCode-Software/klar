@@ -40,7 +40,11 @@ const repository = {
         contentName: 'string.quoted.klarmarkup',
         patterns: [include('strings')],
     },
-    namespaces: match(/@[\p{L}\w\d_.+-\\]+/u, 'support.class.klarmarkup'),
+    namespaces: {
+        match: /(@)[\p{L}\w\d_.\\+-]+/u,
+        name: 'support.class.klarmarkup',
+        captures: [undefined, {name: 'punctuation.definition.class.klarmarkup'}]
+    },
     strings: {
         patterns: [match(/\\./, 'constant.character.escape.klarmarkup')],
     },
@@ -64,6 +68,7 @@ const repository = {
             match(/[><]=?/, 'keyword.operator.relational.klarmarkup'),
             match(/\|/, 'keyword.operator.relational.klarmarkup'),
             match(/\.\.[.<]/, 'keyword.operator.range.klarmarkup'),
+            match(/\*/, 'keyword.operator.range.klarmarkup'),
         ],
     },
     array: match(/,/, 'punctuation.separator.comma.klarmarkup'),
@@ -88,6 +93,7 @@ const repository = {
     },
     values: {
         patterns: [
+            'comments',
             'operators',
             'numbers',
             'namespaces',

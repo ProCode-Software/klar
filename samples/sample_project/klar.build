@@ -1,0 +1,20 @@
+target: node
+
+output: dist
+verbose: true
+
+js:
+    declaration: true
+    declarationDir: types
+    jsdoc: true
+    format: esm, umd
+
+preBuild:
+    - lint
+    - generate
+    - format
+
+postBuild:
+    - @copy from -> to
+    - @shell "npm publish"
+    - @print "Hello, World!"

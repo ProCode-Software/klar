@@ -1,0 +1,10 @@
+name: sampleProject
+version: v0.0.1
+description: Sample Klar project for testing
+
+target: js
+runtimes: browser
+klar: v0.0.1
+
+dependencies:
+  - @npm/proicons/react *

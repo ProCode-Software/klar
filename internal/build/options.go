@@ -25,9 +25,15 @@ type JSOptions struct {
 	CreateSourceMap bool
 	CopyNodeModules bool
 	Banner          string
+	DeclarationDir  string
 }
 
 type AssetOptions struct {
 	Extensions []string // Glob path of file name/extensions
 	AssetDir   string
 }
+
+type Build struct {
+	*Options
+}
+

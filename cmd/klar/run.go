@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/paths"
@@ -81,7 +82,7 @@ func runTokens(tokens []lexer.Token) {
 			throw(err)
 		}
 	} else {
-		fmt.Println(cli.Color(cli.ANSIGreen+cli.ANSIBold, "✅ No type errors found!"))
+		fmt.Println(ansi.BoldGreen("✅ No type errors found!"))
 	}
 }
 
@@ -104,7 +105,6 @@ func RunFile(path string) {
 	}
 	runTokens(tokens)
 }
-
 
 func RunString(program string) {
 	if File != "repl" {

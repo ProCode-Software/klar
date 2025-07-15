@@ -33,8 +33,8 @@ func ResolveManifest(path string) (manifest string) {
 	manifest, found, err := module.ResolveManifest(path)
 	if !found {
 		cli.Failure("Project not found: ", fmt.Sprintf("Unable to find %s in %s",
-			Colors.Yellow("glas.pack"),
-			Colors.Cyan(paths.Full(path)),
+			ansi.Yellow("glas.pack"),
+			ansi.Cyan(paths.Full(path)),
 		))
 	}
 	if err != nil {
