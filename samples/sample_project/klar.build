@@ -1,7 +1,6 @@
 target: browser
 
-input:
-    @file main.klar,
+input: @file main.klar,
     @dir src
 
 output: dist/[dir]/main.js

@@ -1,48 +1,22 @@
-// Package klarml implements encoding and decoding of Klar Markup document structures (.klarml).
 package klarml
 
 import (
 	"io"
 
-	"github.com/ProCode-Software/klar/pkg/klarml/ast"
-	"github.com/ProCode-Software/klar/pkg/klarml/parser"
+	"github.com/ProCode-Software/klar/pkg/klarml/internal/decode"
+	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
-// TokenizeReader reads a markup document from reader and returns tokens to be parsed
-// and any error that occured while reading.
-func TokenizeReader(reader io.Reader) ([]parser.Token, error) {
-	bytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	return Tokenize(bytes), nil
+func Unmarshall(data []byte, v any, f ...flags.Flags) error {
+	d := decode.NewBufferDecoder(data)
+	return d.Decode(v)
 }
 
-// Tokenize reads from bytes and returns tokens to be parsed.
-func Tokenize(bytes []byte) []parser.Token {
-	return parser.Tokenize(bytes)
+func UnmarshallRead(r io.Reader, v any, f ...flags.Flags) error {
+	d := decode.NewStreamDecoder(r)
+	return d.Decode(v)
 }
 
-// Parse reads a markup document from reader, returning the parsed abstract
-// syntax tree (AST) and any errors that occured while parsing.
-func Parse(bytes []byte) (*ast.Document, []error) {
-	tokens := Tokenize(bytes)
-	return parser.ParseTokens(tokens)
-}
-
-// Parse reads a markup document from reader, returning the parsed abstract
-// syntax tree (AST) and any errors that occured while reading or parsing.
-func ParseReader(reader io.Reader) (*ast.Document, []error) {
-	tokens, err := TokenizeReader(reader)
-	if err != nil {
-		return nil, []error{err}
-	}
-	return parser.ParseTokens(tokens)
-}
-
-// Parse converts tokens returned from [Tokenize] into an abstract
-// syntax tree (AST), returning the parsed document and any errors that occured
-// while parsing.
-func ParseTokens(tokens []parser.Token) (d *ast.Document, errors []error) {
-	return parser.ParseTokens(tokens)
+func UnmarshallDocument(r any, v any, f ...flags.Flags) error {
+	return nil
 }

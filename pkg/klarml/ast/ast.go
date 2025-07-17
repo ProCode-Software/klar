@@ -1,78 +1,88 @@
 package ast
 
-import "github.com/ProCode-Software/klar/internal/ranges"
-
-type (
-	Range      = ranges.Range
-	QuoteStyle int
-	baseNode   struct{ Range Range }
-)
-
 const (
-	SingleQuote QuoteStyle = iota
+	Unquoted = iota
 	DoubleQuote
-	Unquoted
+	SingleQuote
+
+	LineComment = iota
+	BlockComment
 )
 
-// Document
+type Node interface {
+	Pos() int
+	End() int
+}
+
+type Value interface {
+	Node
+	value()
+}
+
+type baseNode struct {
+	StartPos, EndPos int
+}
+
 type Document struct {
 	baseNode
 	Variables []*VarDecl
-	Comments  []*Comment
 	Body      Value
+	Comments []*Comment
 }
 
-type Comment struct {
+type Bool struct {
 	baseNode
-	Block   bool
-	Content string
+	Value bool
 }
+
+type StringSeq struct {
+	baseNode
+	Values []Value
+}
+
+type String struct {
+	baseNode
+	Value string
+	Quote int
+}
+
+type Number struct {
+	baseNode
+	Source string
+	Value  float64
+}
+
+type Array struct {
+	baseNode
+	Inline bool
+	Items  []Value
+}
+
+type Object struct {
+	baseNode
+	Props []*Prop
+}
+
+type Prop struct {
+	baseNode
+	Key   string
+	Path  []string
+	Value Value
+}
+
 type VarDecl struct {
 	baseNode
 	Name  string
 	Value Value
 }
 
-// Values
-type Object struct {
+type Comment struct {
 	baseNode
-	Properties []*Property
+	Type int
+	Source string
 }
-type Array struct {
-	baseNode
-	Items  []Value
-	Inline bool
-}
-type Property struct {
-	baseNode
-	Key   string
-	Value Value
-}
-type StringLiteral struct {
-	baseNode
-	Content    string
-	QuoteStyle QuoteStyle
-}
-type NumericLiteral struct {
-	baseNode
-	Value float64
-}
-type BoolLiteral struct {
-	baseNode
-	Value bool
-}
-type Namespace struct {
+
+type Class struct {
 	baseNode
 	Name string
-}
-type VarRef struct {
-	baseNode
-	Identifier string
-	Braced     bool
-}
-type ConcatString struct {
-	Values []Value
-}
-type Bad struct {
-	baseNode
 }
