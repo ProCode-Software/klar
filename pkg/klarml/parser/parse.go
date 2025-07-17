@@ -1,19 +1,33 @@
-package klarml
+package parser
 
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
 
-func (p *parser) Parse() (d Document, errors []error) {
+func ParseTokens(tokens []Token) (d *ast.Document, errors []error) {
+	
+	parserTokens := make([]Token, len(tokens))
+	copy(parserTokens, tokens)
+	p := parser{
+		Index:  0,
+		Tokens: parserTokens,
+	}
+	return p.Parse()
+}
+
+func (p *parser) Parse() (doc *ast.Document, errors []error) {
+	doc = &ast.Document{Comments: p.RemoveComments()}
 	for p.HasTokens() {
-		var res Value
+		var res ast.Value
 		switch p.CurrentKind() {
 		case Newline:
 			continue
 		case Dollar:
 			decl := p.ParseVarDecl()
-			d.Variables = append(d.Variables, decl)
+			doc.Variables = append(doc.Variables, decl)
 			continue
 		case Identifier:
 			res = p.ParseObject(0)
@@ -22,25 +36,25 @@ func (p *parser) Parse() (d Document, errors []error) {
 		default:
 			res = p.ParseValue()
 		}
-		d.Body = res
+		doc.Body = res
 	}
-	return Document{}, p.Errors
+	return doc, p.Errors
 }
 
-func (p *parser) ParseValue() Value {
-	var res Value
+func (p *parser) ParseValue() ast.Value {
+	var res ast.Value
 	switch curr := p.Current(); curr.Kind {
 	case String:
 		res = p.ParseString()
 	case TokenNamespace:
 		p.Shift()
-		res = Namespace{Name: curr.Source}
+		res = &ast.Namespace{Name: curr.Source}
 	case Dollar:
 		res = p.ParseVar()
 	case Identifier:
 		src := curr.Source
 		if src == "true" || src == "false" {
-			res = BoolLiteral{Value: src == "true"}
+			res = &ast.BoolLiteral{Value: src == "true"}
 			break
 		}
 		fallthrough
@@ -48,7 +62,7 @@ func (p *parser) ParseValue() Value {
 		p.Error(UnexpectedTokenErr{curr})
 	}
 	if p.CurrentKind() == Comma {
-		array := Array{Inline: true}
+		array := &ast.Array{Inline: true}
 		array.Items = append(array.Items, res)
 		for p.CurrentKind() == Comma {
 			p.Shift()
@@ -59,35 +73,36 @@ func (p *parser) ParseValue() Value {
 	return res
 }
 
-func (p *parser) ParseNumber() NumericLiteral {
+func (p *parser) ParseNumber() *ast.NumericLiteral {
 	num := p.Expect(Numeric).Source
 	val, err := strconv.ParseFloat(num, 64)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse number %s: %v", num, err))
 	}
-	return NumericLiteral{Value: val}
+	return &ast.NumericLiteral{Value: val}
 }
 
-func (p *parser) ParseString() StringLiteral {
+func (p *parser) ParseString() *ast.StringLiteral {
 	curr := p.Shift()
-	var quoteStyle QuoteStyle
+	var quoteStyle ast.QuoteStyle
 	attrs := curr.Attributes.(StringAttrs)
 	switch {
 	case attrs.Unquoted:
-		quoteStyle = Unquoted
+		quoteStyle = ast.Unquoted
 	case attrs.QuoteStyle == '\'':
-		quoteStyle = SingleQuote
+		quoteStyle = ast.SingleQuote
 	case attrs.QuoteStyle == '"':
-		quoteStyle = DoubleQuote
+		quoteStyle = ast.DoubleQuote
 	}
-	return StringLiteral{
+	return &ast.StringLiteral{
 		Content:    curr.Source,
 		QuoteStyle: quoteStyle,
 	}
 }
 
-func (p *parser) ParseVar() (ref VarRef) {
+func (p *parser) ParseVar() *ast.VarRef {
 	p.Expect(Dollar)
+	ref := &ast.VarRef{}
 	if p.CurrentKind() == LeftBrace {
 		p.Shift()
 		ref.Identifier = p.Expect(Identifier).Source
@@ -104,23 +119,23 @@ func (p *parser) InvalidMix(isArray bool) {
 	p.Error(MixPropAndArrayErr{pos, isArray})
 }
 
-func (p *parser) ParseObject(elev int) Value {
+func (p *parser) ParseObject(elev int) ast.Value {
 	var (
-		isArray, isObject bool
-		obj               Object
-		array             Array
+		isArray, isObj bool
+		obj            = &ast.Object{}
+		array          = &ast.Array{}
 	)
 	for p.ExpectDashes(elev) {
 		if p.CurrentKind() == Newline {
 			continue
 		}
-		if !isObject && p.Peek().Kind == Colon {
-			isObject = true
+		if !isObj && p.Peek().Kind == Colon {
+			isObj = true
 			if isArray {
 				p.InvalidMix(true)
 				continue
 			}
-			prop := Property{Key: p.Expect(Identifier).Source}
+			prop := &ast.Property{Key: p.Expect(Identifier).Source}
 			p.Shift()
 			if p.CurrentKind() == Newline {
 				p.Shift()
@@ -131,7 +146,7 @@ func (p *parser) ParseObject(elev int) Value {
 			obj.Properties = append(obj.Properties, prop)
 		} else {
 			isArray = true
-			if isObject {
+			if isObj {
 				p.InvalidMix(false)
 			}
 		}
@@ -140,12 +155,15 @@ func (p *parser) ParseObject(elev int) Value {
 			p.Expect(Newline)
 		}
 	}
+	if isArray {
+		return array
+	}
 	return obj
 }
 
-func (p *parser) ParseVarDecl() (decl VarDecl) {
+func (p *parser) ParseVarDecl() *ast.VarDecl {
 	p.Expect(Dollar)
-	decl.Name = p.Expect(Identifier).Source
+	decl := &ast.VarDecl{Name: p.Expect(Identifier).Source}
 	p.Expect(Colon)
 	if p.CurrentKind() == Newline {
 		p.Shift()

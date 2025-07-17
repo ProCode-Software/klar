@@ -107,8 +107,8 @@ func RunFile(path string) {
 }
 
 func RunString(program string) {
-	if File != "repl" {
-		File = "string"
+	if program == "" {
+		return
 	}
 	tokens, err := parser.TokenizeString(program, INCLUDE_COMMENTS)
 	handleErr(err)

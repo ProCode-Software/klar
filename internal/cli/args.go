@@ -1,11 +1,8 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"strings"
-
-	"github.com/ProCode-Software/klar/internal/cli/ansi"
 )
 
 type FlagType int
@@ -17,17 +14,17 @@ const (
 	TypeOptionFlag
 )
 
-type CmdInfo struct {
-	Name        string
-	Description string
-	Aliases     []string
-}
-
 type FlagDef struct {
 	Type        FlagType
 	Description string
 	Default     any
 	Options     any
+}
+
+type FlagError struct {
+	Message string
+	Flag    string
+	Arg     string
 }
 
 type ArgParser struct {
@@ -40,31 +37,23 @@ type ArgParser struct {
 
 	defs    map[string]FlagDef
 	aliases map[string]string
-	Command CmdInfo
+
+	IsHelp bool
+	Error  *FlagError
 }
 
-func NewArgParser(cmd CmdInfo, argc int) *ArgParser {
+func NewArgParser(argc int) *ArgParser {
 	return &ArgParser{
 		Flags:       make(map[string]any),
 		defs:        make(map[string]FlagDef),
 		aliases:     make(map[string]string),
 		ExpArgCount: argc,
-		Command:     cmd,
-	}
-}
-
-func addPrefix(name string) string {
-	if len(name) > 1 {
-		return "--" + name
-	} else {
-		return "-" + name
 	}
 }
 
 func (t *ArgParser) BoolFlag(
 	name, description string, defaultValue bool, aliases ...string,
 ) *ArgParser {
-	name = addPrefix(name)
 	t.Flags[name] = defaultValue
 	t.defs[name] = FlagDef{
 		Type:        TypeBoolFlag,
@@ -78,7 +67,6 @@ func (t *ArgParser) BoolFlag(
 func (t *ArgParser) StringFlag(
 	name, description, defaultValue string, aliases ...string,
 ) *ArgParser {
-	name = addPrefix(name)
 	t.Flags[name] = defaultValue
 	t.defs[name] = FlagDef{
 		Type:        TypeStringFlag,
@@ -92,17 +80,18 @@ func (t *ArgParser) StringFlag(
 func (t *ArgParser) OptionFlag(
 	name, description string, options any, defaultValue string, aliases ...string,
 ) *ArgParser {
-	name = addPrefix(name)
+	var def any
 	switch options := options.(type) {
 	case map[string]any:
-		t.Flags[name] = options[defaultValue]
-	default:
-		t.Flags[name] = defaultValue
+		def = options[defaultValue]
+	case []string:
+		def = defaultValue
 	}
+	t.Flags[name] = def
 	t.defs[name] = FlagDef{
 		Type:        TypeStringFlag,
 		Description: description,
-		Default:     defaultValue,
+		Default:     def,
 		Options:     options,
 	}
 	t.alias(name, aliases...)
@@ -129,7 +118,7 @@ func (t *ArgParser) resolve(flag string) string {
 
 func (t *ArgParser) alias(flag string, aliases ...string) *ArgParser {
 	for _, alias := range aliases {
-		t.aliases[addPrefix(alias)] = flag
+		t.aliases[alias] = flag
 	}
 	return t
 }
@@ -145,48 +134,47 @@ func (t *ArgParser) Parse() {
 		}
 		currArg = t.resolve(s)
 	}
+loop:
 	for _, arg := range os.Args[1:] {
 		switch {
 		case onlyArgs:
 			t.Args = append(t.Args, arg)
 		case arg == "--help", arg == "-h":
-			t.PrintHelp()
-			os.Exit(0)
+			t.setFlag(arg, true)
+			t.IsHelp = true
+			break loop
 		case arg == "--":
 			onlyArgs = true
 		case strings.HasPrefix(arg, "-"):
-			if currArg != "" {
-				t.Flags[currArg] = true
-			}
-			setArg(arg)
+			setArg(cut(arg))
 			if _, ok := t.defs[currArg]; !ok {
-				InvalidUsage("Unknown flag", arg, t.Usage())
+				t.Error = &FlagError{"Unknown flag", arg, ""}
+				return
 			}
+			t.setFlag(currArg, true)
+		case currArg == "":
+			t.Args = append(t.Args, arg)
 		default:
 			switch kind := t.defs[currArg].Type; kind {
 			case TypeBoolFlag:
 				switch arg {
 				case "true":
-					t.Flags[currArg] = true
+					t.setFlag(currArg, true)
 				case "false":
-					t.Flags[currArg] = false
+					t.setFlag(currArg, false)
 				default:
 					t.Args = append(t.Args, arg)
 				}
 			case TypeStringFlag:
-				t.Flags[currArg] = arg
+				t.setFlag(currArg, arg)
 			case TypeOptionFlag:
 				t.setOpt(currArg, arg)
 			default:
-				InvalidUsage("Unknown flag", arg, t.Usage())
+				t.Error = &FlagError{"Unknown flag", arg, ""}
+				return
 			}
 			setArg("")
-		case currArg == "":
-			t.Args = append(t.Args, arg)
 		}
-	}
-	if currArg != "" {
-		t.Flags[currArg] = true
 	}
 	if t.NoShift && len(t.Args) > 1 {
 		t.Args = t.Args[1:]
@@ -195,33 +183,44 @@ func (t *ArgParser) Parse() {
 	}
 }
 
+func cut(flag string) string {
+	return strings.TrimLeft(flag, "-")
+}
+
+func (t *ArgParser) setFlag(flag string, value any) {
+	if flag == "" {
+		return
+	}
+	f := cut(flag)
+	if _, ok := t.Flags[f]; ok {
+		t.Error = &FlagError{"Flag already defined", flag, ""}
+		return
+	}
+	t.Flags[f] = value
+}
+
 func (t *ArgParser) setOpt(currFlag, arg string) {
 	lowerArg := strings.ToLower(arg)
 	switch opts := t.defs[currFlag].Options.(type) {
 	case map[string]any:
 		if val, ok := opts[lowerArg]; ok {
-			t.Flags[currFlag] = val
+			t.setFlag(currFlag, val)
 			return
 		}
 	case []string:
 		for _, opt := range opts {
 			if lowerArg == opt {
-				t.Flags[currFlag] = opt
+				t.setFlag(currFlag, opt)
 				return
 			}
 		}
 	default:
 		panic("invalid type for arg " + currFlag)
 	}
-	InvalidUsage(
-		fmt.Sprintf("Invalid value %s for flag", ansi.Cyan(arg)),
-		currFlag, t.Usage(),
-	)
+	// Invalid value 'arg' for flag '--flag'
+	t.Error = &FlagError{"Invalid value", arg, currFlag}
 }
 
-func (t ArgParser) Usage() string {
-	return ""
-}
-
-func (t ArgParser) PrintHelp() {
+func (t *ArgParser) IsDefault(flag string) bool {
+	return t.Flags[flag] == t.defs[flag].Default
 }

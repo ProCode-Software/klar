@@ -1,13 +1,22 @@
-target: node
+target: browser
 
-output: dist
+input:
+    @file main.klar,
+    @dir src
+
+output: dist/[dir]/main.js
+bundle: true
 verbose: true
 
 js:
-    declaration: true
-    declarationDir: types
-    jsdoc: true
-    format: esm, umd
+    - declaration: true
+    - declarationDir: types
+    - jsdoc: true
+    - format: esm, umd
+    - globals: // Define global types
+        -- Object:
+        -- PI: @const Float
+        -- Document: null
 
 preBuild:
     - lint

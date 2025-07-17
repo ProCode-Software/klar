@@ -1,6 +1,7 @@
-package klarml
+package parser
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -235,4 +236,19 @@ func (l *lexer) ParseComment(start Position, isBlock bool) Token {
 		Unterminated: isBlock,
 	}
 	return tok
+}
+
+func Tokenize(bytes []byte) []Token {
+	tokens := make([]Token, 0, len(bytes)/2)
+	l := lexer{
+		Bytes:    bytes,
+		Index:    0,
+		Position: Position{1, 1},
+	}
+	for l.HasBytes() {
+		tokens = append(tokens, l.Tokenize())
+	}
+	tokens = append(tokens, newToken(l.Position, EOF, ""))
+	tokens = slices.Clip(tokens)
+	return tokens
 }

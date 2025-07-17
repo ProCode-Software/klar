@@ -1,4 +1,4 @@
-package klarml
+package ast
 
 import "github.com/ProCode-Software/klar/internal/ranges"
 
@@ -17,8 +17,8 @@ const (
 // Document
 type Document struct {
 	baseNode
-	Variables []VarDecl
-	Comments  []Comment
+	Variables []*VarDecl
+	Comments  []*Comment
 	Body      Value
 }
 
@@ -36,7 +36,7 @@ type VarDecl struct {
 // Values
 type Object struct {
 	baseNode
-	Properties []Property
+	Properties []*Property
 }
 type Array struct {
 	baseNode
@@ -69,6 +69,9 @@ type VarRef struct {
 	baseNode
 	Identifier string
 	Braced     bool
+}
+type ConcatString struct {
+	Values []Value
 }
 type Bad struct {
 	baseNode

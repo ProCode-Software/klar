@@ -70,3 +70,13 @@ func FileNotFound(path string) {
 func HintIndent(hint string) {
 	Custom(ansi.Blue("    Hint"), "", hint)
 }
+
+func HandleInternalErr(err error, detail ...string) {
+	if err == nil {
+		return
+	}
+	if len(detail) > 0 {
+		InternalError(fmt.Errorf("%s: %w", detail[0], err))
+	}
+	InternalError(err)
+}

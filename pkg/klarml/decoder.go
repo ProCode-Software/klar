@@ -3,6 +3,8 @@ package klarml
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
 
 type decoder struct {
@@ -13,11 +15,11 @@ func (d *decoder) TypeError(got string, rt reflect.Type) error {
 	return fmt.Errorf("%s: cannot unmarshall input type %s into expected type %T", d.caller, got, rt)
 }
 
-func (d *decoder) String(node Node, rv reflect.Value) error {
+func (d *decoder) String(node ast.Node, rv reflect.Value) error {
 	return nil
 }
 
-func (d *decoder) Object(node Object, rv reflect.Value) error {
+func (d *decoder) Object(node ast.Object, rv reflect.Value) error {
 	rt := rv.Type()
 	switch rt.Kind() {
 	case reflect.Struct:

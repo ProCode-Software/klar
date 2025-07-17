@@ -1,4 +1,4 @@
-package klarml
+package parser
 
 import pkglex "github.com/ProCode-Software/klar/internal/lexer"
 

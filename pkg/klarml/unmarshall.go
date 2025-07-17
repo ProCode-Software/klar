@@ -1,16 +1,18 @@
 package klarml
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
+	"unsafe"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
 
 type Unmarshaller interface {
-	UnmarshalKlarMarkup(Node) error
+	UnmarshalKlarMarkup(ast.Node) error
 }
 
-func tryUnmarshaller(rv reflect.Value, data Node) (ok bool, err error) {
+func tryUnmarshaller(rv reflect.Value, data ast.Node) (ok bool, err error) {
 	if !rv.Elem().CanInterface() {
 		return false, nil
 	}
@@ -20,8 +22,21 @@ func tryUnmarshaller(rv reflect.Value, data Node) (ok bool, err error) {
 	return false, nil
 }
 
-func UnmarshallDocument(doc Document, dst any) error {
-	panic(errors.New("not implemented"))
+type goIface struct {
+	typ unsafe.Pointer
+	ptr unsafe.Pointer
+}
+
+func UnmarshallDocument(doc *ast.Document, dst any, flags ...Flags) error {
+	flag := parseFlags(flags)
+	rt := reflect.TypeOf(dst)
+	ptr := (*goIface)(unsafe.Pointer(&dst)).ptr
+
+	if rt == nil || ptr == nil || rt.Kind() != reflect.Pointer {
+		return unmarshallDstError(rt)
+	}
+	rt = rt.Elem()
+
 	/* const prefix = "klarml.Unmarshall: "
 	rv := reflect.ValueOf(dst)
 	rt := reflect.TypeOf(dst)
@@ -60,10 +75,17 @@ func UnmarshallDocument(doc Document, dst any) error {
 	return nil
 }
 
-func Unmarshall(data []byte, dst any) error {
+func Unmarshall(data []byte, dst any, flags ...Flags) error {
 	doc, err := Parse(data)
 	if len(err) > 0 {
 		return fmt.Errorf("klarml.Unmarshall: parse error: %w", err[0])
 	}
-	return UnmarshallDocument(doc, dst)
+	return UnmarshallDocument(doc, dst, flags...)
+}
+
+func parseFlags(flags []Flags) (f Flags) {
+	for _, flag := range flags {
+		f |= flag
+	}
+	return f
 }

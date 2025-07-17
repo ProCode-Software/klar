@@ -1,9 +1,8 @@
-package cli
+package command
 
 import "strings"
 
 type HelpBuilder struct {
-	MaxLength int
+	Width int
 	strings.Builder
 }
-

@@ -9,7 +9,7 @@ import (
 
 // LockProject locks the build project. If the lockfile exists,
 // LockProject returns (false, nil).
-func (b *Build) LockProject() (ok bool, err error) {
+func (b *Compiler) LockProject() (ok bool, err error) {
 	klarFolder := filepath.Join(b.ProjectDir, "/.klar")
 	lockName := fmt.Sprintf("build-%s.klar-build", b.Target)
 	err = os.MkdirAll(klarFolder, os.ModePerm)

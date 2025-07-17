@@ -19,9 +19,13 @@ const (
 	CodeBoldRed      = "\033[1;31m"
 	CodeBoldYellow   = "\033[1;33m"
 	CodeBoldGreen    = "\033[1;32m"
+	CodeBoldMagenta  = "\033[1;35m"
 	CodeBoldDim      = "\033[1;2m"
+	CodeBoldBlue     = "\033[1;34m"
 	CodeResetBold    = "\033[0;1m"
 	CodeResetBoldDim = "\033[0;1;2m"
+
+	CodeDimCyan = "\033[2;36m"
 )
 
 var NoColor = os.Getenv("NO_COLOR") != ""
@@ -37,20 +41,21 @@ type Colors struct {
 	NoColor bool
 }
 
-func Red(s string) string          { return Color(CodeRed, s) }
-func Yellow(s string) string       { return Color(CodeYellow, s) }
-func Blue(s string) string         { return Color(CodeBlue, s) }
-func Green(s string) string        { return Color(CodeGreen, s) }
-func Cyan(s string) string         { return Color(CodeCyan, s) }
-func Magenta(s string) string      { return Color(CodeMagenta, s) }
-func Bold(s string) string         { return Color(CodeBold, s) }
-func Dim(s string) string          { return Color(CodeDim, s) }
-func Italic(s string) string       { return Color(CodeItalic, s) }
-func Underline(s string) string    { return Color(CodeUnderline, s) }
-func BoldRed(s string) string      { return Color(CodeBoldRed, s) }
-func BoldYellow(s string) string   { return Color(CodeBoldYellow, s) }
-func BoldGreen(s string) string    { return Color(CodeBoldGreen, s) }
-func BoldDim(s string) string      { return Color(CodeBoldDim, s) }
-func ResetBold(s string) string    { return Color(CodeResetBold, s) }
-func ResetBoldDim(s string) string { return Color(CodeResetBoldDim, s) }
-func Reset() string                { return Color(CodeReset, "") }
+func Reset() string               { return Color(CodeReset, "") }
+func Red(s string) string         { return Color(CodeRed, s) }
+func Yellow(s string) string      { return Color(CodeYellow, s) }
+func Blue(s string) string        { return Color(CodeBlue, s) }
+func Green(s string) string       { return Color(CodeGreen, s) }
+func Cyan(s string) string        { return Color(CodeCyan, s) }
+func Magenta(s string) string     { return Color(CodeMagenta, s) }
+func Bold(s string) string        { return Color(CodeBold, s) }
+func Dim(s string) string         { return Color(CodeDim, s) }
+func Italic(s string) string      { return Color(CodeItalic, s) }
+func Underline(s string) string   { return Color(CodeUnderline, s) }
+func BoldRed(s string) string     { return Color(CodeBoldRed, s) }
+func BoldYellow(s string) string  { return Color(CodeBoldYellow, s) }
+func BoldGreen(s string) string   { return Color(CodeBoldGreen, s) }
+func BoldMagenta(s string) string { return Color(CodeBoldMagenta, s) }
+func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
+func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
+func DimCyan(s string) string     { return Color(CodeDimCyan, s) }

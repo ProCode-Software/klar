@@ -1,6 +1,10 @@
-package klarml
+package parser
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
+)
 
 type parser struct {
 	Index  int
@@ -59,7 +63,7 @@ func (p *parser) ExpectDashes(n int) bool {
 	return false
 }
 
-func (p *parser) RemoveComments() (comments []Comment) {
+func (p *parser) RemoveComments() (comments []*ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
 		curr := p.Tokens[i]
 		if curr.Kind != TokenComment {
@@ -69,7 +73,7 @@ func (p *parser) RemoveComments() (comments []Comment) {
 		if attrs.Unterminated {
 			p.Error(UntermCommentErr{curr})
 		}
-		comments = append(comments, Comment{
+		comments = append(comments, &ast.Comment{
 			Block:   attrs.Block,
 			Content: curr.Source,
 		})

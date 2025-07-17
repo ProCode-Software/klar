@@ -3,11 +3,14 @@ package klarml
 
 import (
 	"io"
-	"slices"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
+	"github.com/ProCode-Software/klar/pkg/klarml/parser"
 )
 
-// TokenizeReader reads a markup document from reader and returns tokens to be parsed.
-func TokenizeReader(reader io.Reader) ([]Token, error) {
+// TokenizeReader reads a markup document from reader and returns tokens to be parsed
+// and any error that occured while reading.
+func TokenizeReader(reader io.Reader) ([]parser.Token, error) {
 	bytes, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
@@ -16,48 +19,30 @@ func TokenizeReader(reader io.Reader) ([]Token, error) {
 }
 
 // Tokenize reads from bytes and returns tokens to be parsed.
-func Tokenize(bytes []byte) []Token {
-	tokens := make([]Token, 0, len(bytes)/2)
-	l := lexer{
-		Bytes:    bytes,
-		Index:    0,
-		Position: Position{1, 1},
-	}
-	for l.HasBytes() {
-		tokens = append(tokens, l.Tokenize())
-	}
-	tokens = append(tokens, newToken(l.Position, EOF, ""))
-	tokens = slices.Clip(tokens)
-	return tokens
+func Tokenize(bytes []byte) []parser.Token {
+	return parser.Tokenize(bytes)
 }
 
 // Parse reads a markup document from reader, returning the parsed abstract
 // syntax tree (AST) and any errors that occured while parsing.
-func Parse(bytes []byte) (Document, []error) {
+func Parse(bytes []byte) (*ast.Document, []error) {
 	tokens := Tokenize(bytes)
-	return ParseTokens(tokens)
+	return parser.ParseTokens(tokens)
 }
 
 // Parse reads a markup document from reader, returning the parsed abstract
-// syntax tree (AST) and any errors that occured while parsing.
-func ParseReader(reader io.Reader) (Document, []error) {
+// syntax tree (AST) and any errors that occured while reading or parsing.
+func ParseReader(reader io.Reader) (*ast.Document, []error) {
 	tokens, err := TokenizeReader(reader)
 	if err != nil {
-		return Document{}, []error{err}
+		return nil, []error{err}
 	}
-	return ParseTokens(tokens)
+	return parser.ParseTokens(tokens)
 }
 
 // Parse converts tokens returned from [Tokenize] into an abstract
 // syntax tree (AST), returning the parsed document and any errors that occured
 // while parsing.
-func ParseTokens(tokens []Token) (d Document, errors []error) {
-	parserTokens := make([]Token, len(tokens))
-	copy(parserTokens, tokens)
-	p := parser{
-		Index:  0,
-		Tokens: parserTokens,
-	}
-	d.Comments = p.RemoveComments()
-	return p.Parse()
+func ParseTokens(tokens []parser.Token) (d *ast.Document, errors []error) {
+	return parser.ParseTokens(tokens)
 }

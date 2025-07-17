@@ -1,14 +1,18 @@
 package klarml
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
+)
 
 type Context struct {
-	Document   Document
+	Document   *ast.Document
 	Namespaces map[string]Resolver
 }
-type Resolver func(input Node) Node
+type Resolver func(input ast.Node) ast.Node
 
-func NewContext(doc Document) *Context {
+func NewContext(doc *ast.Document) *Context {
 	return &Context{
 		Document:   doc,
 		Namespaces: nil,
@@ -26,19 +30,19 @@ func (c *Context) DefineNamespace(name string, r Resolver) {
 }
 
 func (c *Context) ResolveVars() (errors []error) {
-	vars := make(map[string]Value)
+	vars := make(map[string]ast.Value)
 	var currentNs string
-	doc, _ := Walk(c.Document, func(n *Node) (Node, error) {
-		switch n := (*n).(type) {
-		case VarDecl:
+	err := ast.Walk(c.Document, func(n ast.Node) error {
+		switch n := n.(type) {
+		case *ast.VarDecl:
 			vars[n.Name] = n.Value
-		case VarRef:
+		case *ast.VarRef:
 			if value, ok := vars[n.Identifier]; ok {
-				return value, nil
+				return nil
 			}
 			errors = append(errors, fmt.Errorf("variable '%s' is not defined", n.Identifier))
-			return nil, nil
-		case Namespace:
+			return nil
+		case *ast.Namespace:
 			currentNs = n.Name
 		default:
 			if currentNs != "" {
@@ -47,7 +51,7 @@ func (c *Context) ResolveVars() (errors []error) {
 				currentNs = ""
 			}
 		}
-		return *n, nil
+		return nil
 	})
 	c.Document = doc
 	return nil

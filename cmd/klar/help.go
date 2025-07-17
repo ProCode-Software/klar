@@ -14,7 +14,7 @@ type HelpBuilder struct {
 	strings.Builder
 }
 
-func command(name, desc string) string {
+func cmd(name, desc string) string {
 	l := len(name)
 	if l <= maxLen {
 		return fmt.Sprintf("    %-*s%s\n", maxLen+2, name, desc)
@@ -31,21 +31,25 @@ var HelpString = header("Klar: ") +
 	ansi.Dim("v"+version.KlarVersion) + "\n\n" +
 
 	header("Usage: ") +
-	ansi.BoldGreen("klar ") + ansi.Yellow("<command> ") + ansi.Cyan("[flags]") +
+	ansi.BoldGreen("klar ") + ansi.Yellow("<command> ") + ansi.Cyan("[args]") +
 	ansi.Dim(" | ") +
-	ansi.BoldGreen("klar ") + ansi.Yellow("<file>\n\n") +
+	ansi.BoldGreen("klar ") + ansi.Yellow("<file>") +
+	ansi.Dim(" | ") +
+	ansi.BoldGreen("klar ") + ansi.Cyan("-c "+ansi.Dim("<script>\n\n")) +
 
 	header("Commands:\n") +
-	command(ansi.Green("run"), "Run a Klar file or project") +
-	command(ansi.Green("repl"), "Start an interactive Klar read-eval-print loop (REPL)\n") +
+	cmd(ansi.Green("run"), "Run a Klar file or project") +
+	cmd(ansi.Green("repl"), "Start an interactive REPL session with Klar\n") +
 
-	command(ansi.Magenta("build"), "Compile a Klar project") +
-	command(ansi.Magenta("test"), "Test a Klar project\n") +
+	cmd(ansi.Magenta("build"), "Compile a Klar project") +
+	cmd(ansi.Magenta("test"), "Test a Klar project\n") +
 
-	command(ansi.Blue("init"), "Create a new Klar project") +
-	command(ansi.Blue("add"), "Install dependencies for a project") +
+	cmd(ansi.Blue("init"), "Create a new Klar project") +
+	cmd(ansi.Blue("add"), "Install dependencies for a project") +
 
 	"\nUse " + ansi.Cyan("'klar help <subcommand>'") +
 	" for more information about a command.\n\n" +
 
 	header("GitHub: ") + ansi.Blue("https://github.com/ProCode-Software/klar\n")
+
+// TODO: full help with info about flags

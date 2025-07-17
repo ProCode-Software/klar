@@ -99,3 +99,22 @@ func FromGoDouble(goos string) (Double, error) {
 	}
 	return Double{KlarVM, p}, nil
 }
+
+func (t Target) String() string {
+	return map[Target]string{
+		JavaScript:    "js",
+		KlarVM:        "klar",
+		TargetUnknown: "unknown",
+	}[t]
+}
+
+func (p Platform) String() string {
+	return map[Platform]string{
+		JSNode:    "node",
+		JSDeno:    "deno",
+		JSBun:     "bun",
+		JSBrowser: "browser",
+
+		PlatformUnknown: "unknown",
+	}[p]
+}

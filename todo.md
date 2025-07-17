@@ -7,6 +7,7 @@
 - in when case, map destructuring
 - multi-variable assignments
 - error for duplicate struct fields or enum members
+- Error handling similar to Rust's `?` postfix, but with explicit `return`
 
 ## Analysis
 - behaviour of () and (x) tuples

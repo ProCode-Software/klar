@@ -1,4 +1,4 @@
-package klarml
+package parser
 
 import "fmt"
 
