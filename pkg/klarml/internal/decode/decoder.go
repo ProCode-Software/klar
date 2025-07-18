@@ -9,9 +9,9 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
-type DecodeFunc func(byte, reflect.Value, *Decoder) error
+type unmarshaller func(byte, reflect.Value, *Decoder) error
 
-var DecodeCache = MakeCache[reflect.Type, DecodeFunc]()
+var DecodeCache = MakeCache[reflect.Type, unmarshaller]()
 
 type Decoder struct {
 	Buffer    []byte
@@ -30,7 +30,7 @@ func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
 func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	var buf []byte
 	if _, ok := r.(*bytes.Buffer); !ok {
-		buf = make([]byte, 0)
+		buf = make([]byte, 0, 64)
 	}
 	return &Decoder{
 		Buffer: buf,
@@ -39,43 +39,13 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	}
 }
 
-func lookupMarshallFunc(rt reflect.Type) DecodeFunc {
+func lookupMarshallFunc(rt reflect.Type) unmarshaller {
 	if marsh, ok := DecodeCache.Get(rt); ok {
 		return marsh
 	}
-	marsh := makeMarshallFunc(rt)
+	marsh := makeDefaultMarshaller(rt)
 	DecodeCache.Set(rt, marsh)
 	return marsh
-}
-
-func makeMarshallFunc(rt reflect.Type) DecodeFunc {
-	kind := rt.Kind()
-	switch kind {
-	case reflect.String:
-
-	case reflect.Bool:
-
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-
-	case reflect.Float32, reflect.Float64:
-
-	case reflect.Map:
-
-	case reflect.Struct:
-
-	case reflect.Slice:
-
-	case reflect.Array:
-
-	case reflect.Pointer:
-
-	case reflect.Interface:
-	default:
-		
-	}
-	return nil
 }
 
 func (d *Decoder) Decode(v any) error {
@@ -90,16 +60,13 @@ func (d *Decoder) Decode(v any) error {
 	return nil
 }
 
-func (d *Decoder) Curr() byte {
-	return d.Buffer[d.Pos]
-}
-
-func (d *Decoder) HasBytes() bool {
-	return d.Pos < len(d.Buffer)
-}
-
-func (d *Decoder) Advance() byte {
-	b := d.Buffer[d.Pos]
-	d.Pos++
-	return b
+func (d *Decoder) Read() error {
+	if d.Reader == nil {
+		return nil
+	}
+	_, err := d.Reader.Read(d.Buffer)
+	if err != nil {
+		return err
+	}
+	return nil
 }
