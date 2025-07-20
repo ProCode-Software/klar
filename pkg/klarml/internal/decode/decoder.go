@@ -2,22 +2,26 @@ package decode
 
 import (
 	"bytes"
+	goerrors "errors"
 	"io"
 	"reflect"
 
+	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
-type unmarshaller func(byte, reflect.Value, *Decoder) error
+type decodeFunc func(reflect.Value, *Decoder) (ast.Node, error)
 
-var DecodeCache = MakeCache[reflect.Type, unmarshaller]()
+var DecodeCache = MakeCache[reflect.Type, decodeFunc]()
+
+var ErrExpectedEOF = goerrors.New("expected end of file")
 
 type Decoder struct {
-	Buffer    []byte
-	Reader    io.Reader
-	Flags     flags.Flags
-	Prev, Pos int
+	Buffer       []byte
+	Reader       io.Reader
+	Flags        flags.Flags
+	PrevEnd, Pos int
 }
 
 func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
@@ -30,7 +34,7 @@ func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
 func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	var buf []byte
 	if _, ok := r.(*bytes.Buffer); !ok {
-		buf = make([]byte, 0, 64)
+		buf = make([]byte, 64)
 	}
 	return &Decoder{
 		Buffer: buf,
@@ -39,11 +43,11 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	}
 }
 
-func lookupMarshallFunc(rt reflect.Type) unmarshaller {
+func lookupMarshallFunc(rt reflect.Type) decodeFunc {
 	if marsh, ok := DecodeCache.Get(rt); ok {
 		return marsh
 	}
-	marsh := makeDefaultMarshaller(rt)
+	marsh := makeDefaultDecoder(rt)
 	DecodeCache.Set(rt, marsh)
 	return marsh
 }
@@ -56,17 +60,23 @@ func (d *Decoder) Decode(v any) error {
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
 	marsh := lookupMarshallFunc(rt)
-	marsh(0, reflect.Value{}, nil)
+	d.Refill()
+	if err := d.SkipSpace(); err != nil {
+		return err
+	}
+	if _, err := marsh(rv, d); err != nil {
+		return err
+	}
+	// Make sure there is nothing else after decoding
+	if err := d.SkipSpaceNewline(); err != io.EOF {
+		return &errors.ExpectedEOFError{Got: d.Curr()}
+	}
 	return nil
 }
 
-func (d *Decoder) Read() error {
-	if d.Reader == nil {
-		return nil
+func (d *Decoder) TypeError(rv reflect.Value, got ast.Node) error {
+	return &errors.TypeError{
+		Expected: rv.Type(),
+		Value:    got,
 	}
-	_, err := d.Reader.Read(d.Buffer)
-	if err != nil {
-		return err
-	}
-	return nil
 }

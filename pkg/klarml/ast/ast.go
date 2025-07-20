@@ -27,7 +27,7 @@ type Document struct {
 	baseNode
 	Variables []*VarDecl
 	Body      Value
-	Comments []*Comment
+	Comments  []*Comment
 }
 
 type Bool struct {
@@ -78,7 +78,7 @@ type VarDecl struct {
 
 type Comment struct {
 	baseNode
-	Type int
+	Type   int
 	Source string
 }
 
@@ -86,3 +86,5 @@ type Class struct {
 	baseNode
 	Name string
 }
+
+type Null struct{ baseNode }

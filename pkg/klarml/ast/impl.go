@@ -11,3 +11,4 @@ func (*Number) value()    {}
 func (*Array) value()     {}
 func (*Object) value()    {}
 func (*Class) value()     {}
+func (*Null) value()      {}
