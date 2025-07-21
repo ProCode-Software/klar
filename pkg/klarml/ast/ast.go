@@ -43,7 +43,7 @@ type StringSeq struct {
 type String struct {
 	baseNode
 	Value string
-	Quote int
+	Quote byte // 0 if unquoted or " or ' byte
 }
 
 type Number struct {

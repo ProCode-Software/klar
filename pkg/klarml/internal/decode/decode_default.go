@@ -39,22 +39,22 @@ func makeDefaultDecoder(rt reflect.Type) decodeFunc {
 }
 
 func decodeString(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	val, err := d.ReadValue()
+	v, err := d.ReadValue()
 	if err != nil {
-		return val, err
+		return v, err
 	}
-	switch val := val.(type) {
+	switch v := v.(type) {
 	case *ast.String:
-		rv.SetString(val.Value)
+		rv.SetString(v.Value)
 	case *ast.Bool:
-		rv.SetString(strconv.FormatBool(val.Value))
+		rv.SetString(strconv.FormatBool(v.Value))
 	case *ast.Number:
-		rv.SetString(val.Source)
+		rv.SetString(v.Source)
 	case *ast.Null:
 	default:
-		return val, d.TypeError(rv, val)
+		return v, d.TypeError(rv, v)
 	}
-	return val, nil
+	return v, nil
 }
 
 func decodeBool(rv reflect.Value, d *Decoder) (ast.Node, error) {

@@ -13,6 +13,8 @@ func (d *Decoder) NeedsMore() bool {
 	return d.Pos >= len(d.Buffer)-1
 }
 
+// Refill fills the buffer to full capacity if needed. Refill returns an error
+// if another byte cannot be read.
 func (d *Decoder) Refill() error {
 	if d.Reader == nil {
 		if d.NeedsMore() {
@@ -20,25 +22,28 @@ func (d *Decoder) Refill() error {
 		}
 		return nil
 	}
-	var start int
-	if d.Pos >= len(d.Buffer)-1 {
-		start = 0
-	} else {
-		remaining := len(d.Buffer) - d.Pos
-		copy(d.Buffer[:remaining], d.Buffer[d.Pos:])
-		start = remaining
+	if !d.NeedsMore() && d.Buffer[0] != 0 {
+		return nil
 	}
-	if d.Buffer == nil {
-		d.Buffer = make([]byte, 64)
-	}
-	n, err := d.Reader.Read(d.Buffer[start:])
-	if err != nil && start+n == 0 {
-		return err
-	}
-	d.Buffer = d.Buffer[:start+n]
-	// Reset pos
+	prevPos := d.Pos
 	d.Pos = 0
-	return nil
+	prelen := len(d.Buffer)
+	canNext := func(err error) error {
+		if err != EOF || d.Pos >= len(d.Buffer)-1 {
+			return err
+		}
+		return nil
+	}
+
+	d.Buffer = append(d.Buffer, make([]byte, BufferSize-len(d.Buffer))...)
+	n, err := d.Reader.Read(d.Buffer)
+	if err != nil && n == 0 {
+		d.Buffer = d.Buffer[:prelen]
+		d.Pos = prevPos
+		return canNext(err)
+	}
+	d.Buffer = d.Buffer[:n]
+	return canNext(EOF)
 }
 
 func (d *Decoder) ReadN(n int) ([]byte, error) {
@@ -54,12 +59,17 @@ func (d *Decoder) Curr() byte {
 	return d.Buffer[d.Pos]
 }
 
+// Advance returns the current byte and moves to the next byte. Advance will try to
+// refill the buffer, returning a nil error if it is safe to call d.Curr().
 func (d *Decoder) Advance() (byte, error) {
 	curr := d.Curr()
 	d.Pos++
+	d.FilePos++
 	if d.NeedsMore() {
 		if err := d.Refill(); err != nil {
-			return 0, err
+			if err != EOF || d.Pos >= len(d.Buffer) {
+				return curr, err
+			}
 		}
 	}
 	return curr, nil
@@ -78,6 +88,9 @@ func (d *Decoder) Expect(exp byte, e ...error) error {
 }
 
 func (d *Decoder) SkipSpace() error {
+	if d.Pos >= len(d.Buffer) {
+		return EOF
+	}
 	for {
 		curr := d.Curr()
 		if curr != '\n' && !unicode.IsSpace(rune(curr)) {
@@ -88,7 +101,11 @@ func (d *Decoder) SkipSpace() error {
 		}
 	}
 }
+
 func (d *Decoder) SkipSpaceNewline() error {
+	if d.Pos >= len(d.Buffer) {
+		return EOF
+	}
 	for {
 		curr := d.Curr()
 		if !unicode.IsSpace(rune(curr)) {

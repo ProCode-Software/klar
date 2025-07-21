@@ -29,7 +29,7 @@ func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 		rest := lits[curr]
 		got, err := d.ReadN(len(rest))
 		if err != nil {
-			return nil, err
+			return lit, err
 		}
 		if string(got) == rest {
 			return &ast.Bool{Value: curr == 't'}, nil
@@ -41,7 +41,7 @@ func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 	case ']':
 		_, err = d.Advance()
 		if err != nil {
-			return nil, err
+			return lit, err
 		}
 		return nil, ErrUnexpectedBracket
 	}
@@ -53,29 +53,29 @@ func (d *Decoder) readString() (*ast.String, error) {
 	if err != nil {
 		return nil, ErrUnterminatedString
 	}
-	s := &ast.String{
-		Quote: map[byte]int{'\'': ast.SingleQuote, '"': ast.DoubleQuote}[quote],
-	}
 	var b strings.Builder
+	ret := func(err error) (*ast.String, error) {
+		return &ast.String{
+			Quote: quote,
+			Value: b.String(),
+		}, err
+	}
 	for d.Curr() != quote {
 		c, err := d.Advance()
-		if err != nil {
-			s.Value = b.String()
-			return s, ErrUnterminatedString
-		}
 		b.WriteByte(c)
+		if err != nil {
+			return ret(ErrUnterminatedString)
+		}
 		if c == '\\' {
 			next, err := d.Advance()
 			if err != nil {
-				s.Value = b.String()
-				return s, ErrUnterminatedString
+				return ret(ErrUnterminatedString)
 			}
 			b.WriteByte(next)
 		}
 	}
-	s.Value = b.String()
-	_, err = d.Advance()
-	return s, err
+	_, err = d.Advance() // Last token is known quote
+	return ret(err)
 }
 
 func (d *Decoder) readArray() (*ast.Array, error) {

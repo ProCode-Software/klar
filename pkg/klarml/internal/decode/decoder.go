@@ -13,15 +13,19 @@ import (
 
 type decodeFunc func(reflect.Value, *Decoder) (ast.Node, error)
 
-var DecodeCache = MakeCache[reflect.Type, decodeFunc]()
+var (
+	DecodeCache    = MakeCache[reflect.Type, decodeFunc]()
+	ErrExpectedEOF = goerrors.New("expected end of file")
+)
 
-var ErrExpectedEOF = goerrors.New("expected end of file")
+const BufferSize = 64
 
 type Decoder struct {
 	Buffer       []byte
 	Reader       io.Reader
 	Flags        flags.Flags
 	PrevEnd, Pos int
+	FilePos      int
 }
 
 func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
@@ -34,7 +38,7 @@ func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
 func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	var buf []byte
 	if _, ok := r.(*bytes.Buffer); !ok {
-		buf = make([]byte, 64)
+		buf = make([]byte, BufferSize)
 	}
 	return &Decoder{
 		Buffer: buf,
@@ -60,11 +64,13 @@ func (d *Decoder) Decode(v any) error {
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
 	marsh := lookupMarshallFunc(rt)
-	d.Refill()
-	if err := d.SkipSpace(); err != nil {
+	if err := d.Refill(); err != nil {
 		return err
 	}
-	if _, err := marsh(rv, d); err != nil {
+	if err := d.SkipSpaceNewline(); err != nil {
+		return err
+	}
+	if _, err := marsh(rv, d); err != nil && err != EOF {
 		return err
 	}
 	// Make sure there is nothing else after decoding

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fp := os.Args[1]
+	fp := "test.klarml"
 	file, err := os.Open(fp)
 	if err != nil {
 		panic(err)
