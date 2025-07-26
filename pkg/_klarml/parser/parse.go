@@ -8,7 +8,6 @@ import (
 )
 
 func ParseTokens(tokens []Token) (d *ast.Document, errors []error) {
-	
 	parserTokens := make([]Token, len(tokens))
 	copy(parserTokens, tokens)
 	p := parser{

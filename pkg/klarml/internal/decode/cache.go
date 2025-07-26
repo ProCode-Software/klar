@@ -1,6 +1,7 @@
 package decode
 
 import (
+	"maps"
 	"sync/atomic"
 )
 
@@ -24,9 +25,7 @@ func (c *cache[K, V]) Get(key K) (V, bool) {
 func (c *cache[K, V]) Set(key K, value V) {
 	mapper := *c.Pointer.Load()
 	r := make(map[K]V, len(mapper)+1)
-		for key, elm := range mapper {
-		r[key] = elm
-	}
+	maps.Copy(r, mapper)
 	r[key] = value
 	c.Pointer.Store(&r)
 }

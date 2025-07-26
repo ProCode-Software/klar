@@ -2,8 +2,8 @@ package klarcmd
 
 import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/build"
-	"github.com/ProCode-Software/klar/cmd/klar/internal/command"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/repl"
+	"github.com/ProCode-Software/klar/internal/command"
 )
 
 var KlarCommands = map[string]*command.Command{

@@ -6,9 +6,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
-type BuildMode int
-
-type Flags int32
+type (
+	InputKind int
+	BuildMode int
+	Flags     int32
+)
 
 const (
 	ModeBuild   BuildMode = iota // Full compilation
@@ -23,18 +25,26 @@ const (
 	Minify
 	CreateSourceMap
 	CopyNodeModules
+	BundleDeclaration
+)
+
+const (
+	KindDir InputKind = 1 << iota
+	KindFile
+	KindPackage = KindDir | (1 << iota)
+	KindModule  = KindDir | (1 << iota)
 )
 
 type Options struct {
+	Inputs       []Input
 	Target       target.Double
-	ProjectDir   string
+	Outputs      []string
 	OutputDir    string
 	JS           *JSOptions
 	AssetOptions *AssetOptions
 	Paths        map[string]string
-	Verbose      bool
 	Watch        bool
-	SingleFile   bool
+	// ProjectDir   string
 }
 
 type JSOptions struct {
@@ -45,15 +55,21 @@ type JSOptions struct {
 	DeclarationDir string
 }
 
+type Input struct {
+	Kind InputKind
+	Path string
+}
+
 type AssetOptions struct {
 	Extensions []string // Glob path of file name/extensions
 	AssetDir   string
 }
 
 type Compiler struct {
-	Mode   BuildMode
-	Errors []errors.KlarError
-	*Options
+	Mode    BuildMode
+	Verbose bool
+	Errors  []errors.KlarError
+	Options []*Options
 }
 
 func (o JSOptions) HasFlag(flag Flags) bool {

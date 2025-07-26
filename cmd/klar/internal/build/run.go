@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/ProCode-Software/klar/cmd/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
@@ -16,8 +16,7 @@ func Build(r *command.Runner) {
 	b := &build.Compiler{
 		Mode: build.ModeBuild,
 		Options: &build.Options{
-			JS:      &build.JSOptions{},
-			Verbose: true,
+			JS: &build.JSOptions{},
 		},
 	}
 	b.Log("Starting build...")
@@ -50,9 +49,6 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		}
 		switch flag {
 		case "config":
-			continue
-		case "verbose":
-			o.Verbose = v.(bool)
 			continue
 		case "watch":
 			o.Watch = v.(bool)

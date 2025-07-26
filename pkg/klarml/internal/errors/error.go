@@ -31,7 +31,13 @@ type ExpectedEOFError struct {
 }
 
 func (err *InvalidUnmarshallError) Error() string {
-	return "klarml: can't unmarshall"
+	switch {
+	case err.Type == nil:
+		return "klarml: nil argument passed to Unmarshall"
+	case err.Type.Kind() != reflect.Pointer:
+		return "klarml: non-pointer type " + err.Type.String() + " passed to Unmarshall"
+	}
+	return "klarml: nil " + err.Type.String() + " passed to Unmarshall"
 }
 
 func (err *TypeError) Error() string {
@@ -39,8 +45,18 @@ func (err *TypeError) Error() string {
 }
 
 func (err *NumberRangeError) Error() string {
-	return "klarml: number range error"
+	if err.Truncated {
+		return fmt.Sprintf(
+			"klarml: can't unmarshall float %f into Go integer type %s",
+			err.Value, err.Expected.String(),
+		)
+	}
+	return fmt.Sprintf(
+		"klarml: can't unmarshall negative integer %d into Go unsigned type %s",
+		int(err.Value), err.Expected.String(),
+	)
 }
+
 func (err *ExpectedEOFError) Error() string {
 	return fmt.Sprintf("klarml: expected end of file, but found '%c' instead", err.Got)
 }

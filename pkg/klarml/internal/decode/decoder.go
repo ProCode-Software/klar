@@ -14,24 +14,30 @@ import (
 type decodeFunc func(reflect.Value, *Decoder) (ast.Node, error)
 
 var (
-	DecodeCache    = MakeCache[reflect.Type, decodeFunc]()
-	ErrExpectedEOF = goerrors.New("expected end of file")
+	DecodeCache      = MakeCache[reflect.Type, decodeFunc]()
+	ErrDocumentEmpty = goerrors.New("document is empty")
 )
 
 const BufferSize = 64
 
 type Decoder struct {
-	Buffer       []byte
-	Reader       io.Reader
-	Flags        flags.Flags
-	PrevEnd, Pos int
-	FilePos      int
+	Buffer []byte
+	Reader io.Reader
+	Flags  flags.Flags
+	Pos    int
+
+	Line, Col int
+	FilePos   int
+
+	Document *ast.Document
 }
 
 func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
 	return &Decoder{
-		Buffer: buf,
-		Flags:  flags.Parse(f...),
+		Document: &ast.Document{},
+		Buffer:   buf,
+		Flags:    flags.Parse(f...),
+		Line:     1, Col: 1,
 	}
 }
 
@@ -41,9 +47,11 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 		buf = make([]byte, BufferSize)
 	}
 	return &Decoder{
-		Buffer: buf,
-		Reader: r,
-		Flags:  flags.Parse(f...),
+		Document: &ast.Document{},
+		Buffer:   buf,
+		Reader:   r,
+		Flags:    flags.Parse(f...),
+		Line:     1, Col: 1,
 	}
 }
 
@@ -64,20 +72,31 @@ func (d *Decoder) Decode(v any) error {
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
 	marsh := lookupMarshallFunc(rt)
-	if err := d.Refill(); err != nil {
+	// Refill if needed. Not needed if the bytes are buffered
+	if err := d.Refill(); err != nil && err != EOF {
 		return err
 	}
+	// If this returns an error, the document is empty
 	if err := d.SkipSpaceNewline(); err != nil {
+		if err == EOF {
+			return ErrDocumentEmpty
+		}
 		return err
 	}
-	if _, err := marsh(rv, d); err != nil && err != EOF {
+	body, err := marsh(rv, d)
+	if err != nil {
 		return err
 	}
+	d.Document.Body = body.(ast.Value)
 	// Make sure there is nothing else after decoding
-	if err := d.SkipSpaceNewline(); err != io.EOF {
+	switch err := d.SkipSpaceNewline(); err {
+	case EOF:
+		return nil
+	case nil:
 		return &errors.ExpectedEOFError{Got: d.Curr()}
+	default:
+		return err
 	}
-	return nil
 }
 
 func (d *Decoder) TypeError(rv reflect.Value, got ast.Node) error {

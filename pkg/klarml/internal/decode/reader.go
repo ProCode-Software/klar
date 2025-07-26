@@ -65,6 +65,11 @@ func (d *Decoder) Advance() (byte, error) {
 	curr := d.Curr()
 	d.Pos++
 	d.FilePos++
+	d.Col++
+	if curr == '\n' {
+		d.Col = 1
+		d.Line++
+	}
 	if d.NeedsMore() {
 		if err := d.Refill(); err != nil {
 			if err != EOF || d.Pos >= len(d.Buffer) {
@@ -88,27 +93,23 @@ func (d *Decoder) Expect(exp byte, e ...error) error {
 }
 
 func (d *Decoder) SkipSpace() error {
-	if d.Pos >= len(d.Buffer) {
-		return EOF
-	}
-	for {
-		curr := d.Curr()
-		if curr != '\n' && !unicode.IsSpace(rune(curr)) {
-			return nil
-		}
-		if _, err := d.Advance(); err != nil {
-			return err
-		}
-	}
+	return d.skipws(false)
 }
 
 func (d *Decoder) SkipSpaceNewline() error {
+	return d.skipws(true)
+}
+
+func (d *Decoder) skipws(includingNewline bool) error {
 	if d.Pos >= len(d.Buffer) {
 		return EOF
 	}
 	for {
 		curr := d.Curr()
 		if !unicode.IsSpace(rune(curr)) {
+			return nil
+		}
+		if curr == '\n' && !includingNewline {
 			return nil
 		}
 		if _, err := d.Advance(); err != nil {

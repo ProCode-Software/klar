@@ -4,7 +4,22 @@ import (
 	"io"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/decode"
+	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
+)
+
+type (
+	ExpectedEOFError       = errors.ExpectedEOFError
+	ExpectedTokenError     = errors.ExpectedTokenError
+	InvalidUnmarshallError = errors.InvalidUnmarshallError
+	NumberRangeError       = errors.NumberRangeError
+	TypeError              = errors.TypeError
+)
+
+var (
+	UnexpectedBracketError  = decode.ErrUnexpectedBracket
+	UnterminatedArrayError  = decode.ErrUnterminatedArray
+	UnterminatedStringError = decode.ErrUnterminatedString
 )
 
 func Unmarshall(data []byte, v any, f ...flags.Flags) error {

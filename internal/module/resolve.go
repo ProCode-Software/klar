@@ -60,3 +60,19 @@ func ResolveManifest(from string) (path string, found bool, err error) {
 		}
 	}
 }
+
+// ResolveProjectManifest resolves the glas.pack file for a project.
+// Unlike ResolveManifest, which returns the closest manifest to a given
+// path, which could be in a sub-package, ResolveProjectManifest finds
+// the full project's manifest, outside the pkg folder. If one is not found,
+// or firstManifest is the project's manifest, firstManifest is returned.
+func ResolveProjectManifest(firstManifest string) (string, error) {
+	var err error
+	if filepath.Base(firstManifest) != ManifestName {
+		firstManifest, _, err = ResolveManifest(firstManifest)
+		if err != nil {
+			return firstManifest, err
+		}
+	}
+	if filepath.
+}

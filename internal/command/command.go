@@ -56,7 +56,7 @@ func Lookup(
 
 func Run(cmd *Command) {
 	if cmd == nil {
-		panic("command.Run(cmd): cmd is nil")
+		panic("command: Run(nil)")
 	}
 	if cmd.Run == nil {
 		panic("cannot run command '" + cmd.Name + ": Run function is not defined")

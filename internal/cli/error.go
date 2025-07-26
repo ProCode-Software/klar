@@ -54,10 +54,9 @@ func InternalError(err any) {
 }
 
 func InvalidUsage(title, passed, usage string) {
-	Print(
-		title+": ", ansi.Yellow(passed)+"\n\n"+
-			ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
-			"Use "+ansi.Cyan("'--help'")+" for more information.",
+	Print(title+": ", ansi.Yellow(passed)+"\n\n"+
+		ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
+		"Use "+ansi.Cyan("'--help'")+" for more information.",
 	)
 	os.Exit(2)
 }

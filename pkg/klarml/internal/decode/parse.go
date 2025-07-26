@@ -1,40 +1,37 @@
 package decode
 
 import (
-	"errors"
+	goerrors "errors"
+	"strconv"
 	"strings"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
 
 var (
-	ErrUnterminatedString = errors.New("unterminated string literal")
-	ErrUnterminatedArray  = errors.New("expected '[' to end array")
-	ErrUnexpectedBracket  = errors.New("unexpected ']'")
+	ErrUnterminatedString = goerrors.New("klarml: unterminated string literal")
+	ErrUnterminatedArray  = goerrors.New("klarml: expected ']' to end array")
+	ErrUnexpectedBracket  = goerrors.New("klarml: unexpected ']'")
 )
+
+func isDigit(b byte) bool { return b >= '0' && b <= '9' }
+
+func checkEOF(err *error) {
+	if *err == EOF {
+		*err = nil
+	}
+}
 
 func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 	if err := d.SkipSpace(); err != nil {
+		checkEOF(&err)
 		return nil, err
 	}
 	switch curr := d.Curr(); curr {
 	case '\'', '"':
 		// String literal
 		return d.readString()
-	case 't', 'f':
-		lits := map[byte]string{
-			't': "rue",
-			'f': "alse",
-		}
-		rest := lits[curr]
-		got, err := d.ReadN(len(rest))
-		if err != nil {
-			return lit, err
-		}
-		if string(got) == rest {
-			return &ast.Bool{Value: curr == 't'}, nil
-		}
-	case '-', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+	case '+', '-', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return d.readNumber()
 	case '[':
 		return d.readArray()
@@ -45,7 +42,7 @@ func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 		}
 		return nil, ErrUnexpectedBracket
 	}
-	return d.readUnquotedString()
+	return d.readUnquotedString(false)
 }
 
 func (d *Decoder) readString() (*ast.String, error) {
@@ -75,6 +72,9 @@ func (d *Decoder) readString() (*ast.String, error) {
 		}
 	}
 	_, err = d.Advance() // Last token is known quote
+	if err == nil || err == EOF {
+		return ret(nil)
+	}
 	return ret(err)
 }
 
@@ -99,21 +99,78 @@ func (d *Decoder) readArray() (*ast.Array, error) {
 	return a, nil
 }
 
-func (d *Decoder) readNumber() (ast.Value, error) { return nil, nil }
-
-func (d *Decoder) readUnquotedString() (ast.Value, error) {
-	var s strings.Builder
-	for d.Curr() != '\n' {
-		c, err := d.Advance()
+func (d *Decoder) readNumber() (ast.Value, error) {
+	var b strings.Builder
+	isNumber := true
+	var isDecimal, wasUnderscore bool
+	value := func() ast.Value {
+		src := b.String()
+		if !isNumber {
+			return &ast.String{Value: src, Quote: 0}
+		}
+		num, err := strconv.ParseFloat(src, 64)
 		if err != nil {
-			// Don't care if there is an EOF
-			return &ast.String{Value: s.String()}, nil
+			panic("can't parse number: " + src)
+			// return &ast.String{Value: src, Quote: 0}
+		}
+		return &ast.Number{Source: src, Value: num}
+	}
+	// Check first digit or +, -, .
+	first, err := d.Advance()
+	b.WriteByte(first)
+	if err != nil {
+		checkEOF(&err)
+		if !isDigit(first) {
+			return &ast.String{Value: string(first), Quote: 0}, err
+		}
+		return value(), err
+	}
+	for {
+		c := d.Curr()
+		switch {
+		case c == '_' && wasUnderscore, c == '.' && isDecimal:
+			isNumber = false
+		case c == '_':
+			wasUnderscore = true
+		case c == '.':
+			isDecimal = true
+		case !isDigit(c): // newline, space, letter
+			isNumber = false
+		}
+		b.WriteByte(c)
+		if _, err := d.Advance(); err != nil {
+			checkEOF(&err)
+			return value(), err
+		}
+		if !isNumber {
+			val, err := d.readUnquotedString(true)
+			b.WriteString(val.(*ast.String).Value)
+			return value(), err
+		}
+	}
+	// return value(), nil
+}
+
+func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
+	var s strings.Builder
+	value := func() ast.Value {
+		str := strings.TrimSpace(s.String())
+		if !continued && (str == "true" || str == "false") {
+			return &ast.Bool{Value: str == "true"}
+		}
+		return &ast.String{Value: str, Quote: 0}
+	}
+	for {
+		c := d.Curr()
+		if c == '\n' || c == '@' || c == '$' {
+			break
 		}
 		s.WriteByte(c)
+		_, err := d.Advance()
+		if err != nil {
+			checkEOF(&err)
+			return value(), err
+		}
 	}
-	str := s.String()
-	if str == "true" || str == "false"  {
-		return &ast.Bool{Value: str == "true"}, nil
-	}
-	return &ast.String{Value: str}, nil
+	return value(), nil
 }

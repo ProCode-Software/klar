@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ProCode-Software/klar/cmd/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
@@ -38,6 +38,6 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		if input == "" {
 			continue
 		}
-		//RunString(input)
+		// RunString(input)
 	}
 }

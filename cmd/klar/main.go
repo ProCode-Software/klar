@@ -5,10 +5,10 @@ import (
 	"os"
 	"slices"
 
-	"github.com/ProCode-Software/klar/cmd/klar/internal/command"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/klarcmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
@@ -17,19 +17,11 @@ var (
 	Aliases  = klarcmd.KlarCommandAliases
 )
 
-func showHelp() {
-	fmt.Fprint(os.Stderr, HelpString)
-}
-
-func fullHelp() {
-	fmt.Fprint(os.Stderr, HelpString)
-}
-
 func main() {
 	args := os.Args
 	if len(args) < 2 {
 		tryPipe()
-		showHelp()
+		ShowHelp(false)
 		os.Exit(2)
 	}
 	cmdName := args[1]
@@ -40,14 +32,14 @@ func main() {
 	case "-c":
 		if len(args) < 3 {
 			cli.Failure("Expected program as string\n\nUsage: ",
-				ansi.BoldGreen("klar ")+ansi.Cyan("-c "+ansi.Dim("<program>\n\n")),
+				ansi.BoldGreen("klar ")+ansi.Cyan("-c ")+ansi.Blue("<program>\n\n"),
 				"Use "+ansi.Cyan("'klar --help'")+" for more information.",
 			)
 			os.Exit(2)
 		}
 		RunString(args[2])
 	case "--help", "-h":
-		fullHelp()
+		ShowHelp(true)
 	case "-v", "--version":
 		fmt.Printf("Klar %s\n", version.KlarVersion)
 	case "test", "glas":
@@ -56,7 +48,7 @@ func main() {
 		))
 	case "help":
 		if len(args) < 3 {
-			fullHelp()
+			ShowHelp(true)
 			os.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help
