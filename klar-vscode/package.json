@@ -20,7 +20,8 @@
         "watch-klar": "vsxtools build-grammar src/klar.ts syntaxes/klar.tmLanguage.json --watch",
         "watch-klarml": "vsxtools build-grammar src/klarml.ts syntaxes/klarml.tmLanguage.json --watch",
         "watch-codeblock": "vsxtools build-grammar src/codeblock.ts syntaxes/codeblock.tmLanguage.json --watch",
-        "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository"
+        "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository",
+        "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
     "contributes": {
         "languages": [
@@ -39,7 +40,7 @@
                     "klarml",
                     "klarmarkup"
                 ],
-                "extensions": [ ".klarml", "glas.pack" ],
+                "extensions": [ ".klarml", "glas.pack", "klar.build" ],
                 "configuration": "./klarml.language-configuration.json"
             }
         ],

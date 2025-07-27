@@ -1,6 +1,6 @@
 import klar.fs
 
-
+// TODO: fix it later
 String(fs.readFileBuffer())
 
 /* type A = B
@@ -8,6 +8,7 @@ type B = C
 type C = A
 type D { name: E | Int }
 type E = D */
+
 
 /* (name: String, age: Int) := ("John", 14)
 (name: String, age: Int) := dict

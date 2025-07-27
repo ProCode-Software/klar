@@ -12,6 +12,16 @@
 			"command": "bun run watch",
 			"problemMatcher": []
 		},
+		{
+			"label": "Install VSCode Extension",
+			"type": "shell",
+            "group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/klar-vscode"
+			},
+			"command": "bun run ext-install",
+			"problemMatcher": []
+		},
         {
             "label": "Test other.klar",
             "type": "shell",

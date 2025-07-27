@@ -14,6 +14,9 @@ const (
 	NoVariables         // Don't resolve variables or namespaces
 	CaseSensitiveFields // Field names must be same case as given in klarml struct tag
 	ClampNumbers        // Out of range numbers are clamped or truncated
+	AllowJSONStructTags // Use json: struct tags if klarml: doesn't exist
+	ValidateUTF8        // Validate UTF-8 strings
+	NoSingleItemToArray // Don't put single values into arrays
 
 	// Unmarshalling to any
 
@@ -24,9 +27,8 @@ const (
 	BoolIsString       // true and false literals are strings
 	NumberIsString     // Numeric literals are strings
 	EmptyValueIsString // Empty markup values are decoded as ""
-	ValidateUTF8       // Validate UTF-8 strings
 
-	StrictFields          = NoUnknownFields | CaseSensitiveFields
+	StrictFields          = NoUnknownFields | CaseSensitiveFields | NoSingleItemToArray
 	AllLiteralsAreStrings = BoolIsString | NumberIsString | EmptyValueIsString
 )
 

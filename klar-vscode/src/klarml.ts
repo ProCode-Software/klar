@@ -5,28 +5,36 @@ RegExp.prototype.toString = function () {
     return this.source
 }
 
+const comma = match(/,/, 'punctuation.separator.comma.klarmarkup')
+
 const repository = {
+    commentInside: match(/TODO/, 'keyword.todo.klar'),
     comments: {
         patterns: [
             {
                 begin: /\/{2}/,
                 end: /$/,
                 name: 'comment.line.double-slash.klarmarkup',
+                patterns: [include('commentInside')],
             },
             {
                 begin: /\/\*/,
                 end: /\*\//,
                 name: 'comment.block.klarmarkup',
+                patterns: [include('commentInside')],
             },
         ],
     },
     properties: {
-        begin: /^\s*(-*)\s*(?:(\$\s*)?([-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
-        end: /$/,
+        begin: /(?:(?<=\{)|^)\s*(-*)\s*(?:(\$\s*)?('(?:.*)'|"(?:.*)"|[-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
+        end: /$|(?=})/,
         beginCaptures: [
             { name: 'punctuation.definition.block.sequence.item.klarmarkup' },
             { name: 'punctuation.definition.variable.klar' },
-            { name: 'support.type.property-name.klarmarkup' },
+            {
+                name: 'support.type.property-name.klarmarkup',
+                patterns: [include('keys')],
+            },
             { name: 'punctuation.separator.key-value.klarmarkup' },
             { include: '#values' },
         ],
@@ -43,7 +51,7 @@ const repository = {
     namespaces: {
         match: /(@)[\p{L}\w\d_.\\+-]+/u,
         name: 'support.class.klarmarkup',
-        captures: [undefined, {name: 'punctuation.definition.class.klarmarkup'}]
+        captures: [undefined, { name: 'punctuation.definition.class.klarmarkup' }],
     },
     strings: {
         patterns: [match(/\\./, 'constant.character.escape.klarmarkup')],
@@ -63,15 +71,22 @@ const repository = {
             match(/(?:\B|[-+])\.[\d_]+\b/, 'constant.numeric.decimal.klarmarkup'),
         ],
     },
-    operators: {
+    array: {
+        begin: /\[/,
+        end: /\]/,
+        captures: [{ name: 'punctuation.definition.array.klarmarkup' }],
+        patterns: [comma, { include: '#values' }],
+    },
+    objects: {
+        begin: /{/,
+        end: /}/,
+        captures: [{ name: 'punctuation.definition.object.klarmarkup' }],
         patterns: [
-            match(/[><]=?/, 'keyword.operator.relational.klarmarkup'),
-            match(/\|/, 'keyword.operator.relational.klarmarkup'),
-            match(/\.\.[.<]/, 'keyword.operator.range.klarmarkup'),
-            match(/\*/, 'keyword.operator.range.klarmarkup'),
+            comma,
+            match(/}/, 'punctuation.definition.object.klarmarkup'),
+            include('properties'),
         ],
     },
-    array: match(/,/, 'punctuation.separator.comma.klarmarkup'),
     variables: {
         patterns: [
             {
@@ -91,15 +106,22 @@ const repository = {
             },
         ],
     },
+    keys: {
+        patterns: [
+            include('stringLiterals'),
+            include('numbers'),
+            match('/', 'punctuation.separator.accessor.klarmarkup'),
+        ],
+    },
     values: {
         patterns: [
             'comments',
-            'operators',
-            'numbers',
+            'objects',
+            'array',
+            'stringLiterals',
             'namespaces',
             'variables',
-            'stringLiterals',
-            'array',
+            'numbers',
             'rawStrings',
         ].map(include),
     },

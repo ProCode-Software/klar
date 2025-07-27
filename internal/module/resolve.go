@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-const ManifestName = "glas.pack"
+const (
+	ManifestName  = "glas.pack"
+	PackageFolder = "pkg"
+)
 
 type ResolvedPackage struct {
 	Dir     string
@@ -65,14 +68,25 @@ func ResolveManifest(from string) (path string, found bool, err error) {
 // Unlike ResolveManifest, which returns the closest manifest to a given
 // path, which could be in a sub-package, ResolveProjectManifest finds
 // the full project's manifest, outside the pkg folder. If one is not found,
-// or firstManifest is the project's manifest, firstManifest is returned.
-func ResolveProjectManifest(firstManifest string) (string, error) {
-	var err error
-	if filepath.Base(firstManifest) != ManifestName {
-		firstManifest, _, err = ResolveManifest(firstManifest)
+// or firstPath is the project's manifest, firstPath is returned.
+// If firstPath
+func ResolveProjectManifest(firstPath string) (string, error) {
+	if filepath.Base(firstPath) != ManifestName {
+		var err error
+		firstPath, _, err = ResolveManifest(firstPath)
 		if err != nil {
-			return firstManifest, err
+			return firstPath, err
 		}
 	}
-	if filepath.
+	firstPath = filepath.Clean(firstPath)
+	parts := strings.Split(firstPath, string(filepath.Separator))
+	for i, part := range parts {
+		if part == PackageFolder {
+			return strings.Join(parts[:i], ""), nil
+		}
+		if i == len(parts) {
+			return firstPath, nil
+		}
+	}
+	return firstPath, nil
 }

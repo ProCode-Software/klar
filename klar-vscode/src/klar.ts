@@ -46,11 +46,56 @@ const repository: Repository = {
                 begin: /\/{2}/,
                 end: /$/,
                 name: 'comment.line.double-slash.klar',
+                patterns: [include('commentInside')],
             },
             {
                 begin: /\/\*/,
                 end: /\*\//,
                 name: 'comment.block.klar',
+                patterns: [include('commentInside'), include('comments')],
+            },
+        ],
+    },
+    commentInside: {
+        patterns: [
+            match(/TODO/, 'keyword.todo.klar'),
+            {
+                begin: /^\s*```(?:.*)\s*$/,
+                end: /^\s*```\s*$|(?=\*\/)/,
+                contentName: 'meta.comment.codeblock.klar source.embedded.klar',
+                patterns: BASE,
+            },
+            {
+                match: /(\[)([^\]]+)(\])/,
+                captures: [
+                    { name: 'punctuation.definition.link.markup.klar' },
+                    { name: 'string.other.link.title.klar' },
+                    { name: 'punctuation.definition.link.markup.klar' },
+                ],
+            },
+            {
+                match: /(\*\*|__)([^\s*_].*?)(\1)/,
+                captures: [
+                    { name: 'punctuation.definition.bold.markup.klar' },
+                    { name: 'markup.bold.markup.klar' },
+                    { name: 'punctuation.definition.bold.markup.klar' },
+                ],
+            },
+            {
+                match: /(\*|_)([^\s*_].*?)(\1)/,
+                captures: [
+                    { name: 'punctuation.definition.italic.markup.klar' },
+                    { name: 'markup.italic.markup.klar' },
+                    { name: 'punctuation.definition.italic.markup.klar' },
+                ],
+            },
+            {
+                match: /(~~)([^\s~].*?)(\1)/,
+                captures: [
+                    { name: 'punctuation.definition.strikethrough.markup.klar' },
+                    { name: 'markup.strikethrough.markup.klar' },
+                    { name: 'punctuation.definition.strikethrough.markup.klar' },
+                ],
             },
         ],
     },

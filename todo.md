@@ -26,9 +26,16 @@
 
 ## Other
 - target property in manifest for defining target platform per module
+- change lexer.Position type to be either uint64 combo of line * 32 + col * 32 bytes,
+    or use uint32 values in struct
 
 
 ## Build Ideas
 - Dev server for testing JS projects
 - Packages that just import globals like `import node`
 - Similar: `klar.build` for build constants so `when build.isJavaScript` or `build.target`
+File extensions to include in compilation:
+- Code: .klar, .js, .ts,
+- Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv
+- Media: .css, .scss, .less, .png, .jpg, .jpg, .svg
+option to convert klarml to json

@@ -8,14 +8,34 @@
     // symbols that are auto closed when typing
     "autoClosingPairs": [
         [ "\"", "\"" ],
-        [ "'", "'" ],
+        {
+            "open": "'",
+            "close": "'",
+            "notIn": [ "string" ]
+        },
         [ "${", "}" ],
+        [ "[", "]" ],
+        [ "{", "}" ],
     ],
     "brackets": [
-        ["${", "}"]
+        [ "${", "}" ],
+        [ "{", "}" ],
+        [ "[", "]" ],
     ],
     "surroundingPairs": [
-        ["$", ""]
+        [ "$", "" ],
+        [ "[", "]" ],
+        [ "{", "}" ],
+    ],
+    "onEnterRules": [
+        {
+            "beforeText": ":\\s*$",
+            "action": {
+                "indent": "indent",
+                "appendText": "- "
+            }
+        },
+        
     ],
     "folding": {
         "offSide": true,

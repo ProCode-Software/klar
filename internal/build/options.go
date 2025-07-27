@@ -26,6 +26,7 @@ const (
 	CreateSourceMap
 	CopyNodeModules
 	BundleDeclaration
+	UseESNext
 )
 
 const (
@@ -44,6 +45,7 @@ type Options struct {
 	AssetOptions *AssetOptions
 	Paths        map[string]string
 	Watch        bool
+	EmitPackage  bool
 	// ProjectDir   string
 }
 
@@ -53,6 +55,7 @@ type JSOptions struct {
 	Flags          Flags
 	Banner         string
 	DeclarationDir string
+	TypeScriptLibs []string
 }
 
 type Input struct {
@@ -61,8 +64,9 @@ type Input struct {
 }
 
 type AssetOptions struct {
-	Extensions []string // Glob path of file name/extensions
-	AssetDir   string
+	Extensions   []string // Glob path of file name/extensions
+	AssetDir     string
+	KlarmlToJSON bool
 }
 
 type Compiler struct {

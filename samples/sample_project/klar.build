@@ -1,28 +1,23 @@
+// Test Klar build configuration
 target: browser
-
-input: @file main.klar,
-    @dir src
-
-output: dist/[dir]/main.js
-bundle: true
 verbose: true
+
+input: ./src/proj
+emitPackage: true
+output: ./dist/proj
+
+$baseJSOptions.globals:
+    - JSON: @js/Object
+    - PI: @const Float
+    - document: js/document
 
 js:
     - declaration: true
-    - declarationDir: types
     - jsdoc: true
-    - format: esm, umd
-    - globals: // Define global types
-        -- Object:
-        -- PI: @const Float
-        -- Document: null
+    - bundle: true
+    - typescriptLibs: DOM
+    - $baseJSOptions
 
-preBuild:
-    - lint
-    - generate
-    - format
+postBuild: @print Build complete!
 
-postBuild:
-    - @copy from -> to
-    - @shell "npm publish"
-    - @print "Hello, World!"
+preBuild: [lint, generate, format]
