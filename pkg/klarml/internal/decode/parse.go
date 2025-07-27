@@ -4,6 +4,7 @@ import (
 	goerrors "errors"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
@@ -16,6 +17,7 @@ var (
 
 func isDigit(b byte) bool { return b >= '0' && b <= '9' }
 
+// Sets *err to nil if err == io.EOF
 func checkEOF(err *error) {
 	if *err == EOF {
 		*err = nil
@@ -173,4 +175,21 @@ func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
 		}
 	}
 	return value(), nil
+}
+
+// Returns a nil error if another byte can be read
+func (d *Decoder) ReadIdent() (string, error) {
+	var b strings.Builder
+	for {
+		r := rune(d.Curr())
+		if unicode.IsSpace(r) || unicode.IsDigit(r) ||
+			r == '_' || (r == '-' && b.Len() > 0) {
+			b.WriteRune(r)
+			if _, err := d.Advance(); err != nil {
+				return b.String(), err
+			}
+		}
+		break
+	}
+	return b.String(), nil
 }

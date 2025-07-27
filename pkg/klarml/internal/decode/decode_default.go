@@ -8,7 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
 )
 
-func makeDefaultDecoder(rt reflect.Type) decodeFunc {
+func (d *Decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	kind := rt.Kind()
 	switch kind {
 	case reflect.String:
@@ -24,7 +24,7 @@ func makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Map:
 		return makeMapDecoder(rt)
 	case reflect.Struct:
-		return makeStructDecoder(rt)
+		return d.makeStructDecoder(rt)
 	case reflect.Slice:
 		return makeSliceDecoder(rt)
 	case reflect.Array:

@@ -60,7 +60,8 @@ type Array struct {
 
 type Object struct {
 	baseNode
-	Props []*Prop
+	Props  []*Prop
+	Inline bool
 }
 
 type Prop struct {

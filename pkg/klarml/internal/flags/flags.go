@@ -17,6 +17,7 @@ const (
 	AllowJSONStructTags // Use json: struct tags if klarml: doesn't exist
 	ValidateUTF8        // Validate UTF-8 strings
 	NoSingleItemToArray // Don't put single values into arrays
+	KeyedEmbeddedFields // If a struct has an embedded field, it may be keyed in the source or not
 
 	// Unmarshalling to any
 

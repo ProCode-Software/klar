@@ -7,9 +7,13 @@ import "github.com/ProCode-Software/klar/internal/target"
 // to enums
 
 type BuildFile struct {
-	Target              target.Target
-	Verbose             bool
-	PreBuild, PostBuild []any
+	// The environment to build for
+	Target    target.Target
+	// Enable verbose logging during build. Useful for bug reporting.
+	Verbose   bool
+	// Actions to run before 
+	PreBuild  []any
+	PostBuild []any
 
 	Configurations []*FileConfiguration
 	FileConfiguration
@@ -26,9 +30,9 @@ type FileConfiguration struct {
 }
 
 type FileAssetOptions struct {
-	Extensions          []string
-	AssetDir            string
-	ConvertKlarmlToJSON string
+	Extensions   []string
+	AssetDir     string
+	KlarmlToJSON string
 }
 
 type FileJSOptions struct {

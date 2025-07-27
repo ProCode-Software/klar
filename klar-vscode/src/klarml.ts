@@ -26,7 +26,7 @@ const repository = {
         ],
     },
     properties: {
-        begin: /(?:(?<=\{)|^)\s*(-*)\s*(?:(\$\s*)?('(?:.*)'|"(?:.*)"|[-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
+        begin: /(?:(?<=\{)|^)\s*((?:-\s*)*)\s*(?:(\$\s*)?('(?:.*)'|"(?:.*)"|[-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
         end: /$|(?=})/,
         beginCaptures: [
             { name: 'punctuation.definition.block.sequence.item.klarmarkup' },

@@ -29,6 +29,9 @@ type Decoder struct {
 	Line, Col int
 	FilePos   int
 
+	Depth    int // For nested keys
+	TopLevel bool
+
 	Document *ast.Document
 }
 
@@ -55,11 +58,11 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	}
 }
 
-func lookupMarshallFunc(rt reflect.Type) decodeFunc {
+func (d *Decoder) lookupMarshallFunc(rt reflect.Type) decodeFunc {
 	if marsh, ok := DecodeCache.Get(rt); ok {
 		return marsh
 	}
-	marsh := makeDefaultDecoder(rt)
+	marsh := d.makeDefaultDecoder(rt)
 	DecodeCache.Set(rt, marsh)
 	return marsh
 }
@@ -71,7 +74,7 @@ func (d *Decoder) Decode(v any) error {
 	}
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
-	marsh := lookupMarshallFunc(rt)
+	marsh := d.lookupMarshallFunc(rt)
 	// Refill if needed. Not needed if the bytes are buffered
 	if err := d.Refill(); err != nil && err != EOF {
 		return err
