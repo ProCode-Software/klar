@@ -182,12 +182,13 @@ func (d *Decoder) ReadIdent() (string, error) {
 	var b strings.Builder
 	for {
 		r := rune(d.Curr())
-		if unicode.IsSpace(r) || unicode.IsDigit(r) ||
+		if unicode.IsLetter(r) || unicode.IsDigit(r) ||
 			r == '_' || (r == '-' && b.Len() > 0) {
 			b.WriteRune(r)
 			if _, err := d.Advance(); err != nil {
 				return b.String(), err
 			}
+			continue
 		}
 		break
 	}

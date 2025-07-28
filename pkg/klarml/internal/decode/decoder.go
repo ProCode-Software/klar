@@ -58,6 +58,7 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 	}
 }
 
+// Looks up a decoder or creates one if it doesn't exist.
 func (d *Decoder) lookupMarshallFunc(rt reflect.Type) decodeFunc {
 	if marsh, ok := DecodeCache.Get(rt); ok {
 		return marsh

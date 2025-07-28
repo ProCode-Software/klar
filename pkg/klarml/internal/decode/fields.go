@@ -27,11 +27,13 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 		Type reflect.Type
 	}
 	var (
-		visited    = map[reflect.Type]struct{}{rt: {}}
+		visited    = map[reflect.Type]struct{}{}
 		currFields []*StructField
 		nextFields = []*StructField{{Type: rt}}
+		fieldLen = rt.NumField()
 		strFields  = StructFields{
-			Flat: make([]*StructField, 0, rt.NumField()),
+			Flat: make([]*StructField, 0, fieldLen),
+			Fields: make(map[string]*StructField, fieldLen),
 		}
 	)
 	lowerName := func(name string) string {
@@ -75,13 +77,14 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 				}
 				indices := make([]int, len(field.Indices)+1)
 				copy(indices, field.Indices)
-				indices[len(indices)-1] = i
+				indices[len(field.Indices)] = i
 
 				rt := f.Type
 				if rt.Name() == "" && rt.Kind() == reflect.Pointer {
 					rt = rt.Elem()
 				}
 				if name != "" || !f.Anonymous || rt.Kind() != reflect.Struct {
+					// Normal struct field
 					if name == "" {
 						name = f.Name
 					}
@@ -94,11 +97,15 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 					strFields.Fields[lowerName(name)] = new
 					continue
 				}
+				// Embedded struct
 				nextFields = append(nextFields, &StructField{
 					Name:    name,
 					Type:    rt,
 					Indices: indices,
 				})
+				if flag.Has(flags.KeyedEmbeddedFields) {
+					// Add embedded struct to field list
+				}
 			}
 		}
 	}

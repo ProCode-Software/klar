@@ -1,8 +1,10 @@
 package decode
 
 import (
+	"cmp"
 	goerrors "errors"
 	"reflect"
+	"sync"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
@@ -11,8 +13,10 @@ import (
 var ErrUnterminatedObject = goerrors.New("expected '}' to close object")
 
 // TODO: make this a struct error
-var ErrInvalidDepth = goerrors.New("too much depth")
-var ErrUnknownField = goerrors.New("unknown field")
+var (
+	ErrInvalidDepth = goerrors.New("too much depth")
+	ErrUnknownField = goerrors.New("unknown field")
+)
 
 func (d *Decoder) readKey() (path []string, depth int, err error) {
 	if err := d.SkipSpaceNewline(); err != nil {
@@ -20,12 +24,8 @@ func (d *Decoder) readKey() (path []string, depth int, err error) {
 	}
 	for d.Curr() == '-' {
 		depth++
-		if _, err := d.Advance(); err != nil {
+		if err := cmp.Or(d.Expect('-'), d.SkipSpace()); err != nil {
 			// Invalid syntax: - and then EOF
-			return nil, depth, err
-		}
-		if err := d.SkipSpace(); err != nil {
-			// Same
 			return nil, depth, err
 		}
 	}
@@ -75,14 +75,12 @@ func followValue(v reflect.Value, indices []int) (reflect.Value, error) {
 	for _, i := range indices {
 		if v.Kind() == reflect.Pointer {
 			if v.IsNil() {
-				// Nil pointer
-				/* src: sonnet
-				elm := val.Type().Elem()
-				if !val.CanSet() {
-					return reflect.Value{}, fieldError(tmpl + elm.String())
+				// Initialize pointer
+				e := v.Type().Elem()
+				if !v.CanSet() {
+					return reflect.Value{}, goerrors.New("cannot set reflect.Value")
 				}
-				val.Set(reflect.New(elm))
-				*/
+				v.Set(reflect.New(e))
 			}
 			v = v.Elem()
 		}
@@ -99,13 +97,23 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			return nil, err
 		}
 		obj := &ast.Object{
-			Props: make([]*ast.Prop, 0, len(fields.Flat)),
+			Props: make([]*ast.Prop, 0, len(fields.Fields)),
 		}
 		// Keeping separate maps because keypath slice can't be stored as a key,
 		// and we don't want to convert it to a string because the existing field
 		// could be a string.
-		exist := make(map[string]struct{}, len(fields.Flat))
-		var existPath [][]string
+		var (
+			exist     = make(map[string]struct{}, len(fields.Flat))
+			existPath [][]string
+			once      sync.Once
+		)
+		once.Do(func() {
+			for _, field := range fields.Fields {
+				if field.Decode == nil {
+					field.Decode = d.lookupMarshallFunc(field.Type)
+				}
+			}
+		})
 		// Object literal
 		if d.Curr() == '{' {
 			if _, err := d.Advance(); err != nil {
@@ -134,15 +142,25 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			}
 			prop.Path = path
 			prop.Key = path[len(path)-1]
-			var rv reflect.Value
+			var (
+				rv    reflect.Value
+				field *StructField
+			)
 			if len(path) > 1 {
 				existPath = append(existPath, path)
 			} else {
 				exist[prop.Key] = struct{}{}
-				if field, ok := fields.Fields[prop.Key]; ok {
-					rv = v.FieldByIndex(field.Index)
+				var ok bool
+				if field, ok = fields.Fields[prop.Key]; ok {
+					rv, err = followValue(v, field.Indices)
+					if err != nil {
+						return obj, err
+					}
 				} else if d.Flags.Has(flags.NoUnknownFields) {
 					return obj, ErrUnknownField
+				} else {
+					// Unknown field
+					continue
 				}
 			}
 			if err = d.Expect(':'); err != nil {
@@ -159,7 +177,28 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 				return obj, err
 			}
 			// Read a value
-
+			d.Depth++
+			valNode, err := field.Decode(rv, d)
+			if valNode != nil {
+				prop.Value = valNode.(ast.Value)
+			}
+			d.Depth--
+			obj.Props = append(obj.Props, prop)
+			// Error above
+			if err != nil {
+				return obj, err
+			}
+			// Decode does not return error when at EOF.
+			if d.Overflow() {
+				break
+			}
+			// Expect a newline
+			if err := cmp.Or(
+				d.SkipSpace(), d.Expect('\n'), d.SkipSpaceNewline(),
+			); err != nil {
+				checkEOF(&err)
+				return obj, err
+			}
 		}
 		return obj, nil
 	}

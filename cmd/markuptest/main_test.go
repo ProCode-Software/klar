@@ -10,6 +10,14 @@ func TestMain(t *testing.T) {
 	testCase(t, "basic string", `"Hello, World!"`+"\n", "Hello, World!")
 	testCase(t, "basic int", `1`, 1)
 	testCase(t, "basic boolean", ` true `, true)
+	testCase(t, "anomynous struct", `
+options:
+	- value: 0
+`, struct {
+		Options struct {
+			Value int
+		}
+	}{})
 }
 
 func testCase[T comparable](t *testing.T, name, document string, expected T) {

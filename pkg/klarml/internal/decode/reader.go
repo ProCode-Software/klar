@@ -12,6 +12,9 @@ var EOF = io.EOF
 func (d *Decoder) NeedsMore() bool {
 	return d.Pos >= len(d.Buffer)-1
 }
+func (d *Decoder) Overflow() bool {
+	return d.Pos >= len(d.Buffer)
+}
 
 // Refill fills the buffer to full capacity if needed. Refill returns an error
 // if another byte cannot be read.
