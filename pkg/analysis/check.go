@@ -14,7 +14,7 @@ type CheckOptions struct {
 	FilePath string
 }
 
-func CheckProgram(program ast.Program, options CheckOptions) (
+func CheckProgram(program *ast.Program, options CheckOptions) (
 	typedProgram *typed.Program, errors []errors.KlarError,
 ) {
 	c := analysis.NewChecker(program)

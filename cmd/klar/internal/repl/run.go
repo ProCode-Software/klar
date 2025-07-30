@@ -10,8 +10,15 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
+	"github.com/ProCode-Software/klar/pkg/analysis"
+	"github.com/ProCode-Software/klar/pkg/parser"
+	"github.com/sanity-io/litter"
 )
+
+var ErrPrinter = errors.Printer{}
 
 func Run(*command.Runner) {
 	fmt.Printf(
@@ -38,6 +45,31 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		if input == "" {
 			continue
 		}
-		// RunString(input)
+		tokens, err := parser.TokenizeString(input, true)
+		if err != nil {
+			cli.Error("Lexer error: ", err)
+			continue
+		}
+		ErrPrinter.LoadTokens(tokens)
+		prog, errs := parser.Parse(tokens, &parser.Options{
+			File: "repl",
+		})
+		if len(errs) > 0 {
+			for _, err := range errs {
+				ErrPrinter.PrintError(err)
+			}
+			continue
+		}
+		litter.Dump(prog)
+		_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
+			FilePath: "repl",
+			Target: target.Double{Target: target.KlarVM},
+		})
+		if len(typeErrs) > 0 {
+			for _, err := range typeErrs {
+				ErrPrinter.PrintError(err)
+			}
+			continue
+		}
 	}
 }

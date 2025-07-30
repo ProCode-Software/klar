@@ -43,13 +43,22 @@
 - Similar: `klar.build` for build constants so `when build.isJavaScript` or `build.target`
 File extensions to include in compilation:
 - Code: .klar, .js, .ts,
-- Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv
+- Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv, .y(a)ml
 - Media: .css, .scss, .less, .png, .jpg, .jpg, .svg
 option to convert klarml to json
 
 
 # Proposals
+- `shadow` keyword:
+```klar
+x: Int := 1
+shadow x: String := "foo"
+```
 - Cascade
 ```klar
-
+vehicle := Vehicle()
+    |> .name = "Toyota"
+    |> .range = 3000
+    |> .drive(10)
 ```
+.[] for computed fields

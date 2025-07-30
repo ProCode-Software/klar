@@ -21,7 +21,7 @@ const INCLUDE_COMMENTS = true
 
 var (
 	File        string
-	rootProgram ast.Program
+	rootProgram = &ast.Program{}
 	double, _   = target.FromCurrent()
 )
 

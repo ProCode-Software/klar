@@ -21,7 +21,7 @@ type (
 type Checker struct {
 	Errors  []errors.KlarError
 	Exports map[string]runtime.Exportable
-	Program ast.Program
+	Program *ast.Program
 	OnError func(err errors.KlarError)
 
 	FilePath string
@@ -31,7 +31,7 @@ type Checker struct {
 }
 
 // NewChecker returns a new Checker for program.
-func NewChecker(program ast.Program) *Checker {
+func NewChecker(program *ast.Program) *Checker {
 	runtime.RuntimeContexts = make(runtime.ContextMap, 1)
 	return &Checker{
 		Program: program,

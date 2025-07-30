@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 )
@@ -29,6 +30,20 @@ func Custom(errorType string, msg string, detail ...any) {
 // CustomError prints an error to [os.Stderr] with a custom title.
 func CustomError(errorType string, msg string, detail ...any) {
 	Custom(errorType, msg, detail...)
+}
+
+func CustomErrorStr(msg string) {
+	errType := "Error"
+	parts := strings.SplitAfterN(msg, ": ", 3)
+	var detail string
+	if len(parts) > 1 {
+		errType = parts[0][:len(parts[0])-2]
+		msg = parts[1]
+		if len(parts) > 2 {
+			detail = parts[2]
+		}
+	}
+	CustomError(errType, msg, detail)
 }
 
 // CustomFailure prints an error to [os.Stderr] with a custom title, followed by a call to
