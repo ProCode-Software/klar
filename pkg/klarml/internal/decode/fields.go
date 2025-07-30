@@ -2,6 +2,7 @@ package decode
 
 import (
 	"cmp"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -10,8 +11,9 @@ import (
 )
 
 type StructFields struct {
-	Flat   []*StructField
-	Fields map[string]*StructField
+	Flat         []*StructField          // Sorted fields
+	Fields       map[string]*StructField // In lower case
+	ByActualCase map[string]*StructField
 }
 
 type StructField struct {
@@ -30,18 +32,13 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 		visited    = map[reflect.Type]struct{}{}
 		currFields []*StructField
 		nextFields = []*StructField{{Type: rt}}
-		fieldLen = rt.NumField()
+		fieldLen   = rt.NumField()
 		strFields  = StructFields{
-			Flat: make([]*StructField, 0, fieldLen),
-			Fields: make(map[string]*StructField, fieldLen),
+			Flat:         make([]*StructField, 0, fieldLen),
+			Fields:       make(map[string]*StructField, fieldLen),
+			ByActualCase: make(map[string]*StructField, fieldLen),
 		}
 	)
-	lowerName := func(name string) string {
-		if flag.Has(flags.CaseSensitiveFields) {
-			return name
-		}
-		return strings.ToLower(name)
-	}
 	// Breadth-first search
 	for len(nextFields) > 0 {
 		currFields, nextFields = nextFields, currFields[:0]
@@ -83,8 +80,8 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 				if rt.Name() == "" && rt.Kind() == reflect.Pointer {
 					rt = rt.Elem()
 				}
-				if name != "" || !f.Anonymous || rt.Kind() != reflect.Struct {
-					// Normal struct field
+				isNormalField := name != "" || !f.Anonymous || rt.Kind() != reflect.Struct
+				if isNormalField || flag.Has(flags.KeyedEmbeddedFields) {
 					if name == "" {
 						name = f.Name
 					}
@@ -93,9 +90,25 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 						Type:    rt,
 						Indices: indices,
 					}
+					lower := strings.ToLower(name)
 					strFields.Flat = append(strFields.Flat, new)
-					strFields.Fields[lowerName(name)] = new
-					continue
+					if existing, ok := strFields.Fields[lower]; ok {
+						// If the existing one is a direct field, keep it. Otherwise,
+						// a name shared by two embedded structs is an error. This
+						// is similar to Go's behaviour.
+						if !isNormalField && len(existing.Indices) > 1 {
+							return strFields,
+								fmt.Errorf("ambiguous use of field: %s", name)
+						}
+						// Otherwise, don't reassign it
+					} else {
+						strFields.Fields[lower] = new
+						strFields.ByActualCase[name] = new
+					}
+					// Continue unless it is an embedded field
+					if isNormalField {
+						continue
+					}
 				}
 				// Embedded struct
 				nextFields = append(nextFields, &StructField{
@@ -103,9 +116,6 @@ func makeStructFields(rt reflect.Type, flag flags.Flags) (StructFields, error) {
 					Type:    rt,
 					Indices: indices,
 				})
-				if flag.Has(flags.KeyedEmbeddedFields) {
-					// Add embedded struct to field list
-				}
 			}
 		}
 	}

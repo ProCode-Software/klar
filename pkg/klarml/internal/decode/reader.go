@@ -2,6 +2,7 @@ package decode
 
 import (
 	"io"
+	"slices"
 	"unicode"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
@@ -12,6 +13,7 @@ var EOF = io.EOF
 func (d *Decoder) NeedsMore() bool {
 	return d.Pos >= len(d.Buffer)-1
 }
+
 func (d *Decoder) Overflow() bool {
 	return d.Pos >= len(d.Buffer)
 }
@@ -81,6 +83,15 @@ func (d *Decoder) Advance() (byte, error) {
 		}
 	}
 	return curr, nil
+}
+
+func (d *Decoder) ExpectOne(exp ...byte) error {
+	got := d.Curr()
+	if !slices.Contains(exp, got) {
+		return &errors.ExpectedTokenError{Expected: exp[0], Got: got}
+	}
+	_, err := d.Advance()
+	return err
 }
 
 func (d *Decoder) Expect(exp byte, e ...error) error {

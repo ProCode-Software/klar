@@ -465,14 +465,14 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 		lastPos = ranges.FromToken(tok).End
 	}
 	r.Source = b.String()
-	endPos := p.Expect(lexer.Slash).Position
+	p.Expect(lexer.Slash)
 	// Manually add EOS because regex ends in / which is operator
-	if curr := p.CurrentToken(); curr.Position.Line != endPos.Line {
+	if curr := p.CurrentTokenKind(); canGoOnNewline(curr) {
 		p.Tokens = slices.Insert(
 			p.Tokens, p.Index,
 			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
-	} else if curr.Kind == lexer.Identifier {
+	} else if curr == lexer.Identifier {
 		r.Flags = p.Advance().Source
 	}
 	return r

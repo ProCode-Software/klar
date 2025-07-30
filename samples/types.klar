@@ -50,3 +50,9 @@ type Point {
     self.x = x
     self.y = y
 } */
+
+
+type NewColor {
+    .red, .orange, .yellow,
+    .green, .blue, .purple,
+}

@@ -2,6 +2,7 @@ package decode
 
 import (
 	goerrors "errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -13,6 +14,7 @@ var (
 	ErrUnterminatedString = goerrors.New("klarml: unterminated string literal")
 	ErrUnterminatedArray  = goerrors.New("klarml: expected ']' to end array")
 	ErrUnexpectedBracket  = goerrors.New("klarml: unexpected ']'")
+	ErrUnexpectedBrace    = goerrors.New("klarml: unexpected '}'")
 )
 
 func isDigit(b byte) bool { return b >= '0' && b <= '9' }
@@ -29,7 +31,8 @@ func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 		checkEOF(&err)
 		return nil, err
 	}
-	switch curr := d.Curr(); curr {
+	curr := d.Curr()
+	switch curr {
 	case '\'', '"':
 		// String literal
 		return d.readString()
@@ -43,7 +46,17 @@ func (d *Decoder) ReadValue() (lit ast.Value, err error) {
 			return lit, err
 		}
 		return nil, ErrUnexpectedBracket
+	case '{': // TODO: object
 	}
+	if unicode.IsSpace(rune(d.Curr())) {
+		if err := d.SkipSpaceNewline(); err != nil {
+			if err == EOF {
+				return &ast.Null{}, nil
+			}
+			return lit, err
+		}
+	}
+	// TODO: check for - if array or object
 	return d.readUnquotedString(false)
 }
 
@@ -86,6 +99,11 @@ func (d *Decoder) readArray() (*ast.Array, error) {
 		return nil, ErrUnterminatedArray
 	}
 	a := &ast.Array{}
+
+	oldComma := d.CommaSep
+	defer func() { d.CommaSep = oldComma }() // Restore
+	d.CommaSep = true
+
 	for d.Curr() != ']' {
 		val, err := d.ReadValue()
 		if err != nil {
@@ -112,7 +130,7 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 		}
 		num, err := strconv.ParseFloat(src, 64)
 		if err != nil {
-			panic("can't parse number: " + src)
+			panic(fmt.Sprintf("can't parse number: %q", src))
 			// return &ast.String{Value: src, Quote: 0}
 		}
 		return &ast.Number{Source: src, Value: num}
@@ -136,7 +154,9 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 			wasUnderscore = true
 		case c == '.':
 			isDecimal = true
-		case !isDigit(c): // newline, space, letter
+		case unicode.IsSpace(rune(c)), d.isPunct(c):
+			return value(), nil
+		case !isDigit(c): // letter
 			isNumber = false
 		}
 		b.WriteByte(c)
@@ -153,6 +173,16 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 	// return value(), nil
 }
 
+func (d *Decoder) isPunct(c byte) bool {
+	switch c {
+	case '\n', '@', '$', ']', '}':
+		return true
+	case ',':
+		return d.CommaSep
+	}
+	return false
+}
+
 func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
 	var s strings.Builder
 	value := func() ast.Value {
@@ -164,7 +194,7 @@ func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
 	}
 	for {
 		c := d.Curr()
-		if c == '\n' || c == '@' || c == '$' {
+		if d.isPunct(c) {
 			break
 		}
 		s.WriteByte(c)

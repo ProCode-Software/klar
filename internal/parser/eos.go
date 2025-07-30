@@ -82,7 +82,7 @@ func (p *Parser) InsertEOS() {
 //	[1, 2, 3]
 //		.sort()
 //
-// If a newline before is a bad practice (such as equal sign or parenthesis), then it will not be here.
+// If a newline before is a bad practice (such as parenthesis), then it will not be here.
 // Tokens that begin statements (such as keywords) aren't here either.
 func canGoOnNewline(t lexer.TokenType) bool {
 	switch t {

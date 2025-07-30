@@ -1,9 +1,11 @@
 # TODO
 ## Lexer
 - maybe: ..< operator
+- fix number with trailing decimal point
 ## Parser
 - map, tuple, and list destructure assignment
 - also in for loop
+- new enum syntax
 - in when case, map destructuring
 - multi-variable assignments
 - error for duplicate struct fields or enum members
@@ -16,6 +18,11 @@
 - .name and .value fields on enum members
 - handle `<self>` and recursive types in structs
 - handle recursive enum
+- overhaul struct inheritance
+- attributes in enum
+- custom initializers
+- only allow inheriting one struct??
+- fix regex handling of // or \//
 - more pattern matching:
     ```klar
     when msg {
@@ -39,3 +46,10 @@ File extensions to include in compilation:
 - Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv
 - Media: .css, .scss, .less, .png, .jpg, .jpg, .svg
 option to convert klarml to json
+
+
+# Proposals
+- Cascade
+```klar
+
+```

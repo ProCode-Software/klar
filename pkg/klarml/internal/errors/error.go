@@ -41,7 +41,9 @@ func (err *InvalidUnmarshallError) Error() string {
 }
 
 func (err *TypeError) Error() string {
-	return "klarml: type error"
+	return fmt.Sprintf("klarml: can't serialize %s into Go %s type",
+		reflect.TypeOf(err.Value).Elem().Name(), err.Expected.String(),
+	)
 }
 
 func (err *NumberRangeError) Error() string {
@@ -62,7 +64,11 @@ func (err *ExpectedEOFError) Error() string {
 }
 
 func (err *ExpectedTokenError) Error() string {
-	return fmt.Sprintf("klarml: expected '%c', but found '%c' instead",
-		err.Expected, err.Got,
+	expected := "'" + string(err.Expected) + "'"
+	if err.Expected == '\n' {
+		expected = "newline"
+	}
+	return fmt.Sprintf("klarml: expected %s, but found '%c' instead",
+		expected, err.Got,
 	)
 }

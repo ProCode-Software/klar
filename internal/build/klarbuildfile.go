@@ -8,10 +8,10 @@ import "github.com/ProCode-Software/klar/internal/target"
 
 type BuildFile struct {
 	// The environment to build for
-	Target    target.Target
+	Target target.Target
 	// Enable verbose logging during build. Useful for bug reporting.
-	Verbose   bool
-	// Actions to run before 
+	Verbose bool
+	// Actions to run before
 	PreBuild  []any
 	PostBuild []any
 

@@ -3,6 +3,7 @@ package decode
 import (
 	"cmp"
 	goerrors "errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -10,12 +11,9 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
-var ErrUnterminatedObject = goerrors.New("expected '}' to close object")
-
-// TODO: make this a struct error
 var (
-	ErrInvalidDepth = goerrors.New("too much depth")
-	ErrUnknownField = goerrors.New("unknown field")
+	ErrUnterminatedObject = goerrors.New("expected '}' to close object")
+	ErrTooManyDash        = goerrors.New("too many '-'")
 )
 
 func (d *Decoder) readKey() (path []string, depth int, err error) {
@@ -31,7 +29,7 @@ func (d *Decoder) readKey() (path []string, depth int, err error) {
 	}
 	if depth > d.Depth {
 		// Too much depth
-		return nil, depth, ErrInvalidDepth
+		return nil, depth, ErrTooManyDash
 	}
 	var isVar bool
 	// The key or path
@@ -89,6 +87,15 @@ func followValue(v reflect.Value, indices []int) (reflect.Value, error) {
 	return v, nil
 }
 
+func (d *Decoder) GetField(fields StructFields, name string) (*StructField, bool) {
+	m := fields.Fields
+	if d.Flags.Has(flags.CaseSensitiveFields) {
+		m = fields.ByActualCase
+	}
+	field, ok := m[name]
+	return field, ok
+}
+
 func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 	fields, _ := makeStructFields(rt, d.Flags)
 	return func(v reflect.Value, d *Decoder) (ast.Node, error) {
@@ -106,6 +113,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			exist     = make(map[string]struct{}, len(fields.Flat))
 			existPath [][]string
 			once      sync.Once
+			seps      = []byte{'\n'}
 		)
 		once.Do(func() {
 			for _, field := range fields.Fields {
@@ -116,6 +124,15 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		})
 		// Object literal
 		if d.Curr() == '{' {
+			oldDepth := d.Depth
+			oldComma := d.CommaSep
+			defer func() {
+				d.Depth = oldDepth
+				d.CommaSep = oldComma
+			}()
+			d.Depth = 0
+			d.CommaSep = true
+			seps = append(seps, ',', '}')
 			if _, err := d.Advance(); err != nil {
 				if err == EOF {
 					return nil, ErrUnterminatedObject
@@ -149,17 +166,21 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			if len(path) > 1 {
 				existPath = append(existPath, path)
 			} else {
-				exist[prop.Key] = struct{}{}
+				key := prop.Key
 				var ok bool
-				if field, ok = fields.Fields[prop.Key]; ok {
+				if _, ok = exist[key]; ok {
+					return obj, goerrors.New("duplicate field: " + key)
+				}
+				exist[key] = struct{}{}
+				if field, ok = d.GetField(fields, key); ok {
 					rv, err = followValue(v, field.Indices)
 					if err != nil {
 						return obj, err
 					}
 				} else if d.Flags.Has(flags.NoUnknownFields) {
-					return obj, ErrUnknownField
+					return obj, goerrors.New("unknown field: " + key)
 				} else {
-					// Unknown field
+					// Unknown field: read the value
 					continue
 				}
 			}
@@ -186,6 +207,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			obj.Props = append(obj.Props, prop)
 			// Error above
 			if err != nil {
+				fmt.Printf("%#v\n", valNode)
 				return obj, err
 			}
 			// Decode does not return error when at EOF.
@@ -194,7 +216,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			}
 			// Expect a newline
 			if err := cmp.Or(
-				d.SkipSpace(), d.Expect('\n'), d.SkipSpaceNewline(),
+				d.SkipSpace(), d.ExpectOne(seps...), d.SkipSpaceNewline(),
 			); err != nil {
 				checkEOF(&err)
 				return obj, err

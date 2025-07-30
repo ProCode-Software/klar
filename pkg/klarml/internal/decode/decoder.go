@@ -31,6 +31,7 @@ type Decoder struct {
 
 	Depth    int // For nested keys
 	TopLevel bool
+	CommaSep bool // When reading object or array literals
 
 	Document *ast.Document
 }

@@ -4,26 +4,44 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sanity-io/litter"
+	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
+type Embedded struct {
+	Used  bool
+	Items []struct {
+		Id     int
+		Object any
+	}
+}
+type testStruct struct {
+	Name string
+	Id   int
+	Embedded
+}
+
 func Test_makeStructFields(t *testing.T) {
-	type Embedded struct {
-		Used  bool
-		Items []struct {
-			Id     int
-			Object any
+	type testCase struct {
+		name   string
+		flags  flags.Flags
+		expect int
+	}
+	var (
+		rt    = reflect.TypeFor[testStruct]()
+		cases = []testCase{
+			{"default", 0, 4},
+			{"with KeyedEmbeddedFields", flags.KeyedEmbeddedFields, 5},
 		}
+	)
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			fields, err := makeStructFields(rt, test.flags)
+			if err != nil {
+				t.Error(err)
+			}
+			if len(fields.Flat) != test.expect {
+				t.Errorf("expected %d fields, got %d", test.expect, len(fields.Flat))
+			}
+		})
 	}
-	type testStruct struct {
-		Name string
-		Id   int
-		Embedded
-	}
-	rt := reflect.TypeFor[testStruct]()
-	fields, err := makeStructFields(rt, 0)
-	if err != nil {
-		t.Fatal(fields)
-	}
-	litter.Dump(fields)
 }
