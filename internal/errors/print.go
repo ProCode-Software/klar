@@ -59,8 +59,8 @@ func ColorizeLine(file string, pos lexer.Position) string {
 	var (
 		b         strings.Builder
 		colon     = ansi.Dim(":")
-		formatPos = func(pos int) string {
-			return ansi.Yellow(strconv.Itoa(pos))
+		formatPos = func(pos uint32) string {
+			return ansi.Yellow(strconv.Itoa(int(pos)))
 		}
 	)
 	b.WriteString(ansi.Cyan(file))
@@ -80,14 +80,14 @@ func space(n int) []byte {
 }
 
 func (p *Printer) prevTok(i int) (tok lexer.TokenType) {
-	if len(p.tokens) < 1 {
+	if i == 0 {
 		return
 	}
 	return p.tokens[i-1].Kind
 }
 
 func (p *Printer) nextTok(i int) (tok lexer.TokenType) {
-	if len(p.tokens) < i+1 {
+	if len(p.tokens) <= i+1 {
 		return
 	}
 	return p.tokens[i+1].Kind
@@ -101,6 +101,9 @@ func isPrimitive(name string) bool {
 func (p *Printer) colorize(i int) string {
 	tok := p.tokens[i]
 	color := p.TokenColors[tok.Kind]
+	if !p.Color {
+		color = ""
+	}
 	next := p.nextTok(i)
 	prev := p.prevTok(i)
 	switch {

@@ -31,7 +31,7 @@ const (
 var NoColor = os.Getenv("NO_COLOR") != ""
 
 func Color(color, text string) string {
-	if NoColor {
+	if NoColor || color == "" {
 		return text
 	}
 	return color + text + CodeReset

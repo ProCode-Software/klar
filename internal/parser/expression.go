@@ -16,7 +16,7 @@ func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.Bina
 	right := p.ParseExpression(bp)
 	return &ast.BinaryExpression{
 		Left:     left,
-		Operator: op,
+		Operator: opFromToken(op),
 		Right:    right,
 	}
 }
@@ -24,7 +24,7 @@ func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.Bina
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	op := p.Advance()
 	right := p.ParseExpression(UnaryBindingPower)
-	return &ast.UnaryExpression{Operator: op, Right: right}
+	return &ast.UnaryExpression{Operator: opFromToken(op), Right: right}
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {

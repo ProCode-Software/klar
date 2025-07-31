@@ -99,14 +99,19 @@ type Comment struct {
 // lexer.LineComment or lexer.BlockComment
 type CommentType = lexer.TokenType
 
+type Operator struct {
+	Kind lexer.TokenType
+	Position lexer.Position
+}
+
 type BinaryExpression struct {
 	Left, Right Node
-	Operator    lexer.Token
+	Operator    Operator
 	BaseNode
 }
 
 type UnaryExpression struct {
-	Operator lexer.Token
+	Operator Operator
 	Right    Node
 	BaseNode
 }
@@ -173,6 +178,13 @@ var ReservedIdent = []lexer.TokenType{
 type Type interface {
 	Node
 	_type()
+}
+
+// Values that can be used in VariableDeclaration implement VarMapping.
+// (a, b) | [a, b] | { a, b } | a
+type VarMapping interface {
+	Expression
+	Vars() []string
 }
 
 // A PrimitiveType is a Klar-builtin type
@@ -442,6 +454,18 @@ type ForStatement struct {
 	Variables  []string
 	Expression Expression // When used as while loop or repeat
 	Body       []Statement
+}
+
+// a
+// 	sum := for i in items += i
+// 	for [variables] in [iterator] [-> | = | += | -=] [value]
+//	for [variables] in [iterator] { block... }
+type ForExpression struct {
+	BaseNode
+	Variables []VarMapping
+	Iterator Expression
+	Value Expression
+	Block []Statement
 }
 
 type WhenExpression struct {

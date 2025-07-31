@@ -252,3 +252,7 @@ func (p *Parser) Error(err errors.ParseError) {
 		p.Options.OnError(err)
 	}
 }
+
+func opFromToken(t lexer.Token) ast.Operator {
+	return ast.Operator{Kind: t.Kind, Position: t.Position}
+}

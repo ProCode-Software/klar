@@ -11,7 +11,7 @@ import (
 type Builder = strings.Builder
 
 type Position struct {
-	Line, Col int
+	Line, Col uint32
 }
 
 func (p Position) String() string {

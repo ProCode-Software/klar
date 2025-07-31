@@ -18,7 +18,7 @@ import (
 	"github.com/sanity-io/litter"
 )
 
-var ErrPrinter = errors.Printer{}
+var ErrPrinter = errors.Printer{MaxLines: 3, Color: true}
 
 func Run(*command.Runner) {
 	fmt.Printf(
