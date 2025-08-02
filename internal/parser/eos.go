@@ -95,7 +95,7 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		// Punctuation
 		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis, lexer.LeftCurlyBrace,
 		// Operators
-		lexer.Stroke, lexer.Pipeline, lexer.Arrow,
+		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot,
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.Not, lexer.AndAnd,

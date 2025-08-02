@@ -21,16 +21,14 @@ import (
 var ErrPrinter = errors.Printer{MaxLines: 3, Color: true}
 
 func Run(*command.Runner) {
-	fmt.Printf(
-		`%sKlar %s%[5]s
-Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit'%[5]s to exit.
-%[3]s`,
-		ansi.CodeBold+ansi.CodeYellow, version.KlarVersion, ansi.CodeReset,
-		ansi.CodeReset+ansi.CodeCyan, ansi.CodeReset+ansi.CodeDim,
+	fmt.Println(ansi.Bold("Welcome to Klar v" + version.KlarVersion))
+	fmt.Println(
+		ansi.Dim("Type"), ansi.Cyan("'help'"), ansi.Dim("for more information. Press"),
+		ansi.Cyan("Ctrl+D"), ansi.Dim("or type"), ansi.Cyan("'exit'"), ansi.Dim("to exit."),
 	)
 	r := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print(ansi.CodeMagenta + "> " + ansi.CodeReset)
+		fmt.Print(ansi.Magenta("> "))
 		input, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -55,7 +53,10 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 			File: "repl",
 		})
 		if len(errs) > 0 {
-			for _, err := range errs {
+			for i, err := range errs {
+				if i > 0 {
+					fmt.Println()
+				}
 				ErrPrinter.PrintError(err)
 			}
 			continue
@@ -63,10 +64,13 @@ Type %[4]s'help'%[5]s for more information. Press %[4]sCtrl+D%[5]s or %[4]s'exit
 		litter.Dump(prog)
 		_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
 			FilePath: "repl",
-			Target: target.Double{Target: target.KlarVM},
+			Target:   target.Double{Target: target.KlarVM},
 		})
 		if len(typeErrs) > 0 {
-			for _, err := range typeErrs {
+			for i, err := range typeErrs {
+				if i > 0 {
+					fmt.Println()
+				}
 				ErrPrinter.PrintError(err)
 			}
 			continue

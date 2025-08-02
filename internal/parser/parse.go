@@ -33,7 +33,10 @@ func (p *Parser) Parse() *ast.Program {
 
 func (p *Parser) unknownTokenErr() {
 	p.Error(errors.UnexpectedToken(p.CurrentToken()))
-	if p.CurrentTokenKind() != lexer.EOF {
+	switch curr := p.CurrentTokenKind(); curr {
+	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
+		lexer.RightParenthesis, lexer.RightBracket:
+	default:
 		p.Advance()
 	}
 }
@@ -47,7 +50,7 @@ func (p *Parser) errExpectedExpr(got ast.Node) {
 }
 
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
-	expr := p.ParseLED(bp)
+	expr := p.ParseFull(bp)
 	if _, ok := expr.(ast.Expression); !ok {
 		p.errExpectedExpr(expr)
 		return &ast.BadExpression{Value: expr}
@@ -55,19 +58,24 @@ func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	return expr.(ast.Expression)
 }
 
-func (p *Parser) ParseLED(bp BindingPower) ast.Node {
+func (p *Parser) ParseFull(bp BindingPower) ast.Node {
 	kind := p.CurrentTokenKind()
 	left, handled := p.handleNUD(kind)
 	if !handled {
 		p.unknownTokenErr()
 		return &ast.BadExpression{Token: kind}
 	}
+	return p.ParseLED(left, bp)
+}
+
+func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
+	var handled bool
 	for BindingPowerMap[p.CurrentTokenKind()] > bp {
-		kind = p.CurrentTokenKind()
-		left, handled = p.handleLED(kind, left, BindingPowerMap[p.CurrentTokenKind()])
+		kind := p.CurrentTokenKind()
+		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
 			p.unknownTokenErr()
-			continue
+			break
 		}
 	}
 	// left = left.SetPos(left.GetRange().Start, p.savePos())
@@ -93,7 +101,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 		p.Expect(lexer.EndOfStatement)
 		return result
 	}
-	res := p.ParseLED(DefaultBindingPower)
+	res := p.ParseFull(DefaultBindingPower)
 	p.Expect(lexer.EndOfStatement)
 	switch res := res.(type) {
 	// Left-denoted statement

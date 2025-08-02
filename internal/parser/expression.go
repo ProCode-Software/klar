@@ -16,7 +16,7 @@ func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.Bina
 	right := p.ParseExpression(bp)
 	return &ast.BinaryExpression{
 		Left:     left,
-		Operator: opFromToken(op),
+		Operator: newOperator(op),
 		Right:    right,
 	}
 }
@@ -24,7 +24,7 @@ func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.Bina
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	op := p.Advance()
 	right := p.ParseExpression(UnaryBindingPower)
-	return &ast.UnaryExpression{Operator: opFromToken(op), Right: right}
+	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
@@ -236,6 +236,8 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 	switch left := left.(type) {
 	case *ast.Symbol:
 		l.Params = append(l.Params, &ast.TypePair{Key: left.Identifier})
+	case *ast.Discard:
+		l.Params = append(l.Params, &ast.TypePair{})
 	case *ast.TypeTuple:
 		l.Params = left.Params
 	case *ast.TupleLiteral:
@@ -246,15 +248,15 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 				pair = &ast.TypePair{Key: param.Identifier}
 			// Allow (_, b) -> ...
 			case *ast.Discard:
-				pair = &ast.TypePair{Key: "_"}
+				pair = &ast.TypePair{}
 			default:
-				p.Error(errors.Node(errors.ErrExpectedParamInLambda, param))
+				p.Error(errors.Node(errors.ErrInvalidLambdaParams, param))
 				continue
 			}
 			l.Params = append(l.Params, copyPos(param, pair))
 		}
 	default:
-		p.Error(errors.Node(errors.ErrExpectedParamInLambda, left))
+		p.Error(errors.Node(errors.ErrInvalidLambdaParams, left))
 	}
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		l.Body = p.ParseBlock()
@@ -302,20 +304,25 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 }
 
 func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) *ast.PipelineExpression {
+	var returnIndex int
 	steps := make([]ast.Node, 1, 2)
 	steps[0] = left // First step
 
-loop:
 	for p.CurrentTokenKind() == lexer.Pipeline {
 		p.Advance()
 		// Return in a pipeline returns the previous result.
 		// Return should be the last step, without parameters, and should
 		// only be used in expression statements
 		if p.CurrentTokenKind() == lexer.Return {
+			returnIndex = len(steps)
 			steps = append(steps, p.ParseStatement())
-			break loop
 		}
 		steps = append(steps, p.ParseExpression(bp))
+	}
+	// Return must be the last step. The type checker will also make sure this
+	// pipeline is not used as an expression.
+	if returnIndex != len(steps)-1 {
+		p.Error(errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]))
 	}
 	return &ast.PipelineExpression{Steps: steps}
 }
@@ -454,12 +461,12 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			continue
 		case tok.Line == lastPos.Line:
 			// Add spaces between tokens
-			b.Write(bytes.Repeat(space, tok.Col-lastPos.Col))
+			b.Write(bytes.Repeat(space, int(tok.Col-lastPos.Col)))
 		case lastPos.Col == 0:
 		case offset > 0:
 			// Trim whitespace from start of line if aligned with beginning /
 			// similar to backtick strings
-			b.Write(bytes.Repeat(space, offset))
+			b.Write(bytes.Repeat(space, int(offset)))
 		}
 		b.WriteString(tok.Source)
 		lastPos = ranges.FromToken(tok).End
@@ -531,4 +538,51 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 		Type: typ,
 		Args: p.ParseCallExpression(nil, CallBindingPower).Args,
 	}
+}
+
+
+func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectPipeline {
+	pipeline := &ast.ObjectPipeline{Object: obj.(ast.Expression)}
+	for p.CurrentTokenKind() == lexer.StrokeDot {
+		p.Advance() // |.
+		var lhs ast.Expression
+		// Computed index: |. [0]
+		if p.CurrentTokenKind() == lexer.LeftBracket {
+			start := p.Advance().Position
+			lhs = p.ParseIndexExpression(nil, MemberBindingPower)
+			markStartEndPos(p, lhs, start)
+		} else {
+			start := p.CurrentToken().Position
+			lhs = p.ParsePrimaryExpression()
+			// Must be symbol
+			if _, ok := lhs.(*ast.Symbol); !ok {
+				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
+				lhs = &ast.BadExpression{Value: lhs}
+			}
+			markStartEndPos(p, lhs, start)
+		}
+		// Index
+		if k := p.CurrentTokenKind(); !isAssignment(k) && k != lexer.StrokeDot {
+			lhs = p.ParseLED(lhs, bp).(ast.Expression)
+		}
+		// Assignment
+		if k := p.CurrentTokenKind(); isAssignment(k) && k != lexer.ColonEqual {
+			p.validateAssignable(lhs)
+			assg := &ast.AssignmentStatement{
+				Assignee: lhs.(ast.Assignable),
+				Operator: newOperator(p.Advance()),
+				Value:    p.ParseExpression(bp),
+			}
+			markStartEndPos(p, assg, lhs.GetRange().Start)
+			pipeline.Steps = append(pipeline.Steps, assg)
+		} else {
+			// Validate method call
+			if _, ok := lhs.(*ast.CallExpression); !ok {
+				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
+				lhs = &ast.BadExpression{Value: lhs}
+			}
+			pipeline.Steps = append(pipeline.Steps, lhs)
+		}
+	}
+	return pipeline
 }

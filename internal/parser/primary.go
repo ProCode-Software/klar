@@ -23,7 +23,7 @@ func (p *Parser) handleInvalidNumber(code, format int, tok lexer.Token) {
 		err    errors.ParseError
 		src    = tok.Source
 		tokPos = tok.Position
-		errPos = ranges.Add(tokPos, 0, tok.Attributes["errorPos"].(int))
+		errPos = ranges.Add(tokPos, 0, uint32(tok.Attributes["errorPos"].(int)))
 	)
 	switch code {
 	case lexer.ErrIntMisplacedSeparator:
@@ -53,7 +53,7 @@ func (p *Parser) handleInvalidNumber(code, format int, tok lexer.Token) {
 	p.Error(err)
 }
 
-func (p *Parser) ParsePrimaryExpression() ast.Node {
+func (p *Parser) ParsePrimaryExpression() ast.Expression {
 	var (
 		token = p.Advance()
 		src   = token.Source

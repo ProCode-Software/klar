@@ -28,10 +28,10 @@ const (
 	CodeDimCyan = "\033[2;36m"
 )
 
-var NoColor = os.Getenv("NO_COLOR") != ""
+var DisableColor = os.Getenv("NO_COLOR") != ""
 
 func Color(color, text string) string {
-	if NoColor || color == "" {
+	if DisableColor || color == "" {
 		return text
 	}
 	return color + text + CodeReset

@@ -253,6 +253,6 @@ func (p *Parser) Error(err errors.ParseError) {
 	}
 }
 
-func opFromToken(t lexer.Token) ast.Operator {
+func newOperator(t lexer.Token) ast.Operator {
 	return ast.Operator{Kind: t.Kind, Position: t.Position}
 }

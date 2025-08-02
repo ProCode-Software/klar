@@ -41,16 +41,18 @@ const (
 	ErrExpectedOctal
 	ErrExpectedBinary
 	ErrExpectedDecimal
-	ErrExpectedParamInLambda // Non-variable or variable tuple used in lambda
-	ErrInvalidVersionLit     // Invalid version literal syntax
+	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
+	ErrInvalidVersionLit   // Invalid version literal syntax
 
-	ErrExpectedSymbolAssign  // Assignment to non-variable or property
+	ErrInvalidAssignment     // Assignment to non-variable or property
 	ErrReservedKeyword       // Reserved keyword used as an identifier
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel          // Function label can't be number
 	ErrGenericInFuncAlias    // Function aliases can't have generics
 	ErrMissingFuncParamType  // Required function parameter type
+	ErrReturnPipelineNotLast // Return step in pipeline must be the last
+	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
@@ -118,14 +120,22 @@ func (e ParseError) error() string {
 			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
 	case ErrExpectedExpression:
+		if node, ok := e.Node.(*ast.AssignmentStatement); ok &&
+			node.Operator.Kind == lexer.Equal {
+			return "Assignments can't be used as expressions in Klar; did you mean to use '==' instead?"
+		}
+		switch e.Node.(type) {
+		case *ast.AssignmentStatement, *ast.VariableDeclaration, *ast.UpdateStatement:
+			return "Assignments can't be used as expressions in Klar"
+		}
 		return "This isn't an expression"
-	case ErrExpectedSymbolAssign:
+	case ErrInvalidAssignment:
 		return "Can't assign to this kind of expression"
 	case ErrExpectedToken:
 		expToken := e.Params["expected"].(lexer.TokenType)
 		expected := FormatTokenType(expToken)
 		if src == ";" {
-			return "Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+			return "Semicolons aren't allowed in Klar; use line breaks to terminate statements"
 		}
 		switch expToken {
 		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan, lexer.RightBracket:
@@ -252,8 +262,8 @@ func (e ParseError) error() string {
 		return fmt.Sprintf("Invalid version literal '%s'",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
-	case ErrExpectedParamInLambda:
-		return "Expected a parameter name in lambda"
+	case ErrInvalidLambdaParams:
+		return "Invalid parameter list before '->' in lambda"
 	case ErrParenRequiredFunc:
 		return "Parentheses are required around function parameter types"
 	case ErrProvenUnreachable:
@@ -267,6 +277,10 @@ func (e ParseError) error() string {
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
 		return "'_' not allowed with rest expression, use '...' instead"
+	case ErrReturnOutsideFunc:
+		return "Can't use return statement outside of a function"
+	case ErrReturnPipelineNotLast:
+		return "Return in pipeline must be the last step"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

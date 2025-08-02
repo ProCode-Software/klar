@@ -48,6 +48,8 @@ func (ParenExpression) expr()    {}
 func (RegexLiteral) expr()       {}
 func (VersionLiteral) expr()     {}
 func (ListCastExpression) expr() {}
+func (ObjectPipeline) expr()     {}
+func (ForExpression) expr()      {}
 
 // Statement
 func (BadExpression) stmt()        {}
@@ -98,3 +100,7 @@ func (IndexExpression) assignable() {}
 func (SliceExpression) assignable() {}
 func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
+
+// Destructuring
+func (ListLiteral) assignable() {}
+func (TypeTuple) assignable()   {}

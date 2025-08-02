@@ -6,6 +6,7 @@ package ranges
 import (
 	"fmt"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -18,7 +19,7 @@ type Range struct {
 	Start, End Position
 }
 
-func NewRange(sl, sc, el, ec int) Range {
+func NewRange(sl, sc, el, ec uint32) Range {
 	return Range{Start: Position{sl, sc}, End: Position{el, ec}}
 }
 
@@ -36,7 +37,7 @@ func FromToken(t lexer.Token) Range {
 	}
 	return Range{Start: t.Position, End: Position{
 		Line: t.Position.Line,
-		Col:  t.Position.Col + len(t.Source),
+		Col:  t.Position.Col + uint32(utf8.RuneCountInString(t.Source)),
 	}}
 }
 
@@ -52,19 +53,12 @@ func Min(p1, p2 Position) Position {
 
 // Sub returns the new Position with line and col subtracted from p.
 // The line and column are clamped to zero if they are negative.
-func Sub(p Position, line, col int) Position {
-	newPos := Position{Line: p.Line - line, Col: p.Col - col}
-	if newPos.Col < 0 {
-		newPos.Col = 0
-	}
-	if newPos.Line < 0 {
-		newPos.Line = 0
-	}
-	return newPos
+func Sub(p Position, line, col uint32) Position {
+	return Position{Line: p.Line - line, Col: p.Col - col}
 }
 
 // Add returns a new Position with line and col added to p.
-func Add(p Position, line, col int) Position {
+func Add(p Position, line, col uint32) Position {
 	return Position{Line: p.Line + line, Col: p.Col + col}
 }
 
@@ -97,9 +91,9 @@ func (r Range) IsSingleLine() bool {
 	return r.Start.Line == r.End.Line
 }
 
-func (r Range) LineLength() int {
+func (r Range) LineLength() uint32 {
 	if !r.IsSingleLine() {
-		return -1
+		return 0
 	}
 	return r.End.Col - r.Start.Col
 }
@@ -112,7 +106,7 @@ func (r Range) IsZero() bool {
 	return IsZeroPosition(r.Start) && IsZeroPosition(r.End)
 }
 
-func (r Range) Lines() int {
+func (r Range) Lines() uint32 {
 	return r.End.Col - r.Start.Col + 1
 }
 

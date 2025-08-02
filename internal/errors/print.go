@@ -51,8 +51,7 @@ func GetMessage(err KlarError) string {
 	default:
 		title, msg = "Error", first
 	}
-	return ansi.CodeBoldRed + title + ansi.CodeResetBoldDim + ": " +
-		ansi.CodeResetBold + msg + ansi.CodeResetBold + desc + ansi.CodeReset
+	return ansi.BoldRed(title) + ansi.BoldDim(": ") + ansi.Bold(msg) + desc
 }
 
 func ColorizeLine(file string, pos lexer.Position) string {
@@ -75,8 +74,8 @@ func isSingleChar(r ranges.Range) bool {
 	return r.IsSingleLine() && r.End.Col == r.Start.Col+1
 }
 
-func space(n int) []byte {
-	return bytes.Repeat([]byte{' '}, n)
+func space(n uint32) []byte {
+	return bytes.Repeat([]byte{' '}, int(n))
 }
 
 func (p *Printer) prevTok(i int) (tok lexer.TokenType) {
@@ -121,19 +120,25 @@ func (p *Printer) colorize(i int) string {
 }
 
 func (p *Printer) PrintError(err KlarError) {
+	if p.MaxLines <= 0 {
+		p.MaxLines = 3
+	}
 	var (
 		b         strings.Builder
 		currTok   int
-		at        = err.At()
-		start     = max(1, at.Start.Line-p.MaxLines+1)
-		end       = start + p.MaxLines - 1
-		lastCol   = 1
-		digitLen  = len(strconv.Itoa(end))
-		lineColor = ansi.CodeBlue
-		box       = func(char rune) {
+		at               = err.At()
+		start            = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1))
+		end              = start + uint32(p.MaxLines) - 1
+		lastCol   uint32 = 1
+		digitLen         = uint32(len(strconv.Itoa(int(end))))
+		lineColor        = ansi.CodeBlue
+		box              = func(char rune) {
 			b.WriteString(ansi.Color(lineColor, string(char)))
 		}
 	)
+	if err.At().Start.Line == 0 {
+		goto printMsg
+	}
 	if p.IsRuntime {
 		lineColor = ansi.CodeMagenta
 	}
@@ -152,18 +157,17 @@ func (p *Printer) PrintError(err KlarError) {
 			break
 		}
 	}
-
 	// Print each line
 	for line := start; line <= end; line++ {
 		if currTok >= len(p.tokens) {
 			break
 		}
 		// Line number
-		b.WriteString(fmt.Sprintf("%s%*d ", lineColor, digitLen, line))
+		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Color(lineColor, ""), digitLen, line))
 		box(icons.BoxLeft)
 		b.WriteByte(' ')
 		// Each token on line
-		for ; currTok < len(p.tokens) && p.tokens[currTok].Line == line; currTok++ {
+		for lastCol = 1; currTok < len(p.tokens) && p.tokens[currTok].Line == line; currTok++ {
 			tok := p.tokens[currTok]
 			if tok.Source == "\n" {
 				continue
@@ -175,7 +179,7 @@ func (p *Printer) PrintError(err KlarError) {
 			} else {
 				b.WriteString(p.colorize(currTok))
 			}
-			lastCol = ranges.FromToken(tok).End.Col
+			lastCol = tokRange.End.Col
 		}
 		b.WriteByte('\n')
 		// Error highlight
@@ -188,7 +192,7 @@ func (p *Printer) PrintError(err KlarError) {
 				if !at.IsSingleLine() {
 					hlen = lastCol - at.Start.Col
 				}
-				highlight = strings.Repeat("~", hlen)
+				highlight = strings.Repeat("~", int(hlen))
 			}
 			b.Write(space(digitLen + 1))
 			box(icons.BoxLeft)
@@ -197,13 +201,12 @@ func (p *Printer) PrintError(err KlarError) {
 			b.WriteString(ansi.BoldRed(highlight))
 			b.WriteByte('\n')
 		}
-		lastCol = 1
 	}
-
+printMsg:
 	msg := GetMessage(err)
 	b.WriteString(msg)
+	fmt.Fprintln(os.Stderr, b.String())
 	for _, hint := range err.GetHints() {
 		cli.HintIndent(hint)
 	}
-	fmt.Fprintln(os.Stderr, b.String())
 }

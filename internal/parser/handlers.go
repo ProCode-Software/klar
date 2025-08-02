@@ -65,6 +65,7 @@ func (p *Parser) handleLED(
 	default:
 		return left, false
 
+	// Version (v1-dev)
 	case lexer.Minus:
 		if _, ok := left.(*ast.Symbol); ok && p.isAttribute {
 			res = p.ParseVersion(left, bp)
@@ -98,12 +99,17 @@ func (p *Parser) handleLED(
 	case lexer.PlusPlus, lexer.MinusMinus:
 		p.validateAssignable(left)
 		res = p.ParsePostfix(left.(ast.Expression))
+	// Arrow function
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
+	// Spread or range
 	case lexer.Ellipsis:
 		res = p.ParseRange(left, bp)
+	// Function pipeline
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
+	case lexer.StrokeDot:
+		res = p.ParseObjectPipeline(left, bp)
 	// Version
 	case lexer.Numeric:
 		if _, ok := left.(*ast.Symbol); !ok || !p.isAttribute {
@@ -118,7 +124,7 @@ func (p *Parser) handleLED(
 func (p *Parser) validateAssignable(left ast.Node) bool {
 	if _, ok := left.(ast.Assignable); !ok {
 		p.Error(errors.ParseError{
-			ErrorCode: errors.ErrExpectedSymbolAssign,
+			ErrorCode: errors.ErrInvalidAssignment,
 			Node:      left,
 		})
 		return false

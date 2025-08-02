@@ -7,20 +7,25 @@ import (
 // BindingPower represents the operator precedence for a type of operator.
 type BindingPower int
 
-// Reference: https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
+// TypeScript Reference:
+// 	https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
+
 const (
 	DefaultBindingPower        BindingPower = iota
 	CommaBindingPower                       // ,
 	AssignBindingPower                      // :=, +=, -=, =
 	ExpressionBindingPower                  // Minimum for expressions
 	LambdaBindingPower                      // ->
+	ObjectPipelineBindingPower              // |.
 	LogicalBindingPower                     // ||, &&, | or + in type
-	RelationalBindingPower                  // ==, >, etc.
+	PipelineBindingPower                    // |>
+	
+	RelationalBindingPower                  // ==, !=, >, <, <=, >=, in
 	DistributiveBindingPower                // and, or
 	RangeBindingPower                       // ...
-	AdditiveBindingPower                    // + and -
+	AdditiveBindingPower                    // +, -
 	MultiplicativeBindingPower              // *, /, %
-	UnaryBindingPower                       // Prefix/Suffix: + -
+	UnaryBindingPower                       // Suffix: ++, --
 	ExponentiationBindingPower              // ^
 	CallBindingPower                        // Call: (
 	MemberBindingPower                      // Index/Slice: . [
@@ -38,9 +43,12 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 
 	lexer.Arrow: LambdaBindingPower,
 
-	lexer.AndAnd:   LogicalBindingPower,
-	lexer.OrOr:     LogicalBindingPower,
-	lexer.Pipeline: LogicalBindingPower,
+	lexer.AndAnd: LogicalBindingPower,
+	lexer.OrOr:   LogicalBindingPower,
+
+	lexer.Pipeline: PipelineBindingPower,
+
+	lexer.StrokeDot: ObjectPipelineBindingPower,
 
 	lexer.LessThan:       RelationalBindingPower,
 	lexer.GreaterThan:    RelationalBindingPower,

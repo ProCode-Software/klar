@@ -36,19 +36,18 @@ const (
 )
 
 func (e ParseError) At() ranges.Range {
-	if ranges.IsZeroPosition(e.Position) {
-		return e.getRange()
-	}
-	return ranges.Range{e.Position, ranges.Add(e.Position, 0, 1)}
+	return e.getRange()
 }
 
 func (e ParseError) getRange() ranges.Range {
-	if ranges.IsZeroPosition(e.Range.Start) && e.Node != nil {
+	if e.Range.Start.Line > 0 {
+		return e.Range
+	} else if e.Node != nil {
 		return e.Node.GetRange()
-	} else if !ranges.IsZeroPosition(e.Token.Position) {
+	} else if e.Token.Position.Line > 0 {
 		return ranges.FromToken(e.Token)
 	}
-	return e.Range
+	return ranges.Range{e.Position, ranges.Add(e.Position, 0, 1)}
 }
 
 // SyntaxError

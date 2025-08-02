@@ -42,7 +42,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 			if hex > 0x10FFFF {
 				p.Error(errors.Range(errors.ErrUnicodeEscTooBig, ranges.Range{
 					ranges.Add(i, 0, 3),
-					ranges.Add(i, 0, len(src)-1),
+					ranges.Add(i, 0, uint32(len(src)-1)),
 				}))
 				escapes[i] = ast.BadEscape{Source: src}
 				continue

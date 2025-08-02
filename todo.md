@@ -10,6 +10,7 @@
 - multi-variable assignments
 - error for duplicate struct fields or enum members
 - Error handling similar to Rust's `?` postfix, but with explicit `return`
+- _ in lambda param: `_ -> ...`, `(_) -> ...`, `(_: Int) -> ...`
 
 ## Analysis
 - behaviour of () and (x) tuples

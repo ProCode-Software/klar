@@ -68,7 +68,7 @@ func Walk(t Node, visitor func(Node)) {
 		Walk(t.ExplicitType, visitor)
 		Walk(t.Value, visitor)
 	case *RegexLiteral, *StringLiteral, *BooleanLiteral, *NilLiteral,
-	*EnumLiteral, *FloatLiteral, *IntegerLiteral, *VersionLiteral, *Symbol:
+		*EnumLiteral, *FloatLiteral, *IntegerLiteral, *VersionLiteral, *Symbol:
 	default:
 		panic(fmt.Sprintf("Walk: unhandled type %T", t))
 	}

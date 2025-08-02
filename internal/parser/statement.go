@@ -11,12 +11,7 @@ import (
 
 func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) *ast.TypeAnnotation {
 	// LHS must be a Symbol or index
-	if _, ok := left.(ast.Assignable); !ok {
-		p.Error(errors.ParseError{
-			ErrorCode: errors.ErrExpectedSymbolAssign,
-			Node:      left,
-		})
-	}
+	p.validateAssignable(left)
 	// Skip the :
 	p.Advance()
 	typ := p.ParseType(bp)
@@ -31,10 +26,10 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) *ast.Typ
 
 // ParseAssignment parses a variable declaration or reassignment statement.
 func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.Statement {
-	op := p.Advance().Kind
+	op := p.Advance()
 
 	rhs := p.ParseExpression(bp)
-	if op == lexer.ColonEqual {
+	if op.Kind == lexer.ColonEqual {
 		var explicitType ast.Type
 		switch annot := left.(type) {
 		case ast.Assignable:
@@ -67,7 +62,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 	return &ast.AssignmentStatement{
 		Assignee: left.(ast.Assignable),
-		Operator: op,
+		Operator: newOperator(op),
 		Value:    rhs,
 	}
 }
@@ -227,8 +222,8 @@ func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 }
 
 func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
-	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus).Kind
-	return &ast.UpdateStatement{Operator: op, Left: left}
+	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus)
+	return &ast.UpdateStatement{Operator: newOperator(op), Left: left}
 }
 
 func (p *Parser) ParseForStatement() *ast.ForStatement {
@@ -259,4 +254,12 @@ func (p *Parser) ParseBlock() (body []ast.Statement) {
 	}
 	p.Expect(lexer.RightCurlyBrace)
 	return
+}
+
+func isAssignment(kind lexer.TokenType) bool {
+	switch kind {
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual:
+		return true
+	}
+	return false
 }

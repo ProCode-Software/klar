@@ -5,7 +5,6 @@ import (
 	"io"
 )
 
-//go:generate stringer -type=TokenType
 type TokenType int
 
 const (
@@ -74,6 +73,7 @@ const (
 	Ellipsis  // ...
 	Arrow     // ->
 	Pipeline  // |>
+	StrokeDot // |.
 	Backslash // \
 
 	// Keywords
@@ -125,6 +125,8 @@ var OperatorMap = map[string]TokenType{
 	"|":   Stroke,
 	"?":   Question,
 	"|>":  Pipeline,
+	"|.":  StrokeDot,
+	`\`:   Backslash,
 
 	// Punctuation
 	":":  Colon,
@@ -196,4 +198,29 @@ func (t Token) String() string {
 
 func (p Position) LitterDump(w io.Writer) {
 	w.Write([]byte("{" + p.String() + "}"))
+}
+
+var TokenTypeString = map[TokenType]string{
+	0:              "<unknown>",
+	String:         "string",
+	Numeric:        "number",
+	Newline:        "\\n",
+	EndOfStatement: "newline",
+	Illegal:        "illegal",
+	Identifier:     "identifier",
+	EOF:            "EOF",
+}
+
+func init() {
+	for str, t := range OperatorMap {
+		TokenTypeString[t] = str
+	}
+	for str, t := range KeywordMap {
+		TokenTypeString[t] = str
+	}
+	TokenTypeString[Boolean] = "boolean"
+}
+
+func (k TokenType) String() string {
+	return TokenTypeString[k]
 }

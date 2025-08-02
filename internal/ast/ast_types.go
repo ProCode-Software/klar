@@ -100,7 +100,7 @@ type Comment struct {
 type CommentType = lexer.TokenType
 
 type Operator struct {
-	Kind lexer.TokenType
+	Kind     lexer.TokenType
 	Position lexer.Position
 }
 
@@ -159,7 +159,7 @@ type VariableDeclaration struct {
 type AssignmentStatement struct {
 	BaseNode
 	Assignee Assignable
-	Operator lexer.TokenType
+	Operator Operator
 	Value    Expression
 }
 
@@ -436,7 +436,7 @@ type CallExpression struct {
 // are statements rather than expressions.
 type UpdateStatement struct {
 	Left     Expression
-	Operator lexer.TokenType
+	Operator Operator
 	BaseNode
 }
 
@@ -454,18 +454,6 @@ type ForStatement struct {
 	Variables  []string
 	Expression Expression // When used as while loop or repeat
 	Body       []Statement
-}
-
-// a
-// 	sum := for i in items += i
-// 	for [variables] in [iterator] [-> | = | += | -=] [value]
-//	for [variables] in [iterator] { block... }
-type ForExpression struct {
-	BaseNode
-	Variables []VarMapping
-	Iterator Expression
-	Value Expression
-	Block []Statement
 }
 
 type WhenExpression struct {
@@ -525,4 +513,25 @@ type ListCastExpression struct {
 	BaseNode
 	Type Type
 	Args []*CallParam
+}
+
+// A ForExpression is a [ForStatement] used as an expression. A ForExpression
+// can only iterate. It may reduce when the +=, -=, or = operator is used,
+// filter when a block is used, or map when -> is used.
+//
+//	sum := for i in items += i
+//	for [variables] in [iterator] [-> | = | += | -=] [value]
+//	for [variables] in [iterator] { block... }
+type ForExpression struct {
+	BaseNode
+	Variables []VarMapping
+	Iterator  Expression
+	Value     Expression
+	Block     []Statement
+}
+
+type ObjectPipeline struct {
+	BaseNode
+	Object Expression
+	Steps  []Node // Assignment or method call
 }
