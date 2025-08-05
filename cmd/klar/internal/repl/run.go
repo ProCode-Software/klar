@@ -21,7 +21,7 @@ import (
 var ErrPrinter = errors.Printer{MaxLines: 3, Color: true}
 
 func Run(*command.Runner) {
-	fmt.Println(ansi.Bold("Welcome to Klar v" + version.KlarVersion))
+	fmt.Println(ansi.Bold("Welcome to Klar"), "v"+version.KlarVersion)
 	fmt.Println(
 		ansi.Dim("Type"), ansi.Cyan("'help'"), ansi.Dim("for more information. Press"),
 		ansi.Cyan("Ctrl+D"), ansi.Dim("or type"), ansi.Cyan("'exit'"), ansi.Dim("to exit."),

@@ -37,6 +37,13 @@ func Color(color, text string) string {
 	return color + text + CodeReset
 }
 
+func Partial(color string) string {
+	if DisableColor {
+		return ""
+	}
+	return color
+}
+
 type Colors struct {
 	NoColor bool
 }

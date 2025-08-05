@@ -163,7 +163,7 @@ func (p *Printer) PrintError(err KlarError) {
 			break
 		}
 		// Line number
-		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Color(lineColor, ""), digitLen, line))
+		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Partial(lineColor), digitLen, line))
 		box(icons.BoxLeft)
 		b.WriteByte(' ')
 		// Each token on line

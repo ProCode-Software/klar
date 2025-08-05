@@ -126,17 +126,16 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			switch lower {
 			case 'x':
 				format = NumberFormatHex
-				b.WriteRune(r)
 			case 'o':
 				format = NumberFormatOctal
-				b.WriteRune(r)
 			case 'b':
 				format = NumberFormatBinary
-				b.WriteRune(r)
 			default:
 				format = NumberFormatDecimal
 				return false
 			}
+			b.WriteRune(r)
+			last = r
 			return true
 		}
 		switch lower {
@@ -148,6 +147,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				}
 				b.WriteRune(r)
 				isExp = true
+				last = r
 				return true
 			}
 			fallthrough
@@ -183,19 +183,24 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				}
 				l.Reader.UnreadRune()
 				next, err := l.Reader.Peek(2)
-				l.Reader.ReadRune()
-				if handleReadError(err) || next[1] == '\n' || IsDigit(rune(next[1])) {
-					// Trailing decimal point at EOF
+				l.Reader.ReadRune() // .
+
+				var n rune
+				if len(next) == 2 {
+					n = rune(next[1])
+				}
+				// Trailing decimal point at EOF
+				if handleReadError(err) || IsDigit(n) || n == 'e' || n == 'E' ||
+					(!unicode.IsLetter(n) && n != '_') {
 					isDecimal = true
 					b.WriteRune(r)
-					return true
+				} else {
+					return false
 				}
 			}
 		case '_':
 			// Underscore separators: no consecutive, must be in between digits
-			if last == '_' {
-				newError(ErrIntMisplacedSeparator, b)
-			} else if format == NumberFormatDecimal && !IsDigit(rune(last)) {
+			if last == '_' || (format == NumberFormatDecimal && !IsDigit(last)) {
 				newError(ErrIntMisplacedSeparator, b)
 			}
 			b.WriteRune(r)

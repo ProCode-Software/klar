@@ -232,9 +232,9 @@ func (e ParseError) error() string {
 	case ErrConsecutiveSep:
 		return "Numbers can't have consecutive underscores"
 	case ErrMisplacedSep:
-		return "An underscore isn't allowed here"
+		return "An underscore must separate successive digits"
 	case ErrNotAllowedInGuard:
-		return "Case guards can't contain 'when' expressions"
+		return "Case guards can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
 		return "The comment starting at " + e.Position.String() +
 			" was left open"

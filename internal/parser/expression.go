@@ -540,7 +540,6 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	}
 }
 
-
 func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectPipeline {
 	pipeline := &ast.ObjectPipeline{Object: obj.(ast.Expression)}
 	for p.CurrentTokenKind() == lexer.StrokeDot {

@@ -19,17 +19,17 @@ const (
 	ObjectPipelineBindingPower              // |.
 	LogicalBindingPower                     // ||, &&, | or + in type
 	PipelineBindingPower                    // |>
-	
-	RelationalBindingPower                  // ==, !=, >, <, <=, >=, in
-	DistributiveBindingPower                // and, or
-	RangeBindingPower                       // ...
-	AdditiveBindingPower                    // +, -
-	MultiplicativeBindingPower              // *, /, %
-	UnaryBindingPower                       // Suffix: ++, --
-	ExponentiationBindingPower              // ^
-	CallBindingPower                        // Call: (
-	MemberBindingPower                      // Index/Slice: . [
-	PrimaryBindingPower                     // Primary expressions, such as literals
+
+	RelationalBindingPower     // ==, !=, >, <, <=, >=, in
+	DistributiveBindingPower   // and, or
+	RangeBindingPower          // ...
+	AdditiveBindingPower       // +, -
+	MultiplicativeBindingPower // *, /, %
+	UnaryBindingPower          // Suffix: ++, --
+	ExponentiationBindingPower // ^
+	CallBindingPower           // Call: (
+	MemberBindingPower         // Index/Slice: . [
+	PrimaryBindingPower        // Primary expressions, such as literals
 )
 
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
