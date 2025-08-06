@@ -1,4 +1,4 @@
-import { merge, Pattern, TextMateLanguage } from 'vsxtools/tmLanguage'
+import { merge, type Pattern, type TextMateLanguage } from 'vsxtools/tmLanguage'
 
 export default {
     scopeName: 'markdown.klar.codeblock',

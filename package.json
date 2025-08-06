@@ -1,13 +1,16 @@
 {
-	"name": "klar",
-	"version": "0.0.1",
-	"description": "A programming language",
-	"workspaces": [
-		"klar-vscode"
-	],
-	"keywords": [
-		"programming language"
-	],
-	"author": "ProCode Software",
-	"license": "BSD-3-Clause"
+  "name": "klar",
+  "version": "0.0.1",
+  "description": "A programming language",
+  "workspaces": [
+    "klar-vscode"
+  ],
+  "keywords": [
+    "programming language"
+  ],
+  "author": "ProCode Software",
+  "license": "BSD-3-Clause",
+  "trustedDependencies": [
+    "@vscode/vsce-sign"
+  ]
 }

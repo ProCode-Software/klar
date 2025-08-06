@@ -101,12 +101,15 @@ const repository: Repository = {
     },
     strings: {
         patterns: [
+            [/(#+)"/, 'double', [], `"\\1`],
+            [/(#+)'/, 'single', [], `'\\1`],
+            [/(#+)`/, 'raw', [], '`\\1'],
             [/"/, 'double', ['stringEscape', 'stringInterpolation']],
             [/'/, 'single', ['stringEscape']],
             [/`/, 'raw', ['stringInterpolation']],
-        ].map(([b, name, pat]) => ({
+        ].map(([b, name, pat, end]) => ({
             begin: b,
-            end: b,
+            end: end ?? b,
             name: `string.quoted.${name}.klar`,
             beginCaptures: [{ name: 'punctuation.definition.string.begin.klar' }],
             endCaptures: [{ name: 'punctuation.definition.string.end.klar' }],
@@ -132,7 +135,6 @@ const repository: Repository = {
         patterns: [
             match(/\b(public)\b/, 'storage.modifier.klar'),
             match(/\b(type)\b/, 'storage.type.type.klar'),
-            match(/\b(in)\b/, 'keyword.other.in.klar'),
             match(/\b(func)\b/, 'storage.type.function.klar'),
             match(/\b(for|next)\b/, 'keyword.control.loop.klar'),
             match(/\b(return)\b/, 'keyword.control.flow.klar'),
@@ -166,12 +168,15 @@ const repository: Repository = {
     },
     operators: {
         patterns: [
+            match(/(!|\b)in\b/, 'keyword.operator.relational.klar'),
             match(/\|>/, 'keyword.operator.pipe.klar'),
+            match(/\|\./, 'keyword.operator.pipe.object.klar'),
             match(/->/, 'keyword.operator.arrow.klar'),
             match(/\.{3}/, 'keyword.operator.spread.klar'),
             match(/&&|\|{2}|!/, 'keyword.operator.logical.klar'),
             match(/[><=!]=|[<>]/, 'keyword.operator.comparison.klar'),
-            match(/\b(and|or)\b/, 'keyword.operator.relational.klar'),
+            match(/=~|!~/, 'keyword.operator.comparison.regex.klar'),
+            match(/\b(and|or)\b/, 'keyword.operator.distributive.klar'),
             match(/[|?]/, 'keyword.operator.type.klar'),
             match(/\+\+/, 'keyword.operator.increment.klar'),
             match(/--/, 'keyword.operator.decrement.klar'),
@@ -445,7 +450,19 @@ const repository: Repository = {
                     { name: Punctuation.parenthesis.end },
                 ],
             },
-            match(/\|/, 'keyword.operator.type.klar'),
+            {
+                begin: merge(/(\.)/, IdCapture, /(\()/),
+                end: /(\))(?=,|})/,
+                captures: [
+                    { name: 'variable.other.enummember.klar' },
+                    { name: Punctuation.equalSign },
+                    { patterns: BASE },
+                    { name: Punctuation.parenthesis.begin },
+                    { name: 'entity.name.type.klar', patterns: [include('types')] },
+                    { name: Punctuation.parenthesis.end },
+                ],
+            },
+            Punctuation.comma,
         ],
     },
     interfaces: {
@@ -489,6 +506,12 @@ const repository: Repository = {
         patterns: [
             match(/\|(?!\|)/, 'keyword.operator.alternative.klar'),
             match(/\?/, 'constant.language.nil.klar'),
+            {
+                begin: /((?:!|\b)can\b)/,
+                end: /(?=[!,]|->|when)/,
+                beginCaptures: [{ name: 'keyword.operator.relational.klar' }],
+                patterns: [include('functions'), include('types')],
+            },
             ...BASE,
         ],
     },

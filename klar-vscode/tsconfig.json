@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "lib": [ "ESNext" ],
+        "module": "nodenext",
+        "moduleDetection": "force",
+        "moduleResolution": "nodenext",
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": false,
+        "noUnusedParameters": false,
+        "skipLibCheck": true,
+        "target": "esnext",
+        "esModuleInterop": true
+    },
+    "include": [ "src" ]
+}

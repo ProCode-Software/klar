@@ -34,10 +34,10 @@ func unwrap<T>(optional: T?) -> T {
     x := 2
     b := x + [int, 2, 3]
     // return x + 2
-    /* when optional {
+    when optional {
         ? -> panic("unwrap failed")
         value -> return value
-    } */
+    }
 }
 
 
@@ -51,8 +51,14 @@ type Point {
     self.y = y
 } */
 
-
-type NewColor {
+type Color {
     .red, .orange, .yellow,
     .green, .blue, .purple,
 }
+type Color {
+    | red | orange | yellow
+    | green | blue | purple
+}
+
+-----
+color: Color := .red
