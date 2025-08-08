@@ -101,6 +101,31 @@ func (SliceExpression) assignable() {}
 func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
 
+func getVars(destrucList []Destructure) (vars []*Symbol) {
+	vars = make([]*Symbol, 0, len(destrucList))
+	for _, v := range destrucList {
+		vars = append(vars, v.Vars()...)
+	}
+	return vars
+}
+
 // Destructuring
-func (ListLiteral) assignable() {}
-func (TypeTuple) assignable()   {}
+func (d *ListDestructure) Vars() []*Symbol {
+	return getVars(d.Values)
+}
+
+func (d *KeyDestructure) Vars() []*Symbol {
+	vars := make([]*Symbol, 0, len(d.Values))
+	for _, v := range d.Values {
+		if v.Alias != nil {
+			vars = append(vars, v.Alias)
+		} else if v.Object != nil {
+		} else {
+			vars = append(vars, v.Index.Vars()...)
+		}
+	}
+}
+
+func (d *Symbol) Vars() []*Symbol {
+	return []*Symbol{d}
+}

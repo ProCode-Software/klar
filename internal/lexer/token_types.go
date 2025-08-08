@@ -79,11 +79,16 @@ const (
 	// Keywords
 	And
 	Break
+	Can
 	For
 	Func
+	Go
 	Import
 	In
 	Next
+	NotCan
+	NotIn
+	Opaque
 	Or
 	Public
 	Return
@@ -99,34 +104,36 @@ const (
 )
 
 var OperatorMap = map[string]TokenType{
-	"++":  PlusPlus,
-	"--":  MinusMinus,
-	"...": Ellipsis,
-	":=":  ColonEqual,
-	"+=":  PlusEqual,
-	"-=":  MinusEqual,
-	"==":  EqualEqual,
-	"!=":  NotEqual,
-	">=":  GreaterEqualTo,
-	"<=":  LessEqualTo,
-	"||":  OrOr,
-	"&&":  AndAnd,
-	"->":  Arrow,
-	"=":   Equal,
-	"+":   Plus,
-	"-":   Minus,
-	"*":   Asterisk,
-	"/":   Slash,
-	"%":   Percent,
-	"^":   Caret,
-	"!":   Not,
-	">":   GreaterThan,
-	"<":   LessThan,
-	"|":   Stroke,
-	"?":   Question,
-	"|>":  Pipeline,
-	"|.":  StrokeDot,
-	`\`:   Backslash,
+	"++":   PlusPlus,
+	"--":   MinusMinus,
+	"...":  Ellipsis,
+	":=":   ColonEqual,
+	"+=":   PlusEqual,
+	"-=":   MinusEqual,
+	"==":   EqualEqual,
+	"!=":   NotEqual,
+	">=":   GreaterEqualTo,
+	"<=":   LessEqualTo,
+	"||":   OrOr,
+	"&&":   AndAnd,
+	"->":   Arrow,
+	"=":    Equal,
+	"+":    Plus,
+	"-":    Minus,
+	"*":    Asterisk,
+	"/":    Slash,
+	"%":    Percent,
+	"^":    Caret,
+	"!":    Not,
+	"!in":  NotIn,
+	"!can": NotCan,
+	">":    GreaterThan,
+	"<":    LessThan,
+	"|":    Stroke,
+	"?":    Question,
+	"|>":   Pipeline,
+	"|.":   StrokeDot,
+	`\`:    Backslash,
 
 	// Punctuation
 	":":  Colon,
@@ -149,11 +156,14 @@ var OperatorMap = map[string]TokenType{
 var KeywordMap = map[string]TokenType{
 	"and":    And,
 	"break":  Break,
+	"can":    Can,
 	"for":    For,
 	"func":   Func,
+	"go":     Go,
 	"import": Import,
 	"in":     In,
 	"next":   Next,
+	"opaque": Opaque,
 	"or":     Or,
 	"public": Public,
 	"return": Return,

@@ -28,7 +28,7 @@ type Color {
 
 type A: Color {} */
 
-func unwrap<T>(optional: T?) -> T {
+func unwrap<T, X>(optional: T?) -> T {
     name := 1 + 1
     int: Int | Float := 2
     x := 2
@@ -41,10 +41,14 @@ func unwrap<T>(optional: T?) -> T {
 }
 
 
-type Point {
-    x: Int
-    y: Int
+
+
+
+type Point<X, T> {
+    x, y: Int
+    WHATEVR: Int
 }
+
 
 /* func Point(x, y: Int = 10) {
     self.x = x
@@ -55,10 +59,5 @@ type Color {
     .red, .orange, .yellow,
     .green, .blue, .purple,
 }
-type Color {
-    | red | orange | yellow
-    | green | blue | purple
-}
 
------
 color: Color := .red

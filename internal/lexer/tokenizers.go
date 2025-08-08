@@ -16,20 +16,48 @@ func handleReadError(err error) bool {
 	return false
 }
 
+type nextItem struct {
+	s    string
+	kind TokenType
+}
+
 func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 	s := string(r)
-	if _, ok := OperatorMap[s]; !ok {
-		return Illegal, s
+	op := OperatorMap[s]
+	if op == 0 {
+		op = Illegal
 	}
 	next, err := l.Reader.Peek(1)
 	if handleReadError(err) {
-		return OperatorMap[s], s
+		return op, s
 	}
 	full := s + string(next)
 	if op, ok := OperatorMap[full]; ok {
 		l.Reader.ReadRune()
 		l.Pos.Col++
 		return op, full
+	}
+	ops := map[string]nextItem{
+		"!i": {"n", NotIn},
+		"!c": {"an", NotCan},
+	}
+	nextPart, ok := ops[full]
+	if !ok {
+		return op, s
+	}
+	toRead := len(nextPart.s)
+	total := toRead+1
+	next, err = l.Reader.Peek(toRead + 2)
+	if handleReadError(err) && len(next) < toRead+1 {
+		return op, s
+	}
+	if string(next)[1:total] == nextPart.s &&
+		(len(next) == total || unicode.IsSpace(rune(next[total]))) {
+		l.Pos.Col += uint32(total)
+		for range total {
+			l.Reader.ReadByte()
+		}
+		return nextPart.kind, full + nextPart.s
 	}
 	return OperatorMap[s], s
 }

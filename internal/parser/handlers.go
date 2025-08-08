@@ -10,7 +10,7 @@ var IsHandledNUD = []lexer.TokenType{
 	lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil,
 	lexer.Minus, lexer.Plus, lexer.Not,
 	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
-	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash,
+	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash, lexer.For,
 }
 
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
@@ -47,6 +47,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 			return &ast.BadExpression{Token: kind}, true
 		}
 		res = p.ParseWhenBlock()
+	case lexer.For:
+		res = p.ParseForExpression()
 	case lexer.Underscore:
 		if !p.isWhenCase {
 			return nil, false
@@ -77,7 +79,7 @@ func (p *Parser) handleLED(
 		lexer.Plus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
 		// Relational
 		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
-		lexer.EqualEqual, lexer.NotEqual, lexer.In,
+		lexer.EqualEqual, lexer.NotEqual, lexer.In, lexer.NotIn,
 		// Logical
 		lexer.AndAnd, lexer.OrOr,
 		// Distributive

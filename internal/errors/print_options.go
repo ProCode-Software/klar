@@ -10,7 +10,7 @@ import (
 const (
 	colorDefault  = ansi.CodeReset
 	colorKeyword  = ansi.CodeRed
-	colorOperator = ansi.CodeRed
+	colorOperator = colorDefault
 	colorNumber   = ansi.CodeCyan
 	colorString   = ansi.CodeGreen
 	colorBoolean  = colorNumber

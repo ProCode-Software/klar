@@ -180,13 +180,6 @@ type Type interface {
 	_type()
 }
 
-// Values that can be used in VariableDeclaration implement VarMapping.
-// (a, b) | [a, b] | { a, b } | a
-type VarMapping interface {
-	Expression
-	Vars() []string
-}
-
 // A PrimitiveType is a Klar-builtin type
 type PrimitiveType struct {
 	BaseNode
@@ -524,7 +517,7 @@ type ListCastExpression struct {
 //	for [variables] in [iterator] { block... }
 type ForExpression struct {
 	BaseNode
-	Variables []VarMapping
+	Variables []Destructure
 	Iterator  Expression
 	Value     Expression
 	Block     []Statement
@@ -534,4 +527,39 @@ type ObjectPipeline struct {
 	BaseNode
 	Object Expression
 	Steps  []Node // Assignment or method call
+}
+
+// Destructuring
+// Values that can be used in VariableDeclaration implement Destructure.
+// (a, b) | [a, b] | #{ a, b } | a
+type Destructure interface {
+	Expression
+	Vars() []*Symbol
+}
+
+type ListDestructure struct {
+	BaseNode
+	Tuple  bool
+	Values []Destructure
+}
+
+// Object or map destructure
+type KeyDestructure struct {
+	BaseNode
+	Values []*KeyDestructureEntry
+}
+
+// Entry for [KeyDestructure]
+//
+//	#{ in: ("John", 14) }    -> #{ in.(name, age) } -> name, age
+//	#{ when: true }          -> #{ cond: when }     -> cond
+//	#{ data: [#{ key: 0 }] } ->
+//		#{ data[{ key }] }        -> key
+//		#{ data[{ myKey: key }] } -> myKey
+//		#{ data[first] }          -> first
+type KeyDestructureEntry struct {
+	BaseNode
+	Alias  *Symbol // optional
+	Object *Symbol // optional
+	Index  Destructure
 }

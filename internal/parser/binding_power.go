@@ -57,6 +57,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
 	lexer.In:             RelationalBindingPower,
+	lexer.NotIn:          RelationalBindingPower,
 
 	lexer.Ellipsis: RangeBindingPower,
 

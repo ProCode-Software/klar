@@ -8,7 +8,7 @@
       "name": "klar",
       "version": "0.0.1",
       "devDependencies": {
-        "@vscode/vsce": "^3.3.2",
+        "@vscode/vsce": "^3.6.0",
         "vsxtools": "link:vsxtools",
       },
     },
@@ -587,7 +587,7 @@
 
     "version-range": ["version-range@4.14.0", "", {}, "sha512-gjb0ARm9qlcBAonU4zPwkl9ecKkas+tC2CGwFfptTCWWIVTWY1YUbT2zZKsOAF1jR/tNxxyLwwG0cb42XlYcTg=="],
 
-    "vsxtools": ["vsxtools@link:vsxtools", { "bin": { "vsxtools": "bin/vsxtools" } }],
+    "vsxtools": ["vsxtools@link:vsxtools", { "bin": { "vsxtools": "dist/cli/vsxtools.js" } }],
 
     "whatwg-encoding": ["whatwg-encoding@3.1.1", "", { "dependencies": { "iconv-lite": "0.6.3" } }, "sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ=="],
 

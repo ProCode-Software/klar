@@ -107,15 +107,14 @@ func (l *Lexer) Tokenize() *Token {
 			}
 			if next[1] == '.' {
 				l.Reader.ReadRune()
-				l.Pos.Col++
 				next, err = l.Reader.Peek(1)
 				if handleReadError(err) || next[0] != '.' {
-					return NewToken(pos, Illegal, "..")
-				} else {
-					l.Reader.ReadRune()
-					l.Pos.Col++
-					return NewToken(pos, Ellipsis, "...")
+					l.Reader.UnreadRune()
+					return NewToken(pos, Dot, ".")
 				}
+				l.Reader.ReadRune()
+				l.Pos.Col += 2
+				return NewToken(pos, Ellipsis, "...")
 			}
 			return NewToken(pos, Dot, ".")
 		}
