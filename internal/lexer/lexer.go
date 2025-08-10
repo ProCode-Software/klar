@@ -45,6 +45,19 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ParseString(pos, r)
+		case '.':
+			if err := l.Reader.UnreadRune(); err != nil {
+				panic(err)
+			}
+			next, err := l.Reader.Peek(2)
+			l.Reader.ReadRune()
+			if handleReadError(err) {
+				return NewToken(pos, Dot, ".")
+			}
+			if IsDigit(rune(next[1])) {
+				return l.ParseNumber(pos)
+			}
+			fallthrough
 		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
 			var (
@@ -93,30 +106,6 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Comma, ",")
 		case '?':
 			return NewToken(pos, Question, "?")
-		case '.':
-			if err := l.Reader.UnreadRune(); err != nil {
-				panic(err)
-			}
-			next, err := l.Reader.Peek(2)
-			l.Reader.ReadRune()
-			if handleReadError(err) {
-				return NewToken(pos, Dot, ".")
-			}
-			if IsDigit(rune(next[1])) {
-				return l.ParseNumber(pos)
-			}
-			if next[1] == '.' {
-				l.Reader.ReadRune()
-				next, err = l.Reader.Peek(1)
-				if handleReadError(err) || next[0] != '.' {
-					l.Reader.UnreadRune()
-					return NewToken(pos, Dot, ".")
-				}
-				l.Reader.ReadRune()
-				l.Pos.Col += 2
-				return NewToken(pos, Ellipsis, "...")
-			}
-			return NewToken(pos, Dot, ".")
 		}
 		switch {
 		case unicode.IsSpace(r):
@@ -195,4 +184,9 @@ func (l *Lexer) prevCol() Position {
 
 func IsDigit(r rune) bool {
 	return r >= '0' && r <= '9'
+}
+
+// IsIdent reports whether r is the beginning of an identifier
+func IsIdent(r rune) bool {
+
 }

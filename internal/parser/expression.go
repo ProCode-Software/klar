@@ -588,5 +588,5 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 
 func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
-	
+	return nil
 }

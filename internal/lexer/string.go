@@ -269,8 +269,16 @@ loop:
 	str := string(delim) + b.String()
 
 	return NewToken(pos, String, str).
-		SetAttribute("escapes", escapes).
 		SetAttribute("end", end).
-		SetAttribute("quoteStyle", delim).
-		SetAttribute("unterminated", unterm)
+		SetAttribute("params", StringAttrs{
+			Escapes:      escapes,
+			QuoteStyle:   delim,
+			Unterminated: unterm,
+		})
+}
+
+type StringAttrs struct {
+	Escapes      EscapeMap
+	QuoteStyle   rune
+	Unterminated bool
 }

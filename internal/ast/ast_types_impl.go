@@ -20,36 +20,37 @@ func (HexadecimalEscape) stringEsc()   {}
 func (StringInterpolation) stringEsc() {}
 
 // Expressions
-func (BinaryExpression) expr()   {}
-func (UnaryExpression) expr()    {}
-func (NilLiteral) expr()         {}
-func (StringLiteral) expr()      {}
-func (IntegerLiteral) expr()     {}
-func (FloatLiteral) expr()       {}
-func (BooleanLiteral) expr()     {}
-func (Symbol) expr()             {}
-func (TypeAnnotation) expr()     {}
-func (MapLiteral) expr()         {}
-func (TupleLiteral) expr()       {}
-func (ListLiteral) expr()        {}
-func (IndexExpression) expr()    {}
-func (CallExpression) expr()     {}
-func (EnumLiteral) expr()        {}
-func (Discard) expr()            {}
-func (WhenExpression) expr()     {}
-func (TypeTuple) expr()          {}
-func (LambdaExpression) expr()   {}
-func (RangeExpression) expr()    {}
-func (RestExpression) expr()     {}
-func (PipelineExpression) expr() {}
-func (BadExpression) expr()      {}
-func (SliceExpression) expr()    {}
-func (ParenExpression) expr()    {}
-func (RegexLiteral) expr()       {}
-func (VersionLiteral) expr()     {}
-func (ListCastExpression) expr() {}
-func (ObjectPipeline) expr()     {}
-func (ForExpression) expr()      {}
+func (BinaryExpression) expr()    {}
+func (UnaryExpression) expr()     {}
+func (NilLiteral) expr()          {}
+func (StringLiteral) expr()       {}
+func (IntegerLiteral) expr()      {}
+func (FloatLiteral) expr()        {}
+func (BooleanLiteral) expr()      {}
+func (Symbol) expr()              {}
+func (TypeAnnotation) expr()      {}
+func (MapLiteral) expr()          {}
+func (TupleLiteral) expr()        {}
+func (ListLiteral) expr()         {}
+func (IndexExpression) expr()     {}
+func (CallExpression) expr()      {}
+func (EnumLiteral) expr()         {}
+func (Discard) expr()             {}
+func (WhenExpression) expr()      {}
+func (TypeTuple) expr()           {}
+func (LambdaExpression) expr()    {}
+func (RangeExpression) expr()     {}
+func (RestExpression) expr()      {}
+func (PipelineExpression) expr()  {}
+func (BadExpression) expr()       {}
+func (SliceExpression) expr()     {}
+func (ParenExpression) expr()     {}
+func (RegexLiteral) expr()        {}
+func (VersionLiteral) expr()      {}
+func (ListCastExpression) expr()  {}
+func (ObjectPipeline) expr()      {}
+func (ForExpression) expr()       {}
+func (ShortInitExpression) expr() {}
 
 // Statement
 func (BadExpression) stmt()        {}
@@ -70,6 +71,7 @@ func (NextStatement) stmt()        {}
 func (Attribute) stmt()            {}
 func (FuncAliasDeclaration) stmt() {}
 func (PublicDeclaration) stmt()    {}
+func (WhileStatement) stmt()       {}
 
 // Type
 func (PrimitiveType) _type() {}
@@ -101,31 +103,7 @@ func (SliceExpression) assignable() {}
 func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
 
-func getVars(destrucList []Destructure) (vars []*Symbol) {
-	vars = make([]*Symbol, 0, len(destrucList))
-	for _, v := range destrucList {
-		vars = append(vars, v.Vars()...)
-	}
-	return vars
-}
-
 // Destructuring
-func (d *ListDestructure) Vars() []*Symbol {
-	return getVars(d.Values)
-}
-
-func (d *KeyDestructure) Vars() []*Symbol {
-	vars := make([]*Symbol, 0, len(d.Values))
-	for _, v := range d.Values {
-		if v.Alias != nil {
-			vars = append(vars, v.Alias)
-		} else if v.Object != nil {
-		} else {
-			vars = append(vars, v.Index.Vars()...)
-		}
-	}
-}
-
-func (d *Symbol) Vars() []*Symbol {
-	return []*Symbol{d}
-}
+func (d *ListDestructure) destruct() {}
+func (d *KeyDestructure) destruct()  {}
+func (d *Symbol) destruct()          {}

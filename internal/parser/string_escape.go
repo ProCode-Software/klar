@@ -13,7 +13,7 @@ type EscapeMap = map[lexer.Position]ast.StringEscape
 
 func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
 	var (
-		lexEscapes = tok.Attributes["escapes"].(lexer.EscapeMap)
+		lexEscapes = tok.Attributes["params"].(lexer.StringAttrs).Escapes
 		escapes    = make(EscapeMap, len(lexEscapes))
 	)
 	if len(lexEscapes) == 0 {

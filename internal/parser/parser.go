@@ -111,25 +111,6 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 	return p.HasTokens() && curr != lexer.EndOfStatement && curr != kind
 }
 
-func (p *Parser) isMapIdentifier() bool {
-	return p.IsCurrently(ast.ReservedIdent...) ||
-		p.IsCurrently(lexer.Identifier, lexer.Numeric, lexer.Boolean, lexer.Nil)
-}
-
-func (p *Parser) expectMapIdent() lexer.Token {
-	if !p.isMapIdentifier() {
-		return p.Expect(lexer.Identifier)
-	}
-	return p.Advance()
-}
-
-func (p *Parser) expectNonNumericMapIdent() lexer.Token {
-	if !p.isMapIdentifier() || p.CurrentTokenKind() == lexer.Numeric {
-		return p.Expect(lexer.Identifier)
-	}
-	return p.Advance()
-}
-
 func (p *Parser) lastTokEnd() lexer.Position {
 	last := p.Tokens[p.Index-1]
 	return ranges.FromToken(last).End

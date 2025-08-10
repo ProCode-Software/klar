@@ -37,3 +37,8 @@ server.handle(path: '/get', with: (r, w) -> {
 
 print("Starting the server...")
 server.start(port: 8080)
+
+for i in object {
+}
+for (i in object) {
+}

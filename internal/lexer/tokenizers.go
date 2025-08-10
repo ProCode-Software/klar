@@ -22,44 +22,23 @@ type nextItem struct {
 }
 
 func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
-	s := string(r)
-	op := OperatorMap[s]
-	if op == 0 {
-		op = Illegal
-	}
-	next, err := l.Reader.Peek(1)
-	if handleReadError(err) {
-		return op, s
-	}
-	full := s + string(next)
-	if op, ok := OperatorMap[full]; ok {
-		l.Reader.ReadRune()
-		l.Pos.Col++
-		return op, full
-	}
-	ops := map[string]nextItem{
-		"!i": {"n", NotIn},
-		"!c": {"an", NotCan},
-	}
-	nextPart, ok := ops[full]
+	n, ok := opPrefixes[r]
+	singleStr := string(r)
 	if !ok {
-		return op, s
+		return Illegal, singleStr
 	}
-	toRead := len(nextPart.s)
-	total := toRead+1
-	next, err = l.Reader.Peek(toRead + 2)
-	if handleReadError(err) && len(next) < toRead+1 {
-		return op, s
-	}
-	if string(next)[1:total] == nextPart.s &&
-		(len(next) == total || unicode.IsSpace(rune(next[total]))) {
-		l.Pos.Col += uint32(total)
-		for range total {
-			l.Reader.ReadByte()
+	for ; n > 0; n-- {
+		next, err := l.Reader.Peek(n)
+		if handleReadError(err) {
+			continue
 		}
-		return nextPart.kind, full + nextPart.s
+		total := string(r) + string(next)
+		if opTok, ok := OperatorMap[total]; ok {
+			l.Reader.Read(make([]byte, n))
+			return opTok, total
+		}
 	}
-	return OperatorMap[s], s
+	return OperatorMap[singleStr], singleStr
 }
 
 func (l *Lexer) ParseShebang(pos Position) *Token {
@@ -217,9 +196,12 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 				if len(next) == 2 {
 					n = rune(next[1])
 				}
+				if n == '.' {
+					return false // 1...10
+				}
 				// Trailing decimal point at EOF
-				if handleReadError(err) || IsDigit(n) || n == 'e' || n == 'E' ||
-					(!unicode.IsLetter(n) && n != '_') {
+				if handleReadError(err) || IsDigit(n) ||
+					n == 'e' || n == 'E' || !IsIdent(r) {
 					isDecimal = true
 					b.WriteRune(r)
 				} else {
@@ -255,11 +237,20 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		newError(ErrIntMisplacedSeparator, nil)
 		errPos = len(digit) - 1
 	}
-	return NewToken(pos, Numeric, digit).
-		SetAttribute("format", format).
-		SetAttribute("invalid", isIllegal).
-		SetAttribute("errorPos", errPos).
-		SetAttribute("error", errorType)
+	return NewToken(pos, Numeric, digit).SetAttribute("params", NumberAttrs{
+		Format:  format,
+		Float:   isDecimal || isExp,
+		Invalid: isIllegal,
+		ErrPos:  errPos,
+		Error:   errorType,
+	})
+}
+
+type NumberAttrs struct {
+	Format        int
+	Float         bool
+	Invalid       bool
+	Error, ErrPos int
 }
 
 func (l *Lexer) ParseIdentifier() (TokenType, string) {

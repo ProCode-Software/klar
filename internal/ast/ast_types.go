@@ -424,6 +424,14 @@ type CallExpression struct {
 	BaseNode
 }
 
+// ShortInitExpression is a shorthand constructor for known types
+//
+//	people: [Person] := [.("John", age: 32), .("Jane", age: 31)]
+type ShortInitExpression struct {
+	BaseNode
+	Params []*CallParam
+}
+
 // An UpdateStatement is a decrement or increment statement. These statements end in
 // ++ or --. Unlike other languages such as C, Klar's increment/decrement operators
 // are statements rather than expressions.
@@ -433,20 +441,26 @@ type UpdateStatement struct {
 	BaseNode
 }
 
-// A for statement acts as a foreach (C#), while (C) and loop (Rust) with
-// one keyword, similar to Go.
+// A ForStatement is a loop that executes Body for each item in a list.
 //
-//	for { ...infinite loop }
-//	for <expr> - while loop
 //	for k, v in <expr>
 //	for item in <expr>
-//	for 5 { ...repeat 5 times } - only if literal, else - for _ in 5
+//	for 5 { ...repeat 5 times }
 type ForStatement struct {
 	BaseNode
-	Infinite   bool // or
-	Variables  []string
+	Variables  []Destructure
 	Expression Expression // When used as while loop or repeat
 	Body       []Statement
+}
+
+// A WhileStatement executes Body while Condition is true
+// 	while { ...infinite loop }
+// 	while <expr> - while loop
+type WhileStatement struct {
+	BaseNode
+	Infinite  bool // No condition
+	Condition Expression
+	Body      []Statement
 }
 
 type WhenExpression struct {
@@ -533,8 +547,7 @@ type ObjectPipeline struct {
 // Values that can be used in VariableDeclaration implement Destructure.
 // (a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
-	Expression
-	Vars() []*Symbol
+	destruct()
 }
 
 type ListDestructure struct {
@@ -551,12 +564,11 @@ type KeyDestructure struct {
 
 // Entry for [KeyDestructure]
 //
-//	#{ in: ("John", 14) }    -> #{ in.(name, age) } -> name, age
-//	#{ when: true }          -> #{ cond: when }     -> cond
-//	#{ data: [#{ key: 0 }] } ->
-//		#{ data[{ key }] }        -> key
-//		#{ data[{ myKey: key }] } -> myKey
-//		#{ data[first] }          -> first
+//	#{ in.(name, age) }
+//	#{ cond: when }
+//	#{ data[{ key }] }
+//	#{ data[{ myKey: key }] }
+//	#{ data[first] }
 type KeyDestructureEntry struct {
 	BaseNode
 	Alias  *Symbol // optional

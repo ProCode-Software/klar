@@ -62,15 +62,15 @@ func (p *Parser) ParsePrimaryExpression() ast.Expression {
 	case lexer.Identifier:
 		return &ast.Symbol{Identifier: src}
 	case lexer.Numeric:
-		format := token.Attributes["format"].(int)
+		a := token.Attributes["params"].(lexer.NumberAttrs)
+		format := a.Format
 		switch {
-		case token.Attributes["invalid"] == true:
-			p.handleInvalidNumber(token.Attributes["error"].(int), format, token)
+		case a.Invalid:
+			p.handleInvalidNumber(a.Error, format, token)
 			// Set default value for ParseInt call
 			src = "0"
 
-		case strings.Contains(src, "."),
-			format != lexer.NumberFormatHex && strings.ContainsAny(src, "eE"):
+		case a.Float:
 			// Exponents are floats
 			return &ast.FloatLiteral{
 				Source: src,
@@ -87,14 +87,15 @@ func (p *Parser) ParsePrimaryExpression() ast.Expression {
 			Value:  unwrap(strconv.ParseInt(src, 0, 0)),
 		}
 	case lexer.String:
-		if token.Attributes["unterminated"] == true {
+		a := token.Attributes["params"].(lexer.StringAttrs)
+		if a.Unterminated {
 			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 			// Quotes removed below, so add them here
 			token.Source += string(token.Source[0])
 		}
 		escapes := p.parseStringEscapes(token)
 		return &ast.StringLiteral{
-			QuoteStyle: token.Attributes["quoteStyle"].(rune),
+			QuoteStyle: a.QuoteStyle,
 			Content:    token.Source[1 : len(token.Source)-1], // Remove quotes
 			Escapes:    escapes,
 		}

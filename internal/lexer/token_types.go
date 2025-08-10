@@ -1,9 +1,6 @@
-package lexer
+// New keywords and operators are defined in this file.
 
-import (
-	"fmt"
-	"io"
-)
+package lexer
 
 type TokenType int
 
@@ -70,11 +67,12 @@ const (
 	Question // ?
 
 	// Misc
-	Ellipsis  // ...
-	Arrow     // ->
-	Pipeline  // |>
-	StrokeDot // |.
-	Backslash // \
+	Ellipsis       // ...
+	DotDotLessThan // ..<
+	Arrow          // ->
+	Pipeline       // |>
+	StrokeDot      // |.
+	Backslash      // \
 
 	// Keywords
 	And
@@ -86,27 +84,22 @@ const (
 	Import
 	In
 	Next
-	NotCan
-	NotIn
+	NotCan // !can
+	NotIn  // !in
 	Opaque
 	Or
 	Public
 	Return
 	Type
 	When
-)
-
-const (
-	NumberFormatDecimal = iota
-	NumberFormatHex
-	NumberFormatOctal
-	NumberFormatBinary
+	While
 )
 
 var OperatorMap = map[string]TokenType{
 	"++":   PlusPlus,
 	"--":   MinusMinus,
 	"...":  Ellipsis,
+	"..<":  DotDotLessThan,
 	":=":   ColonEqual,
 	"+=":   PlusEqual,
 	"-=":   MinusEqual,
@@ -169,68 +162,10 @@ var KeywordMap = map[string]TokenType{
 	"return": Return,
 	"type":   Type,
 	"when":   When,
-	"_":      Underscore,
-	"true":   Boolean,
-	"false":  Boolean,
-	"nil":    Nil,
-}
+	"while":  While,
 
-func NewToken(pos Position, kind TokenType, src string) *Token {
-	return &Token{pos, kind, src, nil}
-}
-
-type Token struct {
-	Position
-	Kind       TokenType
-	Source     string
-	Attributes map[string]any
-}
-
-func (t *Token) SetAttribute(key string, value any) *Token {
-	if t.Attributes == nil {
-		t.Attributes = make(map[string]any)
-	}
-	t.Attributes[key] = value
-	return t
-}
-
-func (t TokenType) LitterDump(w io.Writer) {
-	w.Write([]byte("{" + t.String() + "}"))
-}
-
-func (t Token) String() string {
-	s := fmt.Sprintf("%s %s: %#q", t.Position, t.Kind, t.Source)
-	if t.Attributes != nil {
-		s += fmt.Sprintf(" %+v", t.Attributes)
-	}
-	return s
-}
-
-func (p Position) LitterDump(w io.Writer) {
-	w.Write([]byte("{" + p.String() + "}"))
-}
-
-var TokenTypeString = map[TokenType]string{
-	0:              "<unknown>",
-	String:         "string",
-	Numeric:        "number",
-	Newline:        "\\n",
-	EndOfStatement: "newline",
-	Illegal:        "illegal",
-	Identifier:     "identifier",
-	EOF:            "EOF",
-}
-
-func init() {
-	for str, t := range OperatorMap {
-		TokenTypeString[t] = str
-	}
-	for str, t := range KeywordMap {
-		TokenTypeString[t] = str
-	}
-	TokenTypeString[Boolean] = "boolean"
-}
-
-func (k TokenType) String() string {
-	return TokenTypeString[k]
+	"_":     Underscore,
+	"true":  Boolean,
+	"false": Boolean,
+	"nil":   Nil,
 }

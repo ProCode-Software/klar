@@ -160,6 +160,8 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		res = p.ParseReturnStatement()
 	case lexer.For:
 		res = p.ParseForStatement()
+	case lexer.While:
+		res = p.ParseWhileStatement()
 	case lexer.Next:
 		res = &ast.NextStatement{}
 		p.Advance()
