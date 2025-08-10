@@ -34,11 +34,26 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 		}
 		total := string(r) + string(next)
 		if opTok, ok := OperatorMap[total]; ok {
-			l.Reader.Read(make([]byte, n))
+			// Check if next byte is an indentifier if operator ends in ident
+			if IsIdent(rune(total[n])) && l.checkIfIdentNext(n) {
+				continue
+			}
+			l.Reader.Discard(n) // l.Reader.Read(make([]byte, n))
+			l.Pos.Col += uint32(n)
 			return opTok, total
 		}
 	}
 	return OperatorMap[singleStr], singleStr
+}
+
+func (l *Lexer) checkIfIdentNext(n int) bool {
+	if next, err := l.Reader.Peek(n + 1); !handleReadError(err) {
+		first := rune(next[n])
+		if IsIdent(first) || unicode.IsDigit(first) {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *Lexer) ParseShebang(pos Position) *Token {
@@ -110,7 +125,6 @@ const (
 	_ = iota
 	ErrIntMisplacedSeparator
 	ErrIntIncompatibleDigit
-	ErrIntIllegalExponent
 	ErrStrUnterminated
 )
 

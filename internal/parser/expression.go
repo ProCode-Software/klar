@@ -96,22 +96,16 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 				Key:   key,
 				Value: val,
 			})
-		// Spread #{ key: 1, values... }
-		case p.Peek().Kind == lexer.Ellipsis:
-			expr := p.ParseExpression(ExpressionBindingPower)
-			if _, ok := expr.(*ast.RestExpression); ok {
-				entries = append(entries, &ast.Pair{
-					Key:   expr,
-					Value: expr,
-				})
-				break
-			}
-			fallthrough
 		// Normal properties: quotes not required for non-reserved string key
 		default:
 			entry := &ast.Pair{Key: p.ParseExpression(ExpressionBindingPower)}
-			p.Expect(lexer.Colon)
-			entry.Value = p.ParseExpression(ExpressionBindingPower)
+			// Spread #{ key: 1, values... }
+			if rest, ok := entry.Key.(*ast.RestExpression); ok {
+				entry.Value = rest
+			} else {
+				p.Expect(lexer.Colon)
+				entry.Value = p.ParseExpression(ExpressionBindingPower)
+			}
 			entries = append(entries, entry)
 		}
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
@@ -589,4 +583,9 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	return nil
+}
+
+func (p *Parser) ParseSymbol() *ast.Symbol {
+	tok := p.Advance()
+	return rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
 }

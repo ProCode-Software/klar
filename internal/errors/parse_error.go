@@ -45,6 +45,9 @@ const (
 	ErrInvalidVersionLit   // Invalid version literal syntax
 
 	ErrInvalidAssignment     // Assignment to non-variable or property
+	ErrColonEqual            // := used instead of = in default value assignment
+	ErrDestructPatAfterColon // Non-identifier after : in destructure
+	ErrDestructInvalidEqual  // Default value provided after destructure in object
 	ErrReservedKeyword       // Reserved keyword used as an identifier
 	ErrExpectedExpression    // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
@@ -212,7 +215,8 @@ func (e ParseError) error() string {
 		case lexer.ErrEscapeExpHex:
 			return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 		case lexer.ErrEscapeUnknown:
-			return "I don't understand this escape code"
+			esc := e.Params["escape"].(string)
+			return "Invalid character escape " + Quote(esc)
 		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
 			if kind == lexer.EscUnicode {
 				return "Expected between 1-6 hex digits in Unicode escape"

@@ -454,8 +454,9 @@ type ForStatement struct {
 }
 
 // A WhileStatement executes Body while Condition is true
-// 	while { ...infinite loop }
-// 	while <expr> - while loop
+//
+//	while { ...infinite loop }
+//	while <expr> - while loop
 type WhileStatement struct {
 	BaseNode
 	Infinite  bool // No condition
@@ -470,6 +471,7 @@ type WhenExpression struct {
 }
 
 type WhenCase struct {
+	BaseNode
 	Options  [][]Expression
 	Guard    Expression  // <case> when <expr>
 	Body     []Statement // -> <expr> | -> {...}
@@ -547,6 +549,7 @@ type ObjectPipeline struct {
 // Values that can be used in VariableDeclaration implement Destructure.
 // (a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
+	Node
 	destruct()
 }
 
@@ -557,21 +560,22 @@ type ListDestructure struct {
 }
 
 // Object or map destructure
-type KeyDestructure struct {
+type ObjectDestructure struct {
 	BaseNode
-	Values []*KeyDestructureEntry
+	Values []*ObjectDestructureEntry
 }
 
-// Entry for [KeyDestructure]
+// Entry for [ObjectDestructure]
 //
 //	#{ in.(name, age) }
 //	#{ cond: when }
-//	#{ data[{ key }] }
-//	#{ data[{ myKey: key }] }
-//	#{ data[first] }
-type KeyDestructureEntry struct {
+//	#{ data.[{ key }] }
+//	#{ data.[{ myKey: key }] }
+//	#{ data.[first] }
+type ObjectDestructureEntry struct {
 	BaseNode
-	Alias  *Symbol // optional
-	Object *Symbol // optional
-	Index  Destructure
+	Alias  *Symbol     // before the :
+	Object *Symbol     // after the : or before the .
+	Index  Destructure // after the dot
+	Default Expression
 }

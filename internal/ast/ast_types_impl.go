@@ -104,6 +104,18 @@ func (TupleLiteral) assignable()    {}
 func (BadExpression) assignable()   {}
 
 // Destructuring
-func (d *ListDestructure) destruct() {}
-func (d *KeyDestructure) destruct()  {}
-func (d *Symbol) destruct()          {}
+func (d *ListDestructure) destruct()   {}
+func (d *ObjectDestructure) destruct() {}
+func (d *BadExpression) destruct()     {}
+func (d *Symbol) destruct()            {}
+
+// Operator
+func (o *Operator) Len() uint32 {
+	return uint32(len(o.Kind.String()))
+}
+
+func (o *Operator) End() lexer.Position {
+	pos := o.Position
+	pos.Col += o.Len()
+	return pos
+}

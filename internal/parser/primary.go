@@ -47,8 +47,6 @@ func (p *Parser) handleInvalidNumber(code, format int, tok lexer.Token) {
 				lexer.NumberFormatHex:     errors.ErrExpectedHex,
 			}[format], errPos, tok,
 		)
-	case lexer.ErrIntIllegalExponent:
-
 	}
 	p.Error(err)
 }
@@ -101,8 +99,6 @@ func (p *Parser) ParsePrimaryExpression() ast.Expression {
 		}
 	case lexer.Boolean:
 		return &ast.BooleanLiteral{Value: src == "true"}
-	case lexer.HashLeftCurlyBrace:
-		return p.ParseMap()
 	case lexer.Nil:
 		return &ast.NilLiteral{}
 	}

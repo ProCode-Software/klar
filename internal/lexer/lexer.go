@@ -188,5 +188,5 @@ func IsDigit(r rune) bool {
 
 // IsIdent reports whether r is the beginning of an identifier
 func IsIdent(r rune) bool {
-
+	return r == '_' || unicode.IsLetter(r)
 }

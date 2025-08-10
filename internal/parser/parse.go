@@ -21,8 +21,7 @@ func (p *Parser) Parse() *ast.Program {
 			break
 		}
 		if p.CurrentTokenKind() == lexer.EndOfStatement {
-			p.Index++
-			continue
+			p.Advance()
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
@@ -35,7 +34,7 @@ func (p *Parser) unknownTokenErr() {
 	p.Error(errors.UnexpectedToken(p.CurrentToken()))
 	switch curr := p.CurrentTokenKind(); curr {
 	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
-		lexer.RightParenthesis, lexer.RightBracket:
+		lexer.RightParenthesis, lexer.RightBracket, lexer.Comma:
 	default:
 		p.Advance()
 	}
@@ -60,6 +59,9 @@ func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 
 func (p *Parser) ParseFull(bp BindingPower) ast.Node {
 	kind := p.CurrentTokenKind()
+	if kind == lexer.EOF {
+		return &ast.BadExpression{Token: kind}
+	}
 	left, handled := p.handleNUD(kind)
 	if !handled {
 		p.unknownTokenErr()
@@ -118,7 +120,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	}
 }
 
-func parseSeriesWithBP[T any](
+func parseSeriesWithBP[T ast.Node](
 	p *Parser, arr *[]T,
 	bp BindingPower, until, sepBy lexer.TokenType,
 ) {
@@ -129,31 +131,27 @@ func parseSeriesWithBP[T any](
 	)
 }
 
-func parseSeries[T any](
+func parseSeries[T ast.Node](
 	p *Parser, arr *[]T,
-	with func() T, until, sepBy lexer.TokenType,
-	end bool,
+	with func() T, until, separator lexer.TokenType,
+	allowEOS bool,
 ) {
 	parse := func() T {
 		start := p.CurrentToken().Position
-		item := with()
-		if n, ok := any(item).(ast.Node); ok && n.GetRange().IsZero() {
-			item = markStartEndPos(p, n, start).(T)
-		}
-		return item
+		return markStartEndPos(p, with(), start)
 	}
-	if end {
+	if allowEOS {
 		for p.WhileNot(until) {
 			*arr = append(*arr, parse())
-			if sepBy != 0 && p.CurrentTokenKind() != until {
-				p.Expect(sepBy)
+			if separator != 0 && p.CurrentTokenKind() != until {
+				p.Expect(separator)
 			}
 		}
 	} else {
 		for p.WhileNotEndOr(until) {
 			*arr = append(*arr, parse())
-			if sepBy != 0 && p.IsNotCurrentlyEndOr(until) {
-				p.Expect(sepBy)
+			if separator != 0 && p.IsNotCurrentlyEndOr(until) {
+				p.Expect(separator)
 			}
 		}
 	}

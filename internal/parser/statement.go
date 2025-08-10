@@ -228,24 +228,13 @@ func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
 
 func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
-	f := &ast.ForStatement{
-		Variables: p.ParseDestructureSeries(),
+	f := &ast.ForStatement{}
+	if c := p.CurrentTokenKind(); c == lexer.LeftBracket || c == lexer.LeftParenthesis {
+		// Peek for `in` before parsing destructure
 	}
-	
-	next := p.Peek().Kind
-	switch {
-	case p.CurrentTokenKind() == lexer.LeftCurlyBrace:
-		// for { - infinite loop
-		f.Infinite = true
-	case next == lexer.In, next == lexer.Comma:
-		// for-in
-		parseSeries(p, &f.Variables, func() string {
-			return p.Expect(lexer.Identifier, lexer.Underscore).Source
-		}, lexer.In, lexer.Comma, false)
-		fallthrough
-	default:
-		f.Expression = p.ParseExpression(ExpressionBindingPower)
-	}
+	f.Variables = p.ParseDestructureSeries()
+	p.Expect(lexer.In)
+	f.Expression = p.ParseExpression(ExpressionBindingPower)
 	f.Body = p.ParseBlock()
 	return f
 }
@@ -255,7 +244,6 @@ func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 	w := &ast.WhileStatement{}
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		w.Infinite = true
-		p.Advance()
 	} else {
 		w.Condition = p.ParseExpression(ExpressionBindingPower)
 		p.Expect(lexer.LeftCurlyBrace)
