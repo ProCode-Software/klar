@@ -98,12 +98,18 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 
 func (p *Parser) ParseStatement() ast.Statement {
 	kind := p.CurrentTokenKind()
-	result, handled := p.handleStatement(kind, false)
+	var res ast.Node
+	res, handled := p.handleStatement(kind, false)
 	if handled {
 		p.Expect(lexer.EndOfStatement)
-		return result
+		return res.(ast.Statement)
 	}
-	res := p.ParseFull(DefaultBindingPower)
+	res, handled = p.handleStatementNUD(kind)
+	if handled {
+		res = p.ParseLED(res, DefaultBindingPower)
+	} else {
+		res = p.ParseFull(DefaultBindingPower)
+	}
 	p.Expect(lexer.EndOfStatement)
 	switch res := res.(type) {
 	// Left-denoted statement

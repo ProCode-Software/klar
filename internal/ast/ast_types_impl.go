@@ -20,37 +20,38 @@ func (HexadecimalEscape) stringEsc()   {}
 func (StringInterpolation) stringEsc() {}
 
 // Expressions
-func (BinaryExpression) expr()    {}
-func (UnaryExpression) expr()     {}
-func (NilLiteral) expr()          {}
-func (StringLiteral) expr()       {}
-func (IntegerLiteral) expr()      {}
-func (FloatLiteral) expr()        {}
-func (BooleanLiteral) expr()      {}
-func (Symbol) expr()              {}
-func (TypeAnnotation) expr()      {}
-func (MapLiteral) expr()          {}
-func (TupleLiteral) expr()        {}
-func (ListLiteral) expr()         {}
-func (IndexExpression) expr()     {}
-func (CallExpression) expr()      {}
-func (EnumLiteral) expr()         {}
-func (Discard) expr()             {}
-func (WhenExpression) expr()      {}
-func (TypeTuple) expr()           {}
-func (LambdaExpression) expr()    {}
-func (RangeExpression) expr()     {}
-func (RestExpression) expr()      {}
-func (PipelineExpression) expr()  {}
-func (BadExpression) expr()       {}
-func (SliceExpression) expr()     {}
-func (ParenExpression) expr()     {}
-func (RegexLiteral) expr()        {}
-func (VersionLiteral) expr()      {}
-func (ListCastExpression) expr()  {}
-func (ObjectPipeline) expr()      {}
-func (ForExpression) expr()       {}
-func (ShortInitExpression) expr() {}
+func (BinaryExpression) expr()   {}
+func (UnaryExpression) expr()    {}
+func (NilLiteral) expr()         {}
+func (StringLiteral) expr()      {}
+func (IntegerLiteral) expr()     {}
+func (FloatLiteral) expr()       {}
+func (BooleanLiteral) expr()     {}
+func (Symbol) expr()             {}
+func (TypeAnnotation) expr()     {}
+func (MapLiteral) expr()         {}
+func (TupleLiteral) expr()       {}
+func (ListLiteral) expr()        {}
+func (IndexExpression) expr()    {}
+func (CallExpression) expr()     {}
+func (EnumLiteral) expr()        {}
+func (Discard) expr()            {}
+func (WhenExpression) expr()     {}
+func (TypeTuple) expr()          {}
+func (LambdaExpression) expr()   {}
+func (RangeExpression) expr()    {}
+func (RestExpression) expr()     {}
+func (PipelineExpression) expr() {}
+func (BadExpression) expr()      {}
+func (SliceExpression) expr()    {}
+func (ParenExpression) expr()    {}
+func (RegexLiteral) expr()       {}
+func (VersionLiteral) expr()     {}
+func (ListCastExpression) expr() {}
+func (ObjectPipeline) expr()     {}
+func (ForExpression) expr()      {}
+func (StructDotInit) expr()      {}
+func (DestructureVars) expr()    {}
 
 // Statement
 func (BadExpression) stmt()        {}
@@ -101,13 +102,14 @@ func (Symbol) assignable()          {}
 func (IndexExpression) assignable() {}
 func (SliceExpression) assignable() {}
 func (TupleLiteral) assignable()    {}
+func (DestructureVars) assignable() {}
 func (BadExpression) assignable()   {}
 
 // Destructuring
 func (d *ListDestructure) destruct()   {}
 func (d *ObjectDestructure) destruct() {}
 func (d *BadExpression) destruct()     {}
-func (d *Symbol) destruct()            {}
+func (d *SymbolDestructure) destruct() {}
 
 // Operator
 func (o *Operator) Len() uint32 {

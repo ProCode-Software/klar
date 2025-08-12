@@ -9,6 +9,7 @@ const (
 	CodeCyan    = "\033[36m"
 	CodeMagenta = "\033[35m"
 	CodeGreen   = "\033[32m"
+	CodeGray    = "\033[90m"
 
 	CodeReset     = "\033[m"
 	CodeBold      = "\033[1m"
@@ -57,6 +58,7 @@ func Cyan(s string) string        { return Color(CodeCyan, s) }
 func Magenta(s string) string     { return Color(CodeMagenta, s) }
 func Bold(s string) string        { return Color(CodeBold, s) }
 func Dim(s string) string         { return Color(CodeDim, s) }
+func Gray(s string) string        { return Color(CodeGray, s) }
 func Italic(s string) string      { return Color(CodeItalic, s) }
 func Underline(s string) string   { return Color(CodeUnderline, s) }
 func BoldRed(s string) string     { return Color(CodeBoldRed, s) }

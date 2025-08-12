@@ -149,10 +149,8 @@ type PublicDeclaration struct {
 // todo: multiple assignees
 type VariableDeclaration struct {
 	BaseNode
-
-	Assignee     Expression
+	Variables    []Destructure
 	Value        Expression
-	Constant     bool // Constant if Identifier is capitalized
 	ExplicitType Type
 }
 
@@ -242,7 +240,7 @@ type MethodTypeParam struct {
 }
 type TypeAnnotation struct {
 	BaseNode
-	Variable Expression
+	Variable *DestructureVars
 	Type     Type
 }
 
@@ -424,10 +422,10 @@ type CallExpression struct {
 	BaseNode
 }
 
-// ShortInitExpression is a shorthand constructor for known types
+// StructDotInit is a shorthand constructor for known types
 //
 //	people: [Person] := [.("John", age: 32), .("Jane", age: 31)]
-type ShortInitExpression struct {
+type StructDotInit struct {
 	BaseNode
 	Params []*CallParam
 }
@@ -559,6 +557,12 @@ type ListDestructure struct {
 	Values []Destructure
 }
 
+type SymbolDestructure struct {
+	BaseNode
+	Identifier string
+	Constant   bool
+}
+
 // Object or map destructure
 type ObjectDestructure struct {
 	BaseNode
@@ -574,8 +578,13 @@ type ObjectDestructure struct {
 //	#{ data.[first] }
 type ObjectDestructureEntry struct {
 	BaseNode
-	Alias  *Symbol     // before the :
-	Object *Symbol     // after the : or before the .
-	Index  Destructure // after the dot
+	Alias   *SymbolDestructure // before the :
+	Object  *Symbol            // after the : or before the .
+	Index   Destructure        // after the dot
 	Default Expression
+}
+
+type DestructureVars struct {
+	BaseNode
+	Values []Destructure
 }

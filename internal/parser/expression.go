@@ -219,9 +219,18 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 	return &ast.CallExpression{Callee: left, Args: args}
 }
 
-func (p *Parser) ParseEnumLiteral() *ast.EnumLiteral {
+func (p *Parser) ParseEnumLiteral() ast.Expression {
 	p.Expect(lexer.Dot)
+	if p.CurrentTokenKind() == lexer.LeftParenthesis {
+		return p.ParseStructDotInit()
+	}
 	return &ast.EnumLiteral{Name: p.Expect(lexer.Identifier).Source}
+}
+
+func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
+	p.Expect(lexer.Dot)
+	call := p.ParseCallExpression(nil, CallBindingPower)
+	return &ast.StructDotInit{Params: call.Args}
 }
 
 func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpression {

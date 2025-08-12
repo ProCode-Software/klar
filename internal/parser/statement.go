@@ -31,6 +31,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	rhs := p.ParseExpression(bp)
 	if op.Kind == lexer.ColonEqual {
 		var explicitType ast.Type
+		var vars []ast.Destructure
 		switch annot := left.(type) {
 		case ast.Assignable:
 		case *ast.TypeAnnotation:
@@ -39,20 +40,8 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		default:
 			left = &ast.BadExpression{Value: left}
 		}
-		// Constants are ALL_CAPS
-		// Limitation: if the name is written in a script without distinct
-		// capital letters, we can't tell if it is all caps or not, so it
-		// is just not constant.
-
-		var isConst bool
-		if symbol, ok := left.(*ast.Symbol); ok {
-			id := symbol.Identifier
-			upper := strings.ToUpper(id)
-			isConst = id == upper && upper != strings.ToLower(id)
-		}
 		return &ast.VariableDeclaration{
-			Assignee:     left,
-			Constant:     isConst,
+			Variables:    vars,
 			Value:        rhs,
 			ExplicitType: explicitType,
 		}
@@ -65,6 +54,15 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		Operator: newOperator(op),
 		Value:    rhs,
 	}
+}
+
+// Constants are ALL_CAPS
+// Limitation: if the name is written in a script without distinct
+// capital letters, we can't tell if it is all caps or not, so it
+// is just not constant.
+func isConstant(id string) bool {
+	upper := strings.ToUpper(id)
+	return id == upper && upper != strings.ToLower(id)
 }
 
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
@@ -267,4 +265,13 @@ func isAssignment(kind lexer.TokenType) bool {
 		return true
 	}
 	return false
+}
+
+// Validate the += or -= operator at
+func (p *Parser) ParseDestructureDeclaration() ast.Statement {
+	var left ast.Expression = &ast.DestructureVars{Values: p.ParseDestructureSeries()}
+	if p.CurrentTokenKind() == lexer.Colon {
+		left = p.ParseVarTypeAnnotation(left, AssignBindingPower)
+	}
+	return p.ParseAssignment(left, AssignBindingPower)
 }

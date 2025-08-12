@@ -64,7 +64,7 @@ func Walk(t Node, visitor func(Node)) {
 	case *TypePair:
 		Walk(t.Value, visitor)
 	case *VariableDeclaration:
-		Walk(t.Assignee, visitor)
+		Walk(t.Variables, visitor)
 		Walk(t.ExplicitType, visitor)
 		Walk(t.Value, visitor)
 	case *RegexLiteral, *StringLiteral, *BooleanLiteral, *NilLiteral,

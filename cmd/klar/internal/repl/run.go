@@ -15,7 +15,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
-	"github.com/sanity-io/litter"
 )
 
 var ErrPrinter = errors.Printer{MaxLines: 3, Color: true}
@@ -61,7 +60,6 @@ func Run(*command.Runner) {
 			}
 			continue
 		}
-		litter.Dump(prog)
 		_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
 			FilePath: "repl",
 			Target:   target.Double{Target: target.KlarVM},

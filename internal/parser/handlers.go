@@ -173,6 +173,18 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 	return res, true
 }
 
+func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
+	switch kind {
+			case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
+		lexer.Identifier:
+		if p.isDestructureAssignment() {
+			res = p.ParseDestructureDeclaration()
+		} else {
+			return nil, false
+		}
+	}
+}
+
 // =================
 // TYPES
 // =================
@@ -220,9 +232,8 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 
 func (p *Parser) isListCast() bool {
 	i := p.Index
-	brackCount := 0
 loop:
-	for ; ; i++ {
+	for brackCount := 0; ; i++ {
 		tok := p.Tokens[i]
 		switch tok.Kind {
 		case lexer.RightBracket:
@@ -242,4 +253,31 @@ loop:
 		}
 	}
 	return p.Tokens[i+1].Kind == lexer.LeftParenthesis
+}
+
+func (p *Parser) isDestructureAssignment() bool {
+	i := p.Index
+loop:
+	for brackCount := 0; ; i++ {
+		tok := p.Tokens[i]
+		switch tok.Kind {
+		case lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
+			lexer.LeftBracket, lexer.LeftCurlyBrace:
+			brackCount++
+		case lexer.RightBracket, lexer.RightParenthesis, lexer.RightCurlyBrace:
+			brackCount--
+			if brackCount == 0 {
+				i++
+				break loop
+			}
+		case lexer.Equal, lexer.ColonEqual,
+			lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma:
+			if brackCount < 1 {
+				return true
+			}
+		case lexer.EOF:
+			return false
+		}
+	}
+	return false
 }

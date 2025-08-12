@@ -73,7 +73,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
 
 func (c *Checker) CheckVarDecl(decl *ast.VariableDeclaration, ctx context) {
 	var explType, actualType Type
-	name := decl.Assignee.(*ast.Symbol).Identifier // todo: implement other types
+	name := decl.Variables.(*ast.Symbol).Identifier // todo: implement other types
 	if decl.ExplicitType != nil {
 		explType = c.ParseType(decl.ExplicitType, ctx)
 		_, ok := c.CheckCompatibleExpr(explType, decl.Value, ctx)
