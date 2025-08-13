@@ -555,7 +555,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 			markStartEndPos(p, lhs, start)
 		} else {
 			start := p.CurrentToken().Position
-			lhs = p.ParsePrimaryExpression()
+			lhs = p.ParsePrimaryExpression() // TODO: other keywords
 			// Must be symbol
 			if _, ok := lhs.(*ast.Symbol); !ok {
 				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
@@ -563,7 +563,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 			}
 			markStartEndPos(p, lhs, start)
 		}
-		// Index
+		// Index or call
 		if k := p.CurrentTokenKind(); !isAssignment(k) && k != lexer.StrokeDot {
 			lhs = p.ParseLED(lhs, bp).(ast.Expression)
 		}
@@ -571,7 +571,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 		if k := p.CurrentTokenKind(); isAssignment(k) && k != lexer.ColonEqual {
 			p.validateAssignable(lhs)
 			assg := &ast.AssignmentStatement{
-				Assignee: lhs.(ast.Assignable),
+				Assignee: []ast.Assignable{lhs.(ast.Assignable)},
 				Operator: newOperator(p.Advance()),
 				Value:    p.ParseExpression(bp),
 			}

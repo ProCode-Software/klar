@@ -33,6 +33,7 @@ const (
 	Boolean
 	Nil
 	String
+	Regex
 	Underscore // _
 
 	// Binary

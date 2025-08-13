@@ -72,7 +72,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
 }
 
 func (c *Checker) CheckVarDecl(decl *ast.VariableDeclaration, ctx context) {
-	var explType, actualType Type
+	/* var explType, actualType Type
 	name := decl.Variables.(*ast.Symbol).Identifier // todo: implement other types
 	if decl.ExplicitType != nil {
 		explType = c.ParseType(decl.ExplicitType, ctx)
@@ -87,5 +87,5 @@ func (c *Checker) CheckVarDecl(decl *ast.VariableDeclaration, ctx context) {
 	}
 	if ok := ctx.Declare(name, decl.Constant, actualType, decl.GetRange()); !ok {
 		c.ErrRedeclared(errors.ErrRedeclaredVar, name, decl.GetRange(), "variable", ctx)
-	}
+	} */
 }

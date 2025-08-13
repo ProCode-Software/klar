@@ -15,7 +15,7 @@ const (
 	colorString   = ansi.CodeGreen
 	colorBoolean  = colorNumber
 	colorComment  = ansi.CodeDim
-	colorPunct    = ansi.CodeDim
+	colorPunct    = ansi.CodeGray
 	colorType     = ansi.CodeYellow
 	colorFunc     = ansi.CodeMagenta
 	colorBuiltin  = ansi.CodeBlue

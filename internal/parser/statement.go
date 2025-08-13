@@ -9,19 +9,22 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) *ast.TypeAnnotation {
-	// LHS must be a Symbol or index
-	p.validateAssignable(left)
-	// Skip the :
-	p.Advance()
-	typ := p.ParseType(bp)
-	if !p.isWhenCase && p.CurrentTokenKind() != lexer.ColonEqual {
-		p.Error(errors.ExpectedToken(lexer.ColonEqual, p.CurrentToken()))
+func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPower) *ast.TypeAnnotation {
+	p.Advance() // :
+	annot := &ast.TypeAnnotation{
+		Variable: left,
+		Type:     p.ParseType(DefaultTypeBindingPower),
 	}
-	return &ast.TypeAnnotation{
-		Variable: left.(ast.Expression),
-		Type:     typ,
+	if curr := p.CurrentToken(); !p.isWhenCase {
+		switch curr.Kind {
+		case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
+			p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
+		case lexer.ColonEqual:
+		default:
+			p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
+		}
 	}
+	return annot
 }
 
 // ParseAssignment parses a variable declaration or reassignment statement.
@@ -32,13 +35,20 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	if op.Kind == lexer.ColonEqual {
 		var explicitType ast.Type
 		var vars []ast.Destructure
-		switch annot := left.(type) {
-		case ast.Assignable:
-		case *ast.TypeAnnotation:
-			explicitType = annot.Type
+		if annot, ok := left.(*ast.TypeAnnotation); ok {
 			left = annot.Variable
-		default:
-			left = &ast.BadExpression{Value: left}
+			explicitType = annot.Type
+		}
+		if left, ok := left.(*ast.DestructureVars); ok {
+			for _, v := range left.Values {
+				if _, ok := v.(ast.Destructure); !ok {
+					p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
+					v = &ast.BadExpression{Value: v}
+				}
+				vars = append(vars, v.(ast.Destructure))
+			}
+		} else {
+			p.Error(errors.Node(errors.ErrInvalidAssignment, left))
 		}
 		return &ast.VariableDeclaration{
 			Variables:    vars,
@@ -46,11 +56,14 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 			ExplicitType: explicitType,
 		}
 	}
-	if !p.validateAssignable(left) {
-		left = &ast.BadExpression{Value: left}
+	var values []ast.Assignable
+	if l, ok := left.(*ast.DestructureVars); ok {
+		values = l.Values
+	} else {
+		values = []ast.Assignable{&ast.BadExpression{Value: left}}
 	}
 	return &ast.AssignmentStatement{
-		Assignee: left.(ast.Assignable),
+		Assignee: values,
 		Operator: newOperator(op),
 		Value:    rhs,
 	}
@@ -227,11 +240,11 @@ func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
 func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
-	if c := p.CurrentTokenKind(); c == lexer.LeftBracket || c == lexer.LeftParenthesis {
+	if p.isDestructureAssignment() {
+		f.Variables = p.ParseDestructureSeries()
+		p.Expect(lexer.In)
 		// Peek for `in` before parsing destructure
 	}
-	f.Variables = p.ParseDestructureSeries()
-	p.Expect(lexer.In)
 	f.Expression = p.ParseExpression(ExpressionBindingPower)
 	f.Body = p.ParseBlock()
 	return f
@@ -244,7 +257,6 @@ func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 		w.Infinite = true
 	} else {
 		w.Condition = p.ParseExpression(ExpressionBindingPower)
-		p.Expect(lexer.LeftCurlyBrace)
 	}
 	w.Body = p.ParseBlock()
 	return w
@@ -265,13 +277,4 @@ func isAssignment(kind lexer.TokenType) bool {
 		return true
 	}
 	return false
-}
-
-// Validate the += or -= operator at
-func (p *Parser) ParseDestructureDeclaration() ast.Statement {
-	var left ast.Expression = &ast.DestructureVars{Values: p.ParseDestructureSeries()}
-	if p.CurrentTokenKind() == lexer.Colon {
-		left = p.ParseVarTypeAnnotation(left, AssignBindingPower)
-	}
-	return p.ParseAssignment(left, AssignBindingPower)
 }

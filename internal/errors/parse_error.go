@@ -30,6 +30,7 @@ const (
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedRegex   // Missing / in regex literal
 	ErrMisplacedShebang
+	ErrInvalidComma // Comma statement
 
 	// Literal
 	ErrStringEscape     // Invalid string escape
@@ -44,8 +45,12 @@ const (
 	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
 	ErrInvalidVersionLit   // Invalid version literal syntax
 
+	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
+	ErrExpectedAssignment    // := or type annotation expected
 	ErrInvalidAssignment     // Assignment to non-variable or property
+	ErrNonNameDeclaration    // Non-name on left-hand side of variable declaration
 	ErrColonEqual            // := used instead of = in default value assignment
+	ErrInvalidTypeAnnotation // Type annotation on existing variable assignment
 	ErrDestructPatAfterColon // Non-identifier after : in destructure
 	ErrDestructInvalidEqual  // Default value provided after destructure in object
 	ErrReservedKeyword       // Reserved keyword used as an identifier
@@ -72,6 +77,7 @@ const (
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 
+	// Analysis-time errors
 	ErrRedeclaredVar        // Can't redeclare variable or function
 	ErrRedeclaredType       // Redeclared type
 	ErrRedeclaredEnum       // Redeclared enum member
@@ -134,32 +140,24 @@ func (e ParseError) error() string {
 		return "This isn't an expression"
 	case ErrInvalidAssignment:
 		return "Can't assign to this kind of expression"
+	case ErrInvalidTypeAnnotation:
+		return "Type annotations are are only allowed on new variables"
 	case ErrExpectedToken:
 		expToken := e.Params["expected"].(lexer.TokenType)
 		expected := FormatTokenType(expToken)
 		if src == ";" {
-			return "Semicolons aren't allowed in Klar; use line breaks to terminate statements"
+			return "A line break must be used to terminate statements in Klar"
 		}
-		switch expToken {
-		case lexer.RightCurlyBrace, lexer.RightParenthesis, lexer.GreaterThan, lexer.RightBracket:
-			beginMap := map[lexer.TokenType]lexer.TokenType{
-				lexer.RightCurlyBrace:  lexer.LeftCurlyBrace,
-				lexer.RightParenthesis: lexer.LeftParenthesis,
-				lexer.GreaterThan:      lexer.LessThan,
-				lexer.RightBracket:     lexer.LeftBracket,
-			}
-			begin := beginMap[expToken]
-			if e.Params != nil && e.Params["isMap"] == true {
-				begin = lexer.HashLeftCurlyBrace
-			}
-			return fmt.Sprintf("Expected %s to close %s",
-				expected, FormatTokenType(begin),
-			)
+		endTypeMap := map[lexer.TokenType]string{
+			lexer.RightCurlyBrace:  "brace",
+			lexer.RightParenthesis: "parenthesis",
+			lexer.GreaterThan:      "angle bracket",
+			lexer.RightBracket:     "bracket",
 		}
-		return fmt.Sprintf(
-			"I expected %s, but found %s instead",
-			expected, NameToken(tok),
-		)
+		if endType, ok := endTypeMap[expToken]; ok {
+			return fmt.Sprintf("Missing closing %s %s", endType, expected)
+		}
+		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
 	case ErrWildcardAndUnqImport:
 		return "Can't have both '*' and unqualified import in import statement"
 	case ErrImportTooManyWildcard:
@@ -177,7 +175,7 @@ func (e ParseError) error() string {
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
-			return "Semicolons aren't allowed in Klar. Use line breaks to terminate statements"
+			return "A line break must be used to terminate statements in Klar"
 		case kind == lexer.EOF:
 			return "Unexpected end of file"
 		case kind == lexer.Newline:
@@ -285,6 +283,10 @@ func (e ParseError) error() string {
 		return "Can't use return statement outside of a function"
 	case ErrReturnPipelineNotLast:
 		return "Return in pipeline must be the last step"
+	case ErrEmptyDestructure:
+		return "Destructure pattern can't be empty"
+	case ErrNonNameDeclaration:
+		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

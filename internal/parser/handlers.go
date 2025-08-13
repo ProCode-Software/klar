@@ -87,7 +87,11 @@ func (p *Parser) handleLED(
 		res = p.ParseBinaryExpression(left, bp)
 	// Type annotation
 	case lexer.Colon:
-		res = p.ParseVarTypeAnnotation(left, bp)
+		if left, ok := left.(*ast.DestructureVars); ok {
+			res = p.ParseVarTypeAnnotation(left, bp)
+		} else {
+			return nil, false
+		}
 	// Index
 	case lexer.Dot, lexer.LeftBracket:
 		res = p.ParseIndexExpression(left, bp)
@@ -174,15 +178,20 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 }
 
 func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
+	startPos := p.CurrentToken().Position
 	switch kind {
-			case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
-		lexer.Identifier:
+	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
+		lexer.Identifier, lexer.Underscore:
 		if p.isDestructureAssignment() {
-			res = p.ParseDestructureDeclaration()
-		} else {
-			return nil, false
+			res = p.ParseDestructureVars()
+			break
 		}
+		fallthrough
+	default:
+		return nil, false
 	}
+	res.SetPos(startPos, p.lastTokEnd())
+	return res, true
 }
 
 // =================
@@ -245,11 +254,15 @@ loop:
 			brackCount++
 		case lexer.Stroke, lexer.Question:
 			return true
-		default:
-			return false
+		case lexer.Comma:
+			if brackCount < 2 {
+				return false
+			}
 		case lexer.LeftParenthesis, lexer.RightParenthesis,
 			lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
-			lexer.Dot, lexer.Arrow, lexer.Ellipsis, lexer.Comma:
+			lexer.Dot, lexer.Arrow, lexer.Ellipsis:
+		default:
+			return false
 		}
 	}
 	return p.Tokens[i+1].Kind == lexer.LeftParenthesis
@@ -271,13 +284,19 @@ loop:
 				break loop
 			}
 		case lexer.Equal, lexer.ColonEqual,
-			lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma:
+			lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
 			if brackCount < 1 {
 				return true
 			}
 		case lexer.EOF:
 			return false
 		}
+	}
+
+	switch p.Tokens[i].Kind {
+	case lexer.Equal, lexer.ColonEqual,
+		lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
+		return true
 	}
 	return false
 }

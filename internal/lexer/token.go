@@ -55,6 +55,7 @@ var TokenTypeString = map[TokenType]string{
 	EndOfStatement: "newline",
 	Illegal:        "illegal",
 	Identifier:     "identifier",
+	Regex:          "regular expression",
 	EOF:            "EOF",
 }
 

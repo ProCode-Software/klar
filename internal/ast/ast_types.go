@@ -137,6 +137,7 @@ type Symbol struct {
 type Discard struct{ BaseNode } // _
 
 type Assignable interface {
+	Node
 	assignable()
 }
 
@@ -156,7 +157,7 @@ type VariableDeclaration struct {
 
 type AssignmentStatement struct {
 	BaseNode
-	Assignee Assignable
+	Assignee []Assignable
 	Operator Operator
 	Value    Expression
 }
@@ -548,6 +549,7 @@ type ObjectPipeline struct {
 // (a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
 	Node
+	Assignable
 	destruct()
 }
 
@@ -586,5 +588,5 @@ type ObjectDestructureEntry struct {
 
 type DestructureVars struct {
 	BaseNode
-	Values []Destructure
+	Values []Assignable
 }

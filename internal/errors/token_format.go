@@ -39,18 +39,10 @@ func QuoteType(typ types.Type) string {
 }
 
 func NameToken(tok lexer.Token) string {
-	switch tok.Kind {
-	default:
-		return Quote(tok.Source)
-	case lexer.Comma:
-		return "a comma"
-	case lexer.EOF:
-		return "end of file"
-	case lexer.EndOfStatement:
-		return "a newline"
-	case lexer.Colon:
-		return "a colon"
+	if str, ok := TypeStringMap[tok.Kind]; ok {
+		return str
 	}
+	return Quote(tok.Source)
 }
 
 var TypeStringMap = map[lexer.TokenType]string{
@@ -58,6 +50,7 @@ var TypeStringMap = map[lexer.TokenType]string{
 	lexer.Numeric:        "a number",
 	lexer.Boolean:        "a boolean",
 	lexer.String:         "a string",
+	lexer.Regex: "regular expression",
 	lexer.Nil:            "'nil'",
 	lexer.And:            "'and'",
 	lexer.Or:             "'or'",

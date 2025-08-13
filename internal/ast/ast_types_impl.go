@@ -53,7 +53,7 @@ func (ForExpression) expr()      {}
 func (StructDotInit) expr()      {}
 func (DestructureVars) expr()    {}
 
-// Statement
+// Statements
 func (BadExpression) stmt()        {}
 func (VariableDeclaration) stmt()  {}
 func (UpdateStatement) stmt()      {}
@@ -87,7 +87,7 @@ func (UnionType) _type()     {}
 func (MethodType) _type()    {}
 func (BadExpression) _type() {}
 
-// Type declaration
+// Type declarations
 func (TypeAliasDeclaration) typeDecl()      {}
 func (StructDeclaration) typeDecl()         {}
 func (EnumDeclaration) typeDecl()           {}
@@ -97,26 +97,30 @@ func (d StructDeclaration) Name() string    { return d.Identifier }
 func (d EnumDeclaration) Name() string      { return d.Identifier }
 func (d InterfaceDeclaration) Name() string { return d.Identifier }
 
-// Assignable types
+// Can be used on left side of =
 func (Symbol) assignable()          {}
 func (IndexExpression) assignable() {}
 func (SliceExpression) assignable() {}
-func (TupleLiteral) assignable()    {}
 func (DestructureVars) assignable() {}
 func (BadExpression) assignable()   {}
+func (Discard) assignable()         {}
 
 // Destructuring
-func (d *ListDestructure) destruct()   {}
-func (d *ObjectDestructure) destruct() {}
-func (d *BadExpression) destruct()     {}
-func (d *SymbolDestructure) destruct() {}
+func (ListDestructure) destruct()     {}
+func (ObjectDestructure) destruct()   {}
+func (BadExpression) destruct()       {}
+func (SymbolDestructure) destruct()   {}
+func (Discard) destruct()             {}
+func (ListDestructure) assignable()   {}
+func (ObjectDestructure) assignable() {}
+func (SymbolDestructure) assignable() {}
 
 // Operator
-func (o *Operator) Len() uint32 {
+func (o Operator) Len() uint32 {
 	return uint32(len(o.Kind.String()))
 }
 
-func (o *Operator) End() lexer.Position {
+func (o Operator) End() lexer.Position {
 	pos := o.Position
 	pos.Col += o.Len()
 	return pos
