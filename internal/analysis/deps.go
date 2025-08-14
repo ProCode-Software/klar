@@ -31,7 +31,7 @@ func getC1AndC2Deps(typ ast.Type, c1Arr, c2Arr *[]string) {
 			getC1AndC2Deps(opt, c2Arr, c2Arr)
 		}
 	case *ast.FunctionType:
-		list = append(list, t.Parameters...)
+		// list = append(list, t.Parameters...)
 		list = append(list, t.ReturnType)
 	case *ast.RestType:
 		list = append(list, t.Value)

@@ -44,17 +44,13 @@ func (l *Lexer) Tokenize() *Token {
 			l.ResetPosition()
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
-			return l.ParseString(pos, r)
+			return l.ParseString(pos, r, 0)
 		case '.':
-			if err := l.Reader.UnreadRune(); err != nil {
-				panic(err)
-			}
-			next, err := l.Reader.Peek(2)
-			l.Reader.ReadRune()
-			if handleReadError(err) {
+			next, isEOF := l.BackupPeek()
+			if isEOF {
 				return NewToken(pos, Dot, ".")
 			}
-			if IsDigit(rune(next[1])) {
+			if IsDigit(rune(next)) {
 				return l.ParseNumber(pos)
 			}
 			fallthrough
@@ -83,6 +79,17 @@ func (l *Lexer) Tokenize() *Token {
 		case '\\':
 			return NewToken(pos, Backslash, `\`)
 		case '@':
+			next, isEOF := l.BackupPeek()
+			if !isEOF {
+				switch next {
+				case '"', '`', '\'':
+					next := rune(next)
+					quoteLen := l.ReadAll(next)
+					return l.ParseString(pos, next, quoteLen)
+				case '/':
+
+				}
+			}
 			return NewToken(pos, At, "@")
 		case '*':
 			return NewToken(pos, Asterisk, "*")
@@ -180,6 +187,39 @@ func (l *Lexer) prevCol() Position {
 	p := l.Pos
 	l.Pos.Col++
 	return p
+}
+
+// BackupPeek backs up the lexer, peeks n + 1 bytes, re-reads the rune, and returns n bytes.
+// The only error returned is EOF
+func (l *Lexer) BackupPeek() (b byte, eof bool) {
+	if err := l.Reader.UnreadRune(); err != nil {
+		panic(err)
+	}
+	next, err := l.Reader.Peek(2)
+	l.Reader.ReadRune()
+	if handleReadError(err) {
+		return 0, true
+	}
+	return next[1], false
+}
+
+func (l *Lexer) PeekN(n int) (b []byte, eof bool) {
+	next, err := l.Reader.Peek(n)
+	if handleReadError(err) {
+		return next, true
+	}
+	return next, false
+}
+
+func (l *Lexer) ReadAll(char rune) (n int) {
+	l.TokenizeFunc(func(r rune, b *Builder) bool {
+		if r != char {
+			return false
+		}
+		n++
+		return true
+	})
+	return
 }
 
 func IsDigit(r rune) bool {

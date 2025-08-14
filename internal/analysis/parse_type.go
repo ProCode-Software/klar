@@ -31,8 +31,8 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		}
 	case *ast.FunctionType:
 		var f types.Lambda
-		f.Params = make([]types.Param, len(t.Parameters))
-		for i, paramType := range t.Parameters {
+		f.Params = make([]types.Param, len(t.Parameters.Values))
+		/* for i, paramType := range t.Parameters {
 			var typ Type
 			_, variadic := paramType.(*ast.RestType)
 			if variadic {
@@ -42,7 +42,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 				typ = c.ParseType(paramType, ctx)
 			}
 			f.Params[i] = types.Param{Type: typ, Variadic: variadic}
-		}
+		} */
 		f.Return = c.ParseType(t.ReturnType, ctx)
 		return f
 	case *ast.PrimitiveType:

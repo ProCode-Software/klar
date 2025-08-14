@@ -14,10 +14,7 @@ const (
 	EscInterpolation
 )
 
-type (
-	EscapeError int
-	EscapeMap   = map[Position]StringEscape
-)
+type EscapeError int
 
 const (
 	_ EscapeError = iota
@@ -27,6 +24,13 @@ const (
 	ErrEscapeExpHex
 	ErrEscapeUnknown
 )
+
+type StringAttrs struct {
+	Escapes      map[Position]StringEscape
+	QuoteStyle   rune
+	QuoteCount   int // > 0 if @ was used
+	Unterminated bool
+}
 
 type StringEscape struct {
 	Type          EscapeType
@@ -172,15 +176,22 @@ There are three types of strings in Klar:
 	Single-quote '': Raw, no escapes
 	Backtick ``: Interpolation, escapes, multiline
 */
-func (l *Lexer) ParseString(pos Position, delim rune) *Token {
+func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 	var (
 		esc                         string
+		currQuoteN                  int
 		b                           Builder
 		isEscape, isNewline, unterm bool
-		escapes                     = make(EscapeMap)
+		escapes                     map[Position]StringEscape
 		escStart, end               Position
 	)
+	initEscapes := func() {
+		if escapes == nil {
+			escapes = make(map[Position]StringEscape)
+		}
+	}
 	escape := func(typ EscapeType, err EscapeError) {
+		initEscapes()
 		e := StringEscape{Type: typ, Value: `\` + esc, Invalid: err}
 		if err > 0 {
 			e.ErrorPosition = l.Pos
@@ -188,6 +199,7 @@ func (l *Lexer) ParseString(pos Position, delim rune) *Token {
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
 	parsedEscape := func(e StringEscape, p rune) {
+		initEscapes()
 		b.WriteString(string(p) + e.Value[2:])
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
@@ -207,20 +219,24 @@ loop:
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else {
-				b.WriteRune(r)
 				end = l.Pos
-				break loop
+				currQuoteN++
+				if quoteN == 0 || currQuoteN == quoteN {
+					b.WriteRune(r)
+					break loop
+				}
 			}
 		case '\\':
 			if isEscape {
 				escape(EscCharacter, 0)
-			} else if delim != '\'' {
+			} else if currQuoteN == 0 {
 				isEscape, escStart = true, l.prevCol()
 			}
 		case '{':
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else if delim != '\'' {
+				initEscapes()
 				e := l.parseStrInterp()
 				escapes[l.prevCol()] = e
 				isEscape = false
@@ -266,7 +282,16 @@ loop:
 		b.WriteRune(r)
 		isNewline = false
 	}
-	str := string(delim) + b.String()
+	prefix := make([]rune, 1, quoteN+1)
+	if quoteN > 0 {
+		prefix[0] = '@'
+		for range quoteN {
+			prefix = append(prefix, delim)
+		}
+	} else {
+		prefix[0] = delim
+	}
+	str := string(prefix) + b.String()
 
 	return NewToken(pos, String, str).
 		SetAttribute("end", end).
@@ -274,11 +299,6 @@ loop:
 			Escapes:      escapes,
 			QuoteStyle:   delim,
 			Unterminated: unterm,
+			QuoteCount:   quoteN,
 		})
-}
-
-type StringAttrs struct {
-	Escapes      EscapeMap
-	QuoteStyle   rune
-	Unterminated bool
 }

@@ -28,8 +28,8 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 		return Illegal, singleStr
 	}
 	for ; n > 0; n-- {
-		next, err := l.Reader.Peek(n)
-		if handleReadError(err) {
+		next, isEOF := l.PeekN(n)
+		if isEOF {
 			continue
 		}
 		total := string(r) + string(next)
@@ -47,7 +47,7 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 }
 
 func (l *Lexer) checkIfIdentNext(n int) bool {
-	if next, err := l.Reader.Peek(n + 1); !handleReadError(err) {
+	if next, isEOF := l.PeekN(n+1); !isEOF {
 		first := rune(next[n])
 		if IsIdent(first) || unicode.IsDigit(first) {
 			return true
@@ -202,20 +202,12 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 					newError(ErrIntMisplacedSeparator, b)
 					errPos--
 				}
-				l.Reader.UnreadRune()
-				next, err := l.Reader.Peek(2)
-				l.Reader.ReadRune() // .
-
-				var n rune
-				if len(next) == 2 {
-					n = rune(next[1])
-				}
+				n, isEOF := l.BackupPeek()
 				if n == '.' {
 					return false // 1...10
 				}
 				// Trailing decimal point at EOF
-				if handleReadError(err) || IsDigit(n) ||
-					n == 'e' || n == 'E' || !IsIdent(r) {
+				if isEOF || IsDigit(rune(n)) || n == 'e' || n == 'E' || !IsIdent(r) {
 					isDecimal = true
 					b.WriteRune(r)
 				} else {
@@ -280,4 +272,8 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 		return keyword, id
 	}
 	return Identifier, id
+}
+
+func (l *Lexer) ParseRegex(slashN int) *Token {
+	return nil
 }

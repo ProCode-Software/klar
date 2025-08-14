@@ -36,7 +36,7 @@ func Walk(t Node, visitor func(Node)) {
 	case *UnionType:
 		walkList(t.Options, visitor)
 	case *FunctionType:
-		walkList(t.Parameters, visitor)
+		// walkList(t.Parameters, visitor)
 		Walk(t.ReturnType, visitor)
 	case *GenericType:
 		Walk(t.Name, visitor)

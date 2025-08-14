@@ -86,15 +86,21 @@ func (p *Parser) ParsePrimaryExpression() ast.Expression {
 		}
 	case lexer.String:
 		a := token.Attributes["params"].(lexer.StringAttrs)
+		src := token.Source
 		if a.Unterminated {
 			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 			// Quotes removed below, so add them here
-			token.Source += string(token.Source[0])
+			src += src
 		}
 		escapes := p.parseStringEscapes(token)
+		start := 1 + a.QuoteCount
+		strLen := len(src) - 2
+		if a.QuoteCount > 0 {
+			strLen = len(src) - 2*a.QuoteCount - 1
+		}
 		return &ast.StringLiteral{
 			QuoteStyle: a.QuoteStyle,
-			Content:    token.Source[1 : len(token.Source)-1], // Remove quotes
+			Content:    src[start : start+strLen], // Remove quotes
 			Escapes:    escapes,
 		}
 	case lexer.Boolean:

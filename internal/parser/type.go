@@ -78,34 +78,36 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericTy
 }
 
 func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.FunctionType {
-	var params []ast.Type
+	var tuple *ast.TupleType
 	switch left := left.(type) {
 	case *ast.TupleType:
-		params = left.Values
+		tuple = left
 	case *ast.FunctionType:
 		// Allow (Int) -> (Int) -> Int
-		params = []ast.Type{left}
+		tuple = left.Parameters
 	default:
 		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
 	}
 	p.Expect(lexer.Arrow)
 	return &ast.FunctionType{
-		Parameters: params,
+		Parameters: tuple,
 		ReturnType: p.ParseType(DefaultTypeBindingPower),
 	}
 }
 
 func (p *Parser) ParseTupleType() *ast.TupleType {
 	var params []ast.Type
+	var labels []string
 	p.Advance() // (
-	for p.WhileNotEndOr(lexer.RightParenthesis) {
-		params = append(params, p.ParseType(DefaultTypeBindingPower))
-		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
-			p.Expect(lexer.Comma)
+	parseSeries(p, &params, func() ast.Type {
+		if p.Peek().Kind == lexer.Colon {
+			labels = append(labels, make([]string, len(params)-len(labels)+1)...)
+			labels[len(params)] = p.Advance().Source
+			p.Advance() // :
 		}
-	}
-	p.Expect(lexer.RightParenthesis)
-	return &ast.TupleType{Values: params}
+		return p.ParseType(DefaultTypeBindingPower)
+	}, lexer.RightParenthesis, lexer.Comma, false)
+	return &ast.TupleType{Values: params, Labels: labels}
 }
 
 func (p *Parser) ParseRestType() *ast.RestType {

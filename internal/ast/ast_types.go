@@ -208,11 +208,12 @@ type RestType struct {
 type TupleType struct {
 	BaseNode
 	Values []Type
+	Labels []string
 }
 
 type FunctionType struct {
 	BaseNode
-	Parameters []Type
+	Parameters *TupleType
 	ReturnType Type
 }
 type GenericType struct {
