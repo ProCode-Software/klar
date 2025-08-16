@@ -237,3 +237,11 @@ func (p *Parser) Error(err errors.ParseError) {
 func newOperator(t lexer.Token) ast.Operator {
 	return ast.Operator{Kind: t.Kind, Position: t.Position}
 }
+
+func repeatByte(b byte, n int) []byte {
+	arr := make([]byte, n)
+	for i := range n {
+		arr[i] = b
+	}
+	return arr
+}

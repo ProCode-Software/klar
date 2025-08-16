@@ -50,7 +50,7 @@ var TypeStringMap = map[lexer.TokenType]string{
 	lexer.Numeric:        "a number",
 	lexer.Boolean:        "a boolean",
 	lexer.String:         "a string",
-	lexer.Regex: "regular expression",
+	lexer.Regex:          "a regular expression",
 	lexer.Nil:            "'nil'",
 	lexer.And:            "'and'",
 	lexer.Or:             "'or'",

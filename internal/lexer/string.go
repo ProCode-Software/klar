@@ -184,6 +184,7 @@ func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
 		escStart, end               Position
+		lastQuoteEnd                = pos.Col + 1 + uint32(quoteN)
 	)
 	initEscapes := func() {
 		if escapes == nil {
@@ -219,10 +220,10 @@ loop:
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else {
-				end = l.Pos
 				currQuoteN++
-				if quoteN == 0 || currQuoteN == quoteN {
+				if currQuoteN >= quoteN {
 					b.WriteRune(r)
+					end = l.Pos
 					break loop
 				}
 			}
@@ -274,7 +275,7 @@ loop:
 				escape(EscCharacter, ErrEscapeUnknown)
 			case unicode.IsSpace(r):
 				// Strip leading spaces from backtick string
-				if isNewline && l.Pos.Col-1 <= pos.Col {
+				if isNewline && l.Pos.Col-1 <= lastQuoteEnd {
 					continue loop
 				}
 			}
@@ -282,14 +283,15 @@ loop:
 		b.WriteRune(r)
 		isNewline = false
 	}
-	prefix := make([]rune, 1, quoteN+1)
+	var prefix []rune
 	if quoteN > 0 {
+		prefix = make([]rune, quoteN+1)
 		prefix[0] = '@'
-		for range quoteN {
-			prefix = append(prefix, delim)
+		for i := range quoteN {
+			prefix[i+1] = delim
 		}
 	} else {
-		prefix[0] = delim
+		prefix = []rune{delim}
 	}
 	str := string(prefix) + b.String()
 

@@ -1,7 +1,9 @@
 package lexer
 
 import (
+	"fmt"
 	"io"
+	"strings"
 	"unicode"
 )
 
@@ -14,11 +16,6 @@ func handleReadError(err error) bool {
 		panic(err)
 	}
 	return false
-}
-
-type nextItem struct {
-	s    string
-	kind TokenType
 }
 
 func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
@@ -47,7 +44,7 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 }
 
 func (l *Lexer) checkIfIdentNext(n int) bool {
-	if next, isEOF := l.PeekN(n+1); !isEOF {
+	if next, isEOF := l.PeekN(n + 1); !isEOF {
 		first := rune(next[n])
 		if IsIdent(first) || unicode.IsDigit(first) {
 			return true
@@ -274,6 +271,78 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 	return Identifier, id
 }
 
-func (l *Lexer) ParseRegex(slashN int) *Token {
-	return nil
+type RegexAttrs struct {
+	Flags        []byte
+	Source       string
+	Unterminated bool
+	Multiline    bool
+	SlashCount   int
+}
+
+func (l *Lexer) ParseRegex(startPos Position, slashN int) *Token {
+	var (
+		unterm                bool
+		slashCt               int
+		lastSlashEnd          = startPos.Col + 1 + uint32(slashN)
+		hasNewline, isNewline bool
+		end                   Position
+		b                     strings.Builder
+	)
+loop:
+	for {
+		r, _, err := l.Reader.ReadRune()
+		if handleReadError(err) {
+			unterm = true
+			break loop
+		}
+		l.Pos.Col++
+		switch r {
+		case '/':
+			slashCt++
+			if slashCt >= slashN {
+				end = l.Pos
+				b.WriteRune(r)
+				break loop
+			}
+		case '\n':
+			hasNewline, isNewline = true, true
+			continue
+		default:
+			if isNewline && unicode.IsSpace(r) && l.Pos.Col-1 <= lastSlashEnd {
+				continue
+			}
+		}
+		b.WriteRune(r)
+		isNewline = false
+	}
+	var prefix []rune
+	if slashN > 0 {
+		prefix = make([]rune, slashN+1)
+		prefix[0] = '@'
+		for i := range slashN {
+			prefix[i+1] = '/'
+		}
+	} else {
+		prefix = []rune{'/'}
+	}
+	fmt.Println(end)
+	flagStr := l.TokenizeFunc(func(r rune, _ *Builder) bool {
+		if isASCIILetter(r) {
+			b.WriteRune(r)
+			end = l.Pos
+			return true
+		}
+		return false
+	})
+	str := string(prefix) + b.String()
+	fmt.Println(end, len(str))
+	return NewToken(startPos, Regex, str).
+		SetAttribute("end", end).
+		SetAttribute("params", RegexAttrs{
+			Source:       "",
+			Multiline:    hasNewline,
+			Flags:        []byte(flagStr),
+			Unterminated: unterm,
+			SlashCount:   slashN,
+		})
 }

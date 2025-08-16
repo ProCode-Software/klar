@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -75,7 +74,14 @@ func isSingleChar(r ranges.Range) bool {
 }
 
 func space(n uint32) []byte {
-	return bytes.Repeat([]byte{' '}, int(n))
+	if n > 10000000 && n >= (1 << 32) - 10 {
+		panic("overflow of n")
+	}
+	arr := make([]byte, n)
+	for i := range n {
+		arr[i] = ' '
+	}
+	return arr
 }
 
 func (p *Printer) prevTok(i int) (tok lexer.TokenType) {
@@ -96,6 +102,10 @@ func isPrimitive(name string) bool {
 	_, ok := ast.PrimitiveTypeMap[name]
 	return ok
 }
+func isBuiltinFunc(name string) bool {
+	_, ok := builtinFuncs[name]
+	return ok
+}
 
 func (p *Printer) colorize(i int) string {
 	tok := p.tokens[i]
@@ -111,6 +121,9 @@ func (p *Printer) colorize(i int) string {
 	case prev == lexer.Func,
 		next == lexer.LeftParenthesis:
 		color = p.FunctionColor
+		if isBuiltinFunc(tok.Source) {
+			color = colorBuiltin
+		}
 	case isPrimitive(tok.Source),
 		prev == lexer.Arrow && next == lexer.LeftCurlyBrace,
 		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:

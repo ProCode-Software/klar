@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -23,17 +22,16 @@ const (
 )
 
 // Builtins
-var builtinFuncs = map[string]bool{
-	"print": true, "panic": true, "assert": true, "TODO": true,
-	"unwrap": true,
+var builtinFuncs = map[string]struct{}{
+	"print": {}, "panic": {}, "assert": {}, "TODO": {}, "unwrap": {},
 }
-var builtinTypes = ast.PrimitiveTypeMap
 
 // Default color theme
 var defaultColors = map[lexer.TokenType]string{
 	lexer.Type:    colorKeyword,
 	lexer.Func:    colorKeyword,
 	lexer.String:  colorString,
+	lexer.Regex:   colorString,
 	lexer.Numeric: colorNumber,
 	lexer.Boolean: colorBoolean,
 	lexer.Nil:     colorBoolean,

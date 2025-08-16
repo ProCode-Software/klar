@@ -82,7 +82,8 @@ type FloatLiteral struct {
 
 type RegexLiteral struct {
 	BaseNode
-	Source, Flags string
+	Source string
+	Flags []byte
 }
 
 type VersionLiteral struct {

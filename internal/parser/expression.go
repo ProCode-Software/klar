@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"bytes"
 	"slices"
 	"strings"
 
@@ -445,7 +444,6 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 		isEscape bool
 		b        strings.Builder
 		lastPos  lexer.Position
-		space    = []byte(" ")
 	)
 	r := &ast.RegexLiteral{}
 	slashCol := p.Expect(lexer.Slash).Position.Col
@@ -464,12 +462,12 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			continue
 		case tok.Line == lastPos.Line:
 			// Add spaces between tokens
-			b.Write(bytes.Repeat(space, int(tok.Col-lastPos.Col)))
+			b.Write(repeatByte(' ', int(tok.Col-lastPos.Col)))
 		case lastPos.Col == 0:
 		case offset > 0:
 			// Trim whitespace from start of line if aligned with beginning /
 			// similar to backtick strings
-			b.Write(bytes.Repeat(space, int(offset)))
+			b.Write(repeatByte(' ', int(offset)))
 		}
 		b.WriteString(tok.Source)
 		lastPos = ranges.FromToken(tok).End
@@ -483,7 +481,7 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
 	} else if curr == lexer.Identifier {
-		r.Flags = p.Advance().Source
+		r.Flags = []byte(p.Advance().Source)
 	}
 	return r
 }

@@ -84,10 +84,10 @@ func (l *Lexer) Tokenize() *Token {
 				switch next {
 				case '"', '`', '\'':
 					next := rune(next)
-					quoteLen := l.ReadAll(next)
-					return l.ParseString(pos, next, quoteLen)
+					return l.ParseString(pos, next, l.ReadAll(next))
 				case '/':
-
+					next := rune(next)
+					return l.ParseRegex(pos, l.ReadAll(next))
 				}
 			}
 			return NewToken(pos, At, "@")
@@ -229,4 +229,8 @@ func IsDigit(r rune) bool {
 // IsIdent reports whether r is the beginning of an identifier
 func IsIdent(r rune) bool {
 	return r == '_' || unicode.IsLetter(r)
+}
+
+func isASCIILetter(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
