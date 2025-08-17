@@ -92,10 +92,10 @@ func (TypeAliasDeclaration) typeDecl()      {}
 func (StructDeclaration) typeDecl()         {}
 func (EnumDeclaration) typeDecl()           {}
 func (InterfaceDeclaration) typeDecl()      {}
-func (d TypeAliasDeclaration) Name() string { return d.Identifier }
-func (d StructDeclaration) Name() string    { return d.Identifier }
-func (d EnumDeclaration) Name() string      { return d.Identifier }
-func (d InterfaceDeclaration) Name() string { return d.Identifier }
+func (d TypeAliasDeclaration) Name() string { return d.Identifier.Identifier }
+func (d StructDeclaration) Name() string    { return d.Identifier.Identifier }
+func (d EnumDeclaration) Name() string      { return d.Identifier.Identifier }
+func (d InterfaceDeclaration) Name() string { return d.Identifier.Identifier }
 
 // Can be used on left side of =
 func (Symbol) assignable()          {}

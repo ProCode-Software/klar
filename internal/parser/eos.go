@@ -47,20 +47,7 @@ func (p *Parser) InsertEOS() {
 		case tok.Kind != lexer.Newline:
 			continue
 		case i > 0:
-			switch prev.Kind {
-			case
-				// Punctuation
-				lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
-				lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
-				lexer.HashLeftCurlyBrace, lexer.Newline,
-				// Keywords
-				lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type, lexer.Public:
-				insertEOS = false
-			case lexer.RightParenthesis, lexer.RightBracket:
-				insertEOS = true
-			default:
-				insertEOS = !canGoOnNewline(prev.Kind)
-			}
+			insertEOS = canAddEOSAfter(prev.Kind)
 		}
 		// Should add EOS before next token?
 		if insertEOS && len(p.Tokens) > i+1 && canGoOnNewline(p.Tokens[i+1].Kind) {
@@ -72,6 +59,25 @@ func (p *Parser) InsertEOS() {
 			p.Tokens = slices.Delete(p.Tokens, i, i+1)
 			i--
 		}
+	}
+}
+
+// Never add EOS after these tokens
+func canAddEOSAfter(t lexer.TokenType) bool {
+	switch t {
+	case
+		// Punctuation
+		lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
+		lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
+		lexer.HashLeftCurlyBrace, lexer.Newline,
+		// Keywords
+		lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type, lexer.Public,
+		lexer.Go, lexer.While, lexer.Can, lexer.NotCan, lexer.Opaque:
+		return false
+	case lexer.RightParenthesis, lexer.RightBracket:
+		return true
+	default:
+		return !canGoOnNewline(t)
 	}
 }
 
@@ -99,7 +105,7 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.Not, lexer.AndAnd,
-		lexer.OrOr,
+		lexer.OrOr, lexer.In, lexer.NotIn, lexer.DotDotLessThan,
 		// Whitespace
 		lexer.Newline:
 		return true

@@ -31,21 +31,7 @@ func (p *Parser) Parse() *ast.Program {
 }
 
 func (p *Parser) unknownTokenErr() {
-	p.Error(errors.UnexpectedToken(p.CurrentToken()))
-	switch curr := p.CurrentTokenKind(); curr {
-	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
-		lexer.RightParenthesis, lexer.RightBracket, lexer.Comma:
-	default:
-		p.Advance()
-	}
-}
-
-func (p *Parser) errExpectedExpr(got ast.Node) {
-	p.Error(errors.ParseError{
-		ErrorCode: errors.ErrExpectedExpression,
-		Node:      got,
-		Range:     got.GetRange(),
-	})
+	p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
 }
 
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
@@ -150,7 +136,9 @@ func parseSeries[T ast.Node](
 		for p.WhileNot(until) {
 			*arr = append(*arr, parse())
 			if separator != 0 && p.CurrentTokenKind() != until {
-				p.Expect(separator)
+				p.Expect(separator, lexer.EndOfStatement)
+			} else if separator == 0 && p.CurrentTokenKind() == until {
+				break
 			}
 		}
 	} else {
@@ -158,8 +146,11 @@ func parseSeries[T ast.Node](
 			*arr = append(*arr, parse())
 			if separator != 0 && p.IsNotCurrentlyEndOr(until) {
 				p.Expect(separator)
+			} else if separator == 0 && p.CurrentTokenKind() == until {
+				break
 			}
 		}
 	}
 	p.Expect(until)
 }
+

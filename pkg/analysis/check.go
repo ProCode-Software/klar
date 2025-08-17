@@ -1,7 +1,7 @@
 package analysis
 
 import (
-	"github.com/ProCode-Software/klar/internal/analysis"
+	// "github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/ast/typed"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -17,10 +17,11 @@ type CheckOptions struct {
 func CheckProgram(program *ast.Program, options CheckOptions) (
 	typedProgram *typed.Program, errors []errors.KlarError,
 ) {
-	c := analysis.NewChecker(program)
+	return nil, nil
+/* 	c := analysis.NewChecker(program)
 	c.OnError = options.OnError
 	c.Target = options.Target
 	c.FilePath = options.FilePath
 	typed := c.CheckProgram()
-	return typed, c.Errors
+	return typed, c.Errors */
 }

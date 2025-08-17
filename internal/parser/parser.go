@@ -46,7 +46,7 @@ func (p *Parser) PeekBehind() lexer.Token {
 	return p.Tokens[p.Index-1]
 }
 
-// Peek return the next [lexer.Token].
+// Peek return the next [lexer.Token] without advancing the parser.
 func (p *Parser) Peek() lexer.Token {
 	if !p.HasTokens() {
 		return p.CurrentToken()
@@ -111,47 +111,10 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 	return p.HasTokens() && curr != lexer.EndOfStatement && curr != kind
 }
 
-func (p *Parser) lastTokEnd() lexer.Position {
-	last := p.Tokens[p.Index-1]
-	return ranges.FromToken(last).End
-}
-
-func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
-	var isOk, isComputed bool
-	sym := p.ParseExpression(CallBindingPower)
-	switch sym := sym.(type) {
-	case *ast.Symbol:
-		key = sym
-		value = sym
-		isOk = true
-	case *ast.IndexExpression:
-		if sym.Computed {
-			break
-		}
-		if prop, ok := sym.Property.(*ast.Symbol); ok {
-			key = prop
-			value = sym
-			isOk = true
-		}
-	}
-	if !isOk {
-		err := errors.Node(errors.ErrInvalidLabelShorthand, sym)
-		err.Params = errors.ErrorParams{"computed": isComputed}
-		p.Error(err)
-	}
-	return key, value
-}
-
+// ExpectErrorCode adds a [errors.ParseError] with code to the parser if it the
+// current token is not in need.
 func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType) lexer.Token {
-	err := ParseError{ErrorCode: code}
-	return p.ExpectError(err, need...)
-}
-
-func (p *Parser) ExpectVarName() lexer.Token {
-	if slices.Contains(ast.ReservedIdent, p.CurrentTokenKind()) {
-		return p.ExpectErrorCode(errors.ErrReservedKeyword, lexer.Identifier)
-	}
-	return p.Expect(lexer.Identifier)
+	return p.ExpectError(ParseError{ErrorCode: code}, need...)
 }
 
 // Expect advances the parser if the current token is of typ, otherwise throws err.
@@ -172,28 +135,6 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 		return token // Avoid advancing
 	}
 	return p.Advance()
-}
-
-// Range utils
-func markEndPos[T ast.Node](p *Parser, node T) T {
-	node.SetPos(node.GetRange().Start, p.lastTokEnd())
-	return node
-}
-
-func markStartEndPos[T ast.Node](p *Parser, node T, start lexer.Position) T {
-	node.SetPos(start, p.lastTokEnd())
-	return node
-}
-
-func rangeFromToken[T ast.Node](node T, tok lexer.Token) T {
-	rang := ranges.FromToken(tok)
-	node.SetPos(rang.Start, rang.End)
-	return node
-}
-
-func copyPos[F, T ast.Node](from F, to T) T {
-	to.SetPos(from.GetRange().Start, from.GetRange().End)
-	return to
 }
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
@@ -226,6 +167,7 @@ func (p *Parser) RemoveComments() (comments []*ast.Comment) {
 	return comments
 }
 
+// Error adds an error to the parser.
 func (p *Parser) Error(err errors.ParseError) {
 	err.File = p.File
 	p.Errors = append(p.Errors, err)
@@ -234,14 +176,16 @@ func (p *Parser) Error(err errors.ParseError) {
 	}
 }
 
-func newOperator(t lexer.Token) ast.Operator {
-	return ast.Operator{Kind: t.Kind, Position: t.Position}
-}
-
-func repeatByte(b byte, n int) []byte {
-	arr := make([]byte, n)
-	for i := range n {
-		arr[i] = b
+// AdvanceNonBoundary returns the current token advances the parser and returns the current token
+// if it is not a boundary, otherwise returns the current token. Useful when an expected
+// token is missing.
+func (p *Parser) AdvanceNonBoundary() lexer.Token {
+	c := p.CurrentToken()
+	switch c.Kind {
+	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
+		lexer.RightParenthesis, lexer.RightBracket, lexer.Comma:
+	default:
+		p.Advance()
 	}
-	return arr
+	return c
 }

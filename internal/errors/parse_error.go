@@ -61,15 +61,15 @@ const (
 	ErrMissingFuncParamType  // Required function parameter type
 	ErrReturnPipelineNotLast // Return step in pipeline must be the last
 	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
+	ErrNonNameFuncAlias      // Function alias target is not symbol or member
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
-	ErrEnumParamAndValue       // Enum items with parameters can't have a value assigned
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
-	ErrCannotTellStructOrEnum  // Don't know if enum or struct from one identifier
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
+	ErrInterfaceDefaultValue   // Interface items can't have a default value
 
 	// When
 	ErrForInvalidCond // Expected assignment or expression in for loop
@@ -103,6 +103,9 @@ type ParseError struct {
 }
 
 func (e *ParseError) SetParam(key string, value any) ParseError {
+	if e.Params == nil {
+		e.Params = make(ErrorParams, 1)
+	}
 	e.Params[key] = value
 	return *e
 }
@@ -191,7 +194,7 @@ func (e ParseError) error() string {
 		if kind == lexer.EndOfStatement {
 			return "Types must be assigned a value"
 		}
-		return "I expected a type assignment, but found " + NameToken(tok) + " instead"
+		return "I expected '{' or '=' after type, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "Struct fields need an explicit type"
 	case ErrNotEnoughEnumItems:
@@ -242,10 +245,6 @@ func (e ParseError) error() string {
 			" was left open"
 	case ErrMisplacedShebang:
 		return "Shebang must be on the first line of the file (without any lines or spaces before)"
-	case ErrCannotTellStructOrEnum:
-		return "Expected ':' for struct field, or '|' or '=' for enum member"
-	case ErrEnumParamAndValue:
-		return "Enum members can't have both parameters and a value"
 	case ErrMissingFuncParamType:
 		return "Function parameters must have a type"
 	case ErrImportsGoFirst:
@@ -285,6 +284,8 @@ func (e ParseError) error() string {
 		return "Return in pipeline must be the last step"
 	case ErrEmptyDestructure:
 		return "Destructure pattern can't be empty"
+	case ErrColonEqual:
+		return "Expected '=' instead of ':='"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrUnusedValue:
@@ -294,7 +295,9 @@ func (e ParseError) error() string {
 		if e.Params["kind"] == "enum" {
 			kind = "Enum item"
 		}
-		return fmt.Sprintf("TypeError: %s %s was already declared", kind, QuoteToken(tok))
+		return fmt.Sprintf("TypeError: %s '%s' was already declared",
+			kind, e.Node.(*ast.Symbol).Identifier,
+		)
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (
 			code      = e.ErrorCode

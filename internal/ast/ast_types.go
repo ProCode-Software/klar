@@ -83,7 +83,7 @@ type FloatLiteral struct {
 type RegexLiteral struct {
 	BaseNode
 	Source string
-	Flags []byte
+	Flags  []byte
 }
 
 type VersionLiteral struct {
@@ -171,9 +171,14 @@ type Pair struct {
 // ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
 	lexer.Import, lexer.Func, lexer.When, lexer.Return, lexer.For, lexer.Next,
-	lexer.Type, lexer.Public, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or,
-	lexer.In, lexer.Break,
+	lexer.Type, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or,
+	lexer.In, lexer.Break, lexer.Go, lexer.While,
 }
+// Keywords that can be used as identifiers if they are not followed by specific tokens.
+var Modifiers = []lexer.TokenType{
+	lexer.Opaque, lexer.Public,
+}
+
 
 type Type interface {
 	Node
@@ -223,7 +228,7 @@ type GenericType struct {
 	Parameters []Type
 }
 type TypePair struct {
-	Key   string
+	Keys []*Symbol
 	Value Type
 	BaseNode
 }
@@ -304,21 +309,21 @@ type TypeDeclaration interface {
 }
 
 type InterfaceDeclaration struct {
-	Identifier     string
+	Identifier     *Symbol
 	InheritedTypes []Type
-	Tag            bool // If empty
+	Tag            bool // If no fields
 	Fields         []*TypePair
 	BaseNode
 }
 
 type StructDeclaration struct {
-	Identifier     string
+	Identifier     *Symbol
 	InheritedTypes []Type // Type alias or primitive
 	Fields         []*StructField
 	BaseNode
 }
 type StructField struct {
-	Identifier string
+	Names []*Symbol
 	Type       Type
 	Constant   bool
 	Value      Expression
@@ -326,26 +331,33 @@ type StructField struct {
 }
 
 type EnumDeclaration struct {
-	Identifier string
+	Identifier *Symbol
 	Inherited  []Type
 	Values     []*EnumItem
 	BaseNode
 }
 type EnumItem struct {
-	Identifier string
+	Identifier *Symbol
 	Value      Expression
 	Parameters []Type
 	BaseNode
 }
 
 type TypeAliasDeclaration struct {
-	Identifier string
+	Identifier *Symbol
 	Type       Type
 	BaseNode
 }
 
 type MapLiteral struct {
 	Entries []*Pair
+	BaseNode
+}
+
+type MapItem struct {
+	Keys []Expression // if not rest
+	Value Expression
+	Rest, Shorthand bool
 	BaseNode
 }
 
@@ -376,12 +388,11 @@ type FuncAliasDeclaration struct {
 
 	Struct     Type
 	Identifier *Symbol
-	Alias      *Symbol
+	Alias      *Expression
 }
 
 type FunctionParam struct {
-	Identifier,
-	Label string
+	NamePairs [][2]*Symbol
 	Type    Type
 	Default Expression
 	BaseNode

@@ -80,14 +80,9 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 			entry.Index = p.ParseDestructureInner()
 			end = entry.Index.GetRange().End
 		}
-		curr := p.CurrentToken()
-		if curr.Kind == lexer.ColonEqual {
-			p.Error(errors.Token(errors.ErrColonEqual, curr))
-			curr.Kind = lexer.Equal
-		}
-		if curr.Kind == lexer.Equal {
+		if p.isEqualOrColonEqualAndError() {
 			if entry.Index != nil {
-				p.Error(errors.Token(errors.ErrDestructInvalidEqual, curr))
+				p.Error(errors.Token(errors.ErrDestructInvalidEqual, p.CurrentToken()))
 			}
 			p.Advance()
 			entry.Default = p.ParseExpression(ExpressionBindingPower)

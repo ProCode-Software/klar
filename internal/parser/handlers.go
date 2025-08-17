@@ -13,6 +13,21 @@ var IsHandledNUD = []lexer.TokenType{
 	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash, lexer.For,
 }
 
+func modifierAnd(types ...lexer.TokenType) []lexer.TokenType {
+	all := make([]lexer.TokenType, len(types)+len(ast.Modifiers))
+	copy(all, ast.Modifiers)
+	copy(all[len(ast.Modifiers):], types)
+	return all
+}
+
+// Soft keyword map and what tokens are expected next for it to be parsed as a keyword
+// Are allowed as identifiers and are only checked when parsing the beginning of a statement
+var SoftKeywords = map[lexer.TokenType][]lexer.TokenType{
+	lexer.Opaque: modifierAnd(lexer.Type),
+	lexer.Can: nil, // when case only
+	lexer.Public: modifierAnd(lexer.Func, lexer.Type), // special case for public due to destructuring
+}
+
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	startPos := p.CurrentToken().Position
 	switch kind {
