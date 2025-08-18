@@ -20,9 +20,9 @@ func _() {
 	_ = x[Regex-10]
 }
 
-const _CoreType_name = "AnyStringIntFloatBoolNothingErrorInvalidSelfDon't want to make this primitive"
+const _CoreType_name = "AnyStringIntFloatBoolNothingErrorInvalidSelfRegex"
 
-var _CoreType_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 33, 40, 44, 77}
+var _CoreType_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 33, 40, 44, 49}
 
 func (i CoreType) String() string {
 	i -= 1

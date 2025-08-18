@@ -24,7 +24,7 @@ func modifierAnd(types ...lexer.TokenType) []lexer.TokenType {
 // Are allowed as identifiers and are only checked when parsing the beginning of a statement
 var SoftKeywords = map[lexer.TokenType][]lexer.TokenType{
 	lexer.Opaque: modifierAnd(lexer.Type),
-	lexer.Can: nil, // when case only
+	lexer.Can:    nil,                                 // when case only
 	lexer.Public: modifierAnd(lexer.Func, lexer.Type), // special case for public due to destructuring
 }
 

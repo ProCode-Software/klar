@@ -38,7 +38,8 @@ const (
 
 	InvalidType // Invalid
 	Self
-	Regex // Don't want to make this primitive
+	Regex // Regex
+	// Don't want to make this primitive
 )
 
 type (

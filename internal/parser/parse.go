@@ -153,4 +153,3 @@ func parseSeries[T ast.Node](
 	}
 	p.Expect(until)
 }
-

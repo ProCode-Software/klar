@@ -27,19 +27,33 @@ func (p *Parser) expectNonNumericMapIdent() lexer.Token {
 	return p.Advance()
 }
 
-func (p *Parser) ParseIdentifier() *ast.Symbol {
-	tok := p.AdvanceNonBoundary()
+// isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
+// [lexer.Identifier] and types in [ast.Modifiers].
+func isValidIdentifier(tok lexer.TokenType) bool {
+	return tok == lexer.Identifier || slices.Contains(ast.Modifiers, tok)
+}
+
+// validateIdentifier reports whether tok is a valid identifier. If it is false,
+// validateIdentifier reports an error to the parser.
+func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 	if tok.Kind != lexer.Identifier && !slices.Contains(ast.Modifiers, tok.Kind) {
 		if slices.Contains(ast.ReservedIdent, tok.Kind) {
 			p.Error(errors.Token(errors.ErrReservedKeyword, tok))
 		} else {
 			p.Error(errors.ExpectedToken(lexer.Identifier, tok))
 		}
+		return false
 	}
-	return rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
+	return true
 }
 
-func (p *Parser) ParseMapIdentifier(includingNumber bool) *ast.Symbol {
+func (p *Parser) ParseIdentifier() ast.Identifier {
+	tok := p.AdvanceNonBoundary()
+	p.validateIdentifier(tok)
+	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+}
+
+func (p *Parser) ParseMapIdentifier(includingNumber bool) ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	kind := tok.Kind
 	switch {
@@ -51,5 +65,9 @@ func (p *Parser) ParseMapIdentifier(includingNumber bool) *ast.Symbol {
 		!slices.Contains(ast.ReservedIdent, tok.Kind):
 		p.Error(errors.ExpectedToken(lexer.Identifier, tok))
 	}
-	return rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
+	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+}
+
+func symbolToIdentifier(s *ast.Symbol) ast.Identifier {
+	return ast.Identifier{Name: s.Identifier, Position: s.Range.Start}
 }

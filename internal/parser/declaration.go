@@ -87,7 +87,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	}
 }
 
-func (p *Parser) ParseEnum(typeName *ast.Symbol, inherited []ast.Type) *ast.EnumDeclaration {
+func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.EnumDeclaration {
 	var (
 		items   []*ast.EnumItem
 		itemMap = make(map[string]struct{})
@@ -96,12 +96,12 @@ func (p *Parser) ParseEnum(typeName *ast.Symbol, inherited []ast.Type) *ast.Enum
 		id := p.ParseIdentifier()
 
 		// Check if exists
-		if _, ok := itemMap[id.Identifier]; ok {
+		if _, ok := itemMap[id.Name]; ok {
 			err := errors.Node(errors.ErrRedeclaredField, id)
 			err.SetParam("kind", "enum")
 			p.Error(err)
 		}
-		itemMap[id.Identifier] = struct{}{}
+		itemMap[id.Name] = struct{}{}
 
 		item := &ast.EnumItem{Identifier: id}
 		if p.CurrentTokenKind() == lexer.LeftParenthesis {
@@ -115,7 +115,7 @@ func (p *Parser) ParseEnum(typeName *ast.Symbol, inherited []ast.Type) *ast.Enum
 			p.Advance()
 			item.Value = p.ParseExpression(PrimaryBindingPower)
 		}
-		markStartEndPos(p, item, id.Range.Start)
+		markStartEndPos(p, item, id.Position)
 		items = append(items, item)
 		if c := p.CurrentToken(); c.Kind == lexer.Dot && c.Line > item.Range.Start.Line {
 			continue // No EOS before '.' in next item
@@ -132,21 +132,21 @@ func (p *Parser) ParseEnum(typeName *ast.Symbol, inherited []ast.Type) *ast.Enum
 	}
 }
 
-func (p *Parser) ParseStruct(typeName *ast.Symbol, inherited []ast.Type) *ast.StructDeclaration {
+func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast.StructDeclaration {
 	var (
 		fields   []*ast.StructField
 		fieldMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.StructField{}
-		parseSeries(p, &field.Names, func() *ast.Symbol {
+		parseSeries(p, &field.Names, func() ast.Identifier {
 			name := p.ParseMapIdentifier(false)
-			if _, ok := fieldMap[name.Identifier]; ok {
+			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
 				p.Error(err)
 			}
-			fieldMap[name.Identifier] = struct{}{}
+			fieldMap[name.Name] = struct{}{}
 			return name
 		}, 0, lexer.Comma, false)
 		// Type
@@ -159,7 +159,7 @@ func (p *Parser) ParseStruct(typeName *ast.Symbol, inherited []ast.Type) *ast.St
 			p.Advance()
 			field.Value = p.ParseExpression(DefaultBindingPower)
 		}
-		markStartEndPos(p, field, field.Names[0].Range.Start)
+		markStartEndPos(p, field, field.Names[0].Position)
 		fields = append(fields, field)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
@@ -173,21 +173,21 @@ func (p *Parser) ParseStruct(typeName *ast.Symbol, inherited []ast.Type) *ast.St
 	}
 }
 
-func (p *Parser) ParseInterface(typeName *ast.Symbol, inherited []ast.Type) *ast.InterfaceDeclaration {
+func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *ast.InterfaceDeclaration {
 	var (
 		fields   []*ast.TypePair
 		fieldMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.TypePair{}
-		parseSeries(p, &field.Keys, func() *ast.Symbol {
+		parseSeries(p, &field.Keys, func() ast.Identifier {
 			name := p.ParseMapIdentifier(false)
-			if _, ok := fieldMap[name.Identifier]; ok {
+			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
 				p.Error(err)
 			}
-			fieldMap[name.Identifier] = struct{}{}
+			fieldMap[name.Name] = struct{}{}
 			return name
 		}, 0, lexer.Comma, false)
 		// Type
@@ -196,15 +196,15 @@ func (p *Parser) ParseInterface(typeName *ast.Symbol, inherited []ast.Type) *ast
 			fn := &ast.MethodType{}
 			p.Advance() // (
 			parseSeries(p, &fn.Parameters, func() *ast.MethodTypeParam {
-				var label, name string
+				var label, name ast.Identifier
 				if p.Peek().Kind == lexer.Identifier {
 					// Label: fib(length length: Int)
-					label = p.expectNonNumericMapIdent().Source
-					name = p.Expect(lexer.Identifier).Source
+					label = p.ParseMapIdentifier(false)
+					name = p.ParseIdentifier()
 					p.Expect(lexer.Colon)
 				} else if p.Peek().Kind == lexer.Colon {
 					// Declared wih a name
-					name = p.Expect(lexer.Identifier).Source
+					name = p.ParseIdentifier()
 					p.Expect(lexer.Colon)
 				}
 				// Type
@@ -227,7 +227,7 @@ func (p *Parser) ParseInterface(typeName *ast.Symbol, inherited []ast.Type) *ast
 			p.Error(errors.Token(errors.ErrInterfaceDefaultValue, c))
 			p.ParseExpression(DefaultBindingPower) // Just to skip the expression
 		}
-		markStartEndPos(p, field, field.Keys[0].Range.Start)
+		markStartEndPos(p, field, field.Keys[0].Position)
 		fields = append(fields, field)
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
@@ -249,7 +249,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// Struct receiver
 	// 	func Person.greet()
 	if p.CurrentTokenKind() == lexer.Dot {
-		f.Struct = &ast.TypeAlias{Identifier: rec.Identifier, BaseNode: rec.BaseNode}
+		f.Struct = rec
 		p.Advance() // .
 		f.Identifier = p.ParseMapIdentifier(false)
 	} else {
@@ -286,61 +286,40 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	}
 	// Params
 	p.Expect(lexer.LeftParenthesis)
-	var isTrailingType bool
-	applyType := func(t ast.Type, v ast.Expression) {
-		isTrailingType = false
-		for i := len(f.Parameters) - 1; i >= 0; i-- {
-			if f.Parameters[i].Type != nil {
-				break
-			}
-			f.Parameters[i].Type = t
-			f.Parameters[i].Default = v
-		}
-	}
 	parseSeries(p, &f.Parameters, func() *ast.FunctionParam {
 		param := &ast.FunctionParam{}
-		param.BaseNode.Range.Start = p.CurrentToken().Position
+		param.Range.Start = p.CurrentToken().Position
 
-		if peek := p.Peek().Kind; peek == lexer.Identifier ||
-			(peek != lexer.Colon && peek != lexer.Equal && peek != lexer.ColonEqual) {
-			// Optional label:
-			// 	func replace(src, with replacement: String)
-			param.Label = p.ParseMapIdentifier(false)
-			if peek == lexer.EndOfStatement {
-				p.Advance()
+		// Trailing type params
+		parseSeries(p, &param.Names, func() *ast.FunctionParamName {
+			key := &ast.FunctionParamName{}
+			if peek := p.Peek().Kind; peek == lexer.Identifier ||
+				(peek != lexer.Colon && peek != lexer.Equal && peek != lexer.ColonEqual) {
+				// Optional label:
+				// 	func replace(src, with replacement: String)
+				key.Label = p.ParseMapIdentifier(false)
+				if peek == lexer.EndOfStatement {
+					p.Advance()
+				}
 			}
-		}
-		// Normal identifier
-		param.Identifier = p.ParseIdentifier()
-		// Parse type: still allow trailing type (example above)
-		if p.CurrentTokenKind() == lexer.Colon {
-			p.Advance()
-			param.Type = p.ParseType(DefaultTypeBindingPower)
-			applyType(param.Type, nil)
-		} else {
-			isTrailingType = true
-		}
+			// Normal identifier
+			key.Identifier = p.ParseIdentifier()
+			return key
+		}, 0, lexer.Comma, true)
+
+		// Type
+		p.ExpectErrorCode(errors.ErrMissingFuncParamType, lexer.Colon)
+		param.Type = p.ParseType(DefaultTypeBindingPower)
 		// Default value:
 		// 	func List.join(by by: String = ", ")
-		if p.CurrentTokenKind() == lexer.Equal {
+		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
 			param.Default = p.ParseExpression(DefaultBindingPower)
-			applyType(param.Type, param.Default)
 		}
-		param.BaseNode.Range.End = p.lastTokEnd()
+		markEndPos(p, param)
 		f.Parameters = append(f.Parameters, param)
-		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
-			p.Expect(lexer.Comma)
-		}
 		return param
 	}, lexer.RightParenthesis, lexer.Comma, false)
-	if isTrailingType {
-		// Last parameters need a type
-		p.Error(errors.Range(
-			errors.ErrMissingFuncParamType,
-			f.Parameters[len(f.Parameters)-1].Range,
-		))
-	}
 
 	// Return type: the arrow. Can be inferred
 	if p.CurrentTokenKind() == lexer.Arrow {
@@ -353,7 +332,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// 	func Date.now() -> Date
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		f.Body = p.ParseBlock()
-	} else if p.CurrentTokenKind() == lexer.Equal {
+	} else if p.isEqualOrColonEqualAndError() {
 		p.Advance()
 		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}

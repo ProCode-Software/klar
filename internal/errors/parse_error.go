@@ -70,6 +70,7 @@ const (
 	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrInterfaceDefaultValue   // Interface items can't have a default value
+	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
 
 	// When
 	ErrForInvalidCond // Expected assignment or expression in for loop
@@ -246,7 +247,7 @@ func (e ParseError) error() string {
 	case ErrMisplacedShebang:
 		return "Shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrMissingFuncParamType:
-		return "Function parameters must have a type"
+		return "Function parameters must have an explicit type"
 	case ErrImportsGoFirst:
 		return "Imports must go before other declarations"
 	case ErrInvalidLabelShorthand:

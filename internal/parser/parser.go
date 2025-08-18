@@ -24,6 +24,14 @@ type Parser struct {
 	isAttribute bool
 }
 
+type ParseError = errors.ParseError
+
+type ParseOptions struct {
+	File        string
+	StopOnError bool
+	OnError     func(e ParseError)
+}
+
 // New returns a new [Parser] that reads from tokens.
 func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	t := make([]lexer.Token, len(tokens))

@@ -74,7 +74,7 @@ func isSingleChar(r ranges.Range) bool {
 }
 
 func space(n uint32) []byte {
-	if n > 10000000 && n >= (1 << 32) - 10 {
+	if n > 10000000 && n >= (1<<32)-10 {
 		panic("overflow of n")
 	}
 	arr := make([]byte, n)
@@ -102,6 +102,7 @@ func isPrimitive(name string) bool {
 	_, ok := ast.PrimitiveTypeMap[name]
 	return ok
 }
+
 func isBuiltinFunc(name string) bool {
 	_, ok := builtinFuncs[name]
 	return ok

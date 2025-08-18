@@ -68,7 +68,7 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		return typeTuple
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
-		tuple := &ast.TupleLiteral{}
+		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
 		p.Advance()
 		parseSeriesWithBP(
 			p, &tuple.Values, ExpressionBindingPower,
@@ -237,7 +237,9 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 	p.Expect(lexer.Arrow)
 	switch left := left.(type) {
 	case *ast.Symbol:
-		l.Params = append(l.Params, &ast.TypePair{Key: left.Identifier})
+		l.Params = append(l.Params, &ast.TypePair{
+			Keys: []ast.Identifier{symbolToIdentifier(left)},
+		})
 	case *ast.Discard:
 		l.Params = append(l.Params, &ast.TypePair{})
 	case *ast.TypeTuple:
@@ -247,8 +249,8 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 			var pair *ast.TypePair
 			switch param := param.(type) {
 			case *ast.Symbol:
-				pair = &ast.TypePair{Key: param.Identifier}
-			// Allow (_, b) -> ...
+				pair = &ast.TypePair{Keys: []ast.Identifier{symbolToIdentifier(param)}}
+			// Allow _ -> ...
 			case *ast.Discard:
 				pair = &ast.TypePair{}
 			default:
@@ -473,15 +475,16 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 		lastPos = ranges.FromToken(tok).End
 	}
 	r.Source = b.String()
-	p.Expect(lexer.Slash)
+	endSlashPos := p.Expect(lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
 	if curr := p.CurrentTokenKind(); canGoOnNewline(curr) {
 		p.Tokens = slices.Insert(
 			p.Tokens, p.Index,
 			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
-	} else if curr == lexer.Identifier {
-		r.Flags = []byte(p.Advance().Source)
+	} else if curr == lexer.Identifier { // TODO: validate no spaces between
+		_ = endSlashPos
+		r.Flags = []rune(p.Advance().Source)
 	}
 	return r
 }
@@ -590,9 +593,4 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	return nil
-}
-
-func (p *Parser) ParseSymbol() *ast.Symbol {
-	tok := p.Advance()
-	return rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
 }

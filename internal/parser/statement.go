@@ -81,8 +81,7 @@ func isConstant(id string) bool {
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	var (
 		b             strings.Builder
-		module        = &ast.Symbol{}
-		alias         *ast.Symbol
+		module, alias ast.Identifier
 		unqualImports []*ast.UnqualifiedImport
 		isWildcard    bool
 		modStart      lexer.Position
@@ -92,8 +91,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 
 	// Parse maybe alias
 	if p.Peek().Kind == lexer.Equal {
-		tok := p.Expect(lexer.Identifier)
-		alias = rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
+		alias = p.ParseIdentifier()
 		p.Advance() // =
 	}
 
@@ -130,7 +128,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		})
 		p.Advance()
 	}
-	module.Identifier = b.String()
+	module.Name = b.String()
 
 	// Unqualified import
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
@@ -145,46 +143,30 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		}
 
 		// Alias and unqualified import
-		if alias != nil {
+		if alias.Name != "" {
 			p.Error(errors.Token(
 				errors.ErrAliasInUnqualifiedImport, p.PeekBehind(),
 			))
 		}
-		module.Identifier = module.Identifier[:len(module.Identifier)-1]
+		module.Name = module.Name[:len(module.Name)-1]
 
 		var (
 			wasTypeKw, isTypeImport bool
-			alias                   string
+			alias                   ast.Identifier
 		)
 		for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
 				p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
 			}
 			wasTypeKw = false
-			switch p.CurrentTokenKind() {
-			case lexer.Type:
+			curr := p.CurrentTokenKind()
+			switch {
+			case curr == lexer.Type:
 				isTypeImport, wasTypeKw = true, true
 				p.Advance()
 				continue
-			case lexer.Identifier:
-				// Alias:
-				// 	.{fetch: get}
-				// 	.{Reader: type BufferedReader}
-				// Wildcard not allowed (alias: type *)
-				if alias == "" && p.Peek().Kind == lexer.Colon {
-					name := p.Advance().Source
-					p.Advance() // :
-					alias = name
-					continue
-				}
-				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
-					TypeImport: isTypeImport,
-					Alias:      alias,
-					Identifier: p.CurrentToken().Source,
-				})
-				alias = ""
-			case lexer.Asterisk:
-				if alias != "" {
+			case curr == lexer.Asterisk:
+				if alias.Name != "" {
 					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.CurrentToken()))
 				}
 				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
@@ -192,6 +174,22 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 					Wildcard:   true,
 				})
 			default:
+				// Alias:
+				// 	.{fetch: get}
+				// 	.{Reader: type BufferedReader}
+				// Wildcard not allowed (alias: type *)
+				if alias.Name == "" && p.Peek().Kind == lexer.Colon {
+					name := p.ParseIdentifier()
+					p.Advance() // :
+					alias = name
+					continue
+				}
+				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
+					TypeImport: isTypeImport,
+					Alias:      alias,
+					Identifier: p.ParseIdentifier(),
+				})
+				alias.Name = ""
 				// Need identifier
 				p.Error(errors.ExpectedToken(
 					lexer.Identifier,
@@ -208,7 +206,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 			}
 		}
 		// Check for invalid .{a:} or .{type}
-		if wasTypeKw || alias != "" {
+		if wasTypeKw || alias.Name != "" {
 			p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
 		}
 		p.Expect(lexer.RightCurlyBrace)

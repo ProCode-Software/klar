@@ -83,7 +83,7 @@ type FloatLiteral struct {
 type RegexLiteral struct {
 	BaseNode
 	Source string
-	Flags  []byte
+	Flags  []rune
 }
 
 type VersionLiteral struct {
@@ -99,11 +99,6 @@ type Comment struct {
 
 // lexer.LineComment or lexer.BlockComment
 type CommentType = lexer.TokenType
-
-type Operator struct {
-	Kind     lexer.TokenType
-	Position lexer.Position
-}
 
 type BinaryExpression struct {
 	Left, Right Node
@@ -174,11 +169,11 @@ var ReservedIdent = []lexer.TokenType{
 	lexer.Type, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or,
 	lexer.In, lexer.Break, lexer.Go, lexer.While,
 }
+
 // Keywords that can be used as identifiers if they are not followed by specific tokens.
 var Modifiers = []lexer.TokenType{
 	lexer.Opaque, lexer.Public,
 }
-
 
 type Type interface {
 	Node
@@ -203,18 +198,20 @@ type OptionalType struct {
 	BaseNode
 	Value Type
 }
+
 type ListType struct {
 	BaseNode
 	Value Type
 }
+
 type RestType struct {
 	BaseNode
 	Value Type
 }
-type TupleType struct {
+
+type TupleType struct { // TODO: update
 	BaseNode
-	Values []Type
-	Labels []string
+	Values []*TypePair
 }
 
 type FunctionType struct {
@@ -222,30 +219,36 @@ type FunctionType struct {
 	Parameters *TupleType
 	ReturnType Type
 }
+
 type GenericType struct {
 	BaseNode
 	Name       Type
 	Parameters []Type
 }
+
 type TypePair struct {
-	Keys []*Symbol
+	Keys  []Identifier
 	Value Type
 	BaseNode
 }
+
 type UnionType struct {
 	BaseNode
 	Options []Type
 }
+
 type MethodType struct {
 	BaseNode
 	ReturnType Type
 	Parameters []*MethodTypeParam
 }
+
 type MethodTypeParam struct {
-	Label, Identifier string
+	Label, Identifier Identifier
 	Type              Type
 	BaseNode
 }
+
 type TypeAnnotation struct {
 	BaseNode
 	Variable *DestructureVars
@@ -289,17 +292,16 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 //	import fetch: klar.http.requests.{get}
 type ImportStatement struct {
 	BaseNode
-	Module, Alias      *Symbol // Alias is nil if no unqualified imports
+	Module, Alias      Identifier // Alias is nil if no unqualified imports
 	Wildcard           bool
 	UnqualifiedImports []*UnqualifiedImport
 }
 
 type UnqualifiedImport struct {
 	BaseNode
-	TypeImport bool
-	Wildcard   bool
-	Identifier string
-	Alias      string
+	TypeImport        bool
+	Wildcard          bool
+	Identifier, Alias Identifier
 }
 
 type TypeDeclaration interface {
@@ -309,7 +311,7 @@ type TypeDeclaration interface {
 }
 
 type InterfaceDeclaration struct {
-	Identifier     *Symbol
+	Identifier     Identifier
 	InheritedTypes []Type
 	Tag            bool // If no fields
 	Fields         []*TypePair
@@ -317,34 +319,36 @@ type InterfaceDeclaration struct {
 }
 
 type StructDeclaration struct {
-	Identifier     *Symbol
+	Identifier     Identifier
 	InheritedTypes []Type // Type alias or primitive
 	Fields         []*StructField
 	BaseNode
 }
+
 type StructField struct {
-	Names []*Symbol
-	Type       Type
-	Constant   bool
-	Value      Expression
+	Names    []Identifier
+	Type     Type
+	Constant bool
+	Value    Expression
 	BaseNode
 }
 
 type EnumDeclaration struct {
-	Identifier *Symbol
+	Identifier Identifier
 	Inherited  []Type
 	Values     []*EnumItem
 	BaseNode
 }
+
 type EnumItem struct {
-	Identifier *Symbol
+	Identifier Identifier
 	Value      Expression
 	Parameters []Type
 	BaseNode
 }
 
 type TypeAliasDeclaration struct {
-	Identifier *Symbol
+	Identifier Identifier
 	Type       Type
 	BaseNode
 }
@@ -355,8 +359,8 @@ type MapLiteral struct {
 }
 
 type MapItem struct {
-	Keys []Expression // if not rest
-	Value Expression
+	Keys            []Expression // if not rest
+	Value           Expression
 	Rest, Shorthand bool
 	BaseNode
 }
@@ -373,9 +377,9 @@ type ReturnStatement struct {
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
-	Identifier    *Symbol
-	Struct        Type
-	GenericParams []*Symbol
+	Identifier    Identifier
+	Struct        Identifier
+	GenericParams []Identifier
 	Parameters    []*FunctionParam
 	ReturnType    Type
 	Body          []Statement
@@ -386,13 +390,18 @@ type FunctionDeclaration struct {
 type FuncAliasDeclaration struct {
 	BaseNode
 
-	Struct     Type
-	Identifier *Symbol
-	Alias      *Expression
+	Struct     Identifier
+	Identifier Identifier
+	Alias      Expression
+}
+
+type FunctionParamName struct {
+	BaseNode
+	Label, Identifier Identifier
 }
 
 type FunctionParam struct {
-	NamePairs [][2]*Symbol
+	Names   []*FunctionParamName
 	Type    Type
 	Default Expression
 	BaseNode
@@ -425,7 +434,7 @@ type EnumLiteral struct {
 }
 
 type CallParam struct {
-	Label string
+	Label Identifier
 	Value Expression
 	BaseNode
 }
@@ -572,12 +581,6 @@ type ListDestructure struct {
 	Values []Destructure
 }
 
-type SymbolDestructure struct {
-	BaseNode
-	Identifier string
-	Constant   bool
-}
-
 // Object or map destructure
 type ObjectDestructure struct {
 	BaseNode
@@ -593,9 +596,9 @@ type ObjectDestructure struct {
 //	#{ data.[first] }
 type ObjectDestructureEntry struct {
 	BaseNode
-	Alias   *SymbolDestructure // before the :
-	Object  *Symbol            // after the : or before the .
-	Index   Destructure        // after the dot
+	Alias   Identifier  // before the :
+	Object  *Symbol     // after the : or before the .
+	Index   Destructure // after the dot
 	Default Expression
 }
 

@@ -92,10 +92,10 @@ func (TypeAliasDeclaration) typeDecl()      {}
 func (StructDeclaration) typeDecl()         {}
 func (EnumDeclaration) typeDecl()           {}
 func (InterfaceDeclaration) typeDecl()      {}
-func (d TypeAliasDeclaration) Name() string { return d.Identifier.Identifier }
-func (d StructDeclaration) Name() string    { return d.Identifier.Identifier }
-func (d EnumDeclaration) Name() string      { return d.Identifier.Identifier }
-func (d InterfaceDeclaration) Name() string { return d.Identifier.Identifier }
+func (d TypeAliasDeclaration) Name() string { return d.Identifier.Name }
+func (d StructDeclaration) Name() string    { return d.Identifier.Name }
+func (d EnumDeclaration) Name() string      { return d.Identifier.Name }
+func (d InterfaceDeclaration) Name() string { return d.Identifier.Name }
 
 // Can be used on left side of =
 func (Symbol) assignable()          {}
@@ -109,19 +109,7 @@ func (Discard) assignable()         {}
 func (ListDestructure) destruct()     {}
 func (ObjectDestructure) destruct()   {}
 func (BadExpression) destruct()       {}
-func (SymbolDestructure) destruct()   {}
+func (Symbol) destruct()              {}
 func (Discard) destruct()             {}
 func (ListDestructure) assignable()   {}
 func (ObjectDestructure) assignable() {}
-func (SymbolDestructure) assignable() {}
-
-// Operator
-func (o Operator) Len() uint32 {
-	return uint32(len(o.Kind.String()))
-}
-
-func (o Operator) End() lexer.Position {
-	pos := o.Position
-	pos.Col += o.Len()
-	return pos
-}

@@ -96,18 +96,44 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.Function
 }
 
 func (p *Parser) ParseTupleType() *ast.TupleType {
-	var params []ast.Type
-	var labels []string
 	p.Advance() // (
-	parseSeries(p, &params, func() ast.Type {
-		if p.Peek().Kind == lexer.Colon {
-			labels = append(labels, make([]string, len(params)-len(labels)+1)...)
-			labels[len(params)] = p.Advance().Source
-			p.Advance() // :
+	var (
+		tuple            = &ast.TupleType{}
+		names            []ast.Identifier
+		isType, hasColon bool
+	)
+	for p.WhileNotEndOr(lexer.RightParenthesis) {
+		// (a, b, c) = 3 types
+		// (a, b, c: Int) = 3 labels
+		// (a, [b] c) = 3 types
+		// (a, b: Int, c), ([a], b, c: Int) = invalid [mismatch]
+
+		if !isType && isValidIdentifier(p.CurrentTokenKind()) {
+			names = append(names, p.ParseIdentifier())
+		} else {
+			isType = true
+			if p.CurrentTokenKind() == lexer.Colon {
+				p.Advance()
+				isType, hasColon = false, true
+				// Apply trailing type
+				pair := &ast.TypePair{
+					Keys: names, Value: p.ParseType(DefaultTypeBindingPower),
+				}
+				tuple.Values = append(tuple.Values, pair)
+				names = names[:0]
+			} else if hasColon {
+				p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.PeekBehind()))
+			} else {
+				tuple.Values = append(tuple.Values, &ast.TypePair{
+					Value: p.ParseType(DefaultTypeBindingPower),
+				})
+			}
 		}
-		return p.ParseType(DefaultTypeBindingPower)
-	}, lexer.RightParenthesis, lexer.Comma, false)
-	return &ast.TupleType{Values: params, Labels: labels}
+		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
+			p.Expect(lexer.Comma)
+		}
+	}
+	return tuple
 }
 
 func (p *Parser) ParseRestType() *ast.RestType {

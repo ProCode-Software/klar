@@ -272,7 +272,7 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 }
 
 type RegexAttrs struct {
-	Flags        []byte
+	Flags        []rune
 	Source       string
 	Unterminated bool
 	Multiline    bool
@@ -341,7 +341,7 @@ loop:
 		SetAttribute("params", RegexAttrs{
 			Source:       "",
 			Multiline:    hasNewline,
-			Flags:        []byte(flagStr),
+			Flags:        []rune(flagStr),
 			Unterminated: unterm,
 			SlashCount:   slashN,
 		})

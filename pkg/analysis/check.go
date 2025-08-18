@@ -18,10 +18,12 @@ func CheckProgram(program *ast.Program, options CheckOptions) (
 	typedProgram *typed.Program, errors []errors.KlarError,
 ) {
 	return nil, nil
-/* 	c := analysis.NewChecker(program)
-	c.OnError = options.OnError
-	c.Target = options.Target
-	c.FilePath = options.FilePath
-	typed := c.CheckProgram()
-	return typed, c.Errors */
+	/*
+		 	c := analysis.NewChecker(program)
+			c.OnError = options.OnError
+			c.Target = options.Target
+			c.FilePath = options.FilePath
+			typed := c.CheckProgram()
+			return typed, c.Errors
+	*/
 }

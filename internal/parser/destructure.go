@@ -21,7 +21,7 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 func (p *Parser) ParseDestructureInner() ast.Destructure {
 	switch p.CurrentTokenKind() {
 	case lexer.Identifier:
-		return p.parseSymbolDestruct()
+		return p.ParseIdentifier().Symbol()
 	case lexer.Underscore:
 		return rangeFromToken(&ast.Discard{}, p.Advance())
 	case lexer.LeftCurlyBrace:
@@ -40,20 +40,6 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 	}
 }
 
-func (p *Parser) parseSymbolDestruct() *ast.SymbolDestructure {
-	tok := p.Advance()
-	name := tok.Source
-	sym := &ast.SymbolDestructure{
-		Identifier: name,
-		Constant:   isConstant(name),
-	}
-	return rangeFromToken(sym, tok)
-}
-
-func symbolDestructToSymbol(sym *ast.SymbolDestructure) *ast.Symbol {
-	return &ast.Symbol{BaseNode: sym.BaseNode, Identifier: sym.Identifier}
-}
-
 func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 	var items []*ast.ObjectDestructureEntry
 	if p.errorIfEmptyDestruct(lexer.RightCurlyBrace) {
@@ -61,33 +47,34 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 	}
 	parseSeries(p, &items, func() *ast.ObjectDestructureEntry {
 		entry := &ast.ObjectDestructureEntry{}
-		ident := p.parseSymbolDestruct()
+		identTok := p.CurrentToken()
+		ident := p.ParseMapIdentifier(true)
 		var end lexer.Position
 		if curr := p.CurrentTokenKind(); curr == lexer.Colon {
 			entry.Alias = ident
-			p.Advance()
+			p.AdvanceNonBoundary()
 			// Parsing full destructure just for a better error
 			value := p.ParseDestructure()
-			if sym, ok := value.(*ast.SymbolDestructure); ok {
-				entry.Object = symbolDestructToSymbol(sym)
+			if sym, ok := value.(*ast.Symbol); ok {
+				entry.Object = sym
 			} else {
 				p.Error(errors.Node(errors.ErrDestructPatAfterColon, value))
 			}
 			end = entry.Alias.GetRange().End
 		} else if curr == lexer.Dot {
-			entry.Object = symbolDestructToSymbol(ident)
-			p.Advance()
+			entry.Object = ident.Symbol()
+			p.AdvanceNonBoundary()
 			entry.Index = p.ParseDestructureInner()
 			end = entry.Index.GetRange().End
+		} else {
+			p.validateIdentifier(identTok)
+			entry.Object = ident.Symbol()
 		}
 		if p.isEqualOrColonEqualAndError() {
-			if entry.Index != nil {
-				p.Error(errors.Token(errors.ErrDestructInvalidEqual, p.CurrentToken()))
-			}
 			p.Advance()
 			entry.Default = p.ParseExpression(ExpressionBindingPower)
 		}
-		entry.SetPos(ident.Range.Start, end)
+		entry.SetPos(ident.Position, end)
 		p.Expect(lexer.Comma, lexer.EndOfStatement)
 		return entry
 	}, lexer.RightCurlyBrace, 0, true)
@@ -134,11 +121,9 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 	for p.HasTokens() && p.CurrentTokenKind() != lexer.EndOfStatement {
 		dest := p.ParseDestructure()
 		curr := p.CurrentTokenKind()
-		if dest, ok := dest.(*ast.SymbolDestructure); ok &&
+		if dest, ok := dest.(*ast.Symbol); ok &&
 			!isAssignment(curr) && curr != lexer.Comma && curr != lexer.Colon {
-			res, handled := p.handleLED(
-				curr, symbolDestructToSymbol(dest), ExpressionBindingPower,
-			)
+			res, handled := p.handleLED(curr, dest, ExpressionBindingPower)
 			if !handled {
 				p.unknownTokenErr()
 				res = dest
