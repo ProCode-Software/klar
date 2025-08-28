@@ -14,7 +14,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
-	"github.com/sanity-io/litter"
 )
 
 const INCLUDE_COMMENTS = true
@@ -65,7 +64,7 @@ func runTokens(tokens []lexer.Token) {
 			throw(err)
 		}
 	} else {
-		litter.Config.StripPackageNames = true
+		//litter.Config.StripPackageNames = true
 		// litter.Dump(program)
 	}
 

@@ -38,6 +38,11 @@ func (i Identifier) End() lexer.Position {
 	return i._range.End
 }
 
+// BaseNode returns i.Range() as a [BaseNode]
+func (i Identifier) BaseNode() BaseNode {
+	return BaseNode{Range: i.Range()}
+}
+
 func (i Identifier) Range() ranges.Range {
 	if i._range.Start.Line == 0 {
 		i._range = ranges.Range{i.Position, lexer.Position{

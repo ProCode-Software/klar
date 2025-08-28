@@ -12,6 +12,7 @@ var IsHandledNUD = []lexer.TokenType{
 	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
 	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash, lexer.For,
 }
+// TODO: add soft keywords
 
 func modifierAnd(types ...lexer.TokenType) []lexer.TokenType {
 	all := make([]lexer.TokenType, len(types)+len(ast.Modifiers))
@@ -32,6 +33,10 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	startPos := p.CurrentToken().Position
 	switch kind {
 	default:
+		if isValidIdentifier(kind) {
+			res = &ast.Symbol{Identifier: p.Advance().Source}
+			break
+		}
 		return nil, false
 	// Primary expression/literal
 	case lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil:
@@ -225,6 +230,10 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	case lexer.Ellipsis:
 		res = p.ParseRestType()
 	default:
+		if isValidIdentifier(kind) {
+			res = p.ParseTypeAlias()
+			break
+		}
 		return nil, false
 	}
 	res.SetPos(startPos, p.lastTokEnd())

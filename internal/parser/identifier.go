@@ -27,6 +27,16 @@ func (p *Parser) expectNonNumericMapIdent() lexer.Token {
 	return p.Advance()
 }
 
+var validIdents = map[lexer.TokenType]struct{}{
+	lexer.Identifier: {},
+}
+
+func init() {
+	for _, tok := range ast.Modifiers {
+		validIdents[tok] = struct{}{}
+	}
+}
+
 // isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
 // [lexer.Identifier] and types in [ast.Modifiers].
 func isValidIdentifier(tok lexer.TokenType) bool {
@@ -36,7 +46,10 @@ func isValidIdentifier(tok lexer.TokenType) bool {
 // validateIdentifier reports whether tok is a valid identifier. If it is false,
 // validateIdentifier reports an error to the parser.
 func (p *Parser) validateIdentifier(tok lexer.Token) bool {
-	if tok.Kind != lexer.Identifier && !slices.Contains(ast.Modifiers, tok.Kind) {
+	if tok.Kind == lexer.Identifier {
+		return true
+	}
+	if _, ok := validIdents[tok.Kind]; !ok {
 		if slices.Contains(ast.ReservedIdent, tok.Kind) {
 			p.Error(errors.Token(errors.ErrReservedKeyword, tok))
 		} else {

@@ -33,8 +33,11 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		p.Advance()
 		return &ast.TupleLiteral{}
 	}
-	var expr ast.Expression
-	first := p.CurrentToken()
+	var (
+		expr       ast.Expression
+		first      = p.CurrentToken()
+		firstIndex = p.Index
+	)
 	if first.Kind == lexer.Underscore {
 		expr = &ast.Discard{}
 	} else {
@@ -43,37 +46,23 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	next := p.CurrentToken()
 	switch next.Kind {
 	case lexer.Colon:
-		// Type tuple (for lambda)
-		typeTuple := &ast.TypeTuple{}
-		if e, ok := expr.(*ast.Symbol); ok {
-			p.Advance()
-			typeTuple.Params = append(typeTuple.Params, &ast.TypePair{
-				Key:   e.Identifier,
-				Value: p.ParseType(DefaultTypeBindingPower),
-			})
-		} else {
-			// Expected identifier
-			p.Error(errors.ExpectedToken(lexer.Identifier, first))
-		}
-		parseSeries(
-			p, &typeTuple.Params,
-			func() *ast.TypePair {
-				key := p.Expect(lexer.Identifier).Source
-				p.Expect(lexer.Colon)
-				typ := p.ParseType(DefaultTypeBindingPower)
-				return &ast.TypePair{Key: key, Value: typ}
-			},
-			lexer.RightParenthesis, lexer.Comma, false,
-		)
-		return typeTuple
+		p.Index = firstIndex
+		return p.ParseTupleType()
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
 		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
-		p.Advance()
-		parseSeriesWithBP(
-			p, &tuple.Values, ExpressionBindingPower,
-			lexer.RightParenthesis, lexer.Comma,
-		)
+		for p.WhileNot(lexer.RightParenthesis) {
+			tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
+			if p.CurrentTokenKind() == lexer.Colon {
+				// Label
+				p.Index = firstIndex
+				return p.ParseTupleType()
+			}
+			if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
+				p.Expect(lexer.Comma)
+			}
+		}
+		p.Expect(lexer.RightParenthesis)
 		return tuple
 	default:
 		// Grouped expression
@@ -199,10 +188,10 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 			// 	person2.greet(person: person)
 			p.Advance()
 			key, val := p.expectShorthand()
-			arg.Label, arg.Value = key.Identifier, val
+			arg.Label, arg.Value = symbolToIdentifier(key), val
 		case p.Peek().Kind == lexer.Colon:
 			// Label (allow keywords)
-			arg.Label = p.expectNonNumericMapIdent().Source
+			arg.Label = p.ParseMapIdentifier(false)
 			p.Advance() // :
 			fallthrough
 		default:
@@ -242,8 +231,8 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 		})
 	case *ast.Discard:
 		l.Params = append(l.Params, &ast.TypePair{})
-	case *ast.TypeTuple:
-		l.Params = left.Params
+	case *ast.TupleType:
+		l.Params = left.Values
 	case *ast.TupleLiteral:
 		for _, param := range left.Values {
 			var pair *ast.TypePair

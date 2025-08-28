@@ -500,11 +500,6 @@ type WhenCase struct {
 	InBraces bool
 }
 
-type TypeTuple struct {
-	BaseNode
-	Params []*TypePair
-}
-
 type LambdaExpression struct {
 	BaseNode
 	Params   []*TypePair

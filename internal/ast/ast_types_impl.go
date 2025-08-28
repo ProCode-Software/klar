@@ -37,7 +37,7 @@ func (CallExpression) expr()     {}
 func (EnumLiteral) expr()        {}
 func (Discard) expr()            {}
 func (WhenExpression) expr()     {}
-func (TypeTuple) expr()          {}
+func (TupleType) expr()          {}
 func (LambdaExpression) expr()   {}
 func (RangeExpression) expr()    {}
 func (RestExpression) expr()     {}
