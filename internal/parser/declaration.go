@@ -93,6 +93,7 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 		itemMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
+		p.Expect(lexer.Dot)
 		id := p.ParseIdentifier()
 
 		// Check if exists
@@ -117,7 +118,10 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 		}
 		markStartEndPos(p, item, id.Position)
 		items = append(items, item)
-		if c := p.CurrentToken(); c.Kind == lexer.Dot && c.Line > item.Range.Start.Line {
+		if c := p.CurrentToken(); c.Kind == lexer.EndOfStatement {
+			p.Advance()
+			continue 
+		} else if c.Kind == lexer.Dot && c.Line > item.Range.End.Line {
 			continue // No EOS before '.' in next item
 		}
 		if p.CurrentTokenKind() != lexer.RightCurlyBrace {
@@ -157,7 +161,7 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 		// Default value
 		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
-			field.Value = p.ParseExpression(DefaultBindingPower)
+			field.Value = p.ParseExpression(ExpressionBindingPower)
 		}
 		markStartEndPos(p, field, field.Names[0].Position)
 		fields = append(fields, field)
@@ -314,7 +318,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		// 	func List.join(by by: String = ", ")
 		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
-			param.Default = p.ParseExpression(DefaultBindingPower)
+			param.Default = p.ParseExpression(ExpressionBindingPower)
 		}
 		markEndPos(p, param)
 		f.Parameters = append(f.Parameters, param)

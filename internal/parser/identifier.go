@@ -8,25 +8,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) isMapIdentifier() bool {
-	return p.IsCurrently(ast.ReservedIdent...) ||
-		p.IsCurrently(lexer.Identifier, lexer.Numeric, lexer.Boolean, lexer.Nil)
-}
-
-func (p *Parser) expectMapIdent() lexer.Token {
-	if !p.isMapIdentifier() {
-		return p.Expect(lexer.Identifier)
-	}
-	return p.Advance()
-}
-
-func (p *Parser) expectNonNumericMapIdent() lexer.Token {
-	if !p.isMapIdentifier() || p.CurrentTokenKind() == lexer.Numeric {
-		return p.Expect(lexer.Identifier)
-	}
-	return p.Advance()
-}
-
 var validIdents = map[lexer.TokenType]struct{}{
 	lexer.Identifier: {},
 }
@@ -41,6 +22,11 @@ func init() {
 // [lexer.Identifier] and types in [ast.Modifiers].
 func isValidIdentifier(tok lexer.TokenType) bool {
 	return tok == lexer.Identifier || slices.Contains(ast.Modifiers, tok)
+}
+
+func isValidIdentOrDiscard(tok lexer.TokenType) bool {
+	return tok == lexer.Identifier ||
+		tok == lexer.Underscore || slices.Contains(ast.Modifiers, tok)
 }
 
 // validateIdentifier reports whether tok is a valid identifier. If it is false,
@@ -63,6 +49,14 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 func (p *Parser) ParseIdentifier() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	p.validateIdentifier(tok)
+	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+}
+
+func (p *Parser) ParseIdentWithDiscard() ast.Identifier {
+	tok := p.AdvanceNonBoundary()
+	if tok.Kind != lexer.Underscore {
+		p.validateIdentifier(tok)
+	}
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
 

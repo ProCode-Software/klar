@@ -214,6 +214,22 @@ type TupleType struct { // TODO: update
 	Values []*TypePair
 }
 
+type DestructureTuple struct {
+	BaseNode
+	Values []*DestructureTypePair
+}
+
+type DestructureTypePair struct {
+	BaseNode
+	Keys []Destructure
+	Type Type
+}
+
+type ParenType struct {
+	BaseNode
+	Type Type
+}
+
 type FunctionType struct {
 	BaseNode
 	Parameters *TupleType

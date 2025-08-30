@@ -27,24 +27,24 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
+	firstIndex := p.Index
 	p.Advance() // (
 	if p.CurrentTokenKind() == lexer.RightParenthesis {
 		// Empty tuple
 		p.Advance()
 		return &ast.TupleLiteral{}
 	}
-	var (
-		expr       ast.Expression
-		first      = p.CurrentToken()
-		firstIndex = p.Index
-	)
+	var expr ast.Expression
+	first := p.CurrentToken()
 	if first.Kind == lexer.Underscore {
-		expr = &ast.Discard{}
+		expr = &ast.Discard{} // TODO: range
+		p.Advance()
 	} else {
 		expr = p.ParseExpression(CommaBindingPower)
 	}
 	next := p.CurrentToken()
 	switch next.Kind {
+		// TODO: destructure
 	case lexer.Colon:
 		p.Index = firstIndex
 		return p.ParseTupleType()
@@ -121,11 +121,9 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 	var item ast.Expression
 	if p.Advance().Kind != lexer.LeftBracket {
 		// Allow use of keywords as fields
-		tok := p.expectNonNumericMapIdent()
-		item = rangeFromToken(&ast.Symbol{Identifier: tok.Source}, tok)
 		return &ast.IndexExpression{
 			Object:   left,
-			Property: item,
+			Property: p.ParseMapIdentifier(false).Symbol(),
 			Computed: false,
 		}
 	}
@@ -254,7 +252,7 @@ func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpressi
 	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
 		l.Body = p.ParseBlock()
 	} else {
-		l.ExprBody = p.ParseExpression(DefaultBindingPower)
+		l.ExprBody = p.ParseExpression(ExpressionBindingPower)
 	}
 	return l
 }

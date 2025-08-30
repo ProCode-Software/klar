@@ -297,7 +297,7 @@ func (e ParseError) error() string {
 			kind = "Enum item"
 		}
 		return fmt.Sprintf("TypeError: %s '%s' was already declared",
-			kind, e.Node.(*ast.Symbol).Identifier,
+			kind, e.Node.(ast.Identifier).Name,
 		)
 	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
 		var (

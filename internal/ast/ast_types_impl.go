@@ -52,6 +52,7 @@ func (ObjectPipeline) expr()     {}
 func (ForExpression) expr()      {}
 func (StructDotInit) expr()      {}
 func (DestructureVars) expr()    {}
+func (DestructureTuple) expr()   {}
 
 // Statements
 func (BadExpression) stmt()        {}

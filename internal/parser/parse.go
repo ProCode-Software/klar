@@ -63,7 +63,10 @@ func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
 			p.unknownTokenErr()
-			break
+			return &ast.BadExpression{
+				Token:    kind,
+				Value:    left,
+			}
 		}
 	}
 	// left = left.SetPos(left.GetRange().Start, p.savePos())
@@ -128,28 +131,28 @@ func parseSeries[T ast.Node](
 	with func() T, until, separator lexer.TokenType,
 	allowEOS bool,
 ) {
-	parse := func() T {
+	if until == 0 && separator == 0 {
+		panic("until and separator cannot both be zero")
+	}
+	for p.HasTokens() && p.CurrentTokenKind() != until {
+		if !allowEOS && p.CurrentTokenKind() == lexer.EndOfStatement {
+			break
+		}
 		start := p.CurrentToken().Position
-		return markStartEndPos(p, with(), start)
-	}
-	if allowEOS {
-		for p.WhileNot(until) {
-			*arr = append(*arr, parse())
-			if separator != 0 && p.CurrentTokenKind() != until {
-				p.Expect(separator, lexer.EndOfStatement)
-			} else if separator == 0 && p.CurrentTokenKind() == until {
-				break
-			}
+		*arr = append(*arr, markStartEndPos(p, with(), start))
+		if !p.HasTokens() {
+			break
 		}
-	} else {
-		for p.WhileNotEndOr(until) {
-			*arr = append(*arr, parse())
-			if separator != 0 && p.IsNotCurrentlyEndOr(until) {
-				p.Expect(separator)
-			} else if separator == 0 && p.CurrentTokenKind() == until {
-				break
-			}
+		curr := p.CurrentTokenKind()
+		if curr == until || (until == 0 && curr != separator) ||
+			(!allowEOS && curr == lexer.EndOfStatement) {
+			break
+		}
+		if separator != 0 {
+			p.Expect(separator)
 		}
 	}
-	p.Expect(until)
+	if until != 0 {
+		p.Expect(until)
+	}
 }

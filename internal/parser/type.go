@@ -108,8 +108,8 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		// (a, [b], c) = 3 types
 		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
 		if k := p.CurrentTokenKind(); !isType &&
-			isValidIdentifier(k) && p.Peek().Kind != lexer.Dot {
-			names = append(names, p.ParseIdentifier())
+			isValidIdentOrDiscard(k) && p.Peek().Kind != lexer.Dot {
+			names = append(names, p.ParseIdentWithDiscard())
 			if p.CurrentTokenKind() == lexer.Colon {
 				if isType {
 					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.CurrentToken()))
@@ -134,6 +134,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 			p.Expect(lexer.Comma)
 		}
 	}
+	p.Expect(lexer.RightParenthesis)
 	if len(names) > 0 {
 		if hasColon {
 			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.CurrentToken()))
