@@ -6,13 +6,24 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// InsertEOS remove newlines from the parser's Tokens and replaces them with
-// end of statement instead.
+// InsertEOS performs automatic semicolon insertion by removing [lexer.Newline]
+// tokens from the parser's Tokens and replacing them with [lexer.EndOfStatement] (EOS).
 //
 // Klar does not use semicolons to terminate statements, and they are invalid.
 // Newlines are required to terminate a statement, so InsertEOS will tell
 // where a newline is being used to terminate a statement and replace it with
 // end of statement. These are equivalent to semicolons in other languages.
+//
+// Klar's ASI isn't contextual, so the rules stay the same regardless of the expression.
+// Because of this, there are some limitations such as EOS tokens always being
+// added after '-', '+', '...', or '.' when those tokens are used to begin a statement:
+//
+//	print(x) // No EOS here
+//	-x.toFixed(3) // Same as: print(x) - x.toFixed(3)
+//
+// Note that most of these kind of statements are invalid in Klar (untyped enum,
+// invalid rest, or unused value).
+// An EOS token is always added after a [lexer.RightCurlyBrace] '}' token.
 func (p *Parser) InsertEOS() {
 	if len(p.Tokens) <= 1 {
 		return
@@ -35,9 +46,9 @@ func (p *Parser) InsertEOS() {
 		// 	func fn(x: Int) { return x * 2 }
 		// but not {}
 		case tok.Kind == lexer.RightCurlyBrace &&
-			prev.Kind != lexer.EndOfStatement &&
-			prev.Kind != lexer.LeftCurlyBrace &&
-			prev.Kind != lexer.HashLeftCurlyBrace:
+			prev.Kind != lexer.LeftCurlyBrace && 
+			prev.Kind != lexer.HashLeftCurlyBrace &&
+			canAddEOSAfter(prev.Kind):
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
 				Kind:     lexer.EndOfStatement,
 				Position: tok.Position,
@@ -62,12 +73,13 @@ func (p *Parser) InsertEOS() {
 	}
 }
 
-// Never add EOS after these tokens
+// Never add EOS after these tokens. All of the handled tokens are NUDs, otherwise
+// an EOS is added if canGoOnNewline(t) returns false.
 func canAddEOSAfter(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Punctuation
-		lexer.Comma, lexer.LeftBracket, lexer.LeftCurlyBrace,
+		lexer.LeftBracket, lexer.LeftCurlyBrace,
 		lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
 		lexer.HashLeftCurlyBrace, lexer.Newline,
 		// Keywords
@@ -81,7 +93,7 @@ func canAddEOSAfter(t lexer.TokenType) bool {
 	}
 }
 
-// Never add EOS before these tokens, even if on newline. Essentially
+// Never add EOS before (or after) these tokens, even if on newline. Essentially
 // remove the newline.
 // Example:
 //
@@ -89,7 +101,9 @@ func canAddEOSAfter(t lexer.TokenType) bool {
 //		.sort()
 //
 // If a newline before is a bad practice (such as parenthesis), then it will not be here.
-// Tokens that begin statements (such as keywords) aren't here either.
+// Tokens that begin statements (such as keywords) aren't here either. [lexer.Newline]
+// is included and return true so that extra newlines are removed. Apart from that,
+// all of the handled tokens are LEDs.
 func canGoOnNewline(t lexer.TokenType) bool {
 	switch t {
 	case
@@ -98,14 +112,18 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		// Arithmetic
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
 		lexer.Percent,
+		// Distributive
+		lexer.And, lexer.Or,
 		// Punctuation
 		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis, lexer.LeftCurlyBrace,
+		lexer.Comma,
 		// Operators
-		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot,
+		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot, lexer.Ellipsis,
+		lexer.DotDotLessThan,
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.Not, lexer.AndAnd,
-		lexer.OrOr, lexer.In, lexer.NotIn, lexer.DotDotLessThan,
+		lexer.OrOr, lexer.In, lexer.NotIn,
 		// Whitespace
 		lexer.Newline:
 		return true

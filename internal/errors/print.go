@@ -119,16 +119,16 @@ func (p *Printer) colorize(i int) string {
 	switch {
 	case tok.Kind != lexer.Identifier:
 		break
+	case isPrimitive(tok.Source),
+		prev == lexer.Arrow && next == lexer.LeftCurlyBrace,
+		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:
+		color = p.TypeColor
 	case prev == lexer.Func,
 		next == lexer.LeftParenthesis:
 		color = p.FunctionColor
 		if isBuiltinFunc(tok.Source) {
 			color = colorBuiltin
 		}
-	case isPrimitive(tok.Source),
-		prev == lexer.Arrow && next == lexer.LeftCurlyBrace,
-		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:
-		color = p.TypeColor
 	}
 	return ansi.Color(color, tok.Source)
 }

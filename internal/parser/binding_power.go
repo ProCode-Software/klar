@@ -17,16 +17,16 @@ const (
 	ExpressionBindingPower                  // Minimum for expressions
 	LambdaBindingPower                      // ->
 	ObjectPipelineBindingPower              // |.
-	LogicalBindingPower                     // ||, &&, | or + in type
+	LogicalBindingPower                     // ||, &&
 	PipelineBindingPower                    // |>
 
-	RelationalBindingPower     // ==, !=, >, <, <=, >=, in
+	RelationalBindingPower     // ==, !=, >, <, <=, >=, in, !in
 	DistributiveBindingPower   // and, or
-	RangeBindingPower          // ...
+	RangeBindingPower          // ..., ..<
 	AdditiveBindingPower       // +, -
 	MultiplicativeBindingPower // *, /, %
-	UnaryBindingPower          // Suffix: ++, --
-	ExponentiationBindingPower // ^
+	UnaryBindingPower          // left ..., !, ++, -- (prefix operators aren't LEDs)
+	ExponentiationBindingPower // ^ (higher than unary: -2 ^ 3 = -(2 ^ 3))
 	CallBindingPower           // Call: (
 	MemberBindingPower         // Index/Slice: . [
 	PrimaryBindingPower        // Primary expressions, such as literals
@@ -59,7 +59,8 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.In:             RelationalBindingPower,
 	lexer.NotIn:          RelationalBindingPower,
 
-	lexer.Ellipsis: RangeBindingPower,
+	lexer.Ellipsis:       RangeBindingPower,
+	lexer.DotDotLessThan: RangeBindingPower,
 
 	lexer.And: DistributiveBindingPower,
 	lexer.Or:  DistributiveBindingPower,
@@ -81,33 +82,35 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Dot:         MemberBindingPower,
 	lexer.LeftBracket: MemberBindingPower,
 
+	// NUDs aren't important for precedence, but when used as a LED,
+	// you can get a better unexpected token error.
 	lexer.String:     PrimaryBindingPower,
 	lexer.Numeric:    PrimaryBindingPower,
 	lexer.Boolean:    PrimaryBindingPower,
 	lexer.Identifier: PrimaryBindingPower,
 	lexer.Nil:        PrimaryBindingPower,
 	lexer.Underscore: PrimaryBindingPower,
+	lexer.Regex:      PrimaryBindingPower,
 }
 
 const (
 	_ BindingPower = AssignBindingPower + iota
 	DefaultTypeBindingPower
-	FunctionTypeBindingPower
-	VariadicTypeBindingPower
-	OptionalTypeBindingPower
-	UnionTypeBindingPower
-	GenericTypeBindingPower
-	MemberTypeBindingPower
-	PrimaryTypeBindingPower
+	FunctionTypeBindingPower  // ->
+	VariadicTypeBindingPower  // ...
+	OptionalTypeBindingPower  // ?
+	UnionTypeBindingPower     // |
+	NamespaceTypeBindingPower // .
+	GenericTypeBindingPower   // <
+	PrimaryTypeBindingPower   // Types
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Arrow:    FunctionTypeBindingPower,
-	lexer.Ellipsis: VariadicTypeBindingPower,
 	lexer.Question: OptionalTypeBindingPower,
 	lexer.Stroke:   UnionTypeBindingPower,
 	lexer.LessThan: GenericTypeBindingPower,
-	lexer.Dot:      MemberTypeBindingPower,
+	lexer.Dot:      NamespaceTypeBindingPower,
 
 	lexer.Identifier: PrimaryTypeBindingPower,
 	lexer.Underscore: PrimaryTypeBindingPower,

@@ -57,6 +57,10 @@ func (p *Parser) ParsePrimaryExpression() ast.Expression {
 		src   = token.Source
 	)
 	switch token.Kind {
+	default:
+		if isValidIdentifier(token.Kind) {
+			return &ast.Symbol{Identifier: src}
+		}
 	case lexer.Identifier:
 		return &ast.Symbol{Identifier: src}
 	case lexer.Numeric:

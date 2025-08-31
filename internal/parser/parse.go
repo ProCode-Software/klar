@@ -8,19 +8,24 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// Parse parses tokens into a Program. If continueOnErr is true, the parser will
-// not stop parsing on a syntax error.
+// Parse parses p.Tokens into a [*ast.Program].
 func (p *Parser) Parse() *ast.Program {
-	var (
-		body     = make([]ast.Statement, 0, len(p.Tokens)/2)
-		comments = p.RemoveComments() // Move comments
-	)
-	p.InsertEOS() // Add the "semicolons"
+	defer func() {
+		switch err := recover(); err {
+		case nil, stopParsing{}:
+			return
+		default:
+			panic(err)
+		}
+	}()
+	body := make([]ast.Statement, 0, len(p.Tokens)/2)
+	comments := p.RemoveComments() // Move comments
+	p.InsertEOS()                  // Add the "semicolons"
 	for p.HasTokens() {
 		if p.Options.StopOnError && len(p.Errors) > 0 {
 			break
 		}
-		if p.CurrentTokenKind() == lexer.EndOfStatement {
+		if p.CurrKind() == lexer.EndOfStatement {
 			p.Advance()
 		}
 		body = append(body, p.ParseTopLevelStatement())
@@ -32,19 +37,20 @@ func (p *Parser) Parse() *ast.Program {
 
 func (p *Parser) unknownTokenErr() {
 	p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
+	p.skipUntilBoundary()
 }
 
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	expr := p.ParseFull(bp)
-	if _, ok := expr.(ast.Expression); !ok {
-		p.errExpectedExpr(expr)
-		return &ast.BadExpression{Value: expr}
+	if expr, ok := expr.(ast.Expression); ok {
+		return expr
 	}
-	return expr.(ast.Expression)
+	p.errExpectedExpr(expr)
+	return &ast.BadExpression{Value: expr}
 }
 
 func (p *Parser) ParseFull(bp BindingPower) ast.Node {
-	kind := p.CurrentTokenKind()
+	kind := p.CurrKind()
 	if kind == lexer.EOF {
 		return &ast.BadExpression{Token: kind}
 	}
@@ -58,14 +64,14 @@ func (p *Parser) ParseFull(bp BindingPower) ast.Node {
 
 func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 	var handled bool
-	for BindingPowerMap[p.CurrentTokenKind()] > bp {
-		kind := p.CurrentTokenKind()
+	for BindingPowerMap[p.CurrKind()] > bp {
+		kind := p.CurrKind()
 		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
 			p.unknownTokenErr()
 			return &ast.BadExpression{
-				Token:    kind,
-				Value:    left,
+				Token: kind,
+				Value: left,
 			}
 		}
 	}
@@ -74,7 +80,7 @@ func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 }
 
 func (p *Parser) ParseTopLevelStatement() ast.Statement {
-	kind := p.CurrentTokenKind()
+	kind := p.CurrKind()
 	result, handled := p.handleStatement(kind, true)
 	if handled {
 		if kind != lexer.Public {
@@ -86,7 +92,7 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 }
 
 func (p *Parser) ParseStatement() ast.Statement {
-	kind := p.CurrentTokenKind()
+	kind := p.CurrKind()
 	var res ast.Node
 	res, handled := p.handleStatement(kind, false)
 	if handled {
@@ -115,6 +121,24 @@ func (p *Parser) ParseStatement() ast.Statement {
 	}
 }
 
+func (p *Parser) skipUntilBoundary() {
+	brackCount := 1
+	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
+		if p.CurrKind() == lexer.Comma && brackCount <= 1 {
+			return
+		}
+		switch p.Advance().Kind {
+		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace:
+			brackCount++
+		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
+			brackCount--
+			if brackCount <= 0 {
+				return
+			}
+		}
+	}
+}
+
 func parseSeriesWithBP[T ast.Node](
 	p *Parser, arr *[]T,
 	bp BindingPower, until, sepBy lexer.TokenType,
@@ -134,16 +158,16 @@ func parseSeries[T ast.Node](
 	if until == 0 && separator == 0 {
 		panic("until and separator cannot both be zero")
 	}
-	for p.HasTokens() && p.CurrentTokenKind() != until {
-		if !allowEOS && p.CurrentTokenKind() == lexer.EndOfStatement {
+	for p.HasTokens() && p.CurrKind() != until {
+		if !allowEOS && p.CurrKind() == lexer.EndOfStatement {
 			break
 		}
-		start := p.CurrentToken().Position
+		start := p.Curr().Position
 		*arr = append(*arr, markStartEndPos(p, with(), start))
 		if !p.HasTokens() {
 			break
 		}
-		curr := p.CurrentTokenKind()
+		curr := p.CurrKind()
 		if curr == until || (until == 0 && curr != separator) ||
 			(!allowEOS && curr == lexer.EndOfStatement) {
 			break

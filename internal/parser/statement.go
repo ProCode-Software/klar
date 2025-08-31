@@ -15,7 +15,7 @@ func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPow
 		Variable: left,
 		Type:     p.ParseType(DefaultTypeBindingPower),
 	}
-	if curr := p.CurrentToken(); !p.isWhenCase {
+	if curr := p.Curr(); !p.isWhenCase {
 		switch curr.Kind {
 		case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
 			p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
@@ -101,13 +101,13 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	modStart = first.Position
 
 	for p.WhileNot(lexer.EndOfStatement) {
-		if p.CurrentTokenKind() == lexer.Dot {
+		if p.CurrKind() == lexer.Dot {
 			p.Advance()
-			if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+			if p.CurrKind() == lexer.LeftCurlyBrace {
 				break
 			}
 			b.WriteByte('*')
-			if p.CurrentTokenKind() == lexer.Asterisk {
+			if p.CurrKind() == lexer.Asterisk {
 				break
 			}
 		}
@@ -116,14 +116,14 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	module.SetPos(modStart, p.lastTokEnd())
 
 	// Wildcard
-	if p.CurrentTokenKind() == lexer.Asterisk {
+	if p.CurrKind() == lexer.Asterisk {
 		isWildcard = true
 		p.Tokens = slices.Insert(p.Tokens, p.Index+1, lexer.Token{
 			Kind:   lexer.EndOfStatement,
 			Source: "\n",
 			Position: lexer.Position{
-				Line: p.CurrentToken().Position.Line,
-				Col:  p.CurrentToken().Position.Col + 1,
+				Line: p.Curr().Position.Line,
+				Col:  p.Curr().Position.Col + 1,
 			},
 		})
 		p.Advance()
@@ -131,15 +131,15 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	module.Name = b.String()
 
 	// Unqualified import
-	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+	if p.CurrKind() == lexer.LeftCurlyBrace {
 		if isWildcard {
 			// Wildcard and unqualified import
 			// import module.*.{...}
 		}
 		p.Expect(lexer.LeftCurlyBrace)
 		// Empty import
-		if p.CurrentTokenKind() == lexer.RightCurlyBrace {
-			p.Error(errors.Token(errors.ErrEmptyUnqImport, p.CurrentToken()))
+		if p.CurrKind() == lexer.RightCurlyBrace {
+			p.Error(errors.Token(errors.ErrEmptyUnqImport, p.Curr()))
 		}
 
 		// Alias and unqualified import
@@ -156,10 +156,10 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		)
 		for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
-				p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
+				p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
 			}
 			wasTypeKw = false
-			curr := p.CurrentTokenKind()
+			curr := p.CurrKind()
 			switch {
 			case curr == lexer.Type:
 				isTypeImport, wasTypeKw = true, true
@@ -167,7 +167,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 				continue
 			case curr == lexer.Asterisk:
 				if alias.Name != "" {
-					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.CurrentToken()))
+					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.Curr()))
 				}
 				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
@@ -193,11 +193,11 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 				// Need identifier
 				p.Error(errors.ExpectedToken(
 					lexer.Identifier,
-					p.CurrentToken(),
+					p.Curr(),
 				))
 			}
 			p.Advance() // Move to comma or }
-			if p.CurrentTokenKind() == lexer.EndOfStatement {
+			if p.CurrKind() == lexer.EndOfStatement {
 				p.Advance()
 				continue
 			}
@@ -207,7 +207,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		}
 		// Check for invalid .{a:} or .{type}
 		if wasTypeKw || alias.Name != "" {
-			p.Error(errors.ExpectedToken(lexer.Identifier, p.CurrentToken()))
+			p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
 		}
 		p.Expect(lexer.RightCurlyBrace)
 	}
@@ -222,7 +222,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 
 func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	p.Expect(lexer.Return)
-	if p.CurrentTokenKind() == lexer.EndOfStatement {
+	if p.CurrKind() == lexer.EndOfStatement {
 		return &ast.ReturnStatement{}
 	}
 	return &ast.ReturnStatement{
@@ -238,10 +238,10 @@ func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
 func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
-	if p.isDestructureAssignment() {
+	// Peek for `in` before parsing destructure
+	if p.Lookahead(isDestructureAssignment) {
 		f.Variables = p.ParseDestructureSeries()
 		p.Expect(lexer.In)
-		// Peek for `in` before parsing destructure
 	}
 	f.Expression = p.ParseExpression(ExpressionBindingPower)
 	f.Body = p.ParseBlock()
@@ -251,7 +251,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 	p.Advance() // while
 	w := &ast.WhileStatement{}
-	if p.CurrentTokenKind() == lexer.LeftCurlyBrace {
+	if p.CurrKind() == lexer.LeftCurlyBrace {
 		w.Infinite = true
 	} else {
 		w.Condition = p.ParseExpression(ExpressionBindingPower)

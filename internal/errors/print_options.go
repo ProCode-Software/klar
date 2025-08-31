@@ -10,12 +10,12 @@ const (
 	colorDefault  = ansi.CodeReset
 	colorKeyword  = ansi.CodeRed
 	colorOperator = colorKeyword
-	colorNumber   = ansi.CodeCyan
+	colorNumber   = ansi.CodeYellow
 	colorString   = ansi.CodeGreen
 	colorBoolean  = colorNumber
 	colorComment  = ansi.CodeDim
 	colorPunct    = ansi.CodeGray
-	colorType     = ansi.CodeYellow
+	colorType     = ansi.CodeCyan
 	colorFunc     = ansi.CodeMagenta
 	colorBuiltin  = ansi.CodeBlue
 	colorIllegal  = colorDefault

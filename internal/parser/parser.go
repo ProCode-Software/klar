@@ -30,12 +30,17 @@ type ParseOptions struct {
 	File        string
 	StopOnError bool
 	OnError     func(e ParseError)
+	MaxErrors   int // Parsing is stopped once len(p.Errors) equals this number. If set to 0 or less, there can be unlimited errors
 }
 
 // New returns a new [Parser] that reads from tokens.
 func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	t := make([]lexer.Token, len(tokens))
 	copy(t, tokens)
+	// Add EOS if missing
+	if len(t) > 0 && t[len(t)-1].Kind != lexer.EOF {
+		t = append(t, lexer.Token{Kind: lexer.EOF}) // Add position info?
+	}
 	return &Parser{
 		Tokens:  t,
 		Index:   0,
@@ -44,8 +49,8 @@ func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	}
 }
 
-// CurrentToken return the [lexer.Token] at the current parser index.
-func (p *Parser) CurrentToken() lexer.Token {
+// Curr return the [lexer.Token] at the current parser index.
+func (p *Parser) Curr() lexer.Token {
 	return p.Tokens[p.Index]
 }
 
@@ -57,14 +62,14 @@ func (p *Parser) PeekBehind() lexer.Token {
 // Peek return the next [lexer.Token] without advancing the parser.
 func (p *Parser) Peek() lexer.Token {
 	if !p.HasTokens() {
-		return p.CurrentToken()
+		return p.Curr()
 	}
 	return p.Tokens[p.Index+1]
 }
 
-// CurrentTokenKind return the Kind of the [lexer.Token] at the current parser index.
-func (p *Parser) CurrentTokenKind() lexer.TokenType {
-	return p.CurrentToken().Kind
+// CurrKind return the Kind of the [lexer.Token] at the current parser index.
+func (p *Parser) CurrKind() lexer.TokenType {
+	return p.Curr().Kind
 }
 
 // Backup decrements the parser's index by 1.
@@ -76,7 +81,7 @@ func (p *Parser) Backup() {
 
 // Advance returns the current Token and increases the parser index.
 func (p *Parser) Advance() lexer.Token {
-	tok := p.CurrentToken()
+	tok := p.Curr()
 	if tok.Kind == lexer.EOF {
 		return tok
 	}
@@ -86,7 +91,7 @@ func (p *Parser) Advance() lexer.Token {
 
 // HasTokens reports whether the parser is not at EOF.
 func (p *Parser) HasTokens() bool {
-	return p.Index < len(p.Tokens) && p.CurrentTokenKind() != lexer.EOF
+	return p.Index < len(p.Tokens) && p.CurrKind() != lexer.EOF
 }
 
 // Expect advances the parser if the current token is of typ, otherwise throws an
@@ -97,25 +102,25 @@ func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 
 // WhileNot reports whether the current token kind is not kind and the parser is not at EOF.
 func (p *Parser) WhileNot(kind lexer.TokenType) bool {
-	return p.HasTokens() && p.CurrentTokenKind() != kind
+	return p.HasTokens() && p.CurrKind() != kind
 }
 
 // WhileNotEndOr reports whether the current token kind is not kind and the parser is
 // not at EOF or EOS.
 func (p *Parser) WhileNotEndOr(kind lexer.TokenType) bool {
 	return p.HasTokens() &&
-		p.CurrentTokenKind() != lexer.EndOfStatement &&
-		p.CurrentTokenKind() != kind
+		p.CurrKind() != lexer.EndOfStatement &&
+		p.CurrKind() != kind
 }
 
 // IsCurrently reports whether the current token is one of kinds.
 func (p *Parser) IsCurrently(kinds ...lexer.TokenType) bool {
-	return slices.Contains(kinds, p.CurrentTokenKind())
+	return slices.Contains(kinds, p.CurrKind())
 }
 
 // IsNotCurrentlyEndOr returns true if the current token is not EOF, EOS. or kind.
 func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
-	curr := p.CurrentTokenKind()
+	curr := p.CurrKind()
 	return p.HasTokens() && curr != lexer.EndOfStatement && curr != kind
 }
 
@@ -127,7 +132,7 @@ func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType)
 
 // Expect advances the parser if the current token is of typ, otherwise throws err.
 func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
-	token := p.CurrentToken()
+	token := p.Curr()
 	got := token.Kind
 	if !slices.Contains(need, got) {
 		parseErr, _ := err.(ParseError)
@@ -146,6 +151,8 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 }
 
 // RemoveComments removes all comments from p.Tokens and returns them into a new slice.
+// Errors are reported to the parser if block comments are unterminated or shebangs
+// are not on the first line. These are the first errors reported in the parsing process.
 func (p *Parser) RemoveComments() (comments []*ast.Comment) {
 	for i := 0; i < len(p.Tokens); i++ {
 		tok := p.Tokens[i]
@@ -175,6 +182,8 @@ func (p *Parser) RemoveComments() (comments []*ast.Comment) {
 	return comments
 }
 
+type stopParsing struct{}
+
 // Error adds an error to the parser.
 func (p *Parser) Error(err errors.ParseError) {
 	err.File = p.File
@@ -182,13 +191,17 @@ func (p *Parser) Error(err errors.ParseError) {
 	if p.Options.OnError != nil {
 		p.Options.OnError(err)
 	}
+	if p.Options.StopOnError ||
+		(p.Options.MaxErrors > 0 && len(p.Errors) >= p.Options.MaxErrors) {
+		panic(stopParsing{})
+	}
 }
 
 // AdvanceNonBoundary returns the current token advances the parser and returns the current token
 // if it is not a boundary, otherwise returns the current token. Useful when an expected
 // token is missing.
 func (p *Parser) AdvanceNonBoundary() lexer.Token {
-	c := p.CurrentToken()
+	c := p.Curr()
 	switch c.Kind {
 	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
 		lexer.RightParenthesis, lexer.RightBracket, lexer.Comma:

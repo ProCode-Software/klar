@@ -9,7 +9,7 @@ import (
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
 	p.Error(errors.ParseError{
-		ErrorCode: errors.ErrExpectedExpression,
+		ErrorCode: errors.ErrNotAnExpression,
 		Node:      got,
 		Range:     got.GetRange(),
 	})
@@ -30,7 +30,7 @@ func repeatByte(b byte, n int) []byte {
 // Returns true if the current token is '='. If it is ':=', this will report a specific
 // error and still returns true.
 func (p *Parser) isEqualOrColonEqualAndError() bool {
-	switch curr := p.CurrentToken(); curr.Kind {
+	switch curr := p.Curr(); curr.Kind {
 	case lexer.ColonEqual:
 		p.Error(errors.Token(errors.ErrColonEqual, curr))
 		return true

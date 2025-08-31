@@ -6,14 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-var IsHandledNUD = []lexer.TokenType{
-	lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil,
-	lexer.Minus, lexer.Plus, lexer.Not,
-	lexer.LeftParenthesis, lexer.HashLeftCurlyBrace, lexer.LeftBracket,
-	lexer.Dot, lexer.Ellipsis, lexer.When, lexer.Slash, lexer.For,
-}
-// TODO: add soft keywords
-
 func modifierAnd(types ...lexer.TokenType) []lexer.TokenType {
 	all := make([]lexer.TokenType, len(types)+len(ast.Modifiers))
 	copy(all, ast.Modifiers)
@@ -30,7 +22,7 @@ var SoftKeywords = map[lexer.TokenType][]lexer.TokenType{
 }
 
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
-	startPos := p.CurrentToken().Position
+	startPos := p.Curr().Position
 	switch kind {
 	default:
 		if isValidIdentifier(kind) {
@@ -50,7 +42,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.HashLeftCurlyBrace:
 		res = p.ParseMap()
 	case lexer.LeftBracket:
-		if p.isListCast() {
+		if p.Lookahead(isListCast) {
 			res = p.ParseListCast()
 		} else {
 			res = p.ParseList()
@@ -63,7 +55,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseRegexLiteral()
 	case lexer.When:
 		if p.isWhenGuard {
-			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.CurrentToken()))
+			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.Curr()))
 			return &ast.BadExpression{Token: kind}, true
 		}
 		res = p.ParseWhenBlock()
@@ -129,7 +121,7 @@ func (p *Parser) handleLED(
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
 	// Spread or range
-	case lexer.Ellipsis:
+	case lexer.Ellipsis, lexer.DotDotLessThan:
 		res = p.ParseRange(left, bp)
 	// Function pipeline
 	case lexer.Pipeline:
@@ -160,7 +152,7 @@ func (p *Parser) validateAssignable(left ast.Node) bool {
 
 // handleStatement covers all keywords
 func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast.Statement, handled bool) {
-	startPos := p.CurrentToken().Position
+	startPos := p.Curr().Position
 	switch kind {
 	default:
 		if !isTopLevel {
@@ -198,11 +190,11 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 }
 
 func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
-	startPos := p.CurrentToken().Position
-	switch kind {
-	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
-		lexer.Identifier, lexer.Underscore:
-		if p.isDestructureAssignment() {
+	startPos := p.Curr().Position
+	switch {
+	case kind == lexer.LeftBracket, kind == lexer.HashLeftCurlyBrace,
+		kind == lexer.LeftParenthesis, isValidIdentOrDiscard(kind):
+		if p.Lookahead(isDestructureAssignment) {
 			res = p.ParseDestructureVars()
 			break
 		}
@@ -219,7 +211,7 @@ func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, h
 // =================
 
 func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool) {
-	startPos := p.CurrentToken().Position
+	startPos := p.Curr().Position
 	switch kind {
 	case lexer.LeftBracket:
 		res = p.ParseListType()
@@ -261,66 +253,4 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
-}
-
-func (p *Parser) isListCast() bool {
-	i := p.Index
-loop:
-	for brackCount := 0; ; i++ {
-		tok := p.Tokens[i]
-		switch tok.Kind {
-		case lexer.RightBracket:
-			brackCount--
-			if brackCount == 0 {
-				break loop
-			}
-		case lexer.LeftBracket:
-			brackCount++
-		case lexer.Stroke, lexer.Question:
-			return true
-		case lexer.Comma:
-			if brackCount < 2 {
-				return false
-			}
-		case lexer.LeftParenthesis, lexer.RightParenthesis,
-			lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
-			lexer.Dot, lexer.Arrow, lexer.Ellipsis:
-		default:
-			return false
-		}
-	}
-	return p.Tokens[i+1].Kind == lexer.LeftParenthesis
-}
-
-func (p *Parser) isDestructureAssignment() bool {
-	i := p.Index
-loop:
-	for brackCount := 0; ; i++ {
-		tok := p.Tokens[i]
-		switch tok.Kind {
-		case lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
-			lexer.LeftBracket, lexer.LeftCurlyBrace:
-			brackCount++
-		case lexer.RightBracket, lexer.RightParenthesis, lexer.RightCurlyBrace:
-			brackCount--
-			if brackCount == 0 {
-				i++
-				break loop
-			}
-		case lexer.Equal, lexer.ColonEqual,
-			lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
-			if brackCount < 1 {
-				return true
-			}
-		case lexer.EOF:
-			return false
-		}
-	}
-
-	switch p.Tokens[i].Kind {
-	case lexer.Equal, lexer.ColonEqual,
-		lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
-		return true
-	}
-	return false
 }

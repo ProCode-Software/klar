@@ -8,18 +8,15 @@ import (
 )
 
 func (p *Parser) ParseDestructure() ast.Destructure {
-	switch p.CurrentTokenKind() {
-	case lexer.HashLeftCurlyBrace:
+	if p.CurrKind() == lexer.HashLeftCurlyBrace {
 		p.Advance()
 		return p.ParseObjectDestructure()
-	case lexer.Identifier, lexer.LeftBracket, lexer.LeftParenthesis, lexer.Underscore:
-		return p.ParseDestructureInner()
 	}
-	return nil
+	return p.ParseDestructureInner()
 }
 
 func (p *Parser) ParseDestructureInner() ast.Destructure {
-	switch p.CurrentTokenKind() {
+	switch kind := p.CurrKind(); kind {
 	case lexer.Identifier:
 		return p.ParseIdentifier().Symbol()
 	case lexer.Underscore:
@@ -34,7 +31,9 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 		start := p.Advance().Position
 		return p.ParseListDestructure(lexer.RightParenthesis, start)
 	default:
-		kind := p.CurrentTokenKind()
+		if isValidIdentifier(kind) {
+			return p.ParseIdentifier().Symbol()
+		}
 		p.unknownTokenErr()
 		return &ast.BadExpression{Token: kind}
 	}
@@ -47,10 +46,10 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 	}
 	parseSeries(p, &items, func() *ast.ObjectDestructureEntry {
 		entry := &ast.ObjectDestructureEntry{}
-		identTok := p.CurrentToken()
+		identTok := p.Curr()
 		ident := p.ParseMapIdentifier(true)
 		var end lexer.Position
-		if curr := p.CurrentTokenKind(); curr == lexer.Colon {
+		if curr := p.CurrKind(); curr == lexer.Colon {
 			entry.Alias = ident
 			p.AdvanceNonBoundary()
 			// Parsing full destructure just for a better error
@@ -82,9 +81,9 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 }
 
 func (p *Parser) errorIfEmptyDestruct(endKind lexer.TokenType) bool {
-	if p.CurrentTokenKind() == endKind {
+	if p.CurrKind() == endKind {
 		start := p.Tokens[p.Index-1].Position
-		end := ranges.FromToken(p.CurrentToken()).End
+		end := ranges.FromToken(p.Curr()).End
 		p.Error(errors.Range(errors.ErrEmptyDestructure, ranges.BetweenPos(start, end)))
 		p.Advance()
 		return true
@@ -107,9 +106,9 @@ func (p *Parser) ParseListDestructure(end lexer.TokenType, start lexer.Position)
 }
 
 func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
-	for p.HasTokens() && p.CurrentTokenKind() != lexer.EndOfStatement {
+	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
 		vars = append(vars, p.ParseDestructure())
-		if p.CurrentTokenKind() != lexer.Comma {
+		if p.CurrKind() != lexer.Comma {
 			break
 		}
 		p.Expect(lexer.Comma)
@@ -118,9 +117,9 @@ func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
 }
 
 func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
-	for p.HasTokens() && p.CurrentTokenKind() != lexer.EndOfStatement {
+	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
 		dest := p.ParseDestructure()
-		curr := p.CurrentTokenKind()
+		curr := p.CurrKind()
 		if dest, ok := dest.(*ast.Symbol); ok &&
 			!isAssignment(curr) && curr != lexer.Comma && curr != lexer.Colon {
 			res, handled := p.handleLED(curr, dest, ExpressionBindingPower)
@@ -135,7 +134,7 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 		} else {
 			vars = append(vars, dest)
 		}
-		if p.CurrentTokenKind() != lexer.Comma {
+		if p.CurrKind() != lexer.Comma {
 			break
 		}
 		p.Expect(lexer.Comma)

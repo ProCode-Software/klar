@@ -7,16 +7,16 @@ import (
 )
 
 func (p *Parser) ParseType(bp BindingPower) ast.Type {
-	kind := p.CurrentTokenKind()
+	kind := p.CurrKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
 		p.unknownTokenErr()
 		return &ast.BadExpression{Token: kind}
 	}
-	for TypeBindingPowerMap[p.CurrentTokenKind()] > bp {
-		kind = p.CurrentTokenKind()
+	for TypeBindingPowerMap[p.CurrKind()] > bp {
+		kind = p.CurrKind()
 		left, handled = p.handleTypeLED(
-			kind, left, TypeBindingPowerMap[p.CurrentTokenKind()],
+			kind, left, TypeBindingPowerMap[p.CurrKind()],
 		)
 		if !handled {
 			p.unknownTokenErr()
@@ -52,7 +52,7 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 	u := &ast.UnionType{}
 	u.Options = make([]ast.Type, 1, 2)
 	u.Options[0] = left
-	for p.CurrentTokenKind() == lexer.Stroke {
+	for p.CurrKind() == lexer.Stroke {
 		p.Advance()
 		u.Options = append(u.Options, p.ParseType(bp))
 	}
@@ -62,9 +62,9 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericType {
 	params := make([]ast.Type, 0, 1)
 	p.Expect(lexer.LessThan)
-	if p.CurrentTokenKind() == lexer.GreaterThan {
+	if p.CurrKind() == lexer.GreaterThan {
 		// At least 1 parameter required
-		p.Error(errors.Token(errors.ErrEmptyGeneric, p.CurrentToken()))
+		p.Error(errors.Token(errors.ErrEmptyGeneric, p.Curr()))
 		params = nil
 	}
 	for p.WhileNotEndOr(lexer.GreaterThan) {
@@ -107,12 +107,12 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		// (a, b, c: Int) = 3 labels
 		// (a, [b], c) = 3 types
 		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
-		if k := p.CurrentTokenKind(); !isType &&
+		if k := p.CurrKind(); !isType &&
 			isValidIdentOrDiscard(k) && p.Peek().Kind != lexer.Dot {
 			names = append(names, p.ParseIdentWithDiscard())
-			if p.CurrentTokenKind() == lexer.Colon {
+			if p.CurrKind() == lexer.Colon {
 				if isType {
-					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.CurrentToken()))
+					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
 				}
 				p.Advance() // :
 				pair := &ast.TypePair{
@@ -137,7 +137,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 	p.Expect(lexer.RightParenthesis)
 	if len(names) > 0 {
 		if hasColon {
-			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.CurrentToken()))
+			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
 		}
 		for _, name := range names {
 			tuple.Values = append(tuple.Values, &ast.TypePair{

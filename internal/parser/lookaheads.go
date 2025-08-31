@@ -4,37 +4,111 @@ import "github.com/ProCode-Software/klar/internal/lexer"
 
 // Lookaheads may be used to the parser to check what if after some tokens before
 // conditionally parsing them.
+
 const (
-	failLookahead = iota
-	continueLookahead
-	breakLookahead
+	failLookahead     = iota // The lookahead returns false
+	continueLookahead        // The lookahead continues
+	breakLookahead           // The lookahead evaluates the last token after
+	passLookahead            // The lookahead returns true
 )
 
-func (p *Parser) Lookahead(handler func(tok lexer.TokenType, last bool) int) bool {
-	i := p.Index
+// A lookahead function
+type lookaheadHandler = func(tok lexer.TokenType, last bool, brackCount int) int
+
+func (p *Parser) Lookahead(handler lookaheadHandler) bool {
+	i, brackCount := p.Index, 0
 loop:
-	for brackCount := 0; ; i++ {
-		tok := p.Tokens[i]
-		switch tok.Kind {
-		case lexer.RightBracket:
-			brackCount--
-			if brackCount == 0 {
-				break loop
-			}
-		case lexer.LeftBracket:
+	for ; ; i++ {
+		tok := p.Tokens[i].Kind
+		switch tok {
+		case lexer.RightBracket, lexer.RightCurlyBrace, lexer.RightParenthesis:
 			brackCount++
-		case lexer.Stroke, lexer.Question:
-			return true
-		case lexer.Comma:
-			if brackCount < 2 {
-				return false
-			}
-		case lexer.LeftParenthesis, lexer.RightParenthesis,
-			lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
-			lexer.Dot, lexer.Arrow, lexer.Ellipsis:
-		default:
+		case lexer.LeftCurlyBrace, lexer.LeftBracket, lexer.LeftParenthesis,
+			lexer.HashLeftCurlyBrace:
+			brackCount++
+		}
+		switch handler(tok, false, brackCount) {
+		case failLookahead:
 			return false
+		case passLookahead:
+			return true
+		case continueLookahead:
+			continue loop
+		case breakLookahead:
+			break loop
 		}
 	}
-	return p.Tokens[i+1].Kind == lexer.LeftParenthesis
+	return handler(p.Tokens[i+1].Kind, true, brackCount) == passLookahead
+}
+
+func passLookaheadIf(cond bool) int {
+	if cond {
+		return passLookahead
+	}
+	return failLookahead
+}
+
+func isListCast(tok lexer.TokenType, last bool, brackCount int) int {
+	if last {
+		return passLookaheadIf(tok == lexer.LeftParenthesis)
+	}
+	switch tok {
+	case lexer.Stroke, lexer.Question:
+		return passLookahead
+	case lexer.Comma:
+		if brackCount < 2 {
+			return failLookahead
+		}
+	case lexer.LeftParenthesis, lexer.RightParenthesis,
+		lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
+		lexer.Dot, lexer.Arrow, lexer.Ellipsis:
+	default:
+		if isValidIdentifier(tok) {
+			break
+		}
+		return failLookahead
+	}
+	return continueLookahead
+}
+
+func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int {
+	if last {
+		switch tok {
+		case lexer.Equal, lexer.ColonEqual,
+			lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
+			return passLookahead
+		}
+		return failLookahead
+	}
+	if brackCount == 0 {
+		return breakLookahead
+	}
+	switch tok {
+	case lexer.Equal, lexer.ColonEqual,
+		lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
+		if brackCount < 1 {
+			return passLookahead
+		}
+	case lexer.EOF:
+		return failLookahead
+	}
+	return continueLookahead
+}
+
+func isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
+	if last {
+		return passLookaheadIf(tok == lexer.Arrow)
+	}
+	if brackCount == 0 && tok == lexer.RightParenthesis {
+		switch tok {
+		case lexer.Underscore, lexer.Identifier, lexer.RightParenthesis,
+			lexer.RightCurlyBrace, lexer.RightBracket:
+			return breakLookahead
+		default:
+			if isValidIdentifier(tok) {
+				return breakLookahead
+			}
+		}
+	}
+	return continueLookahead
 }

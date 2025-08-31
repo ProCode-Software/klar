@@ -12,8 +12,8 @@ import (
 const (
 	_ ErrorCode = SyntaxErrorPrefix + iota
 
-	ErrUnexpectedToken
-	ErrExpectedToken // Expected kind of token but got different type
+	ErrUnexpectedToken // Bad token
+	ErrExpectedToken   // Expected kind of token but got different type
 
 	// Import
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
@@ -29,8 +29,8 @@ const (
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedRegex   // Missing / in regex literal
-	ErrMisplacedShebang
-	ErrInvalidComma // Comma statement
+	ErrMisplacedShebang    // Shebang not on first line
+	ErrInvalidComma        // Comma statement
 
 	// Literal
 	ErrStringEscape     // Invalid string escape
@@ -54,7 +54,7 @@ const (
 	ErrDestructPatAfterColon // Non-identifier after : in destructure
 	ErrDestructInvalidEqual  // Default value provided after destructure in object
 	ErrReservedKeyword       // Reserved keyword used as an identifier
-	ErrExpectedExpression    // Required expression but got a statement
+	ErrNotAnExpression       // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel          // Function label can't be number
 	ErrGenericInFuncAlias    // Function aliases can't have generics
@@ -62,6 +62,9 @@ const (
 	ErrReturnPipelineNotLast // Return step in pipeline must be the last
 	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
 	ErrNonNameFuncAlias      // Function alias target is not symbol or member
+
+	ErrExpectedExprAfterClosedRange // Invalid: 1..<
+	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
 
 	// Type
 	ErrNotEnoughEnumItems      // At least two enum members required
@@ -132,7 +135,7 @@ func (e ParseError) error() string {
 		return fmt.Sprintf("%s: %s %s",
 			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
-	case ErrExpectedExpression:
+	case ErrNotAnExpression:
 		if node, ok := e.Node.(*ast.AssignmentStatement); ok &&
 			node.Operator.Kind == lexer.Equal {
 			return "Assignments can't be used as expressions in Klar; did you mean to use '==' instead?"
@@ -150,7 +153,7 @@ func (e ParseError) error() string {
 		expToken := e.Params["expected"].(lexer.TokenType)
 		expected := FormatTokenType(expToken)
 		if src == ";" {
-			return "A line break must be used to terminate statements in Klar"
+			return "A line break must be used to terminate a statement in Klar"
 		}
 		endTypeMap := map[lexer.TokenType]string{
 			lexer.RightCurlyBrace:  "brace",
@@ -179,7 +182,7 @@ func (e ParseError) error() string {
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
-			return "A line break must be used to terminate statements in Klar"
+			return "A line break must be used to terminate a statement in Klar"
 		case kind == lexer.EOF:
 			return "Unexpected end of file"
 		case kind == lexer.Newline:
@@ -287,6 +290,10 @@ func (e ParseError) error() string {
 		return "Destructure pattern can't be empty"
 	case ErrColonEqual:
 		return "Expected '=' instead of ':='"
+	case ErrEllipsisForClosedRange:
+		return "Expected '...' instead of '..<'"
+	case ErrExpectedExprAfterClosedRange:
+		return "Expected expression after '..<'"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrUnusedValue:

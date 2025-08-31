@@ -178,8 +178,8 @@ There are three types of strings in Klar:
 */
 func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 	var (
-		esc                         string
 		currQuoteN                  int
+		esc                         string
 		b                           Builder
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
@@ -215,6 +215,9 @@ loop:
 		if isEscape {
 			esc += string(r)
 		}
+		if r != delim {
+			currQuoteN = 0
+		}
 		switch r {
 		case delim:
 			if isEscape {
@@ -230,7 +233,7 @@ loop:
 		case '\\':
 			if isEscape {
 				escape(EscCharacter, 0)
-			} else if currQuoteN == 0 {
+			} else if quoteN == 0 { // No escape in @... string
 				isEscape, escStart = true, l.prevCol()
 			}
 		case '{':

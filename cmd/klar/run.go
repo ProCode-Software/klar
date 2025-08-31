@@ -64,7 +64,7 @@ func runTokens(tokens []lexer.Token) {
 			throw(err)
 		}
 	} else {
-		//litter.Config.StripPackageNames = true
+		// litter.Config.StripPackageNames = true
 		// litter.Dump(program)
 	}
 

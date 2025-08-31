@@ -370,7 +370,7 @@ type TypeAliasDeclaration struct {
 }
 
 type MapLiteral struct {
-	Entries []*Pair
+	Entries []*MapItem
 	BaseNode
 }
 
@@ -446,7 +446,7 @@ type SliceExpression struct {
 
 type EnumLiteral struct {
 	BaseNode
-	Name string
+	Name Identifier
 }
 
 type CallParam struct {
@@ -525,7 +525,7 @@ type LambdaExpression struct {
 
 type Attribute struct {
 	BaseNode
-	Decorator string
+	Decorator Identifier
 	Args      []*CallParam
 }
 
@@ -537,6 +537,7 @@ type RestExpression struct {
 
 type RangeExpression struct {
 	From, To, Step Expression
+	Operator       Operator // First ... or ..<
 	BaseNode
 }
 
@@ -556,8 +557,8 @@ type ListCastExpression struct {
 	Args []*CallParam
 }
 
-// A ForExpression is a [ForStatement] used as an expression. A ForExpression
-// can only iterate. It may reduce when the +=, -=, or = operator is used,
+// A ForExpression is a [ForStatement] used as an expression.
+// It may reduce when the +=, -=, or = operator is used,
 // filter when a block is used, or map when -> is used.
 //
 //	sum := for i in items += i
@@ -567,6 +568,7 @@ type ForExpression struct {
 	BaseNode
 	Variables []Destructure
 	Iterator  Expression
+	Operator  Operator
 	Value     Expression
 	Block     []Statement
 }
