@@ -221,6 +221,8 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseTupleType()
 	case lexer.Ellipsis:
 		res = p.ParseRestType()
+	case lexer.Stroke:
+		res = p.ParseUnionType(nil, UnionTypeBindingPower)
 	default:
 		if isValidIdentifier(kind) {
 			res = p.ParseTypeAlias()

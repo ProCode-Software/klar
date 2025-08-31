@@ -51,7 +51,9 @@ func (p *Parser) ParseOptionalType(left ast.Type, bp BindingPower) *ast.Optional
 func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 	u := &ast.UnionType{}
 	u.Options = make([]ast.Type, 1, 2)
-	u.Options[0] = left
+	if left != nil {
+		u.Options[0] = left
+	}
 	for p.CurrKind() == lexer.Stroke {
 		p.Advance()
 		u.Options = append(u.Options, p.ParseType(bp))
