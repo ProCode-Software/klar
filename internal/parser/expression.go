@@ -73,38 +73,51 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 
 func (p *Parser) ParseMap() *ast.MapLiteral {
 	p.Expect(lexer.HashLeftCurlyBrace)
-	var entries []*ast.Pair
+	var entries []*ast.MapItem
 	for p.WhileNotEndOr(lexer.RightCurlyBrace) {
 		// Shorthand: #{ :name } = #{ name: name }
 		if p.CurrKind() == lexer.Colon {
-			p.Advance()
+			start := p.Advance()
 			key, val := p.expectShorthand()
-			entries = append(entries, &ast.Pair{
-				Key:   key,
-				Value: val,
+			entries = append(entries, &ast.MapItem{
+				Keys:      []ast.Expression{key},
+				Value:     val,
+				Shorthand: true,
+				BaseNode:  newBaseNode(start.Position, val.GetRange().End),
 			})
 		} else {
 			// Normal properties: quotes not required for non-reserved string key
-			
-			entry := &ast.Pair{Key: p.ParseExpression(ExpressionBindingPower)}
+			entry := &ast.MapItem{}
+			entry.Range.Start = p.Curr().Position
+			parseSeriesWithBP(p, &entry.Keys, ExpressionBindingPower, 0, lexer.Comma)
+
 			// Spread #{ key: 1, values... }
-			if rest, ok := entry.Key.(*ast.RestExpression); ok {
+			if rest, ok := entry.Keys[len(entry.Keys)-1].(*ast.RestExpression); ok {
+				if len(entry.Keys) > 1 {
+					// There must be exactly 1 key
+					p.Error(errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys))
+					entry.Keys = entry.Keys[:len(entry.Keys)-1]
+				}
+				entry.Rest = true
 				entry.Value = rest
 			} else {
 				p.Expect(lexer.Colon)
 				entry.Value = p.ParseExpression(ExpressionBindingPower)
 			}
+			markEndPos(p, entry)
 			entries = append(entries, entry)
 		}
-		if p.CurrKind() == lexer.Ellipsis {
+		curr := p.CurrKind()
+		// Known issue: required comma after ... because ParseExpression parses
+		// anything after it as a range expression. It can't be prevented here.
+		if curr == lexer.Colon && p.Curr().Line > p.PeekBehind().Line {
 			continue
 		}
-		if p.CurrKind() != lexer.RightCurlyBrace {
+		if curr != lexer.RightCurlyBrace {
 			p.Expect(lexer.EndOfStatement, lexer.Comma)
 		}
 	}
-	err := errors.ExpectedToken(lexer.RightCurlyBrace, p.Curr())
-	p.ExpectError(err.SetParam("isMap", true), lexer.RightCurlyBrace)
+	p.Expect(lexer.RightCurlyBrace)
 	return &ast.MapLiteral{Entries: entries}
 }
 

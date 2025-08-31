@@ -62,6 +62,7 @@ const (
 	ErrReturnPipelineNotLast // Return step in pipeline must be the last
 	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
 	ErrNonNameFuncAlias      // Function alias target is not symbol or member
+	ErrMultipleKeysInMapRest // Expected 1 key in map rest (comma not allowed)
 
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
@@ -377,6 +378,18 @@ func Position(err ErrorCode, pos lexer.Position) ParseError {
 
 func Range(err ErrorCode, rang ranges.Range) ParseError {
 	return ParseError{ErrorCode: err, Range: rang, Position: rang.Start}
+}
+
+func Slice[T ast.Node](err ErrorCode, nodes []T) ParseError {
+	start := nodes[0].GetRange().Start
+	return ParseError{
+		ErrorCode: err,
+		Range: ranges.Range{
+			Start: start,
+			End:   nodes[len(nodes)-1].GetRange().End,
+		},
+		Position: start,
+	}
 }
 
 func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {

@@ -92,3 +92,7 @@ func copyPos[F, T ast.Node](from F, to T) T {
 	to.SetPos(from.GetRange().Start, from.GetRange().End)
 	return to
 }
+
+func newBaseNode(start, end lexer.Position) ast.BaseNode {
+	return ast.BaseNode{Range: ranges.Range{start, end}}
+}
