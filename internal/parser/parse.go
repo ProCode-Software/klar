@@ -79,13 +79,17 @@ func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 	return left
 }
 
+func (p *Parser) ExpectEOSUnlessModifier(kind lexer.TokenType) {
+	if _, ok := modifiers[kind]; !ok {
+		p.Expect(lexer.EndOfStatement)
+	}
+}
+
 func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrKind()
 	result, handled := p.handleStatement(kind, true)
 	if handled {
-		if kind != lexer.Public {
-			p.Expect(lexer.EndOfStatement)
-		}
+		p.ExpectEOSUnlessModifier(kind)
 		return result
 	}
 	return p.ParseStatement()
@@ -96,7 +100,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	var res ast.Node
 	res, handled := p.handleStatement(kind, false)
 	if handled {
-		p.Expect(lexer.EndOfStatement)
+		p.ExpectEOSUnlessModifier(kind)
 		return res.(ast.Statement)
 	}
 	res, handled = p.handleStatementNUD(kind)
@@ -139,7 +143,7 @@ func (p *Parser) skipUntilBoundary() {
 	}
 }
 
-func parseSeriesWithBP[T ast.Node](
+func parseExprSeries[T ast.Node](
 	p *Parser, arr *[]T,
 	bp BindingPower, until, sepBy lexer.TokenType,
 ) {

@@ -10,7 +10,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/analysis"
@@ -18,7 +18,7 @@ import (
 	"github.com/sanity-io/litter"
 )
 
-var ErrPrinter = errors.Printer{MaxLines: 3, Color: true}
+var ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
 
 func Run(*command.Runner) {
 	fmt.Println(ansi.Bold("Welcome to Klar"), "v"+version.KlarVersion)

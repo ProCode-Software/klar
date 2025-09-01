@@ -22,7 +22,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		p.Advance()
 	}
 	var (
-		name      = p.ParseIdentifier()
+		name      = p.ParseIdentOrDiscard()
 		inherited []ast.Type
 	)
 
@@ -79,7 +79,9 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	default:
 		// Some other token or unassigned type (if EOS)
 		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.Curr()))
-		p.Advance()
+		if p.CurrKind() != lexer.EndOfStatement {
+			p.Advance()
+		}
 		return &ast.TypeAliasDeclaration{
 			Identifier: name,
 			Type:       &ast.BadExpression{Token: p.Curr().Kind},
@@ -106,11 +108,7 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 
 		item := &ast.EnumItem{Identifier: id}
 		if p.CurrKind() == lexer.LeftParenthesis {
-			p.Advance()
-			parseSeries(p, &item.Parameters,
-				func() ast.Type { return p.ParseType(DefaultTypeBindingPower) },
-				lexer.RightParenthesis, lexer.Comma, false,
-			)
+			item.Parameters = p.ParseTupleType().Values
 		}
 		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
@@ -311,13 +309,17 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 				}
 			}
 			// Normal identifier
-			key.Identifier = p.ParseIdentWithDiscard()
+			key.Identifier = p.ParseIdentOrDiscard()
 			return key
 		}, 0, lexer.Comma, true)
 
 		// Type
 		p.ExpectErrorCode(errors.ErrMissingFuncParamType, lexer.Colon)
-		param.Type = p.ParseType(DefaultTypeBindingPower)
+		if isAssignment(p.PeekBehind().Kind) {
+			p.Backup()
+		} else {
+			param.Type = p.ParseType(DefaultTypeBindingPower)
+		}
 		// Default value:
 		// 	func List.join(by by: String = ", ")
 		if p.isEqualOrColonEqualAndError() {
@@ -358,19 +360,4 @@ func (p *Parser) ParseAttribute() *ast.Attribute {
 	}
 	p.isAttribute = false
 	return d
-}
-
-func (p *Parser) ParsePublicModifier() ast.Statement {
-	p.Expect(lexer.Public)
-	stmt := p.ParseStatement()
-	switch stmt.(type) {
-	case *ast.EnumDeclaration, *ast.FunctionDeclaration,
-		*ast.InterfaceDeclaration, ast.TypeDeclaration,
-		*ast.StructDeclaration, *ast.TypeAliasDeclaration,
-		*ast.VariableDeclaration, *ast.FuncAliasDeclaration:
-		return &ast.PublicDeclaration{Declaration: stmt}
-	default:
-		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
-		return &ast.BadExpression{Value: stmt}
-	}
 }

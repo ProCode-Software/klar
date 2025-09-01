@@ -1,4 +1,4 @@
-package errors
+package printer
 
 import (
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -12,6 +12,7 @@ const (
 	colorOperator = colorKeyword
 	colorNumber   = ansi.CodeYellow
 	colorString   = ansi.CodeGreen
+	escapeColor   = ansi.CodeCyan
 	colorBoolean  = colorNumber
 	colorComment  = ansi.CodeDim
 	colorPunct    = ansi.CodeGray

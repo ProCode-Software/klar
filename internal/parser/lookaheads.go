@@ -33,8 +33,14 @@ loop:
 		case passLookahead:
 			return true
 		case continueLookahead:
+			if tok == lexer.EOF {
+				return false
+			}
 			continue loop
 		case breakLookahead:
+			if tok == lexer.EOF {
+				return false
+			}
 			break loop
 		}
 	}
@@ -89,6 +95,10 @@ func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int
 		if brackCount < 1 {
 			return passLookahead
 		}
+	case lexer.EndOfStatement:
+		if brackCount < 1 {
+			return failLookahead
+		}
 	case lexer.EOF:
 		return failLookahead
 	}
@@ -99,15 +109,19 @@ func isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
 	if last {
 		return passLookaheadIf(tok == lexer.Arrow)
 	}
-	if brackCount == 0 && tok == lexer.RightParenthesis {
-		switch tok {
-		case lexer.Underscore, lexer.Identifier, lexer.RightParenthesis,
-			lexer.RightCurlyBrace, lexer.RightBracket:
+	switch tok {
+	case lexer.Arrow:
+		return passLookahead
+	case lexer.RightParenthesis,
+		lexer.RightCurlyBrace, lexer.RightBracket:
+		if brackCount == 0 {
 			return breakLookahead
-		default:
-			if isValidIdentifier(tok) {
-				return breakLookahead
-			}
+		}
+	case lexer.EOF:
+		return failLookahead
+	case lexer.EndOfStatement:
+		if brackCount < 1 {
+			return failLookahead
 		}
 	}
 	return continueLookahead

@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -88,6 +91,7 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.Function
 		// Allow (Int) -> (Int) -> Int
 		tuple = left.Parameters
 	default:
+		fmt.Println(reflect.TypeOf(left).String())
 		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
 	}
 	p.Expect(lexer.Arrow)
@@ -111,7 +115,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
 		if k := p.CurrKind(); !isType &&
 			isValidIdentOrDiscard(k) && p.Peek().Kind != lexer.Dot {
-			names = append(names, p.ParseIdentWithDiscard())
+			names = append(names, p.ParseIdentOrDiscard())
 			if p.CurrKind() == lexer.Colon {
 				if isType {
 					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
@@ -132,6 +136,10 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 				p.Error(errors.Node(errors.ErrMixTypeTupleLabels, t))
 			}
 		}
+		if len(tuple.Values) <= 1 && p.CurrKind() == lexer.RightParenthesis {
+			// No comma
+			break
+		}
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
 		}
@@ -150,6 +158,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 			})
 		}
 	}
+	tuple.Single = len(tuple.Values) == 1 && len(tuple.Values[0].Keys) == 0
 	return tuple
 }
 
@@ -160,6 +169,6 @@ func (p *Parser) ParseRestType() *ast.RestType {
 
 func (p *Parser) ParseTypeNamespace(left *ast.TypeAlias, bp BindingPower) *ast.TypeAlias {
 	p.Advance() // .
-	left.Namespace = p.Expect(lexer.Identifier).Source
+	left.Namespace, left.Identifier = left.Identifier, p.ParseIdentifier().Name
 	return left
 }

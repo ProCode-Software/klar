@@ -46,7 +46,7 @@ func (p *Parser) InsertEOS() {
 		// 	func fn(x: Int) { return x * 2 }
 		// but not {}
 		case tok.Kind == lexer.RightCurlyBrace &&
-			prev.Kind != lexer.LeftCurlyBrace && 
+			prev.Kind != lexer.LeftCurlyBrace &&
 			prev.Kind != lexer.HashLeftCurlyBrace &&
 			canAddEOSAfter(prev.Kind):
 			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{

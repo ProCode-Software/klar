@@ -45,6 +45,7 @@ const (
 	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
 	ErrInvalidVersionLit   // Invalid version literal syntax
 
+	ErrAssignmentAsExpr
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
 	ErrExpectedAssignment    // := or type annotation expected
 	ErrInvalidAssignment     // Assignment to non-variable or property
@@ -68,17 +69,19 @@ const (
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
 
 	// Type
-	ErrNotEnoughEnumItems      // At least two enum members required
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrInterfaceDefaultValue   // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
+	ErrInvalidOpaque           // Opaque on non-struct or interface
 
 	// When
 	ErrForInvalidCond // Expected assignment or expression in for loop
 	ErrInvalidPublic
+	ErrPublicFirst
+	ErrDuplicateModifier
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInGuard  // When expression not allowed in when case guard
 
@@ -143,13 +146,13 @@ func (e ParseError) error() string {
 		}
 		switch e.Node.(type) {
 		case *ast.AssignmentStatement, *ast.VariableDeclaration, *ast.UpdateStatement:
-			return "Assignments can't be used as expressions in Klar"
+			return "An assignment can't be used as an expression in Klar"
 		}
 		return "This isn't an expression"
 	case ErrInvalidAssignment:
 		return "Can't assign to this kind of expression"
 	case ErrInvalidTypeAnnotation:
-		return "Type annotations are are only allowed on new variables"
+		return "A type annotation is only allowed on a new variable"
 	case ErrExpectedToken:
 		expToken := e.Params["expected"].(lexer.TokenType)
 		expected := FormatTokenType(expToken)
@@ -179,7 +182,7 @@ func (e ParseError) error() string {
 	case ErrImportInvalidWildcard:
 		return "'*' should be at the end of the module name"
 	case ErrAliasInUnqualifiedImport:
-		return "Can't use alias with an unqualified import"
+		return "Can't use an alias with an unqualified import"
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
@@ -197,13 +200,11 @@ func (e ParseError) error() string {
 		return fmt.Sprintf("The regular expression starting at %s was left open", e.Position)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.EndOfStatement {
-			return "Types must be assigned a value"
+			return "A type must be assigned a value"
 		}
 		return "I expected '{' or '=' after type, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
-		return "Struct fields need an explicit type"
-	case ErrNotEnoughEnumItems:
-		return "This enum must have at least 2 items, but it has only 1"
+		return "A struct field must have an explicit type"
 	case ErrExpectedHex:
 		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 	case ErrExpectedBinary:
@@ -213,7 +214,7 @@ func (e ParseError) error() string {
 	case ErrExpectedDecimal:
 		return "I expected a decimal digit (0-9)"
 	case ErrUnicodeEscTooBig:
-		return "This Unicode escape should be in the range 0 to 10FFFF"
+		return "This Unicode escape must be in the range 0 to 10FFFF"
 	case ErrStringEscape:
 		reason := e.Params["reason"].(lexer.EscapeError)
 		kind := e.Params["type"].(lexer.EscapeType)
@@ -225,7 +226,7 @@ func (e ParseError) error() string {
 			return "Invalid character escape " + Quote(esc)
 		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
 			if kind == lexer.EscUnicode {
-				return "Expected between 1-6 hex digits in Unicode escape"
+				return "Expected 1-6 hex digits in Unicode escape"
 			}
 			return "I expected an expression"
 		default:
@@ -240,18 +241,20 @@ func (e ParseError) error() string {
 	case ErrTrailingSep:
 		return "An underscore can't be at the end of a number"
 	case ErrConsecutiveSep:
-		return "Numbers can't have consecutive underscores"
+		return "A number can't contain consecutive underscores"
 	case ErrMisplacedSep:
 		return "An underscore must separate successive digits"
 	case ErrNotAllowedInGuard:
-		return "Case guards can't contain 'when' expressions or lambdas"
+		return "A case guard can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
 		return "The comment starting at " + e.Position.String() +
 			" was left open"
 	case ErrMisplacedShebang:
-		return "Shebang must be on the first line of the file (without any lines or spaces before)"
+		return "A shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrMissingFuncParamType:
-		return "Function parameters must have an explicit type"
+		return "A function parameter must have an explicit type"
+	case ErrInvalidOpaque:
+		return "'opaque' modifier can only be applied to a struct or interface"
 	case ErrImportsGoFirst:
 		return "Imports must go before other declarations"
 	case ErrInvalidLabelShorthand:
@@ -279,6 +282,11 @@ func (e ParseError) error() string {
 			"Can't use %s as an identifier because it is a reserved keyword",
 			QuoteToken(tok),
 		)
+	case ErrDuplicateModifier:
+		modif := param[lexer.TokenType](e.Params, "modifier")
+		return fmt.Sprintf("Modifer %s was already specified in this declaration",
+			FormatTokenType(modif),
+		)
 	case ErrGenericInFuncAlias:
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
@@ -286,7 +294,9 @@ func (e ParseError) error() string {
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
 	case ErrReturnPipelineNotLast:
-		return "Return in pipeline must be the last step"
+		return "'return' in pipeline must be the last step"
+	case ErrPublicFirst:
+		return "'public' must be the first modifier"
 	case ErrEmptyDestructure:
 		return "Destructure pattern can't be empty"
 	case ErrColonEqual:
@@ -297,6 +307,12 @@ func (e ParseError) error() string {
 		return "Expected expression after '..<'"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
+	case ErrMixTypeTupleLabels:
+		return "Can't mix 'label: type' and 'type' syntax in tuple or parameters"
+	case ErrNonNameFuncAlias:
+		return "Invalid function alias: target must be a function name"
+	case ErrInterfaceDefaultValue:
+		return "An interface field can't have a default value"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

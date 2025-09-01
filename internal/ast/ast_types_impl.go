@@ -74,6 +74,7 @@ func (Attribute) stmt()            {}
 func (FuncAliasDeclaration) stmt() {}
 func (PublicDeclaration) stmt()    {}
 func (WhileStatement) stmt()       {}
+func (OpaqueDeclaration) stmt()    {}
 
 // Type
 func (PrimitiveType) _type() {}
@@ -86,6 +87,7 @@ func (FunctionType) _type()  {}
 func (GenericType) _type()   {}
 func (UnionType) _type()     {}
 func (MethodType) _type()    {}
+func (ParenType) _type()     {}
 func (BadExpression) _type() {}
 
 // Type declarations
@@ -114,3 +116,7 @@ func (Symbol) destruct()              {}
 func (Discard) destruct()             {}
 func (ListDestructure) assignable()   {}
 func (ObjectDestructure) assignable() {}
+
+// Modifiers
+func (PublicDeclaration) modif() {}
+func (OpaqueDeclaration) modif() {}

@@ -30,7 +30,6 @@ func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPow
 // ParseAssignment parses a variable declaration or reassignment statement.
 func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.Statement {
 	op := p.Advance()
-
 	rhs := p.ParseExpression(bp)
 	if op.Kind == lexer.ColonEqual {
 		var explicitType ast.Type
@@ -39,8 +38,8 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 			left = annot.Variable
 			explicitType = annot.Type
 		}
-		if left, ok := left.(*ast.DestructureVars); ok {
-			for _, v := range left.Values {
+		if left2, ok := left.(*ast.DestructureVars); ok {
+			for _, v := range left2.Values {
 				if _, ok := v.(ast.Destructure); !ok {
 					p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
 					v = &ast.BadExpression{Value: v}
@@ -69,15 +68,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 }
 
-// Constants are ALL_CAPS
-// Limitation: if the name is written in a script without distinct
-// capital letters, we can't tell if it is all caps or not, so it
-// is just not constant.
-func isConstant(id string) bool {
-	upper := strings.ToUpper(id)
-	return id == upper && upper != strings.ToLower(id)
-}
-
+// Soft keywords are not allowed in module names
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	var (
 		b             strings.Builder
@@ -160,12 +151,12 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 			}
 			wasTypeKw = false
 			curr := p.CurrKind()
-			switch {
-			case curr == lexer.Type:
+			switch curr {
+			case lexer.Type:
 				isTypeImport, wasTypeKw = true, true
 				p.Advance()
 				continue
-			case curr == lexer.Asterisk:
+			case lexer.Asterisk:
 				if alias.Name != "" {
 					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.Curr()))
 				}
@@ -240,7 +231,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	f := &ast.ForStatement{}
 	// Peek for `in` before parsing destructure
 	if p.Lookahead(isDestructureAssignment) {
-		f.Variables = p.ParseDestructureSeries()
+		f.Variables = p.ParseDestructureTypePairs()
 		p.Expect(lexer.In)
 	}
 	f.Expression = p.ParseExpression(ExpressionBindingPower)

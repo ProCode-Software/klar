@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -11,14 +10,6 @@ import (
 )
 
 var Colors ansi.Colors
-
-func argAt(i int) (string, bool) {
-	args := os.Args
-	if i >= len(args) {
-		return "", false
-	}
-	return args[i], true
-}
 
 func handleErr(err error, format ...string) {
 	if err != nil {

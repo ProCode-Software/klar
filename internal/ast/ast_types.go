@@ -142,8 +142,6 @@ type PublicDeclaration struct {
 	Declaration Statement
 }
 
-// todo: specify indices that are constant if not symbol
-// todo: multiple assignees
 type VariableDeclaration struct {
 	BaseNode
 	Variables    []Destructure
@@ -209,11 +207,13 @@ type RestType struct {
 	Value Type
 }
 
-type TupleType struct { // TODO: update
+type TupleType struct {
 	BaseNode
 	Values []*TypePair
+	Single bool // If 1 item without trailing comma
 }
 
+// Used for lambda parameters
 type DestructureTuple struct {
 	BaseNode
 	Values []*DestructureTypePair
@@ -326,6 +326,11 @@ type TypeDeclaration interface {
 	typeDecl()
 }
 
+type ModifierDeclaration interface {
+	Statement
+	modif()
+}
+
 type InterfaceDeclaration struct {
 	Identifier     Identifier
 	InheritedTypes []Type
@@ -342,10 +347,11 @@ type StructDeclaration struct {
 }
 
 type StructField struct {
-	Names    []Identifier
-	Type     Type
-	Constant bool
-	Value    Expression
+	Names      []Identifier
+	Type       Type
+	Constant   bool
+	Value      Expression
+	Attributes []*Attribute
 	BaseNode
 }
 
@@ -359,7 +365,8 @@ type EnumDeclaration struct {
 type EnumItem struct {
 	Identifier Identifier
 	Value      Expression
-	Parameters []Type
+	Parameters []*TypePair
+	Attributes []*Attribute
 	BaseNode
 }
 
@@ -485,7 +492,7 @@ type UpdateStatement struct {
 //	for 5 { ...repeat 5 times }
 type ForStatement struct {
 	BaseNode
-	Variables  []Destructure
+	Variables  []*DestructureTypePair
 	Expression Expression // When used as while loop or repeat
 	Body       []Statement
 }
@@ -518,7 +525,7 @@ type WhenCase struct {
 
 type LambdaExpression struct {
 	BaseNode
-	Params   []*TypePair
+	Params   []*DestructureTypePair
 	Body     []Statement
 	ExprBody Expression
 }
@@ -531,8 +538,8 @@ type Attribute struct {
 
 type RestExpression struct {
 	BaseNode
-	Left bool
-	Expr Expression
+	Left       bool
+	Expression Expression
 }
 
 type RangeExpression struct {
@@ -547,7 +554,7 @@ type PipelineExpression struct {
 }
 
 type ParenExpression struct {
-	Expr Expression
+	Expression Expression
 	BaseNode
 }
 
@@ -566,7 +573,7 @@ type ListCastExpression struct {
 //	for [variables] in [iterator] { block... }
 type ForExpression struct {
 	BaseNode
-	Variables []Destructure
+	Variables []*DestructureTypePair
 	Iterator  Expression
 	Operator  Operator
 	Value     Expression
@@ -618,4 +625,9 @@ type ObjectDestructureEntry struct {
 type DestructureVars struct {
 	BaseNode
 	Values []Assignable
+}
+
+type OpaqueDeclaration struct {
+	BaseNode
+	Declaration TypeDeclaration
 }

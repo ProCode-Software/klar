@@ -9,6 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/paths"
 	"github.com/ProCode-Software/klar/internal/target"
@@ -37,7 +38,7 @@ func tryPipe() {
 	os.Exit(0)
 }
 
-var errPrinter = errors.Printer{
+var errPrinter = printer.Printer{
 	Color:     true,
 	MaxLines:  3,
 	IsRuntime: false,

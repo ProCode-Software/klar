@@ -9,4 +9,5 @@ const (
 	BoxBottomLeft  = '└'
 	BoxBottomRight = '┘'
 	BoxLeftSplit   = '├'
+	Bullet         = '·'
 )

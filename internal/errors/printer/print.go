@@ -1,4 +1,4 @@
-package errors
+package printer
 
 import (
 	"fmt"
@@ -10,16 +10,19 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
+	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Printer struct {
-	Color         bool
-	MaxLines      int
+	Color    bool
+	MaxLines int
+
 	TokenColors   map[lexer.TokenType]string
 	TypeColor     string
 	FunctionColor string
+	EscapeColor   string
 
 	tokens    []lexer.Token
 	IsRuntime bool
@@ -34,7 +37,7 @@ func (p *Printer) LoadTokens(tokens []lexer.Token) {
 	}
 }
 
-func GetMessage(err KlarError) string {
+func GetMessage(err errors.KlarError) string {
 	var (
 		title, msg, desc string
 		parts            = strings.SplitAfterN(err.Error(), ": ", 3)
@@ -133,7 +136,7 @@ func (p *Printer) colorize(i int) string {
 	return ansi.Color(color, tok.Source)
 }
 
-func (p *Printer) PrintError(err KlarError) {
+func (p *Printer) PrintError(err errors.KlarError) {
 	if p.MaxLines <= 0 {
 		p.MaxLines = 3
 	}
@@ -209,7 +212,7 @@ func (p *Printer) PrintError(err KlarError) {
 				highlight = strings.Repeat("~", int(hlen))
 			}
 			b.Write(space(digitLen + 1))
-			box(icons.BoxLeft)
+			box(icons.Bullet)
 			b.WriteByte(' ')
 			b.Write(space(at.Start.Col - 1))
 			b.WriteString(ansi.BoldRed(highlight))

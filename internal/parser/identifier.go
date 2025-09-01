@@ -8,25 +8,16 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-var validIdents = map[lexer.TokenType]struct{}{
-	lexer.Identifier: {},
-}
-
-func init() {
-	for _, tok := range ast.Modifiers {
-		validIdents[tok] = struct{}{}
-	}
-}
-
 // isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
 // [lexer.Identifier] and types in [ast.Modifiers].
 func isValidIdentifier(tok lexer.TokenType) bool {
-	return tok == lexer.Identifier || slices.Contains(ast.Modifiers, tok)
+	_, valid := validIdents[tok]
+	return valid
 }
 
 func isValidIdentOrDiscard(tok lexer.TokenType) bool {
-	return tok == lexer.Identifier ||
-		tok == lexer.Underscore || slices.Contains(ast.Modifiers, tok)
+	_, valid := validIdents[tok]
+	return valid || tok == lexer.Underscore
 }
 
 // validateIdentifier reports whether tok is a valid identifier. If it is false,
@@ -52,7 +43,7 @@ func (p *Parser) ParseIdentifier() ast.Identifier {
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
 
-func (p *Parser) ParseIdentWithDiscard() ast.Identifier {
+func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	if tok.Kind != lexer.Underscore {
 		p.validateIdentifier(tok)

@@ -6,21 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func modifierAnd(types ...lexer.TokenType) []lexer.TokenType {
-	all := make([]lexer.TokenType, len(types)+len(ast.Modifiers))
-	copy(all, ast.Modifiers)
-	copy(all[len(ast.Modifiers):], types)
-	return all
-}
-
-// Soft keyword map and what tokens are expected next for it to be parsed as a keyword
-// Are allowed as identifiers and are only checked when parsing the beginning of a statement
-var SoftKeywords = map[lexer.TokenType][]lexer.TokenType{
-	lexer.Opaque: modifierAnd(lexer.Type),
-	lexer.Can:    nil,                                 // when case only
-	lexer.Public: modifierAnd(lexer.Func, lexer.Type), // special case for public due to destructuring
-}
-
 func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	startPos := p.Curr().Position
 	switch kind {
@@ -162,8 +147,14 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 		default:
 			return nil, false
 		case lexer.Import:
+			if !p.isModifierUse(kind) {
+				return nil, false
+			}
 			res = p.ParseImportStatement()
 		case lexer.Public:
+			if !p.isModifierUse(kind) {
+				return nil, false
+			}
 			res = p.ParsePublicModifier()
 		case lexer.At:
 			res = p.ParseAttribute()
@@ -184,6 +175,11 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 	case lexer.Break:
 		res = &ast.BreakStatement{}
 		p.Advance()
+	case lexer.Opaque:
+		if !p.isModifierUse(kind) {
+			return nil, false
+		}
+		res = p.ParseOpaqueModifier()
 	}
 	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
@@ -191,15 +187,20 @@ func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast
 
 func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
 	startPos := p.Curr().Position
-	switch {
-	case kind == lexer.LeftBracket, kind == lexer.HashLeftCurlyBrace,
-		kind == lexer.LeftParenthesis, isValidIdentOrDiscard(kind):
+	switch kind {
+	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
+		// For better errors
+		lexer.Numeric, lexer.Boolean, lexer.Nil, lexer.Regex:
 		if p.Lookahead(isDestructureAssignment) {
 			res = p.ParseDestructureVars()
 			break
 		}
-		fallthrough
+		return nil, false
 	default:
+		if isValidIdentOrDiscard(kind) && p.Lookahead(isDestructureAssignment) {
+			res = p.ParseDestructureVars()
+			break
+		}
 		return nil, false
 	}
 	res.SetPos(startPos, p.lastTokEnd())
@@ -219,6 +220,11 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseTypeAlias()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
+		// Convert single item tuple to paren type, unless function type
+		// to avoid recreating tuple.
+		if tuple := res.(*ast.TupleType); tuple.Single && p.CurrKind() != lexer.Arrow {
+			res = &ast.ParenType{BaseNode: tuple.BaseNode, Type: tuple.Values[0].Value}
+		}
 	case lexer.Ellipsis:
 		res = p.ParseRestType()
 	case lexer.Stroke:

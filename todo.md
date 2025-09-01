@@ -1,14 +1,8 @@
 # TODO
 ## Lexer
-- maybe: ..< operator
-- fix number with trailing decimal point
+
 ## Parser
-- map, tuple, and list destructure assignment
-- also in for loop
-- new enum syntax
 - in when case, map destructuring
-- multi-variable assignments
-- error for duplicate struct fields or enum members
 - Error handling similar to Rust's `?` postfix, but with explicit `return`
 - _ in lambda param: `_ -> ...`, `(_) -> ...`, `(_: Int) -> ...`
 
@@ -34,9 +28,6 @@
 
 ## Other
 - target property in manifest for defining target platform per module
-- change lexer.Position type to be either uint64 combo of line * 32 + col * 32 bytes,
-    or use uint32 values in struct
-
 
 ## Build Ideas
 - Dev server for testing JS projects
@@ -45,7 +36,7 @@
 File extensions to include in compilation:
 - Code: .klar, .js, .ts,
 - Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv, .y(a)ml
-- Media: .css, .scss, .less, .png, .jpg, .jpg, .svg
+- Media: .css, .scss, .less, .png, .jp(e)g, .svg
 option to convert klarml to json
 
 
@@ -55,11 +46,3 @@ option to convert klarml to json
 x: Int := 1
 shadow x: String := "foo"
 ```
-- Cascade
-```klar
-vehicle := Vehicle()
-    |> .name = "Toyota"
-    |> .range = 3000
-    |> .drive(10)
-```
-.[] for computed fields

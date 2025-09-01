@@ -34,8 +34,10 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 		if isValidIdentifier(kind) {
 			return p.ParseIdentifier().Symbol()
 		}
-		p.unknownTokenErr()
-		return &ast.BadExpression{Token: kind}
+		parsed := p.ParseExpression(ExpressionBindingPower)
+		p.Error(errors.Node(errors.ErrInvalidAssignment, parsed))
+		// p.unknownTokenErr() // p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
+		return &ast.BadExpression{Token: kind, Value: parsed}
 	}
 }
 
@@ -106,13 +108,7 @@ func (p *Parser) ParseListDestructure(end lexer.TokenType, start lexer.Position)
 }
 
 func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
-	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
-		vars = append(vars, p.ParseDestructure())
-		if p.CurrKind() != lexer.Comma {
-			break
-		}
-		p.Expect(lexer.Comma)
-	}
+	parseSeries(p, &vars, p.ParseDestructure, 0, lexer.Comma, false)
 	return vars
 }
 
@@ -137,7 +133,7 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 		if p.CurrKind() != lexer.Comma {
 			break
 		}
-		p.Expect(lexer.Comma)
+		p.Advance()
 	}
 	return vars
 }
@@ -145,4 +141,18 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 // Validate the += or -= operator at type-check time
 func (p *Parser) ParseDestructureVars() *ast.DestructureVars {
 	return &ast.DestructureVars{Values: p.ParseAssignLeft()}
+}
+
+// For lambda params or 'for' loop variables. Parentheses are not parsed.
+func (p *Parser) ParseDestructureTypePairs() (pairs []*ast.DestructureTypePair) {
+	parseSeries(p, &pairs, func() *ast.DestructureTypePair {
+		pair := &ast.DestructureTypePair{}
+		parseSeries(p, &pair.Keys, p.ParseDestructure, 0, lexer.Comma, false)
+		if p.CurrKind() == lexer.Colon {
+			p.Advance()
+			pair.Type = p.ParseType(DefaultTypeBindingPower)
+		}
+		return pair
+	}, 0, lexer.Comma, false)
+	return pairs
 }

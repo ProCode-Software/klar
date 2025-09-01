@@ -27,7 +27,9 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
-	firstIndex := p.Index
+	if p.Lookahead(isArrowFunction) {
+		// TODO: parse destructure params
+	}
 	p.Advance() // (
 	if p.CurrKind() == lexer.RightParenthesis {
 		// Empty tuple
@@ -40,34 +42,28 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		expr = &ast.Discard{} // TODO: range
 		p.Advance()
 	} else {
-		expr = p.ParseExpression(CommaBindingPower)
+		expr = p.ParseExpression(ExpressionBindingPower)
 	}
 	next := p.Curr()
 	switch next.Kind {
-	// TODO: destructure
-	case lexer.Colon:
-		p.Index = firstIndex
-		return p.ParseTupleType()
 	case lexer.Comma:
 		// Tuple (requires at least one comma)
 		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
-		for p.WhileNot(lexer.RightParenthesis) {
-			tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
-			if p.CurrKind() == lexer.Colon {
-				// Label
-				p.Index = firstIndex
-				return p.ParseTupleType()
-			}
-			if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
-				p.Expect(lexer.Comma)
-			}
-		}
-		p.Expect(lexer.RightParenthesis)
+		parseExprSeries(
+			p, &tuple.Values, ExpressionBindingPower,
+			lexer.RightParenthesis, lexer.Comma,
+		)
 		return tuple
 	default:
+		if isAssignment(next.Kind) {
+			p.Error(errors.Token(errors.ErrAssignmentAsExpr, next))
+			// Skip the rest
+			p.Advance() // =
+			p.ParseExpression(DefaultBindingPower)
+		}
 		// Grouped expression
 		p.Expect(lexer.RightParenthesis)
-		return &ast.ParenExpression{Expr: expr}
+		return &ast.ParenExpression{Expression: expr}
 	}
 }
 
@@ -89,7 +85,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			// Normal properties: quotes not required for non-reserved string key
 			entry := &ast.MapItem{}
 			entry.Range.Start = p.Curr().Position
-			parseSeriesWithBP(p, &entry.Keys, ExpressionBindingPower, 0, lexer.Comma)
+			parseExprSeries(p, &entry.Keys, ExpressionBindingPower, 0, lexer.Comma)
 
 			// Spread #{ key: 1, values... }
 			if rest, ok := entry.Keys[len(entry.Keys)-1].(*ast.RestExpression); ok {
@@ -110,6 +106,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 		curr := p.CurrKind()
 		// Known issue: required comma after ... because ParseExpression parses
 		// anything after it as a range expression. It can't be prevented here.
+		// TODO: maybe fix?
 		if curr == lexer.Colon && p.Curr().Line > p.PeekBehind().Line {
 			continue
 		}
@@ -124,7 +121,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 func (p *Parser) ParseList() *ast.ListLiteral {
 	var items []ast.Expression
 	p.Expect(lexer.LeftBracket)
-	parseSeriesWithBP(p, &items, ExpressionBindingPower, lexer.RightBracket, lexer.Comma)
+	parseExprSeries(p, &items, ExpressionBindingPower, lexer.RightBracket, lexer.Comma)
 	return &ast.ListLiteral{Items: items}
 }
 
@@ -238,30 +235,14 @@ func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
 func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpression {
 	l := &ast.LambdaExpression{}
 	p.Expect(lexer.Arrow)
+	// TODO: destructure for [...] and #{...}
 	switch left := left.(type) {
-	case *ast.Symbol:
-		l.Params = append(l.Params, &ast.TypePair{
-			Keys: []ast.Identifier{symbolToIdentifier(left)},
-		})
-	case *ast.Discard:
-		l.Params = append(l.Params, &ast.TypePair{})
-	case *ast.TupleType:
-		l.Params = left.Values
-	case *ast.TupleLiteral:
-		for _, param := range left.Values {
-			var pair *ast.TypePair
-			switch param := param.(type) {
-			case *ast.Symbol:
-				pair = &ast.TypePair{Keys: []ast.Identifier{symbolToIdentifier(param)}}
-			// Allow _ -> ...
-			case *ast.Discard:
-				pair = &ast.TypePair{}
-			default:
-				p.Error(errors.Node(errors.ErrInvalidLambdaParams, param))
-				continue
-			}
-			l.Params = append(l.Params, copyPos(param, pair))
+	case *ast.Symbol, *ast.Discard:
+		l.Params = []*ast.DestructureTypePair{
+			{Keys: []ast.Destructure{left.(ast.Destructure)}},
 		}
+	case *ast.DestructureTuple:
+		l.Params = left.Values
 	default:
 		p.Error(errors.Node(errors.ErrInvalidLambdaParams, left))
 	}
@@ -288,8 +269,8 @@ func (p *Parser) ParseLeftRest() *ast.RestExpression {
 		}
 	}
 	return &ast.RestExpression{
-		Left: true,
-		Expr: p.ParseExpression(UnaryBindingPower),
+		Left:       true,
+		Expression: p.ParseExpression(UnaryBindingPower),
 	}
 }
 
@@ -324,7 +305,7 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 		// _... not allowed
 		p.Error(errors.Node(errors.ErrUnderscoreWithRest, left))
 	}
-	return &ast.RestExpression{Left: false, Expr: l}
+	return &ast.RestExpression{Left: false, Expression: l}
 }
 
 func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) *ast.PipelineExpression {
@@ -445,7 +426,7 @@ func (p *Parser) ParseWhenBlock() *ast.WhenExpression {
 	w := &ast.WhenExpression{}
 	if p.CurrKind() != lexer.LeftCurlyBrace {
 		// Subjects
-		parseSeriesWithBP(
+		parseExprSeries(
 			p, &w.Subjects, ExpressionBindingPower,
 			lexer.LeftCurlyBrace, lexer.Comma,
 		)
@@ -615,7 +596,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	f := &ast.ForExpression{}
 	// Peek for `in` before parsing destructure
 	if p.Lookahead(isDestructureAssignment) {
-		f.Variables = p.ParseDestructureSeries()
+		f.Variables = p.ParseDestructureTypePairs()
 		p.Expect(lexer.In)
 	}
 	f.Iterator = p.ParseExpression(ExpressionBindingPower)
