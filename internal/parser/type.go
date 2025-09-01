@@ -16,14 +16,19 @@ func (p *Parser) ParseType(bp BindingPower) ast.Type {
 		p.unknownTokenErr()
 		return &ast.BadExpression{Token: kind}
 	}
+	return p.ParseTypeLED(left, bp)
+}
+
+func (p *Parser) ParseTypeLED(left ast.Type, bp BindingPower) ast.Type {
+	var handled bool
 	for TypeBindingPowerMap[p.CurrKind()] > bp {
-		kind = p.CurrKind()
+		kind := p.CurrKind()
 		left, handled = p.handleTypeLED(
 			kind, left, TypeBindingPowerMap[p.CurrKind()],
 		)
 		if !handled {
 			p.unknownTokenErr()
-			continue
+			return &ast.BadExpression{Token: kind, Value: left}
 		}
 	}
 	return left
@@ -87,6 +92,11 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.Function
 	switch left := left.(type) {
 	case *ast.TupleType:
 		tuple = left
+	case *ast.ParenType: // Only in when can case
+		tuple = &ast.TupleType{
+			BaseNode: left.BaseNode,
+			Values:   []*ast.TypePair{{BaseNode: left.BaseNode, Value: left}},
+		}
 	case *ast.FunctionType:
 		// Allow (Int) -> (Int) -> Int
 		tuple = left.Parameters

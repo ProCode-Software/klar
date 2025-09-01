@@ -83,7 +83,7 @@ const (
 	ErrPublicFirst
 	ErrDuplicateModifier
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
-	ErrNotAllowedInGuard  // When expression not allowed in when case guard
+	ErrNotAllowedInWhen   // When expression not allowed in when case guard
 
 	// Analysis-time errors
 	ErrRedeclaredVar        // Can't redeclare variable or function
@@ -244,8 +244,8 @@ func (e ParseError) error() string {
 		return "A number can't contain consecutive underscores"
 	case ErrMisplacedSep:
 		return "An underscore must separate successive digits"
-	case ErrNotAllowedInGuard:
-		return "A case guard can't contain 'when' expressions or lambdas"
+	case ErrNotAllowedInWhen:
+		return "A 'when' case can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
 		return "The comment starting at " + e.Position.String() +
 			" was left open"

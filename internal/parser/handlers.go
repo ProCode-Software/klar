@@ -39,8 +39,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.Slash:
 		res = p.ParseRegexLiteral()
 	case lexer.When:
-		if p.isWhenGuard {
-			p.Error(errors.Token(errors.ErrNotAllowedInGuard, p.Curr()))
+		if p.isWhenGuard || p.isWhenCase {
+			p.Error(errors.Token(errors.ErrNotAllowedInWhen, p.Curr()))
 			return &ast.BadExpression{Token: kind}, true
 		}
 		res = p.ParseWhenBlock()
@@ -105,6 +105,10 @@ func (p *Parser) handleLED(
 	// Arrow function
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
+		if p.isWhenGuard || p.isWhenCase {
+			p.Error(errors.Node(errors.ErrNotAllowedInWhen, res))
+			return &ast.BadExpression{Value: res}, true
+		}
 	// Spread or range
 	case lexer.Ellipsis, lexer.DotDotLessThan:
 		res = p.ParseRange(left, bp)
@@ -222,7 +226,8 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseTupleType()
 		// Convert single item tuple to paren type, unless function type
 		// to avoid recreating tuple.
-		if tuple := res.(*ast.TupleType); tuple.Single && p.CurrKind() != lexer.Arrow {
+		if tuple := res.(*ast.TupleType); tuple.Single &&
+			(p.isWhenCase || p.CurrKind() != lexer.Arrow) {
 			res = &ast.ParenType{BaseNode: tuple.BaseNode, Type: tuple.Values[0].Value}
 		}
 	case lexer.Ellipsis:

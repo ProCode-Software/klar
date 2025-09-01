@@ -26,9 +26,19 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
 
+func (p *Parser) ParseParamList() *ast.DestructureTuple {
+	p.Expect(lexer.LeftParenthesis)
+	tuple := &ast.DestructureTuple{}
+	if p.CurrKind() != lexer.RightParenthesis {
+		tuple.Values = p.ParseDestructureTypePairs(true)
+	}
+	p.Expect(lexer.RightParenthesis)
+	return tuple
+}
+
 func (p *Parser) ParseParenExpression() ast.Expression {
-	if p.Lookahead(isArrowFunction) {
-		// TODO: parse destructure params
+	if p.Lookahead(p.isArrowFunction) {
+		return p.ParseParamList()
 	}
 	p.Advance() // (
 	if p.CurrKind() == lexer.RightParenthesis {
@@ -36,14 +46,7 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		p.Advance()
 		return &ast.TupleLiteral{}
 	}
-	var expr ast.Expression
-	first := p.Curr()
-	if first.Kind == lexer.Underscore {
-		expr = &ast.Discard{} // TODO: range
-		p.Advance()
-	} else {
-		expr = p.ParseExpression(ExpressionBindingPower)
-	}
+	expr := p.ParseExpression(ExpressionBindingPower)
 	next := p.Curr()
 	switch next.Kind {
 	case lexer.Comma:
@@ -335,13 +338,14 @@ func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) *ast.PipelineExpr
 func (p *Parser) parseCaseSubExpr() ast.Expression {
 	tok := p.Curr()
 	var res ast.Expression
+outer:
 	switch tok.Kind {
 	// Relational operators don't need explicit LHS
 	// 	when x {
 	// 		< 5 -> ...
 	// }
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In:
+		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
 		res = p.ParseBinaryExpression(nil, BindingPowerMap[tok.Kind])
 	case lexer.Question:
 		p.Advance()
@@ -349,10 +353,36 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 	case lexer.Underscore:
 		p.Advance()
 		res = &ast.Discard{}
+	case lexer.NotCan:
+		res = p.ParseWhenCan()
+	case lexer.Can:
+		switch peek := p.Peek().Kind; peek {
+		default:
+			if !isValidIdentifier(peek) {
+				break
+			}
+			fallthrough
+		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.Identifier,
+			lexer.Stroke, lexer.Ellipsis:
+			res = p.ParseWhenCan()
+			break outer
+		}
+		fallthrough
 	default:
 		res = p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
 	}
 	return markStartEndPos(p, res, tok.Position)
+}
+
+func (p *Parser) ParseWhenCan() *ast.WhenCanCase {
+	op := newOperator(p.Advance())            // can, !can
+	typ := p.ParseType(UnionTypeBindingPower) // Don't include '|'
+	// Parse types with lower binding power than '|': '?' and '...'
+	switch curr := p.CurrKind(); curr {
+	case lexer.Question, lexer.Ellipsis:
+		typ = p.ParseTypeLED(typ, TypeBindingPowerMap[curr])
+	}
+	return &ast.WhenCanCase{Operator: op, Type: typ}
 }
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
@@ -367,6 +397,9 @@ loop:
 	for p.HasTokens() {
 		if p.IsCurrently(lexer.When, lexer.Arrow, lexer.EndOfStatement) {
 			break loop
+		}
+		if p.CurrKind() == lexer.Stroke {
+			p.Advance()
 		}
 		commaExp = append(commaExp, p.parseCaseSubExpr())
 		switch p.CurrKind() {
@@ -596,7 +629,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	f := &ast.ForExpression{}
 	// Peek for `in` before parsing destructure
 	if p.Lookahead(isDestructureAssignment) {
-		f.Variables = p.ParseDestructureTypePairs()
+		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}
 	f.Iterator = p.ParseExpression(ExpressionBindingPower)

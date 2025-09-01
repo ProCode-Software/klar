@@ -71,7 +71,7 @@ func _() {
 	_ = x[ErrPublicFirst-57]
 	_ = x[ErrDuplicateModifier-58]
 	_ = x[ErrUnderscoreWithRest-59]
-	_ = x[ErrNotAllowedInGuard-60]
+	_ = x[ErrNotAllowedInWhen-60]
 	_ = x[ErrRedeclaredVar-61]
 	_ = x[ErrRedeclaredType-62]
 	_ = x[ErrRedeclaredEnum-63]
@@ -117,14 +117,14 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidLambdaParamsErrInvalidVersionLitErrAssignmentAsExprErrEmptyDestructureErrExpectedAssignmentErrInvalidAssignmentErrNonNameDeclarationErrColonEqualErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrReservedKeywordErrNotAnExpressionErrInvalidLabelShorthandErrInvalidLabelErrGenericInFuncAliasErrMissingFuncParamTypeErrReturnPipelineNotLastErrInvalidObjPipeStepErrNonNameFuncAliasErrMultipleKeysInMapRestErrExpectedExprAfterClosedRangeErrEllipsisForClosedRangeErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenRequiredFuncErrInterfaceDefaultValueErrMixTypeTupleLabelsErrInvalidOpaqueErrForInvalidCondErrInvalidPublicErrPublicFirstErrDuplicateModifierErrUnderscoreWithRestErrNotAllowedInGuardErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrRedeclaredFieldErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFunc"
+	_ErrorCode_name_0 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrAliasInUnqualifiedImportErrImportExpectedModuleErrImportInvalidWildcardErrImportTooManyWildcardErrWildcardAndUnqImportErrWildcardAndAliasErrEmptyUnqImportErrImportsGoFirstErrUnterminatedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrStringEscapeErrUnicodeEscTooBigErrConsecutiveSepErrMisplacedSepErrTrailingSepErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidLambdaParamsErrInvalidVersionLitErrAssignmentAsExprErrEmptyDestructureErrExpectedAssignmentErrInvalidAssignmentErrNonNameDeclarationErrColonEqualErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrReservedKeywordErrNotAnExpressionErrInvalidLabelShorthandErrInvalidLabelErrGenericInFuncAliasErrMissingFuncParamTypeErrReturnPipelineNotLastErrInvalidObjPipeStepErrNonNameFuncAliasErrMultipleKeysInMapRestErrExpectedExprAfterClosedRangeErrEllipsisForClosedRangeErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenRequiredFuncErrInterfaceDefaultValueErrMixTypeTupleLabelsErrInvalidOpaqueErrForInvalidCondErrInvalidPublicErrPublicFirstErrDuplicateModifierErrUnderscoreWithRestErrNotAllowedInWhenErrRedeclaredVarErrRedeclaredTypeErrRedeclaredEnumErrRedeclaredFieldErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFunc"
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 101, 125, 149, 172, 191, 208, 225, 246, 268, 288, 307, 322, 337, 356, 373, 388, 402, 416, 432, 449, 467, 489, 509, 528, 547, 568, 588, 609, 622, 646, 670, 693, 711, 729, 753, 768, 789, 812, 836, 857, 876, 900, 931, 956, 981, 1007, 1022, 1042, 1066, 1087, 1103, 1120, 1136, 1150, 1170, 1191, 1211, 1227, 1244, 1261, 1279, 1302, 1323, 1343, 1357, 1377}
+	_ErrorCode_index_0 = [...]uint16{0, 17, 35, 51, 78, 101, 125, 149, 172, 191, 208, 225, 246, 268, 288, 307, 322, 337, 356, 373, 388, 402, 416, 432, 449, 467, 489, 509, 528, 547, 568, 588, 609, 622, 646, 670, 693, 711, 729, 753, 768, 789, 812, 836, 857, 876, 900, 931, 956, 981, 1007, 1022, 1042, 1066, 1087, 1103, 1120, 1136, 1150, 1170, 1191, 1210, 1226, 1243, 1260, 1278, 1301, 1322, 1342, 1356, 1376}
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}

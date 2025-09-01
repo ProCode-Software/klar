@@ -53,6 +53,7 @@ func (ForExpression) expr()      {}
 func (StructDotInit) expr()      {}
 func (DestructureVars) expr()    {}
 func (DestructureTuple) expr()   {}
+func (WhenCanCase) expr()        {}
 
 // Statements
 func (BadExpression) stmt()        {}

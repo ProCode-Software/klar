@@ -223,6 +223,7 @@ type DestructureTypePair struct {
 	BaseNode
 	Keys []Destructure
 	Type Type
+	Value Expression
 }
 
 type ParenType struct {
@@ -521,6 +522,12 @@ type WhenCase struct {
 	Body     []Statement // -> <expr> | -> {...}
 	BodyExpr Expression
 	InBraces bool
+}
+
+type WhenCanCase struct {
+	BaseNode
+	Operator Operator
+	Type Type
 }
 
 type LambdaExpression struct {

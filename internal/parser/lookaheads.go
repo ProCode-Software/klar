@@ -105,13 +105,17 @@ func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int
 	return continueLookahead
 }
 
-func isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
+func (p *Parser) isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
+	if p.isWhenCase {
+		return failLookahead // Arrow function not allowed in when cases
+	}
 	if last {
 		return passLookaheadIf(tok == lexer.Arrow)
 	}
+	if brackCount == 0 {
+		return breakLookahead
+	}
 	switch tok {
-	case lexer.Arrow:
-		return passLookahead
 	case lexer.RightParenthesis,
 		lexer.RightCurlyBrace, lexer.RightBracket:
 		if brackCount == 0 {

@@ -69,10 +69,7 @@ func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
 			p.unknownTokenErr()
-			return &ast.BadExpression{
-				Token: kind,
-				Value: left,
-			}
+			return &ast.BadExpression{Token: kind, Value: left}
 		}
 	}
 	// left = left.SetPos(left.GetRange().Start, p.savePos())

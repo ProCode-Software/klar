@@ -144,13 +144,17 @@ func (p *Parser) ParseDestructureVars() *ast.DestructureVars {
 }
 
 // For lambda params or 'for' loop variables. Parentheses are not parsed.
-func (p *Parser) ParseDestructureTypePairs() (pairs []*ast.DestructureTypePair) {
+func (p *Parser) ParseDestructureTypePairs(withDefaults bool) (pairs []*ast.DestructureTypePair) {
 	parseSeries(p, &pairs, func() *ast.DestructureTypePair {
 		pair := &ast.DestructureTypePair{}
 		parseSeries(p, &pair.Keys, p.ParseDestructure, 0, lexer.Comma, false)
 		if p.CurrKind() == lexer.Colon {
 			p.Advance()
 			pair.Type = p.ParseType(DefaultTypeBindingPower)
+		}
+		if withDefaults && p.isEqualOrColonEqualAndError() {
+			p.Advance()
+			pair.Value = p.ParseExpression(ExpressionBindingPower)
 		}
 		return pair
 	}, 0, lexer.Comma, false)
