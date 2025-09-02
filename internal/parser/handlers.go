@@ -11,13 +11,21 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	switch kind {
 	default:
 		if isValidIdentifier(kind) {
-			res = &ast.Symbol{Identifier: p.Advance().Source}
+			res = p.ParseSymbol()
 			break
 		}
 		return nil, false
 	// Primary expression/literal
-	case lexer.Identifier, lexer.String, lexer.Numeric, lexer.Boolean, lexer.Nil:
-		res = p.ParsePrimaryExpression()
+	case lexer.Identifier:
+		res = p.ParseSymbol()
+	case lexer.String:
+		res = p.ParseString()
+	case lexer.Numeric:
+		res = p.ParseNumber()
+	case lexer.Boolean:
+		res = p.ParseBoolean()
+	case lexer.Nil:
+		res = p.ParseNil()
 	// Prefix/Unary
 	case lexer.Minus, lexer.Plus, lexer.Not:
 		res = p.ParseUnaryExpression()
@@ -46,12 +54,15 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseWhenBlock()
 	case lexer.For:
 		res = p.ParseForExpression()
+	case lexer.Go:
+		res = p.ParseGoExpression()
+	case lexer.Await:
+		res = p.ParseAwaitExpression()
 	case lexer.Underscore:
-		if !p.isWhenCase {
-			return nil, false
+		if u := p.Advance(); !p.isWhenCase {
+			p.Error(errors.Token(errors.ErrUnderscoreValue, u))
 		}
 		res = &ast.Discard{}
-		p.Advance()
 	}
 	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
@@ -75,13 +86,16 @@ func (p *Parser) handleLED(
 		// Arithmetic
 		lexer.Plus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
 		// Relational
-		lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
-		lexer.EqualEqual, lexer.NotEqual, lexer.In, lexer.NotIn,
+		lexer.In, lexer.NotIn,
 		// Logical
 		lexer.AndAnd, lexer.OrOr,
 		// Distributive
 		lexer.And, lexer.Or:
 		res = p.ParseBinaryExpression(left, bp)
+	// Relational
+	case lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
+		lexer.EqualEqual, lexer.NotEqual:
+		res = p.ParseRelationalExpression(left, bp)
 	// Type annotation
 	case lexer.Colon:
 		if left, ok := left.(*ast.DestructureVars); ok {

@@ -2,14 +2,15 @@
 
 package lexer
 
+// TokenType represent a lexer token
 type TokenType int
 
 const (
 	_ TokenType = iota
 	EOF
 	EndOfStatement // Replacement for semicolons
-	Illegal
-	Newline
+	Illegal        // Unknown character
+	Newline        // Source only -- replaced with EndOfStatement
 
 	// Punctuation
 	Comma              // ,
@@ -33,10 +34,10 @@ const (
 	Boolean
 	Nil
 	String
-	Regex
+	Regex      // @/
 	Underscore // _
 
-	// Binary
+	// Arithmetic
 	Plus     // +
 	Minus    // -
 	Asterisk // *
@@ -77,6 +78,7 @@ const (
 
 	// Keywords
 	And
+	Await
 	Break
 	Can
 	For
@@ -149,6 +151,7 @@ var OperatorMap = map[string]TokenType{
 
 var KeywordMap = map[string]TokenType{
 	"and":    And,
+	"await":  Await,
 	"break":  Break,
 	"can":    Can,
 	"for":    For,

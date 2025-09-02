@@ -1,6 +1,8 @@
 package parser
 
-import "github.com/ProCode-Software/klar/internal/lexer"
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+)
 
 // Lookaheads may be used to the parser to check what if after some tokens before
 // conditionally parsing them.
@@ -22,7 +24,7 @@ loop:
 		tok := p.Tokens[i].Kind
 		switch tok {
 		case lexer.RightBracket, lexer.RightCurlyBrace, lexer.RightParenthesis:
-			brackCount++
+			brackCount--
 		case lexer.LeftCurlyBrace, lexer.LeftBracket, lexer.LeftParenthesis,
 			lexer.HashLeftCurlyBrace:
 			brackCount++
@@ -86,9 +88,9 @@ func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int
 		}
 		return failLookahead
 	}
-	if brackCount == 0 {
+	/* if brackCount == 0 {
 		return breakLookahead
-	}
+	} */
 	switch tok {
 	case lexer.Equal, lexer.ColonEqual,
 		lexer.PlusEqual, lexer.MinusEqual, lexer.Colon, lexer.Comma, lexer.In:
@@ -106,13 +108,12 @@ func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int
 }
 
 func (p *Parser) isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
-	if p.isWhenCase {
+	switch {
+	case p.isWhenCase:
 		return failLookahead // Arrow function not allowed in when cases
-	}
-	if last {
+	case last:
 		return passLookaheadIf(tok == lexer.Arrow)
-	}
-	if brackCount == 0 {
+	case brackCount == 0:
 		return breakLookahead
 	}
 	switch tok {

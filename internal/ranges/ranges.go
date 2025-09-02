@@ -11,6 +11,10 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+// Set to false if any token can contain non-ASCII characters. Performance optimizations
+// will be disabled if set to false.
+var ASCIIOnly = true
+
 // Position is an alias for [lexer.Position]
 type Position = lexer.Position
 
@@ -27,6 +31,18 @@ func IsZeroPosition(p Position) bool {
 	return p.Line == 0
 }
 
+func countLen(t lexer.Token) int {
+	if ASCIIOnly {
+		switch t.Kind {
+		case lexer.Identifier, lexer.String, lexer.Regex, lexer.BlockComment,
+			lexer.LineComment, lexer.Hashbang:
+		default:
+			return len(t.Source)
+		}
+	}
+	return utf8.RuneCountInString(t.Source)
+}
+
 // FromToken returns a new Range that is the position and length of token t.
 // If the token is multiline, this will only work with an 'end' attribute.
 func FromToken(t lexer.Token) Range {
@@ -37,7 +53,7 @@ func FromToken(t lexer.Token) Range {
 	}
 	return Range{Start: t.Position, End: Position{
 		Line: t.Position.Line,
-		Col:  t.Position.Col + uint32(utf8.RuneCountInString(t.Source)),
+		Col:  t.Position.Col + uint32(countLen(t)),
 	}}
 }
 

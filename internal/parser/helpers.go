@@ -47,7 +47,7 @@ func (p *Parser) lastTokEnd() lexer.Position {
 
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 	var isOk, isComputed bool
-	sym := p.ParseExpression(CallBindingPower)
+	sym := p.ParseExpression(ExpressionBindingPower)
 	switch sym := sym.(type) {
 	case *ast.Symbol:
 		key = sym
@@ -95,4 +95,21 @@ func copyPos[F, T ast.Node](from F, to T) T {
 
 func newBaseNode(start, end lexer.Position) ast.BaseNode {
 	return ast.BaseNode{Range: ranges.Range{start, end}}
+}
+
+func isAssignment(kind lexer.TokenType) bool {
+	switch kind {
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual:
+		return true
+	}
+	return false
+}
+
+func isRelational(kind lexer.TokenType) bool {
+	switch kind {
+	case lexer.EqualEqual, lexer.NotEqual, lexer.GreaterThan, lexer.LessThan,
+		lexer.GreaterEqualTo, lexer.LessEqualTo:
+		return true
+	}
+	return false
 }

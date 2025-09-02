@@ -43,6 +43,13 @@ func (p *Parser) ParseIdentifier() ast.Identifier {
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
 
+// [*Parser.ParseIdentifier] but will not validate. Expected use case if for already
+// validated identifiers. [lexer.Underscore] is allowed (because any token is allowed)
+func (p *Parser) ParseValidIdent() ast.Identifier {
+	tok := p.AdvanceNonBoundary()
+	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+}
+
 func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	if tok.Kind != lexer.Underscore {
@@ -51,13 +58,22 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
 
-func (p *Parser) ParseMapIdentifier(includingNumber bool) ast.Identifier {
-	tok := p.AdvanceNonBoundary()
-	kind := tok.Kind
+// opt1: includingNumber, opt2: isLabel (for a better error)
+func (p *Parser) ParseMapIdentifier(opts ...bool) ast.Identifier {
+	var (
+		includingNumber = len(opts) > 0 && opts[0]
+		isLabel         = len(opts) > 1 && opts[1]
+		tok             = p.AdvanceNonBoundary()
+		kind            = tok.Kind
+	)
 	switch {
 	case kind == lexer.Identifier:
 		break
 	case kind == lexer.Numeric && !includingNumber:
+		if isLabel {
+			p.Error(errors.Token(errors.ErrInvalidLabel, tok))
+			break
+		}
 		fallthrough
 	case !slices.Contains(ast.Modifiers, tok.Kind) &&
 		!slices.Contains(ast.ReservedIdent, tok.Kind):

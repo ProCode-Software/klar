@@ -27,39 +27,46 @@ func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPow
 	return annot
 }
 
+func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.VariableDeclaration {
+	var explicitType ast.Type
+	var vars []ast.Destructure
+	if annot, ok := left.(*ast.TypeAnnotation); ok {
+		left, explicitType = annot.Variable, annot.Type
+	}
+	if left2, ok := left.(*ast.DestructureVars); ok {
+		vars = make([]ast.Destructure, len(left2.Values))
+		for i, v := range left2.Values {
+			if _, ok := v.(ast.Destructure); !ok {
+				p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
+				v = &ast.BadExpression{Value: v}
+			}
+			vars[i] = v.(ast.Destructure)
+		}
+	} else {
+		println("!!!")
+		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
+	}
+	return &ast.VariableDeclaration{
+		Variables:    vars,
+		Value:        right,
+		ExplicitType: explicitType,
+	}
+}
+
 // ParseAssignment parses a variable declaration or reassignment statement.
 func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.Statement {
 	op := p.Advance()
 	rhs := p.ParseExpression(bp)
 	if op.Kind == lexer.ColonEqual {
-		var explicitType ast.Type
-		var vars []ast.Destructure
-		if annot, ok := left.(*ast.TypeAnnotation); ok {
-			left = annot.Variable
-			explicitType = annot.Type
-		}
-		if left2, ok := left.(*ast.DestructureVars); ok {
-			for _, v := range left2.Values {
-				if _, ok := v.(ast.Destructure); !ok {
-					p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
-					v = &ast.BadExpression{Value: v}
-				}
-				vars = append(vars, v.(ast.Destructure))
-			}
-		} else {
-			p.Error(errors.Node(errors.ErrInvalidAssignment, left))
-		}
-		return &ast.VariableDeclaration{
-			Variables:    vars,
-			Value:        rhs,
-			ExplicitType: explicitType,
-		}
+		return p.ParseVariableDeclaration(left, rhs)
 	}
 	var values []ast.Assignable
 	if l, ok := left.(*ast.DestructureVars); ok {
 		values = l.Values
 	} else {
-		values = []ast.Assignable{&ast.BadExpression{Value: left}}
+		// I think this is already prevented
+		panic("left side of assignment is not *ast.DestructureVars")
+		// values = []ast.Assignable{&ast.BadExpression{Value: left}}
 	}
 	return &ast.AssignmentStatement{
 		Assignee: values,
@@ -258,12 +265,4 @@ func (p *Parser) ParseBlock() (body []ast.Statement) {
 	}
 	p.Expect(lexer.RightCurlyBrace)
 	return
-}
-
-func isAssignment(kind lexer.TokenType) bool {
-	switch kind {
-	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual:
-		return true
-	}
-	return false
 }

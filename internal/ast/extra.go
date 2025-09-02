@@ -53,7 +53,7 @@ func (i Identifier) Range() ranges.Range {
 }
 
 func (i Identifier) Symbol() *Symbol {
-	return &Symbol{Identifier: i.Name, BaseNode: BaseNode{Range: i._range}}
+	return &Symbol{Identifier: i.Name, BaseNode: BaseNode{Range: i.Range()}}
 }
 
 // Implementing [Node] just for error handling

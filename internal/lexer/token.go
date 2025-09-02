@@ -5,8 +5,10 @@ import (
 	"io"
 )
 
+type IntegerFormat int
+
 const (
-	NumberFormatDecimal = iota
+	NumberFormatDecimal IntegerFormat = iota
 	NumberFormatHex
 	NumberFormatOctal
 	NumberFormatBinary

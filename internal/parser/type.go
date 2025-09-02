@@ -125,7 +125,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
 		if k := p.CurrKind(); !isType &&
 			isValidIdentOrDiscard(k) && p.Peek().Kind != lexer.Dot {
-			names = append(names, p.ParseIdentOrDiscard())
+			names = append(names, p.ParseValidIdent())
 			if p.CurrKind() == lexer.Colon {
 				if isType {
 					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))

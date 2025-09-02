@@ -56,6 +56,9 @@ func (e ParseError) GetFile() string      { return e.File }
 func (e ParseError) GetHints() []string   { return e.Hints }
 func (e ParseError) GetDetails() []Detail { return nil }
 func (e *ParseError) Hint(hint string)    { e.Hints = append(e.Hints, hint) }
+func (e *ParseError) Hintf(hint string, a ...any) {
+	e.Hints = append(e.Hints, fmt.Sprintf(hint, a...))
+}
 
 // TypeError
 func (e TypeError) At() ranges.Range     { return e.Range }

@@ -53,15 +53,17 @@ type ExpressionStatement struct {
 type StringLiteral struct {
 	BaseNode
 	QuoteStyle rune
+	QuoteCount int // Number of QuoteStyle if '@' was used. Zero if it wasn't
 	Content    string
 	Escapes    map[lexer.Position]StringEscape
 }
 
 type IntegerLiteral struct {
 	BaseNode
-	Format int
-	Value  int64
-	Source string
+	Format    lexer.IntegerFormat
+	Value     int64
+	Source    string
+	Separator bool
 }
 
 type BooleanLiteral struct {
@@ -76,14 +78,18 @@ type NilLiteral struct {
 
 type FloatLiteral struct {
 	BaseNode
-	Value  float64
-	Source string
+	Value     float64
+	Source    string
+	Exponent  bool
+	Separator bool
 }
 
 type RegexLiteral struct {
 	BaseNode
-	Source string
-	Flags  []rune
+	Source     string
+	Flags      []rune
+	Multiline  bool
+	QuoteCount int // Number of '/' if '@' was used. Zero if it wasn't
 }
 
 type VersionLiteral struct {
@@ -110,6 +116,13 @@ type UnaryExpression struct {
 	Operator Operator
 	Right    Node
 	BaseNode
+}
+
+// Multi comparisions using ==, !=, >=, <=, >, or <
+type RelationalExpression struct {
+	BaseNode
+	Expressions []Expression
+	Operators   []Operator // Should be len(Expressions) - 1
 }
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
@@ -161,11 +174,32 @@ type Pair struct {
 	Key, Value Expression
 }
 
+/*
+And
+	Break
+	Can
+	For
+	Func
+	Go
+	Import
+	In
+	Next
+	NotCan // !can
+	NotIn  // !in
+	Opaque
+	Or
+	Public
+	Return
+	Type
+	When
+	While
+*/
+
 // ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
-	lexer.Import, lexer.Func, lexer.When, lexer.Return, lexer.For, lexer.Next,
-	lexer.Type, lexer.Boolean, lexer.Nil, lexer.And, lexer.Or,
-	lexer.In, lexer.Break, lexer.Go, lexer.While,
+	lexer.And, lexer.Await, lexer.Boolean, lexer.Break, lexer.For, lexer.Func,
+	lexer.Go, lexer.Import, lexer.In, lexer.Next, lexer.Nil, lexer.Or,
+	lexer.Return, lexer.Type, lexer.When, lexer.While,
 }
 
 // Keywords that can be used as identifiers if they are not followed by specific tokens.
@@ -221,8 +255,8 @@ type DestructureTuple struct {
 
 type DestructureTypePair struct {
 	BaseNode
-	Keys []Destructure
-	Type Type
+	Keys  []Destructure
+	Type  Type
 	Value Expression
 }
 
@@ -247,6 +281,11 @@ type TypePair struct {
 	Keys  []Identifier
 	Value Type
 	BaseNode
+}
+
+type InterfaceItem struct {
+	TypePair
+	Attributes []*Attribute
 }
 
 type UnionType struct {
@@ -336,7 +375,7 @@ type InterfaceDeclaration struct {
 	Identifier     Identifier
 	InheritedTypes []Type
 	Tag            bool // If no fields
-	Fields         []*TypePair
+	Fields         []*InterfaceItem
 	BaseNode
 }
 
@@ -431,8 +470,11 @@ type FunctionParam struct {
 	BaseNode
 }
 
+// Continues a loop. In other languages, this is usually 'continue'.
+// Used for [ForStatement], [WhileStatement], and [WhenExpression] statements.
 type NextStatement struct{ BaseNode }
 
+// Breaks a [ForStatement], [WhileStatement], or [WhenExpression].
 type BreakStatement struct{ BaseNode }
 
 type ListLiteral struct {
@@ -446,12 +488,21 @@ type IndexExpression struct {
 	BaseNode
 }
 
+// A list slice expression
+//
+//	array[low:high]
+//	array[low:]
+//	array[:high]
+//	array[:] -- copy
 type SliceExpression struct {
-	Object        Node
-	Index, Length Expression
+	Object      Node
+	Start, High Expression
 	BaseNode
 }
 
+// Reference to enum item of a known type
+//
+//	x: Color := .red
 type EnumLiteral struct {
 	BaseNode
 	Name Identifier
@@ -463,6 +514,7 @@ type CallParam struct {
 	BaseNode
 }
 
+// A function call
 type CallExpression struct {
 	Callee Node
 	Args   []*CallParam
@@ -527,7 +579,8 @@ type WhenCase struct {
 type WhenCanCase struct {
 	BaseNode
 	Operator Operator
-	Type Type
+	Type     Type
+	Params   []*CallParam
 }
 
 type LambdaExpression struct {
@@ -602,13 +655,20 @@ type Destructure interface {
 	destruct()
 }
 
+// Destructures a list or tuple
+//
+//	(a, b) := x
+//	[a, b] := x
 type ListDestructure struct {
 	BaseNode
 	Tuple  bool
 	Values []Destructure
 }
 
-// Object or map destructure
+// Destructures a struct or map
+//
+//	#{ name, age } := person
+//	#{ kind: type, info.{color} } := animal
 type ObjectDestructure struct {
 	BaseNode
 	Values []*ObjectDestructureEntry
@@ -629,12 +689,35 @@ type ObjectDestructureEntry struct {
 	Default Expression
 }
 
+// For parsing variable declarations and assignments
 type DestructureVars struct {
 	BaseNode
 	Values []Assignable
 }
 
+// Declares a struct that can only be initialized within a module
+// or an interface that can only be implemented within a module
 type OpaqueDeclaration struct {
 	BaseNode
 	Declaration TypeDeclaration
+}
+
+// Waits for one or more tasks to complete
+//
+//	await task
+//	await [t1, t2]
+//	await (t1, t2)
+type AwaitExpression struct {
+	Expression
+}
+
+// Spawns an asynchronous task
+//
+//	go fn()
+//	go (a, b, c)
+//	go [a, b, c]
+//	go { ...body }
+type GoExpression struct {
+	Expression
+	Body []Statement // If block
 }

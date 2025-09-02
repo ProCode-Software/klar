@@ -21,10 +21,11 @@ import (
 var ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
 
 func Run(*command.Runner) {
-	fmt.Println(ansi.Bold("Welcome to Klar"), "v"+version.KlarVersion)
+	fmt.Println(ansi.Bold("Welcome to"), ansi.BoldBrightWhite("Klar"),
+		ansi.Color(ansi.CodeBrightWhite, "v"+version.KlarVersion))
 	fmt.Println(
-		ansi.Dim("Type"), ansi.Cyan("'help'"), ansi.Dim("for more information. Press"),
-		ansi.Cyan("Ctrl+D"), ansi.Dim("or type"), ansi.Cyan("'exit'"), ansi.Dim("to exit."),
+		ansi.Gray("Type"), ansi.Cyan("'help'"), ansi.Gray("for more information. Press"),
+		ansi.Cyan("Ctrl+D"), ansi.Gray("or type"), ansi.Cyan("'exit'"), ansi.Gray("to exit."),
 	)
 	r := bufio.NewReader(os.Stdin)
 	for {

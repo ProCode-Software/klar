@@ -192,7 +192,7 @@ func (p *Printer) PrintError(err errors.KlarError) {
 			tokRange := ranges.FromToken(tok)
 			b.Write(space(tok.Col - lastCol))
 			if at.RangeIn(tokRange) {
-				b.WriteString(ansi.Red(tok.Source))
+				b.WriteString(ansi.BrightRed(tok.Source))
 			} else {
 				b.WriteString(p.colorize(currTok))
 			}
@@ -226,4 +226,20 @@ printMsg:
 	for _, hint := range err.GetHints() {
 		cli.HintIndent(hint)
 	}
+}
+
+func PrintTokens(tokens []lexer.Token) string {
+	var b strings.Builder
+	var lastLine, lastCol uint32 = tokens[0].Line, tokens[0].Col
+	for _, tok := range tokens {
+		for currLine := lastLine; currLine < tok.Line; currLine++ {
+			b.WriteByte('\n')
+			lastCol = 1
+		}
+		b.Write(space(tok.Col - lastCol))
+		b.WriteString(tok.Source)
+		tokRange := ranges.FromToken(tok).End
+		lastLine, lastCol = tokRange.Line, tokRange.Col
+	}
+	return b.String()
 }

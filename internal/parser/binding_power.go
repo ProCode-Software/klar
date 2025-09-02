@@ -11,21 +11,21 @@ type BindingPower int
 // 	https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
 
 const (
-	DefaultBindingPower        BindingPower = iota
-	CommaBindingPower                       // ,
-	AssignBindingPower                      // :=, +=, -=, =
-	ExpressionBindingPower                  // Minimum for expressions
-	LambdaBindingPower                      // ->
-	ObjectPipelineBindingPower              // |.
-	LogicalBindingPower                     // ||, &&
-	PipelineBindingPower                    // |>
+	DefaultBindingPower BindingPower = iota
+	CommaBindingPower                // ,
+	AssignBindingPower               // :=, +=, -=, =
 
+	ExpressionBindingPower     // Minimum for expressions
+	LambdaBindingPower         // ->
+	ObjectPipelineBindingPower // |.
+	LogicalBindingPower        // ||, &&
+	PipelineBindingPower       // |>
 	RelationalBindingPower     // ==, !=, >, <, <=, >=, in, !in
 	DistributiveBindingPower   // and, or
 	RangeBindingPower          // ..., ..<
 	AdditiveBindingPower       // +, -
 	MultiplicativeBindingPower // *, /, %
-	UnaryBindingPower          // left ..., !, ++, -- (prefix operators aren't LEDs)
+	UnaryBindingPower          // await, go, left ..., !, ++, --
 	ExponentiationBindingPower // ^ (higher than unary: -2 ^ 3 = -(2 ^ 3))
 	CallBindingPower           // Call: (
 	MemberBindingPower         // Index/Slice: . [
@@ -114,4 +114,8 @@ var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
 
 	lexer.Identifier: PrimaryTypeBindingPower,
 	lexer.Underscore: PrimaryTypeBindingPower,
+}
+
+func bpOf(kind lexer.TokenType) BindingPower {
+	return BindingPowerMap[kind]
 }

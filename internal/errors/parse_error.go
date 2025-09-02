@@ -44,16 +44,16 @@ const (
 	ErrExpectedDecimal
 	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
 	ErrInvalidVersionLit   // Invalid version literal syntax
+	ErrUnderscoreValue     // Use of _ as a value
 
 	ErrAssignmentAsExpr
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
-	ErrExpectedAssignment    // := or type annotation expected
 	ErrInvalidAssignment     // Assignment to non-variable or property
 	ErrNonNameDeclaration    // Non-name on left-hand side of variable declaration
 	ErrColonEqual            // := used instead of = in default value assignment
 	ErrInvalidTypeAnnotation // Type annotation on existing variable assignment
 	ErrDestructPatAfterColon // Non-identifier after : in destructure
-	ErrDestructInvalidEqual  // Default value provided after destructure in object
+	ErrDestructInvalidEqual  // Default value provided in non-object destructure
 	ErrReservedKeyword       // Reserved keyword used as an identifier
 	ErrNotAnExpression       // Required expression but got a statement
 	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
@@ -64,6 +64,7 @@ const (
 	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
 	ErrNonNameFuncAlias      // Function alias target is not symbol or member
 	ErrMultipleKeysInMapRest // Expected 1 key in map rest (comma not allowed)
+	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
 
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
@@ -142,15 +143,26 @@ func (e ParseError) error() string {
 	case ErrNotAnExpression:
 		if node, ok := e.Node.(*ast.AssignmentStatement); ok &&
 			node.Operator.Kind == lexer.Equal {
-			return "Assignments can't be used as expressions in Klar; did you mean to use '==' instead?"
+			return "An assignment can't be used as an expression in Klar; did you mean to use '==' instead?"
 		}
 		switch e.Node.(type) {
-		case *ast.AssignmentStatement, *ast.VariableDeclaration, *ast.UpdateStatement:
+		case *ast.UpdateStatement:
+			return "'++' and '--' can only be used as postfix statements"
+		case *ast.AssignmentStatement, *ast.VariableDeclaration:
 			return "An assignment can't be used as an expression in Klar"
 		}
 		return "This isn't an expression"
+	case ErrAssignmentAsExpr:
+		if e.Token.Kind == lexer.Equal {
+			return "An assignment can't be used as an expression in Klar; did you mean to use '==' instead?"
+		}
+		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
 		return "Can't assign to this kind of expression"
+	case ErrInvalidComma:
+		return "A newline must be used to separate multiple statements"
+	case ErrUnderscoreValue:
+		return "Can't use '_' as a value: '_' is only allowed as a name placeholder or as a discard in declarations"
 	case ErrInvalidTypeAnnotation:
 		return "A type annotation is only allowed on a new variable"
 	case ErrExpectedToken:
@@ -257,11 +269,13 @@ func (e ParseError) error() string {
 		return "'opaque' modifier can only be applied to a struct or interface"
 	case ErrImportsGoFirst:
 		return "Imports must go before other declarations"
+	case ErrInvalidLabel:
+		return "A number can't be used as a parameter label"
 	case ErrInvalidLabelShorthand:
 		if e.Params["computed"] == true {
-			return "A label shorthand can't be a computed property"
+			return "A parameter label shorthand can't be a computed property"
 		}
-		return "Only variables and properties can be used as label shorthands"
+		return "Only a variable or property can be used as a label shorthand"
 	case ErrMethodInOtherScope:
 		return fmt.Sprintf(
 			"Method %s must be declared in the same scope as type %s",
@@ -275,6 +289,8 @@ func (e ParseError) error() string {
 		return "Invalid parameter list before '->' in lambda"
 	case ErrParenRequiredFunc:
 		return "Parentheses are required around function parameter types"
+	case ErrInvalidObjPipeStep:
+		return "A object pipeline step must be an assignment or method call"
 	case ErrProvenUnreachable:
 		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
 	case ErrReservedKeyword:
@@ -282,6 +298,8 @@ func (e ParseError) error() string {
 			"Can't use %s as an identifier because it is a reserved keyword",
 			QuoteToken(tok),
 		)
+	case ErrDestructInvalidEqual:
+		return "A default value can only be provided in map destructure patterns"
 	case ErrDuplicateModifier:
 		modif := param[lexer.TokenType](e.Params, "modifier")
 		return fmt.Sprintf("Modifer %s was already specified in this declaration",
@@ -293,6 +311,8 @@ func (e ParseError) error() string {
 		return "'_' not allowed with rest expression, use '...' instead"
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
+	case ErrInvalidUpdate:
+		return "'++' and '--' can only be used as a postfix statement"
 	case ErrReturnPipelineNotLast:
 		return "'return' in pipeline must be the last step"
 	case ErrPublicFirst:
@@ -305,6 +325,10 @@ func (e ParseError) error() string {
 		return "Expected '...' instead of '..<'"
 	case ErrExpectedExprAfterClosedRange:
 		return "Expected expression after '..<'"
+	case ErrDestructPatAfterColon:
+		return "Only an identifier is allowed after ':' in object destructure"
+	case ErrMultipleKeysInMapRest:
+		return "Expected a single key in map spread"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrMixTypeTupleLabels:

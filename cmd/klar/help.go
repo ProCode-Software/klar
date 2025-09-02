@@ -25,9 +25,9 @@ func ShowHelp(full bool) {
 	}
 	print := func(c func(string) string, s string) { fmt.Fprint(tw, c(s)) }
 
-	shortHead("Klar")
+	shortHead(ansi.BoldBrightWhite("Klar"))
 	print(ansi.Cyan, "A simple, modern, and clean programming language ")
-	print(ansi.Dim, "v"+version.KlarVersion+"\n\n")
+	print(ansi.Gray, "v"+version.KlarVersion+"\n\n")
 
 	shortHead("Usage")
 	fmt.Fprint(tw, ansi.BoldGreen("klar ")+ansi.Yellow("<command> ")+ansi.Cyan("[args]"))

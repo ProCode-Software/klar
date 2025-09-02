@@ -26,6 +26,10 @@ const (
 	CodeResetBold    = "\033[0;1m"
 	CodeResetBoldDim = "\033[0;1;2m"
 
+	CodeBrightWhite     = "\033[97m"
+	CodeBrightRed       = "\033[91m"
+	CodeBoldBrightWhite = "\033[1;97m"
+
 	CodeDimCyan = "\033[2;36m"
 )
 
@@ -68,3 +72,6 @@ func BoldMagenta(s string) string { return Color(CodeBoldMagenta, s) }
 func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
 func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
 func DimCyan(s string) string     { return Color(CodeDimCyan, s) }
+func BrightRed(s string) string   { return Color(CodeBrightRed, s) }
+
+func BoldBrightWhite(s string) string { return Color(CodeBoldBrightWhite, s) }

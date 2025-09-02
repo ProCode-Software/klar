@@ -56,10 +56,21 @@ func (p *Parser) ParseFull(bp BindingPower) ast.Node {
 	}
 	left, handled := p.handleNUD(kind)
 	if !handled {
-		p.unknownTokenErr()
+		p.nudError()
 		return &ast.BadExpression{Token: kind}
 	}
 	return p.ParseLED(left, bp)
+}
+
+func (p *Parser) nudError() {
+	switch curr := p.Curr(); curr.Kind {
+	default:
+		p.unknownTokenErr()
+		return
+	case lexer.PlusPlus, lexer.MinusMinus:
+		p.Error(errors.Token(errors.ErrInvalidUpdate, curr))
+	}
+	p.skipUntilBoundary()
 }
 
 func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
@@ -134,6 +145,7 @@ func (p *Parser) skipUntilBoundary() {
 		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
 			brackCount--
 			if brackCount <= 0 {
+				p.Backup()
 				return
 			}
 		}

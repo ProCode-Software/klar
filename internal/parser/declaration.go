@@ -95,6 +95,7 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 		itemMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
+		attrs := p.maybeParseAttributes()
 		p.Expect(lexer.Dot)
 		id := p.ParseIdentifier()
 
@@ -106,13 +107,13 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 		}
 		itemMap[id.Name] = struct{}{}
 
-		item := &ast.EnumItem{Identifier: id}
+		item := &ast.EnumItem{Identifier: id, Attributes: attrs}
 		if p.CurrKind() == lexer.LeftParenthesis {
 			item.Parameters = p.ParseTupleType().Values
 		}
 		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
-			item.Value = p.ParseExpression(PrimaryBindingPower)
+			item.Value = p.ParseExpression(ExpressionBindingPower)
 		}
 		markStartEndPos(p, item, id.Position)
 		items = append(items, item)
@@ -121,8 +122,7 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 			continue
 		} else if c.Kind == lexer.Dot && c.Line > item.Range.End.Line {
 			continue // No EOS before '.' in next item
-		}
-		if p.CurrKind() != lexer.RightCurlyBrace {
+		} else if c.Kind != lexer.RightCurlyBrace {
 			p.Expect(lexer.Comma)
 		}
 	}
@@ -134,6 +134,18 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 	}
 }
 
+func (p *Parser) maybeParseAttributes() (attrs []*ast.Attribute) {
+	for p.HasTokens() && p.CurrKind() == lexer.At {
+		attrs = append(attrs, p.ParseAttribute())
+		if curr := p.CurrKind(); curr == lexer.EndOfStatement {
+			p.Advance()
+		} else if curr != lexer.At {
+			break
+		}
+	}
+	return attrs
+}
+
 func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast.StructDeclaration {
 	var (
 		fields   []*ast.StructField
@@ -141,6 +153,7 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.StructField{}
+		field.Attributes = p.maybeParseAttributes()
 		parseSeries(p, &field.Names, func() ast.Identifier {
 			name := p.ParseMapIdentifier(false)
 			if _, ok := fieldMap[name.Name]; ok {
@@ -177,11 +190,11 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 
 func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *ast.InterfaceDeclaration {
 	var (
-		fields   []*ast.TypePair
+		fields   []*ast.InterfaceItem
 		fieldMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		field := &ast.TypePair{}
+		field := &ast.InterfaceItem{Attributes: p.maybeParseAttributes()}
 		parseSeries(p, &field.Keys, func() ast.Identifier {
 			name := p.ParseMapIdentifier(false)
 			if _, ok := fieldMap[name.Name]; ok {
@@ -202,7 +215,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 				if peek := p.Peek().Kind; isValidIdentOrDiscard(peek) ||
 					peek == lexer.EndOfStatement {
 					// Label: fib(length length: Int)
-					label = p.ParseMapIdentifier(false)
+					label = p.ParseMapIdentifier(false, true)
 					if p.CurrKind() == lexer.EndOfStatement {
 						p.Advance()
 					}
@@ -215,7 +228,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 				}
 				// Type
 				return &ast.MethodTypeParam{
-					Type:       p.ParseType(CallBindingPower),
+					Type:       p.ParseType(DefaultTypeBindingPower),
 					Label:      label,
 					Identifier: name,
 				}
@@ -303,7 +316,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 				(peek != lexer.Colon && peek != lexer.Equal && peek != lexer.ColonEqual) {
 				// Optional label:
 				// 	func replace(src, with replacement: String)
-				key.Label = p.ParseMapIdentifier(false)
+				key.Label = p.ParseMapIdentifier(false, true)
 				if peek == lexer.EndOfStatement {
 					p.Advance()
 				}
@@ -355,7 +368,7 @@ func (p *Parser) ParseAttribute() *ast.Attribute {
 	p.isAttribute = true
 	d.Decorator = p.ParseIdentifier()
 	if p.CurrKind() == lexer.LeftParenthesis {
-		call := p.ParseCallExpression(nil, CallBindingPower)
+		call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 		d.Args = call.Args
 	}
 	p.isAttribute = false

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -26,6 +27,17 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
 
+// TODO: fix funcs such as ParseRange for checking if left is ast.Expression
+func (p *Parser) ParseRelationalExpression(left ast.Node, bp BindingPower) *ast.RelationalExpression {
+	rel := &ast.RelationalExpression{}
+	rel.Expressions = append(rel.Expressions, left) // First expression
+	for isRelational(p.CurrKind()) {
+		rel.Operators = append(rel.Operators, newOperator(p.Advance()))
+		rel.Expressions = append(rel.Expressions, p.ParseExpression(bp))
+	}
+	return rel
+}
+
 func (p *Parser) ParseParamList() *ast.DestructureTuple {
 	p.Expect(lexer.LeftParenthesis)
 	tuple := &ast.DestructureTuple{}
@@ -40,6 +52,7 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	if p.Lookahead(p.isArrowFunction) {
 		return p.ParseParamList()
 	}
+	fmt.Println()
 	p.Advance() // (
 	if p.CurrKind() == lexer.RightParenthesis {
 		// Empty tuple
@@ -176,8 +189,8 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 	if isSlice {
 		return &ast.SliceExpression{
 			Object: left,
-			Index:  leftExpr,
-			Length: rightExpr,
+			Start:  leftExpr,
+			High:   rightExpr,
 		}
 	}
 	return &ast.IndexExpression{
@@ -205,7 +218,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 			arg.Label, arg.Value = symbolToIdentifier(key), val
 		case p.Peek().Kind == lexer.Colon:
 			// Label (allow keywords)
-			arg.Label = p.ParseMapIdentifier(false)
+			arg.Label = p.ParseMapIdentifier(false, true)
 			p.Advance() // :
 			fallthrough
 		default:
@@ -230,8 +243,8 @@ func (p *Parser) ParseEnumLiteral() ast.Expression {
 }
 
 func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
-	p.Expect(lexer.Dot)
-	call := p.ParseCallExpression(nil, CallBindingPower)
+	// Parsing starts with (
+	call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 	return &ast.StructDotInit{Params: call.Args}
 }
 
@@ -382,7 +395,12 @@ func (p *Parser) ParseWhenCan() *ast.WhenCanCase {
 	case lexer.Question, lexer.Ellipsis:
 		typ = p.ParseTypeLED(typ, TypeBindingPowerMap[curr])
 	}
-	return &ast.WhenCanCase{Operator: op, Type: typ}
+	when := &ast.WhenCanCase{Operator: op, Type: typ}
+	if p.CurrKind() == lexer.LeftParenthesis {
+		params := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
+		when.Params = params.Args
+	}
+	return when
 }
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
@@ -487,6 +505,8 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 		if curr := p.CurrKind(); curr == lexer.Slash && !isEscape {
 			break
 		} else if curr == lexer.Backslash {
+			// BUG: Regexes can't contain #!, // or /* because comments
+			// are pre-parsed (errors are created if unterminated)
 			isEscape = !isEscape
 		}
 		// Including tokens of any kind, including illegal
@@ -505,19 +525,23 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			// similar to backtick strings
 			b.Write(repeatByte(' ', int(offset)))
 		}
+		if !r.Multiline {
+			r.Multiline = tok.Line != lastPos.Line
+		}
 		b.WriteString(tok.Source)
 		lastPos = ranges.FromToken(tok).End
 	}
 	r.Source = b.String()
-	endSlashPos := p.Expect(lexer.Slash).Position
+	err := errors.Position(errors.ErrUnterminatedRegex, p.Curr().Position)
+	endSlashPos := p.ExpectError(err, lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
-	if curr := p.CurrKind(); canGoOnNewline(curr) {
+	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line && !canGoOnNewline(curr.Kind) {
 		p.Tokens = slices.Insert(
 			p.Tokens, p.Index,
 			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
-	} else if curr == lexer.Identifier { // TODO: validate no spaces between
-		_ = endSlashPos
+	} else if curr.Kind == lexer.Identifier &&
+		curr.Position == ranges.Add(endSlashPos, 0, 1) { // TODO: validate no spaces between
 		r.Flags = []rune(p.Advance().Source)
 	}
 	return r
@@ -574,7 +598,7 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	p.Expect(lexer.RightBracket)
 	return &ast.ListCastExpression{
 		Type: typ,
-		Args: p.ParseCallExpression(nil, CallBindingPower).Args,
+		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
 	}
 }
 
@@ -586,17 +610,16 @@ func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectP
 		// Computed index: |. [0]
 		if p.CurrKind() == lexer.LeftBracket {
 			start := p.Advance().Position
-			lhs = p.ParseIndexExpression(nil, MemberBindingPower)
+			lhs = p.ParseIndexExpression(nil, bpOf(lexer.LeftParenthesis))
 			markStartEndPos(p, lhs, start)
 		} else {
-			start := p.Curr().Position
-			lhs = p.ParsePrimaryExpression() // TODO: other keywords
 			// Must be symbol
-			if _, ok := lhs.(*ast.Symbol); !ok {
+			if isValidIdentifier(p.Curr().Kind) {
+				lhs = p.ParseValidIdent().Symbol()
+			} else {
 				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
 				lhs = &ast.BadExpression{Value: lhs}
 			}
-			markStartEndPos(p, lhs, start)
 		}
 		// Index or call
 		if k := p.CurrKind(); !isAssignment(k) && k != lexer.StrokeDot {
@@ -642,4 +665,20 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		f.Block = p.ParseBlock()
 	}
 	return f
+}
+
+func (p *Parser) ParseGoExpression() *ast.GoExpression {
+	p.Advance() // go
+	g := &ast.GoExpression{}
+	if p.CurrKind() == lexer.LeftCurlyBrace {
+		g.Body = p.ParseBlock()
+	} else {
+		g.Expression = p.ParseExpression(UnaryBindingPower)
+	}
+	return g
+}
+
+func (p *Parser) ParseAwaitExpression() *ast.AwaitExpression {
+	p.Advance() // await
+	return &ast.AwaitExpression{Expression: p.ParseExpression(UnaryBindingPower)}
 }

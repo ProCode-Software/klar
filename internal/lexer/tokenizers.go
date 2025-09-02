@@ -127,9 +127,10 @@ const (
 
 func (l *Lexer) ParseNumber(pos Position) *Token {
 	var (
-		format, errorType, errPos   int
-		isExp, isIllegal, isDecimal bool
-		last                        rune
+		format                              IntegerFormat
+		errorType, errPos                   int
+		isExp, isIllegal, isDecimal, hasSep bool
+		last                                rune
 	)
 	newError := func(code int, b *Builder) {
 		errorType = code
@@ -216,6 +217,7 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 			if last == '_' || (format == NumberFormatDecimal && !IsDigit(last)) {
 				newError(ErrIntMisplacedSeparator, b)
 			}
+			hasSep = true
 			b.WriteRune(r)
 		default:
 			switch {
@@ -241,19 +243,22 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		errPos = len(digit) - 1
 	}
 	return NewToken(pos, Numeric, digit).SetAttribute("params", NumberAttrs{
-		Format:  format,
-		Float:   isDecimal || isExp,
-		Invalid: isIllegal,
-		ErrPos:  errPos,
-		Error:   errorType,
+		Format:       format,
+		HasExponent:  isExp,
+		HasSeparator: hasSep,
+		Float:        isDecimal || isExp,
+		Invalid:      isIllegal,
+		ErrPos:       errPos,
+		Error:        errorType,
 	})
 }
 
 type NumberAttrs struct {
-	Format        int
-	Float         bool
-	Invalid       bool
 	Error, ErrPos int
+	Format        IntegerFormat
+	Invalid       bool
+	Float, HasSeparator,
+	HasExponent bool
 }
 
 func (l *Lexer) ParseIdentifier() (TokenType, string) {

@@ -73,7 +73,7 @@ func (p *Parser) newInterpParser(tokens []lexer.Token) (*Parser, BindingPower) {
 	// 	 "{x: Int} cats" -> ...
 	// }
 	if p.isWhenCase {
-		return ep, AssignBindingPower
+		return ep, DefaultBindingPower
 	}
 	return ep, ExpressionBindingPower
 }

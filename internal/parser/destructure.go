@@ -1,8 +1,11 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -18,7 +21,7 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 func (p *Parser) ParseDestructureInner() ast.Destructure {
 	switch kind := p.CurrKind(); kind {
 	case lexer.Identifier:
-		return p.ParseIdentifier().Symbol()
+		return p.ParseValidIdent().Symbol()
 	case lexer.Underscore:
 		return rangeFromToken(&ast.Discard{}, p.Advance())
 	case lexer.LeftCurlyBrace:
@@ -32,13 +35,29 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 		return p.ParseListDestructure(lexer.RightParenthesis, start)
 	default:
 		if isValidIdentifier(kind) {
-			return p.ParseIdentifier().Symbol()
+			return p.ParseValidIdent().Symbol()
 		}
 		parsed := p.ParseExpression(ExpressionBindingPower)
 		p.Error(errors.Node(errors.ErrInvalidAssignment, parsed))
 		// p.unknownTokenErr() // p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
 		return &ast.BadExpression{Token: kind, Value: parsed}
 	}
+}
+
+func makeColonDestructHint(tokens []lexer.Token, name string, node ast.Destructure) string {
+	var kind string
+	switch n := node.(type) {
+	case *ast.ListDestructure:
+		if n.Tuple {
+			kind = "tuple"
+		} else {
+			kind = "list"
+		}
+	case *ast.ObjectDestructure:
+		kind = "object"
+	}
+	suggest := name + "." + printer.PrintTokens(tokens)
+	return fmt.Sprintf("Did you mean %s for %s destructuring?", errors.Quote(suggest), kind)
 }
 
 func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
@@ -53,13 +72,18 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 		var end lexer.Position
 		if curr := p.CurrKind(); curr == lexer.Colon {
 			entry.Alias = ident
-			p.AdvanceNonBoundary()
+			p.Advance()
 			// Parsing full destructure just for a better error
+			destructStart := p.Index
 			value := p.ParseDestructure()
 			if sym, ok := value.(*ast.Symbol); ok {
 				entry.Object = sym
 			} else {
-				p.Error(errors.Node(errors.ErrDestructPatAfterColon, value))
+				err := errors.Node(errors.ErrDestructPatAfterColon, value)
+				err.Hint(makeColonDestructHint(
+					p.Tokens[destructStart:p.Index], ident.Name, value,
+				))
+				p.Error(err)
 			}
 			end = entry.Alias.GetRange().End
 		} else if curr == lexer.Dot {
@@ -116,12 +140,12 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
 		dest := p.ParseDestructure()
 		curr := p.CurrKind()
-		if dest, ok := dest.(*ast.Symbol); ok &&
+		if dest2, ok := dest.(*ast.Symbol); ok &&
 			!isAssignment(curr) && curr != lexer.Comma && curr != lexer.Colon {
-			res, handled := p.handleLED(curr, dest, ExpressionBindingPower)
+			res, handled := p.handleLED(curr, dest2, ExpressionBindingPower)
 			if !handled {
 				p.unknownTokenErr()
-				res = dest
+				res = dest2
 			}
 			if !p.validateAssignable(res) {
 				res = &ast.BadExpression{Value: res}
