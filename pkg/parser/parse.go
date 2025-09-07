@@ -32,3 +32,10 @@ func ParseString(src string) (program *ast.Program, errors []ParseError, lexerEr
 	program, errors = Parse(tokens, nil)
 	return
 }
+
+func AddSemicolons(tokens []lexer.Token) []lexer.Token {
+	p := parser.New(tokens, nil)
+	p.RemoveComments()
+	p.InsertEOS()
+	return p.Tokens
+}

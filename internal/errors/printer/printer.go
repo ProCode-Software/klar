@@ -227,19 +227,3 @@ printMsg:
 		cli.HintIndent(hint)
 	}
 }
-
-func PrintTokens(tokens []lexer.Token) string {
-	var b strings.Builder
-	var lastLine, lastCol uint32 = tokens[0].Line, tokens[0].Col
-	for _, tok := range tokens {
-		for currLine := lastLine; currLine < tok.Line; currLine++ {
-			b.WriteByte('\n')
-			lastCol = 1
-		}
-		b.Write(space(tok.Col - lastCol))
-		b.WriteString(tok.Source)
-		tokRange := ranges.FromToken(tok).End
-		lastLine, lastCol = tokRange.Line, tokRange.Col
-	}
-	return b.String()
-}

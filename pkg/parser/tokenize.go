@@ -33,6 +33,7 @@ func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
 		if err2 := recover(); err2 != nil {
 			if err2, ok := err2.(error); ok {
 				err = err2
+				return
 			}
 			err = fmt.Errorf("%v", err2)
 		}

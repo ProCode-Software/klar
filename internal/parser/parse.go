@@ -30,8 +30,11 @@ func (p *Parser) Parse() *ast.Program {
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
-	prog := &ast.Program{Body: body, Comments: comments}
-	prog.SetPos(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position)
+	prog := &ast.Program{
+		Body:     body[:len(body):len(body)],
+		Comments: comments,
+		BaseNode: newBaseNode(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position),
+	}
 	return prog
 }
 
@@ -95,10 +98,10 @@ func (p *Parser) ExpectEOSUnlessModifier(kind lexer.TokenType) {
 
 func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrKind()
-	result, handled := p.handleStatement(kind, true)
+	res, handled := p.handleTopLevelStatement(kind)
 	if handled {
 		p.ExpectEOSUnlessModifier(kind)
-		return result
+		return res
 	}
 	return p.ParseStatement()
 }
@@ -106,16 +109,24 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 func (p *Parser) ParseStatement() ast.Statement {
 	kind := p.CurrKind()
 	var res ast.Node
-	res, handled := p.handleStatement(kind, false)
+	res, handled := p.handleStatement(kind)
 	if handled {
 		p.ExpectEOSUnlessModifier(kind)
 		return res.(ast.Statement)
 	}
 	res, handled = p.handleStatementNUD(kind)
-	if handled {
-		res = p.ParseLED(res, DefaultBindingPower)
-	} else {
-		res = p.ParseFull(DefaultBindingPower)
+	if !handled {
+		fmt.Println(p.CurrKind())
+		if res, handled = p.handleNUD(kind); !handled {
+			p.unknownTokenErr()
+			res = &ast.BadExpression{Token: kind}
+		}
+	}
+	if handled { // reassigned in handleNUD() call
+		kind = p.CurrKind()
+		if res, handled = p.handleStatementLED(kind, res, DefaultBindingPower); !handled {
+			res = p.ParseLED(res, DefaultBindingPower)
+		}
 	}
 	p.Expect(lexer.EndOfStatement)
 	switch res := res.(type) {
@@ -129,7 +140,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 		return stmt
 	// I don't know what this is. If this occurs, then it is a bug.
 	default:
-		panic(fmt.Sprintf("node %v is neither an expression nor statement", res))
+		panic(fmt.Sprintf("node %v (type %[1]T) is neither an expression nor statement", res))
 	}
 }
 

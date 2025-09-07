@@ -9,22 +9,22 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPower) *ast.TypeAnnotation {
+func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPower) ast.Statement {
 	p.Advance() // :
 	annot := &ast.TypeAnnotation{
 		Variable: left,
 		Type:     p.ParseType(DefaultTypeBindingPower),
 	}
-	if curr := p.Curr(); !p.isWhenCase {
-		switch curr.Kind {
-		case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
-			p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
-		case lexer.ColonEqual:
-		default:
-			p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
-		}
+	switch curr := p.Curr(); curr.Kind {
+	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
+		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
+		fallthrough
+	case lexer.ColonEqual:
+		return p.ParseAssignment(left, bpOf(curr.Kind))
+	default:
+		p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
+		return &ast.BadExpression{Value: annot}
 	}
-	return annot
 }
 
 func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.VariableDeclaration {
@@ -228,7 +228,7 @@ func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	}
 }
 
-func (p *Parser) ParsePostfix(left ast.Expression) *ast.UpdateStatement {
+func (p *Parser) ParseUpdateStatement(left ast.Expression) *ast.UpdateStatement {
 	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus)
 	return &ast.UpdateStatement{Operator: newOperator(op), Left: left}
 }

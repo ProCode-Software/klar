@@ -77,7 +77,8 @@ func (p *Parser) handleLED(
 
 	// Version (v1-dev)
 	case lexer.Minus:
-		if _, ok := left.(*ast.Symbol); ok && p.isAttribute {
+		if left, ok := left.(*ast.Symbol); ok &&
+			p.isAttribute && left.Identifier[0] == 'v' {
 			res = p.ParseVersion(left, bp)
 			break
 		}
@@ -96,26 +97,12 @@ func (p *Parser) handleLED(
 	case lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
 		lexer.EqualEqual, lexer.NotEqual:
 		res = p.ParseRelationalExpression(left, bp)
-	// Type annotation
-	case lexer.Colon:
-		if left, ok := left.(*ast.DestructureVars); ok {
-			res = p.ParseVarTypeAnnotation(left, bp)
-		} else {
-			return nil, false
-		}
 	// Index
 	case lexer.Dot, lexer.LeftBracket:
 		res = p.ParseIndexExpression(left, bp)
 	// Call
 	case lexer.LeftParenthesis:
 		res = p.ParseCallExpression(left, bp)
-	// Assignment
-	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
-		res = p.ParseAssignment(left.(ast.Expression), bp)
-	// Increment/decrement (statements, not expressions)
-	case lexer.PlusPlus, lexer.MinusMinus:
-		p.validateAssignable(left)
-		res = p.ParsePostfix(left.(ast.Expression))
 	// Arrow function
 	case lexer.Arrow:
 		res = p.ParseLambda(left, bp)
@@ -133,10 +120,35 @@ func (p *Parser) handleLED(
 		res = p.ParseObjectPipeline(left, bp)
 	// Version
 	case lexer.Numeric:
-		if _, ok := left.(*ast.Symbol); !ok || !p.isAttribute {
+		if l, ok := left.(*ast.Symbol); !ok || !p.isAttribute || l.Identifier[0] != 'v' {
 			return left, false
 		}
 		res = p.ParseVersion(left, bp)
+	}
+	res.SetPos(left.GetRange().Start, p.lastTokEnd())
+	return res, true
+}
+
+func (p *Parser) handleStatementLED(
+	kind lexer.TokenType, left ast.Node, bp BindingPower,
+) (res ast.Node, handled bool) {
+	switch kind {
+	default:
+		return left, false
+	// Type annotation
+	case lexer.Colon:
+		if left, ok := left.(*ast.DestructureVars); ok {
+			res = p.ParseVarTypeAnnotation(left, bp)
+		} else {
+			return nil, false
+		}
+	// Assignment
+	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
+		res = p.ParseAssignment(left.(ast.Expression), bp)
+	// Increment/decrement (statements, not expressions)
+	case lexer.PlusPlus, lexer.MinusMinus:
+		p.validateAssignable(left)
+		res = p.ParseUpdateStatement(left.(ast.Expression))
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
@@ -153,30 +165,34 @@ func (p *Parser) validateAssignable(left ast.Node) bool {
 	return true
 }
 
-// handleStatement covers all keywords
-func (p *Parser) handleStatement(kind lexer.TokenType, isTopLevel bool) (res ast.Statement, handled bool) {
+func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
 	startPos := p.Curr().Position
 	switch kind {
 	default:
-		if !isTopLevel {
+		return nil, false
+	case lexer.Import:
+		if !p.isModifierUse(kind) {
 			return nil, false
 		}
-		switch kind {
-		default:
+		res = p.ParseImportStatement()
+	case lexer.Public:
+		if !p.isModifierUse(kind) {
 			return nil, false
-		case lexer.Import:
-			if !p.isModifierUse(kind) {
-				return nil, false
-			}
-			res = p.ParseImportStatement()
-		case lexer.Public:
-			if !p.isModifierUse(kind) {
-				return nil, false
-			}
-			res = p.ParsePublicModifier()
-		case lexer.At:
-			res = p.ParseAttribute()
 		}
+		res = p.ParsePublicModifier()
+	case lexer.At:
+		res = p.ParseAttribute()
+	}
+	res.SetPos(startPos, p.lastTokEnd())
+	return res, true
+}
+
+// handleStatement covers all keywords
+func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
+	startPos := p.Curr().Position
+	switch kind {
+	default:
+		return nil, false
 	case lexer.Type:
 		res = p.ParseTypeDeclaration()
 	case lexer.Func:

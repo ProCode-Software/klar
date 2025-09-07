@@ -15,7 +15,8 @@ const (
 	ErrUnexpectedToken // Bad token
 	ErrExpectedToken   // Expected kind of token but got different type
 
-	// Import
+	// Import =====
+
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
 	ErrImportExpectedModule     // Unqualified import without module name
 	ErrImportInvalidWildcard    // Wildcard must be last part of module
@@ -25,68 +26,82 @@ const (
 	ErrEmptyUnqImport           // Empty unqualified import
 	ErrImportsGoFirst           // Imports always go before other declarations
 
-	// Punctuation
+	// Punctuation =====
+
 	ErrUnterminatedString  // A string that was left open
 	ErrUnterminatedComment // Block comment was left open
 	ErrUnterminatedRegex   // Missing / in regex literal
 	ErrMisplacedShebang    // Shebang not on first line
 	ErrInvalidComma        // Comma statement
 
-	// Literal
-	ErrStringEscape     // Invalid string escape
-	ErrUnicodeEscTooBig // Unicode escape over 0x10FFFF
-	ErrConsecutiveSep   // Number has consecutive _
-	ErrMisplacedSep     // Number has separator somewhere where it's not supposed to
-	ErrTrailingSep      // Number has misplaced _
-	ErrExpectedHex      // Expected hex digit
-	ErrExpectedOctal
-	ErrExpectedBinary
-	ErrExpectedDecimal
+	// Literal =====
+
+	ErrStringEscape        // Invalid string escape
+	ErrUnicodeEscTooBig    // Unicode escape over 0x10FFFF
+	ErrConsecutiveSep      // Number has consecutive _
+	ErrMisplacedSep        // Number has separator somewhere where it's not supposed to
+	ErrTrailingSep         // Number has misplaced _
+	ErrExpectedHex         // Expected hex digit (0-9, a-f, A-F)
+	ErrExpectedOctal       // Expected octal digit (0-7)
+	ErrExpectedBinary      // Expected binary digit (0 or 1)
+	ErrExpectedDecimal     // Expected decimal digit (0-9)
 	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
 	ErrInvalidVersionLit   // Invalid version literal syntax
 	ErrUnderscoreValue     // Use of _ as a value
 
-	ErrAssignmentAsExpr
+	// Assignment =====
+
+	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
+	ErrColonEqual            // := used instead of = in default value assignment
+	ErrAssignmentAsExpr      // Assignment used as expression
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
 	ErrInvalidAssignment     // Assignment to non-variable or property
 	ErrNonNameDeclaration    // Non-name on left-hand side of variable declaration
-	ErrColonEqual            // := used instead of = in default value assignment
 	ErrInvalidTypeAnnotation // Type annotation on existing variable assignment
 	ErrDestructPatAfterColon // Non-identifier after : in destructure
 	ErrDestructInvalidEqual  // Default value provided in non-object destructure
-	ErrReservedKeyword       // Reserved keyword used as an identifier
-	ErrNotAnExpression       // Required expression but got a statement
-	ErrInvalidLabelShorthand // Function label shorthand must be an identifier or string member
-	ErrInvalidLabel          // Function label can't be number
-	ErrGenericInFuncAlias    // Function aliases can't have generics
-	ErrMissingFuncParamType  // Required function parameter type
-	ErrReturnPipelineNotLast // Return step in pipeline must be the last
-	ErrInvalidObjPipeStep    // Step in object pipeline must be method call or assignment
-	ErrNonNameFuncAlias      // Function alias target is not symbol or member
-	ErrMultipleKeysInMapRest // Expected 1 key in map rest (comma not allowed)
-	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
 
+	// Declaration =====
+
+	ErrGenericInFuncAlias   // Function aliases can't have generics
+	ErrMissingFuncParamType // Required function parameter type
+	ErrNonNameFuncAlias     // Function alias target is not symbol or member
+	ErrInvalidOpaque        // Opaque on non-struct or interface
+	ErrInvalidPublic        // Public modifier applied to non-declaration
+	ErrPublicFirst          // Public modifier always goes first
+	ErrDuplicateModifier    // More than 1 of the same modifier
+
+	// Expression =====
+
+	ErrReservedKeyword              // Reserved keyword used as an identifier
+	ErrNotAnExpression              // Required expression but got a statement
+	ErrInvalidLabelShorthand        // Function label shorthand must be an identifier or string member
+	ErrInvalidLabel                 // Function label can't be number
+	ErrReturnPipelineNotLast        // Return step in pipeline must be the last
+	ErrInvalidObjPipeStep           // Step in object pipeline must be method call or assignment
+	ErrMultipleKeysInMapRest        // Expected 1 key in map rest (comma not allowed)
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
+	ErrGoMustBeFuncCall // Expression after go must be a function call
 
-	// Type
+	// Type =====
+
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrInterfaceDefaultValue   // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
-	ErrInvalidOpaque           // Opaque on non-struct or interface
 
-	// When
-	ErrForInvalidCond // Expected assignment or expression in for loop
-	ErrInvalidPublic
-	ErrPublicFirst
-	ErrDuplicateModifier
+	// When =====
+
+	ErrForInvalidCond     // Expected assignment or expression in for loop
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInWhen   // When expression not allowed in when case guard
+	ErrBraceAroundStmt    // Required braces around statement in when case
 
-	// Analysis-time errors
+	// Analysis-time syntax errors =====
+
 	ErrRedeclaredVar        // Can't redeclare variable or function
 	ErrRedeclaredType       // Redeclared type
 	ErrRedeclaredEnum       // Redeclared enum member
@@ -217,6 +232,8 @@ func (e ParseError) error() string {
 		return "I expected '{' or '=' after type, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "A struct field must have an explicit type"
+	case ErrGoMustBeFuncCall:
+		return "The expression after 'go' must be a function call"
 	case ErrExpectedHex:
 		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 	case ErrExpectedBinary:
@@ -325,6 +342,8 @@ func (e ParseError) error() string {
 		return "Expected '...' instead of '..<'"
 	case ErrExpectedExprAfterClosedRange:
 		return "Expected expression after '..<'"
+	case ErrBraceAroundStmt:
+		return "Braces are required around this statement"
 	case ErrDestructPatAfterColon:
 		return "Only an identifier is allowed after ':' in object destructure"
 	case ErrMultipleKeysInMapRest:

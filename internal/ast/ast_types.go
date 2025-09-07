@@ -174,27 +174,6 @@ type Pair struct {
 	Key, Value Expression
 }
 
-/*
-And
-	Break
-	Can
-	For
-	Func
-	Go
-	Import
-	In
-	Next
-	NotCan // !can
-	NotIn  // !in
-	Opaque
-	Or
-	Public
-	Return
-	Type
-	When
-	While
-*/
-
 // ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
 	lexer.And, lexer.Await, lexer.Boolean, lexer.Break, lexer.For, lexer.Func,
@@ -569,10 +548,10 @@ type WhenExpression struct {
 
 type WhenCase struct {
 	BaseNode
-	Options  [][]Expression
+	Options  [][]Expression // cases -> subjects
 	Guard    Expression  // <case> when <expr>
 	Body     []Statement // -> <expr> | -> {...}
-	BodyExpr Expression
+	BodyExpr Node
 	InBraces bool
 }
 
@@ -708,7 +687,8 @@ type OpaqueDeclaration struct {
 //	await [t1, t2]
 //	await (t1, t2)
 type AwaitExpression struct {
-	Expression
+	BaseNode
+	Expression Expression
 }
 
 // Spawns an asynchronous task
@@ -718,6 +698,7 @@ type AwaitExpression struct {
 //	go [a, b, c]
 //	go { ...body }
 type GoExpression struct {
-	Expression
+	BaseNode
+	Expression Expression
 	Body []Statement // If block
 }

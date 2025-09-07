@@ -30,7 +30,7 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 // TODO: fix funcs such as ParseRange for checking if left is ast.Expression
 func (p *Parser) ParseRelationalExpression(left ast.Node, bp BindingPower) *ast.RelationalExpression {
 	rel := &ast.RelationalExpression{}
-	rel.Expressions = append(rel.Expressions, left) // First expression
+	rel.Expressions = append(rel.Expressions, left.(ast.Expression)) // First expression
 	for isRelational(p.CurrKind()) {
 		rel.Operators = append(rel.Operators, newOperator(p.Advance()))
 		rel.Expressions = append(rel.Expressions, p.ParseExpression(bp))
@@ -456,16 +456,16 @@ loop:
 	default:
 		res := p.ParseStatement()
 		switch res := res.(type) {
-		// Allow some kinds of statements outside of braces
-		case *ast.AssignmentStatement, *ast.ReturnStatement,
-			*ast.NextStatement, *ast.UpdateStatement:
-			c.Body = []ast.Statement{res}
 		// All expressions are allowed
 		case *ast.ExpressionStatement:
 			c.BodyExpr = res.Expression
+		// Allow some kinds of statements outside of braces
+		case *ast.AssignmentStatement, *ast.ReturnStatement,
+			*ast.NextStatement, *ast.UpdateStatement, *ast.BreakStatement:
+			c.BodyExpr = res
 		default:
 			// Expected expression error
-			p.errExpectedExpr(res)
+			p.Error(errors.Node(errors.ErrBraceAroundStmt, res))
 			c.BodyExpr = &ast.BadExpression{Value: res}
 		}
 	}
@@ -674,6 +674,9 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 		g.Body = p.ParseBlock()
 	} else {
 		g.Expression = p.ParseExpression(UnaryBindingPower)
+		if _, ok := g.Expression.(*ast.CallExpression); !ok {
+			p.Error(errors.Node(errors.ErrGoMustBeFuncCall, g.Expression))
+		}
 	}
 	return g
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/errors/printer"
+	"github.com/ProCode-Software/klar/pkg/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -56,7 +56,7 @@ func makeColonDestructHint(tokens []lexer.Token, name string, node ast.Destructu
 	case *ast.ObjectDestructure:
 		kind = "object"
 	}
-	suggest := name + "." + printer.PrintTokens(tokens)
+	suggest := name + "." + string(printer.PrintTokens(tokens))
 	return fmt.Sprintf("Did you mean %s for %s destructuring?", errors.Quote(suggest), kind)
 }
 
