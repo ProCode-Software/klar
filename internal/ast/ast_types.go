@@ -52,10 +52,14 @@ type ExpressionStatement struct {
 
 type StringLiteral struct {
 	BaseNode
-	QuoteStyle rune
-	QuoteCount int // Number of QuoteStyle if '@' was used. Zero if it wasn't
-	Content    string
-	Escapes    map[lexer.Position]StringEscape
+	QuoteStyle rune // ' " or `
+	// Number of QuoteStyle after '@' if it was used, otherwise 0
+	QuoteCount int
+	// Full string contents including escape literals
+	Content string
+	Escapes map[lexer.Position]StringEscape
+	// Parts of string split by newlines (at end of segment) and escapes (skipped)
+	Segments []string
 }
 
 type IntegerLiteral struct {
@@ -549,8 +553,8 @@ type WhenExpression struct {
 type WhenCase struct {
 	BaseNode
 	Options  [][]Expression // cases -> subjects
-	Guard    Expression  // <case> when <expr>
-	Body     []Statement // -> <expr> | -> {...}
+	Guard    Expression     // <case> when <expr>
+	Body     []Statement    // -> <expr> | -> {...}
 	BodyExpr Node
 	InBraces bool
 }
@@ -700,5 +704,5 @@ type AwaitExpression struct {
 type GoExpression struct {
 	BaseNode
 	Expression Expression
-	Body []Statement // If block
+	Body       []Statement // If block
 }

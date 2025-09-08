@@ -12,7 +12,7 @@ import (
 const (
 	_ ErrorCode = SyntaxErrorPrefix + iota
 
-	ErrUnexpectedToken // Bad token
+	ErrUnexpectedToken // Token not supposed to be there
 	ErrExpectedToken   // Expected kind of token but got different type
 
 	// Import =====
@@ -82,7 +82,7 @@ const (
 	ErrMultipleKeysInMapRest        // Expected 1 key in map rest (comma not allowed)
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
-	ErrGoMustBeFuncCall // Expression after go must be a function call
+	ErrGoMustBeFuncCall             // Expression after go must be a function call
 
 	// Type =====
 
@@ -316,7 +316,7 @@ func (e ParseError) error() string {
 			QuoteToken(tok),
 		)
 	case ErrDestructInvalidEqual:
-		return "A default value can only be provided in map destructure patterns"
+		return "A default value can only be provided in a map destructure pattern"
 	case ErrDuplicateModifier:
 		modif := param[lexer.TokenType](e.Params, "modifier")
 		return fmt.Sprintf("Modifer %s was already specified in this declaration",

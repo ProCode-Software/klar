@@ -63,7 +63,6 @@ func (p *Parser) ParseNumber() ast.Expression {
 		p.handleInvalidNumber(a.Error, format, token)
 		// Set default value for ParseInt call
 		src = "0"
-
 	case a.Float:
 		// Exponents are floats
 		return &ast.FloatLiteral{
@@ -108,6 +107,8 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 	}
 	return &ast.StringLiteral{
 		QuoteStyle: a.QuoteStyle,
+		Segments:   a.Segments,
+		QuoteCount: a.QuoteCount,
 		Content:    full,
 		Escapes:    escapes,
 	}

@@ -15,9 +15,6 @@ type (
 func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
 	program *ast.Program, errors []ParseError,
 ) {
-	if options == nil {
-		options = &parser.ParseOptions{}
-	}
 	p := parser.New(tokens, options)
 	program = p.Parse()
 	errors = p.Errors

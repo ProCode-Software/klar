@@ -61,15 +61,10 @@ func (l *Lexer) ParseShebang(pos Position) *Token {
 }
 
 func (l *Lexer) ParseLineComment(pos Position) *Token {
-	var shouldStop bool
 	cmt := l.TokenizeFunc(func(r rune, b *Builder) bool {
-		if shouldStop {
-			return false
-		}
 		// Beginning // is already parsed
 		if r == '\n' {
-			shouldStop = true
-			return true
+			return false
 		}
 		b.WriteRune(r)
 		return true

@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"unicode"
 )
 
@@ -30,6 +31,7 @@ type StringAttrs struct {
 	QuoteStyle   rune
 	QuoteCount   int // > 0 if @ was used
 	Unterminated bool
+	Segments     []string // Between newlines and escapes (newline at end)
 }
 
 type StringEscape struct {
@@ -178,12 +180,13 @@ There are three types of strings in Klar:
 */
 func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 	var (
-		currQuoteN                  int
+		currQuoteN, segStart        int
 		esc                         string
 		b                           Builder
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
 		escStart, end               Position
+		segms                       []string
 		lastQuoteEnd                = pos.Col + 1 + uint32(quoteN)
 	)
 	initEscapes := func() {
@@ -197,13 +200,16 @@ func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 		if err > 0 {
 			e.ErrorPosition = l.Pos
 		}
+		segStart = b.Len() + 1
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
 	parsedEscape := func(e StringEscape, p rune) {
 		initEscapes()
 		b.WriteString(string(p) + e.Value[2:])
+		segStart = b.Len()
 		escapes[escStart], isEscape, esc = e, false, ""
 	}
+	endSegment := func() { segms = append(segms, b.String()[segStart:]) }
 loop:
 	for {
 		r, _, err := l.Reader.ReadRune()
@@ -225,6 +231,7 @@ loop:
 			} else {
 				currQuoteN++
 				if currQuoteN >= quoteN {
+					endSegment()
 					b.WriteRune(r)
 					end = l.Pos
 					break loop
@@ -234,6 +241,7 @@ loop:
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else if quoteN == 0 { // No escape in @... string
+				endSegment()
 				isEscape, escStart = true, l.prevCol()
 			}
 		case '{':
@@ -271,6 +279,8 @@ loop:
 			}
 			isNewline = true
 			b.WriteRune(r)
+			endSegment()
+			segStart = b.Len()
 			continue loop
 		default:
 			switch {
@@ -297,6 +307,7 @@ loop:
 		prefix = []rune{delim}
 	}
 	str := string(prefix) + b.String()
+	fmt.Printf("%#v\n", segms)
 
 	return NewToken(pos, String, str).
 		SetAttribute("end", end).

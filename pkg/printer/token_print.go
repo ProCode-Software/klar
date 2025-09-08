@@ -5,19 +5,33 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
+// Options passed to [PrintTokens]
 type PrintFlags uint8
 
 const (
+	// Perform simple formatting such as adding spaces around operands and curly braces.
 	PrettyPrint PrintFlags = 1 << iota
+	// Print tokens on a single line
 	SingleLine
+)
+
+var (
+	// Avoid allocating a new slice when printing spaces
+	spaces   = []byte("                                ")
+	spaceLen = uint32(len(spaces))
 )
 
 func space(n uint32) []byte {
 	if n > 10000000 && n >= ^uint32(0)-100 {
 		panic("overflow of n")
 	}
+	if n <= spaceLen {
+		return spaces[:n]
+	}
+	// More than 32 spaces
 	arr := make([]byte, n)
-	for i := range n {
+	copy(arr, spaces)
+	for i := spaceLen; i < n; i++ {
 		arr[i] = ' '
 	}
 	return arr
@@ -29,7 +43,7 @@ func PrintTokens(tokens []lexer.Token, flags ...PrintFlags) []byte {
 	for _, flag := range flags {
 		f |= flag
 	}
-	if f&PrettyPrint != 0 {
+	if (f & PrettyPrint) != 0 {
 		return prettyPrintTokens(tokens, f)
 	}
 	return defaultPrintTokens(tokens, f)
@@ -37,28 +51,24 @@ func PrintTokens(tokens []lexer.Token, flags ...PrintFlags) []byte {
 
 func defaultPrintTokens(tokens []lexer.Token, flags PrintFlags) []byte {
 	b := make([]byte, 0, len(tokens)*2)
-	var lastLine, lastCol uint32 = tokens[0].Line, tokens[0].Col
+	lastLine, lastCol := tokens[0].Line, tokens[0].Col
 	for _, tok := range tokens {
-		if flags & SingleLine != 0 {
-			b = append(b, ' ')
-		} else {
-			
-			b = append(b, '\n')
-		}
-		for currLine := lastLine; currLine < tok.Line; currLine++ {
-			if flags & SingleLine != 0 {
+		if lastLine < tok.Line {
+			if (flags & SingleLine) != 0 {
 				b = append(b, ' ')
 			} else {
-				b = append(b, '\n')
+				for currLine := lastLine; currLine < tok.Line; currLine++ {
+					b = append(b, '\n')
+				}
+				lastCol = 1
 			}
-			lastCol = 1
 		}
 		b = append(b, space(tok.Col-lastCol)...)
 		b = append(b, []byte(tok.Source)...)
 		tokRange := ranges.FromToken(tok).End
 		lastLine, lastCol = tokRange.Line, tokRange.Col
 	}
-	return b[len(b):]
+	return b[:len(b):len(b)]
 }
 
 var (
@@ -71,6 +81,7 @@ var (
 // formatting such as adding spaces around operands and curly braces.
 func prettyPrintTokens(tokens []lexer.Token, flags PrintFlags) []byte {
 	b := make([]byte, 0, len(tokens)*2)
+	lastLine := tokens[0].Line
 	addSpaceBefore := func(t lexer.TokenType) bool {
 		_, ok := spaceBefore[t]
 		_, ok2 := spaceAround[t]
@@ -83,17 +94,22 @@ func prettyPrintTokens(tokens []lexer.Token, flags PrintFlags) []byte {
 	}
 	for _, tok := range tokens {
 		kind := tok.Kind
-		if addSpaceBefore(kind) {
+		// If printing multiline
+		if flags&SingleLine == 0 && lastLine < tok.Line {
+			for currLine := lastLine; currLine < tok.Line; currLine++ {
+				b = append(b, '\n')
+			}
+			if addSpaceBefore(kind) {
+				b = append(b, spaces[:4]...) // 4 spaces
+			}
+		} else if addSpaceBefore(kind) {
 			b = append(b, ' ')
 		}
-		for currLine := lastLine; currLine < tok.Line; currLine++ {
-			b = append(b, '\n')
-			lastCol = 1
-		}
-		b = append(b, space(tok.Col-lastCol)...)
 		b = append(b, []byte(tok.Source)...)
-		tokRange := ranges.FromToken(tok).End
-		lastLine, lastCol = tokRange.Line, tokRange.Col
+		if addSpaceAfter(kind) {
+			b = append(b, ' ')
+		}
+		lastLine = ranges.FromToken(tok).End.Line
 	}
 	return b[:len(b):len(b)]
 }
@@ -136,8 +152,9 @@ func init() {
 	spaceAround[lexer.In] = struct{}{}
 	spaceAround[lexer.And] = struct{}{}
 	spaceAround[lexer.Or] = struct{}{}
-
 	spaceAfter[lexer.LeftCurlyBrace] = struct{}{}
 	spaceAfter[lexer.HashLeftCurlyBrace] = struct{}{}
+	spaceAfter[lexer.Comma] = struct{}{}
+	spaceAfter[lexer.Colon] = struct{}{}
 	spaceBefore[lexer.RightCurlyBrace] = struct{}{}
 }

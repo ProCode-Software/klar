@@ -5,7 +5,6 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/pkg/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -56,7 +55,7 @@ func makeColonDestructHint(tokens []lexer.Token, name string, node ast.Destructu
 	case *ast.ObjectDestructure:
 		kind = "object"
 	}
-	suggest := name + "." + string(printer.PrintTokens(tokens))
+	suggest := name + "." + string(printTokens(tokens))
 	return fmt.Sprintf("Did you mean %s for %s destructuring?", errors.Quote(suggest), kind)
 }
 
@@ -123,7 +122,16 @@ func (p *Parser) ParseListDestructure(end lexer.TokenType, start lexer.Position)
 		return &ast.BadExpression{Token: end}
 	}
 	var items []ast.Destructure
-	parseSeries(p, &items, p.ParseDestructureInner, end, lexer.Comma, false)
+	parseSeries(p, &items, func() ast.Destructure {
+		dest := p.ParseDestructureInner()
+		if c := p.CurrKind(); c == lexer.Equal || c == lexer.ColonEqual {
+			p.Error(errors.Token(errors.ErrDestructInvalidEqual, p.Curr()))
+			// Just parse it
+			p.Advance()
+			p.ParseExpression(DefaultBindingPower)
+		}
+		return dest
+	}, end, lexer.Comma, false)
 	d := &ast.ListDestructure{
 		Values: items,
 		Tuple:  end == lexer.RightParenthesis,

@@ -5,6 +5,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
+	"github.com/ProCode-Software/klar/pkg/printer"
 )
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
@@ -112,4 +113,8 @@ func isRelational(kind lexer.TokenType) bool {
 		return true
 	}
 	return false
+}
+
+func printTokens(tok []lexer.Token) []byte {
+	return printer.PrintTokens(tok, printer.PrettyPrint|printer.SingleLine)
 }

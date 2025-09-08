@@ -18,9 +18,37 @@ func (p *Parser) Parse() *ast.Program {
 			panic(err)
 		}
 	}()
-	body := make([]ast.Statement, 0, len(p.Tokens)/2)
+	body := make([]ast.Statement, 0, len(p.Tokens)/3)
 	comments := p.RemoveComments() // Move comments
 	p.InsertEOS()                  // Add the "semicolons"
+	for p.HasTokens() {
+		if p.Options.StopOnError && len(p.Errors) > 0 {
+			break
+		}
+		if p.CurrKind() == lexer.EndOfStatement {
+			p.Advance()
+		}
+		body = append(body, p.ParseTopLevelStatement())
+	}
+	prog := &ast.Program{
+		Body:     body[:len(body):len(body)],
+		Comments: comments,
+		BaseNode: newBaseNode(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position),
+	}
+	return prog
+}
+
+func (p *Parser) ParseNew() *ast.Program {
+	defer func() {
+		switch err := recover(); err {
+		case nil, stopParsing{}:
+			return
+		default:
+			panic(err)
+		}
+	}()
+	body := make([]ast.Statement, 0, len(p.Tokens)/3)
+	comments := p.InsertEOSNew()
 	for p.HasTokens() {
 		if p.Options.StopOnError && len(p.Errors) > 0 {
 			break
@@ -116,7 +144,6 @@ func (p *Parser) ParseStatement() ast.Statement {
 	}
 	res, handled = p.handleStatementNUD(kind)
 	if !handled {
-		fmt.Println(p.CurrKind())
 		if res, handled = p.handleNUD(kind); !handled {
 			p.unknownTokenErr()
 			res = &ast.BadExpression{Token: kind}

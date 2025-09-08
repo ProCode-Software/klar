@@ -22,6 +22,9 @@ type Parser struct {
 	isWhenGuard bool // Disable some types of expressions
 	isWhenCase  bool // Allow '_'
 	isAttribute bool
+
+	// Stored token properties
+	listCastTokens, assignmentTokens, lambdaTokens map[int]struct{}
 }
 
 type ParseError = errors.ParseError
@@ -35,11 +38,14 @@ type ParseOptions struct {
 
 // New returns a new [Parser] that reads from tokens.
 func New(tokens []lexer.Token, options *ParseOptions) *Parser {
+	if options == nil {
+		options = &ParseOptions{}
+	}
 	t := make([]lexer.Token, len(tokens))
 	copy(t, tokens)
 	// Add EOS if missing
-	if len(t) > 0 && t[len(t)-1].Kind != lexer.EOF {
-		t = append(t, lexer.Token{Kind: lexer.EOF}) // Add position info?
+	if len(t) == 0 || t[len(t)-1].Kind != lexer.EOF {
+		t = append(t, lexer.Token{Kind: lexer.EOF}) // TODO: Add position info?
 	}
 	return &Parser{
 		Tokens:  t,
