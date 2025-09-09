@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"unicode"
 )
 
@@ -307,8 +306,6 @@ loop:
 		prefix = []rune{delim}
 	}
 	str := string(prefix) + b.String()
-	fmt.Printf("%#v\n", segms)
-
 	return NewToken(pos, String, str).
 		SetAttribute("end", end).
 		SetAttribute("params", StringAttrs{

@@ -75,6 +75,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 }
 
+// TODO: fix
 // Soft keywords are not allowed in module names
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	var (
@@ -133,6 +134,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		if isWildcard {
 			// Wildcard and unqualified import
 			// import module.*.{...}
+			// TODO: handle
 		}
 		p.Expect(lexer.LeftCurlyBrace)
 		// Empty import
@@ -158,12 +160,12 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 			}
 			wasTypeKw = false
 			curr := p.CurrKind()
-			switch curr {
-			case lexer.Type:
+			switch {
+			case curr == lexer.Type:
 				isTypeImport, wasTypeKw = true, true
 				p.Advance()
 				continue
-			case lexer.Asterisk:
+			case curr == lexer.Asterisk:
 				if alias.Name != "" {
 					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.Curr()))
 				}
@@ -171,13 +173,13 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 					TypeImport: isTypeImport,
 					Wildcard:   true,
 				})
-			default:
+			case isValidIdentifier(curr):
 				// Alias:
 				// 	.{fetch: get}
 				// 	.{Reader: type BufferedReader}
 				// Wildcard not allowed (alias: type *)
 				if alias.Name == "" && p.Peek().Kind == lexer.Colon {
-					name := p.ParseIdentifier()
+					name := p.ParseValidIdent()
 					p.Advance() // :
 					alias = name
 					continue
@@ -185,22 +187,16 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
 					TypeImport: isTypeImport,
 					Alias:      alias,
-					Identifier: p.ParseIdentifier(),
+					Identifier: p.ParseValidIdent(),
 				})
 				alias.Name = ""
+			default:
 				// Need identifier
-				p.Error(errors.ExpectedToken(
-					lexer.Identifier,
-					p.Curr(),
-				))
+				p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
 			}
 			p.Advance() // Move to comma or }
-			if p.CurrKind() == lexer.EndOfStatement {
-				p.Advance()
-				continue
-			}
 			if p.IsNotCurrentlyEndOr(lexer.RightCurlyBrace) {
-				p.Expect(lexer.Comma)
+				p.Expect(lexer.Comma, lexer.EndOfStatement)
 			}
 		}
 		// Check for invalid .{a:} or .{type}

@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"unicode"
@@ -325,7 +324,6 @@ loop:
 	} else {
 		prefix = []rune{'/'}
 	}
-	fmt.Println(end)
 	flagStr := l.TokenizeFunc(func(r rune, _ *Builder) bool {
 		if isASCIILetter(r) {
 			b.WriteRune(r)
@@ -335,7 +333,6 @@ loop:
 		return false
 	})
 	str := string(prefix) + b.String()
-	fmt.Println(end, len(str))
 	return NewToken(startPos, Regex, str).
 		SetAttribute("end", end).
 		SetAttribute("params", RegexAttrs{

@@ -77,16 +77,27 @@ func (p *Parser) InsertEOS() {
 }
 
 func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
-	new := make([]lexer.Token, 0, len(p.Tokens))
-	var brackets []int
+	var (
+		new            = make([]lexer.Token, 0, len(p.Tokens))
+		parsedComments = make(map[int]struct{})
+		brackets       []int
+	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
 		for isComment(p.Tokens[i].Kind) {
-			comments = append(comments, p.ParseComment(p.Tokens[i]))
+			if _, ok := parsedComments[i]; !ok {
+				comments = append(comments, p.ParseComment(p.Tokens[i]))
+				parsedComments[i] = struct{}{}
+			}
 			i++
 		}
 		return i
 	}
+	// Setup cached tokens
+	p.assignmentTokens = make(map[int]struct{})
+	p.lambdaTokens = make(map[int]struct{})
+	p.listCastTokens = make(map[int]struct{})
+
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
 			tok       = p.Tokens[i]
@@ -100,7 +111,9 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 		switch kind {
 		// Comment
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-			comments = append(comments, p.ParseComment(tok))
+			if _, ok := parsedComments[i]; !ok {
+				comments = append(comments, p.ParseComment(tok))
+			}
 			continue
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
@@ -126,22 +139,23 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 			}
 			fallthrough
 		case lexer.RightBracket, lexer.RightParenthesis:
-			i = readComments(i)
+			newI := readComments(i)
 			// Skip newlines
 			for p.Tokens[i].Kind == lexer.Newline {
-				i++
-				i = readComments(i)
+				newI++
+				newI = readComments(i)
 			}
-			if arr := p.Tokens[i]; arr.Kind == lexer.Arrow {
+			// Check for '->' (arrow function)
+			if arr := p.Tokens[newI]; arr.Kind == lexer.Arrow {
 				lastBrackI := len(brackets) - 1
 				p.lambdaTokens[brackets[lastBrackI]] = struct{}{}
 				// Remove the bracket from the array
 				brackets = brackets[:lastBrackI]
 				// Don't reparse the arrow
-				new = append(new, arr)
+				new = append(new, tok, arr)
+				i = newI
 				continue
 			}
-			i-- // Continuing the loop
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)
