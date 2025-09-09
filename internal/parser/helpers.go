@@ -30,10 +30,14 @@ func repeatByte(b byte, n int) []byte {
 
 // Returns true if the current token is '='. If it is ':=', this will report a specific
 // error and still returns true.
-func (p *Parser) isEqualOrColonEqualAndError() bool {
-	switch curr := p.Curr(); curr.Kind {
+func (p *Parser) isEqualOrColonEqualAndError(token ...lexer.Token) bool {
+	t := p.Curr()
+	if len(token) > 0 {
+		t = token[0]
+	}
+	switch t.Kind {
 	case lexer.ColonEqual:
-		p.Error(errors.Token(errors.ErrColonEqual, curr))
+		p.Error(errors.Token(errors.ErrColonEqual, t))
 		return true
 	case lexer.Equal:
 		return true

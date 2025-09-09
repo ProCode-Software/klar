@@ -78,17 +78,13 @@ func (p *Parser) InsertEOS() {
 
 func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 	var (
-		new            = make([]lexer.Token, 0, len(p.Tokens))
-		parsedComments = make(map[int]struct{})
-		brackets       []int
+		new      = make([]lexer.Token, 0, len(p.Tokens))
+		brackets []int
 	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
 		for isComment(p.Tokens[i].Kind) {
-			if _, ok := parsedComments[i]; !ok {
-				comments = append(comments, p.ParseComment(p.Tokens[i]))
-				parsedComments[i] = struct{}{}
-			}
+			comments = append(comments, p.ParseComment(p.Tokens[i]))
 			i++
 		}
 		return i
@@ -111,9 +107,7 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 		switch kind {
 		// Comment
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-			if _, ok := parsedComments[i]; !ok {
-				comments = append(comments, p.ParseComment(tok))
-			}
+			comments = append(comments, p.ParseComment(tok))
 			continue
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
@@ -141,21 +135,25 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 		case lexer.RightBracket, lexer.RightParenthesis:
 			newI := readComments(i)
 			// Skip newlines
-			for p.Tokens[i].Kind == lexer.Newline {
+			for p.Tokens[newI].Kind == lexer.Newline {
 				newI++
 				newI = readComments(i)
 			}
+			new = append(new, tok)
+			next := p.Tokens[newI]
 			// Check for '->' (arrow function)
-			if arr := p.Tokens[newI]; arr.Kind == lexer.Arrow {
+			if next.Kind == lexer.Arrow {
 				lastBrackI := len(brackets) - 1
 				p.lambdaTokens[brackets[lastBrackI]] = struct{}{}
 				// Remove the bracket from the array
 				brackets = brackets[:lastBrackI]
 				// Don't reparse the arrow
-				new = append(new, tok, arr)
+				new = append(new, next)
 				i = newI
 				continue
 			}
+			// Still add the EOS
+			// TODO
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)

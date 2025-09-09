@@ -27,9 +27,12 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 		return true
 	}
 	if _, ok := validIdents[tok.Kind]; !ok {
-		if slices.Contains(ast.ReservedIdent, tok.Kind) {
+		switch {
+		case tok.Kind == lexer.Underscore:
+			p.Error(errors.Token(errors.ErrUnderscoreValue, tok))
+		case slices.Contains(ast.ReservedIdent, tok.Kind):
 			p.Error(errors.Token(errors.ErrReservedKeyword, tok))
-		} else {
+		default:
 			p.Error(errors.ExpectedToken(lexer.Identifier, tok))
 		}
 		return false

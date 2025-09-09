@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -43,7 +42,7 @@ func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.Varia
 			vars[i] = v.(ast.Destructure)
 		}
 	} else {
-		println("!!!")
+		println("!!!") // TODO: fix
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
 	}
 	return &ast.VariableDeclaration{
@@ -75,143 +74,66 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 }
 
-// TODO: fix
 // Soft keywords are not allowed in module names
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
-	var (
-		b             strings.Builder
-		module, alias ast.Identifier
-		unqualImports []*ast.UnqualifiedImport
-		isWildcard    bool
-		modStart      lexer.Position
-	)
-	// Skip import keyword
-	p.Expect(lexer.Import)
-
+	var b strings.Builder
+	i := &ast.ImportStatement{}
+	p.Advance() // import
 	// Parse maybe alias
-	if p.Peek().Kind == lexer.Equal {
-		alias = p.ParseIdentifier()
+	if p.isEqualOrColonEqualAndError(p.Peek()) {
+		i.Alias = p.ParseIdentifier()
 		p.Advance() // =
 	}
-
 	// First part of module
 	first := p.Expect(lexer.Identifier)
+	modStart := first.Position
 	b.WriteString(first.Source)
-	modStart = first.Position
-
-	for p.WhileNot(lexer.EndOfStatement) {
-		if p.CurrKind() == lexer.Dot {
+	for p.CurrKind() == lexer.Dot {
+		p.Advance()
+		// Wildcard import
+		if curr := p.CurrKind(); curr == lexer.Asterisk {
+			i.Wildcard = true
 			p.Advance()
-			if p.CurrKind() == lexer.LeftCurlyBrace {
-				break
-			}
-			b.WriteByte('*')
-			if p.CurrKind() == lexer.Asterisk {
-				break
-			}
+			break
+		} else if curr == lexer.LeftCurlyBrace {
+			break
 		}
+		b.WriteByte('.')
 		b.WriteString(p.Expect(lexer.Identifier).Source)
 	}
-	module.SetPos(modStart, p.lastTokEnd())
-
-	// Wildcard
-	if p.CurrKind() == lexer.Asterisk {
-		isWildcard = true
-		p.Tokens = slices.Insert(p.Tokens, p.Index+1, lexer.Token{
-			Kind:   lexer.EndOfStatement,
-			Source: "\n",
-			Position: lexer.Position{
-				Line: p.Curr().Position.Line,
-				Col:  p.Curr().Position.Col + 1,
-			},
-		})
-		p.Advance()
-	}
-	module.Name = b.String()
+	i.Module = ast.Identifier{Position: modStart, Name: b.String()}
 
 	// Unqualified import
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		if isWildcard {
+		p.Advance() // {
+		switch {
+		case i.Alias.Name != "":
+			// Alias and unqualified import
+			p.Error(errors.Token(errors.ErrAliasInUnqualifiedImport, p.PeekBehind()))
+		case i.Wildcard:
 			// Wildcard and unqualified import
 			// import module.*.{...}
-			// TODO: handle
-		}
-		p.Expect(lexer.LeftCurlyBrace)
-		// Empty import
-		if p.CurrKind() == lexer.RightCurlyBrace {
+			p.Error(errors.Token(errors.ErrWildcardAndUnqImport, p.PeekBehind()))
+		case p.CurrKind() == lexer.RightCurlyBrace:
 			p.Error(errors.Token(errors.ErrEmptyUnqImport, p.Curr()))
 		}
-
-		// Alias and unqualified import
-		if alias.Name != "" {
-			p.Error(errors.Token(
-				errors.ErrAliasInUnqualifiedImport, p.PeekBehind(),
-			))
-		}
-		module.Name = module.Name[:len(module.Name)-1]
-
-		var (
-			wasTypeKw, isTypeImport bool
-			alias                   ast.Identifier
-		)
-		for p.WhileNotEndOr(lexer.RightCurlyBrace) {
-			if wasTypeKw && !p.IsCurrently(lexer.Identifier, lexer.Asterisk) {
-				p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
-			}
-			wasTypeKw = false
-			curr := p.CurrKind()
-			switch {
-			case curr == lexer.Type:
-				isTypeImport, wasTypeKw = true, true
+		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.UnqualifiedImport) {
+			u = &ast.UnqualifiedImport{}
+			if p.CurrKind() == lexer.Asterisk {
 				p.Advance()
-				continue
-			case curr == lexer.Asterisk:
-				if alias.Name != "" {
-					p.Error(errors.Token(errors.ErrWildcardAndAlias, p.Curr()))
-				}
-				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
-					TypeImport: isTypeImport,
-					Wildcard:   true,
-				})
-			case isValidIdentifier(curr):
-				// Alias:
-				// 	.{fetch: get}
-				// 	.{Reader: type BufferedReader}
-				// Wildcard not allowed (alias: type *)
-				if alias.Name == "" && p.Peek().Kind == lexer.Colon {
-					name := p.ParseValidIdent()
-					p.Advance() // :
-					alias = name
-					continue
-				}
-				unqualImports = append(unqualImports, &ast.UnqualifiedImport{
-					TypeImport: isTypeImport,
-					Alias:      alias,
-					Identifier: p.ParseValidIdent(),
-				})
-				alias.Name = ""
-			default:
-				// Need identifier
-				p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
+				u.Wildcard = true
+				return
 			}
-			p.Advance() // Move to comma or }
-			if p.IsNotCurrentlyEndOr(lexer.RightCurlyBrace) {
-				p.Expect(lexer.Comma, lexer.EndOfStatement)
+			if p.Peek().Kind == lexer.Colon {
+				u.Alias = p.ParseIdentOrDiscard()
+				p.Advance() // :
 			}
-		}
-		// Check for invalid .{a:} or .{type}
-		if wasTypeKw || alias.Name != "" {
-			p.Error(errors.ExpectedToken(lexer.Identifier, p.Curr()))
-		}
-		p.Expect(lexer.RightCurlyBrace)
+			u.Identifier = p.ParseIdentifier()
+			return
+		}, lexer.RightCurlyBrace, lexer.Comma, true)
 	}
 
-	return &ast.ImportStatement{
-		UnqualifiedImports: unqualImports,
-		Alias:              alias,
-		Module:             module,
-		Wildcard:           isWildcard,
-	}
+	return i
 }
 
 func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {

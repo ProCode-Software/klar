@@ -541,7 +541,7 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
 	} else if curr.Kind == lexer.Identifier &&
-		curr.Position == ranges.Add(endSlashPos, 0, 1) { // TODO: validate no spaces between
+		curr.Position == ranges.Add(endSlashPos, 0, 1) {
 		r.Flags = []rune(p.Advance().Source)
 	}
 	return r

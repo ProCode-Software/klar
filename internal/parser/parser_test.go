@@ -7,8 +7,20 @@ import (
 	"testing"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
+
+func handleErrors(b *testing.B, p *Parser) {
+	print := printer.Printer{}
+	print.LoadTokens(p.Tokens)
+	if len(p.Errors) > 0 {
+		for _, err := range p.Errors {
+			print.PrintError(err)
+		}
+		b.Fail()
+	}
+}
 
 func BenchmarkParser(b *testing.B) {
 	b.ReportAllocs()
@@ -35,12 +47,14 @@ func BenchmarkParser(b *testing.B) {
 				tokensOld = p.Tokens
 				prog = p.Parse()
 				errsOld = len(p.Errors)
+				handleErrors(b, p)
 				cmtOld = len(prog.Comments)
 			} else {
 				p.InsertEOSNew()
 				tokensNew = p.Tokens
 				prog = p.Parse()
 				errsNew = len(p.Errors)
+				handleErrors(b, p)
 				cmtNew = len(prog.Comments)
 			}
 			_ = prog
@@ -53,6 +67,9 @@ func BenchmarkParser(b *testing.B) {
 		b.Errorf("number of comments are not equal: old: %d, new: %d",
 			cmtOld, cmtNew,
 		)
+	}
+	if errsOld > 0 || errsNew > 1 {
+		b.Errorf("Errors: %d", max(errsOld, errsNew))
 	}
 	if errsOld != errsNew {
 		b.Errorf("number of errors are not equal: old: %d, new: %d",
@@ -107,7 +124,7 @@ run(os.args[1:])
 
 import klar.http.*
 import klar.http.server
-import klar.json.{encode, decode, D: type Decodable}
+import klar.json.{encode, decode, D: Decodable}
 
 users := [
     Person("John", age: 32),

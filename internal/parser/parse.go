@@ -128,7 +128,9 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrKind()
 	res, handled := p.handleTopLevelStatement(kind)
 	if handled {
-		p.ExpectEOSUnlessModifier(kind)
+		if p.PeekBehind().Kind != lexer.Asterisk {
+			p.ExpectEOSUnlessModifier(kind)
+		}
 		return res
 	}
 	return p.ParseStatement()
@@ -206,6 +208,11 @@ func parseSeries[T ast.Node](
 	with func() T, until, separator lexer.TokenType,
 	allowEOS bool,
 ) {
+	allSeps := make([]lexer.TokenType, 1, 2)
+	allSeps[0] = separator
+	if allowEOS {
+		allSeps = append(allSeps, lexer.EndOfStatement)
+	}
 	if until == 0 && separator == 0 {
 		panic("until and separator cannot both be zero")
 	}
@@ -224,7 +231,7 @@ func parseSeries[T ast.Node](
 			break
 		}
 		if separator != 0 {
-			p.Expect(separator)
+			p.Expect(allSeps...)
 		}
 	}
 	if until != 0 {

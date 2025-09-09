@@ -326,9 +326,8 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 //	import klar.http
 //	import klar.http.*
 //	import klar.regex.{*}
-//	import klar.regex.{type *}
-//	import klar.regex.{type RegEx}
-//	import fetch: klar.http.requests.{get}
+//	import klar.regex.{RegEx}
+//	import fetch = klar.http.requests.{get}
 type ImportStatement struct {
 	BaseNode
 	Module, Alias      Identifier // Alias is nil if no unqualified imports
@@ -338,7 +337,6 @@ type ImportStatement struct {
 
 type UnqualifiedImport struct {
 	BaseNode
-	TypeImport        bool
 	Wildcard          bool
 	Identifier, Alias Identifier
 }
