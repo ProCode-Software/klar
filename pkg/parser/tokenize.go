@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/parser"
 )
 
 // TokenizeFile reads from a file and converts it into lexer tokens.
@@ -52,4 +53,12 @@ func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
 func TokenizeString(source string, includeComments bool) ([]lexer.Token, error) {
 	file := strings.NewReader(source)
 	return Tokenize(file, includeComments, int64(len(source)/3))
+}
+
+// AddSemicolons returns tokens with all [lexer.Newline] tokens either replaced with
+// [lexer.EndOfStatement] or removed. All comments are also removed from tokens.
+func AddSemicolons(tokens []lexer.Token) []lexer.Token {
+	p := parser.New(tokens, nil)
+	p.InsertEOS()
+	return p.Tokens
 }

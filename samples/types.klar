@@ -3,31 +3,6 @@ import klar.fs
 // TODO: fix it later
 String(fs.readFileBuffer())
 
-/* type A = B
-type B = C
-type C = A
-type D { name: E | Int }
-type E = D */
-
-
-/* (name: String, age: Int) := ("John", 14)
-(name: String, age: Int) := dict
-
-for (key, value) in items {
-    
-} */
-/* type Person {
-    name: String
-    age: Int
-}
-
-type Color {
-    | red | orange | yellow
-    | green | blue | purple
-}
-
-type A: Color {} */
-
 func unwrap<T, X>(optional: T?) -> T {
     name := 1 + 1
     int: Int | Float := 2

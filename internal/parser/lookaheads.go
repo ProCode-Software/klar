@@ -4,6 +4,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+// TODO: after assignments are cached, delete this file.
 // Lookaheads may be used to the parser to check what if after some tokens before
 // conditionally parsing them.
 
@@ -56,27 +57,21 @@ func passLookaheadIf(cond bool) int {
 	return failLookahead
 }
 
-func isListCast(tok lexer.TokenType, last bool, brackCount int) int {
-	if last {
-		return passLookaheadIf(tok == lexer.LeftParenthesis)
-	}
-	switch tok {
-	case lexer.Stroke, lexer.Question:
-		return passLookahead
-	case lexer.Comma:
-		if brackCount < 2 {
-			return failLookahead
-		}
-	case lexer.LeftParenthesis, lexer.RightParenthesis,
-		lexer.GreaterThan, lexer.LessThan, lexer.Identifier,
-		lexer.Dot, lexer.Arrow, lexer.Ellipsis:
-	default:
-		if isValidIdentifier(tok) {
-			break
-		}
-		return failLookahead
-	}
-	return continueLookahead
+func (p *Parser) IsArrowFunc() bool {
+	_, ok := p.lambdaTokens[p.Index]
+	return ok
+}
+
+func (p *Parser) IsListCast() bool {
+	_, ok := p.listCastTokens[p.Index]
+	return ok
+}
+
+// TODO
+func (p *Parser) IsAssignment() bool {
+	return p.Lookahead(isDestructureAssignment)
+	_, ok := p.assignmentTokens[p.Index]
+	return ok
 }
 
 func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int {
@@ -103,39 +98,6 @@ func isDestructureAssignment(tok lexer.TokenType, last bool, brackCount int) int
 		}
 	case lexer.EOF:
 		return failLookahead
-	}
-	return continueLookahead
-}
-
-func (p *Parser) IsArrowFunc() bool {
-	if p.lambdaTokens == nil {
-		return p.Lookahead(p.isArrowFunction)
-	}
-	_, ok := p.lambdaTokens[p.Index]
-	return ok
-}
-
-func (p *Parser) isArrowFunction(tok lexer.TokenType, last bool, brackCount int) int {
-	switch {
-	case p.isWhenCase:
-		return failLookahead // Arrow function not allowed in when cases
-	case last:
-		return passLookaheadIf(tok == lexer.Arrow)
-	case brackCount == 0:
-		return breakLookahead
-	}
-	switch tok {
-	case lexer.RightParenthesis,
-		lexer.RightCurlyBrace, lexer.RightBracket:
-		if brackCount == 0 {
-			return breakLookahead
-		}
-	case lexer.EOF:
-		return failLookahead
-	case lexer.EndOfStatement:
-		if brackCount < 1 {
-			return failLookahead
-		}
 	}
 	return continueLookahead
 }

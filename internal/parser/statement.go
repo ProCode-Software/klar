@@ -155,7 +155,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
 	// Peek for `in` before parsing destructure
-	if p.Lookahead(isDestructureAssignment) {
+	if p.IsAssignment() {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}

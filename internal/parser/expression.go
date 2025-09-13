@@ -49,7 +49,7 @@ func (p *Parser) ParseParamList() *ast.DestructureTuple {
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
-	if p.Lookahead(p.isArrowFunction) {
+	if p.IsArrowFunc() {
 		return p.ParseParamList()
 	}
 	fmt.Println()
@@ -651,7 +651,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	f := &ast.ForExpression{}
 	// Peek for `in` before parsing destructure
-	if p.Lookahead(isDestructureAssignment) {
+	if p.IsAssignment() {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}

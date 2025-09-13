@@ -1,4 +1,4 @@
-type Gender { male | female | nonBinary | other }
+type Gender { .male, .female, .nonBinary, .other }
 
 type Person {
     name: String
@@ -12,7 +12,7 @@ func Person.greet(otherPerson: String) {
 
 people: [Person] := [
     Person(name: "John", age: 34, gender: .male),
-    Person(name: "Jane", age: 32, gender: .female),
+    .("Jane", age: 32, gender: .female),
 ]
 print(people)
 people[0].greet("Lucy")

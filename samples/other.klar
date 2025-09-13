@@ -1,12 +1,12 @@
 import klar.http.*
 import klar.http.server
-import klar.json.{encode, decode, D: type Decodable}
+import klar.json.{encode, decode, D: Decodable}
 
 users := [
     Person("John", age: 32),
-    Person("Jane", age: 31),
+    .("Jane", age: 31),
     Person("Lucy", age: 28),
-    Person("James", age: 34),
+    .("James", age: 34),
 ]
 
 type Person {
@@ -39,6 +39,5 @@ print("Starting the server...")
 server.start(port: 8080)
 
 for i in object {
-}
-for (i in object) {
+    print(i)
 }

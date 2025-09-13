@@ -1,12 +1,8 @@
 package parser
 
 import (
-	"slices"
-
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // InsertEOS performs automatic semicolon insertion by removing [lexer.Newline]
@@ -27,59 +23,10 @@ import (
 // Note that most of these kind of statements are invalid in Klar (untyped enum,
 // invalid rest, or unused value).
 // An EOS token is always added after a [lexer.RightCurlyBrace] '}' token.
-func (p *Parser) InsertEOS() {
-	if len(p.Tokens) <= 1 {
-		return
-	}
-	for i := 0; i < len(p.Tokens); i++ {
-		var (
-			prev      lexer.Token
-			tok       = p.Tokens[i]
-			insertEOS = true
-		)
-		if i > 0 {
-			prev = p.Tokens[i-1]
-		}
-		switch {
-		// Add before EOF
-		case tok.Kind == lexer.EOF &&
-			prev.Kind != lexer.EndOfStatement:
-			fallthrough
-		// Block with curly brace on same line:
-		// 	func fn(x: Int) { return x * 2 }
-		// but not {}
-		case tok.Kind == lexer.RightCurlyBrace &&
-			prev.Kind != lexer.LeftCurlyBrace &&
-			prev.Kind != lexer.HashLeftCurlyBrace &&
-			canAddEOSAfter(prev.Kind):
-			p.Tokens = slices.Insert(p.Tokens, i, lexer.Token{
-				Kind:     lexer.EndOfStatement,
-				Position: tok.Position,
-			})
-			i++
-			continue
-		case tok.Kind != lexer.Newline:
-			continue
-		case i > 0:
-			insertEOS = canAddEOSAfter(prev.Kind)
-		}
-		// Should add EOS before next token?
-		if insertEOS && len(p.Tokens) > i+1 && canGoOnNewline(p.Tokens[i+1].Kind) {
-			insertEOS = false
-		}
-		if insertEOS {
-			p.Tokens[i].Kind = lexer.EndOfStatement
-		} else {
-			p.Tokens = slices.Delete(p.Tokens, i, i+1)
-			i--
-		}
-	}
-}
-
-func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
+func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	var (
 		new      = make([]lexer.Token, 0, len(p.Tokens))
-		brackets []int
+		brackets = make([]int, 0, len(p.Tokens)/8)
 	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
@@ -104,11 +51,18 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 		if len(new) > 0 {
 			prev = new[len(new)-1].Kind
 		}
-		switch kind {
+		switch {
 		// Comment
-		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
+		case isComment(kind):
 			comments = append(comments, p.ParseComment(tok))
 			continue
+		// TODO: cache assignmenta
+		case isAssignment(kind):
+
+		case prev == lexer.EndOfStatement:
+
+		}
+		switch kind {
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
 			lexer.LeftParenthesis:
@@ -133,27 +87,40 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 			}
 			fallthrough
 		case lexer.RightBracket, lexer.RightParenthesis:
-			newI := readComments(i)
+			var (
+				newI         = readComments(i)
+				lastBrackI   = len(brackets) - 1
+				firstNewline int // Cannot be zero because preceded by bracket
+			)
+			// List cast: [Int](...)
+			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
+				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
+			}
 			// Skip newlines
-			for p.Tokens[newI].Kind == lexer.Newline {
-				newI++
-				newI = readComments(i)
+			if p.Tokens[newI].Kind == lexer.Newline {
+				firstNewline = newI
+				for p.Tokens[newI].Kind == lexer.Newline {
+					newI = readComments(newI)
+				}
 			}
 			new = append(new, tok)
 			next := p.Tokens[newI]
 			// Check for '->' (arrow function)
 			if next.Kind == lexer.Arrow {
-				lastBrackI := len(brackets) - 1
-				p.lambdaTokens[brackets[lastBrackI]] = struct{}{}
+				p.lambdaTokens[brackets[lastBrackI]] = struct{}{} // Cache it
 				// Remove the bracket from the array
 				brackets = brackets[:lastBrackI]
 				// Don't reparse the arrow
 				new = append(new, next)
 				i = newI
-				continue
+			} else if firstNewline > 0 && !canGoOnNewline(next.Kind) {
+				// Still add the EOS
+				newTok := p.Tokens[firstNewline]
+				newTok.Kind = lexer.EndOfStatement
+				new = append(new, newTok)
+				i = newI - 1
 			}
-			// Still add the EOS
-			// TODO
+			continue // Already appended above
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)
@@ -173,7 +140,7 @@ func (p *Parser) InsertEOSNew() (comments []*ast.Comment) {
 		}
 		i = nextTokI - 1 // Continuing the loop
 	}
-	p.Tokens = new
+	p.Tokens = new[:len(new):len(new)]
 	return
 }
 
@@ -233,33 +200,5 @@ func canGoOnNewline(t lexer.TokenType) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func isComment(t lexer.TokenType) bool {
-	switch t {
-	case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-		return true
-	}
-	return false
-}
-
-func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
-	switch {
-	case tok.Kind == lexer.Hashbang:
-		if tok.Position != (lexer.Position{1, 1}) {
-			p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
-		}
-	case tok.Attributes["unterm"] == true:
-		p.Error(errors.ParseError{
-			ErrorCode: errors.ErrUnterminatedComment,
-			Token:     tok,
-			Position:  tok.Position,
-		})
-	}
-	return &ast.Comment{
-		Value:    tok.Source,
-		Type:     tok.Kind,
-		BaseNode: ast.BaseNode{ranges.FromToken(tok)},
 	}
 }

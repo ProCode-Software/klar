@@ -4,10 +4,8 @@ package parser
 import (
 	"slices"
 
-	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
@@ -154,38 +152,6 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 		return token // Avoid advancing
 	}
 	return p.Advance()
-}
-
-// RemoveComments removes all comments from p.Tokens and returns them into a new slice.
-// Errors are reported to the parser if block comments are unterminated or shebangs
-// are not on the first line. These are the first errors reported in the parsing process.
-func (p *Parser) RemoveComments() (comments []*ast.Comment) {
-	for i := 0; i < len(p.Tokens); i++ {
-		tok := p.Tokens[i]
-		switch tok.Kind {
-		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-			switch {
-			case tok.Kind == lexer.Hashbang:
-				if tok.Position != (lexer.Position{1, 1}) {
-					p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
-				}
-			case tok.Attributes["unterm"] == true:
-				p.Error(errors.ParseError{
-					ErrorCode: errors.ErrUnterminatedComment,
-					Token:     tok,
-					Position:  tok.Position,
-				})
-			}
-			comments = append(comments, &ast.Comment{
-				Value:    tok.Source,
-				Type:     tok.Kind,
-				BaseNode: ast.BaseNode{ranges.FromToken(tok)},
-			})
-			p.Tokens = slices.Delete(p.Tokens, i, i+1)
-			i--
-		}
-	}
-	return comments
 }
 
 type stopParsing struct{}

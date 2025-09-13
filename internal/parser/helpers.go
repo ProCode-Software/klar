@@ -122,3 +122,11 @@ func isRelational(kind lexer.TokenType) bool {
 func printTokens(tok []lexer.Token) []byte {
 	return printer.PrintTokens(tok, printer.PrettyPrint|printer.SingleLine)
 }
+
+func isComment(t lexer.TokenType) bool {
+	switch t {
+	case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
+		return true
+	}
+	return false
+}

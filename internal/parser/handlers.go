@@ -35,7 +35,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.HashLeftCurlyBrace:
 		res = p.ParseMap()
 	case lexer.LeftBracket:
-		if p.Lookahead(isListCast) {
+		if p.IsListCast() {
 			res = p.ParseListCast()
 		} else {
 			res = p.ParseList()
@@ -225,13 +225,13 @@ func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, h
 	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
 		// For better errors
 		lexer.Numeric, lexer.Boolean, lexer.Nil, lexer.Regex:
-		if p.Lookahead(isDestructureAssignment) {
+		if p.IsAssignment() {
 			res = p.ParseDestructureVars()
 			break
 		}
 		return nil, false
 	default:
-		if isValidIdentOrDiscard(kind) && p.Lookahead(isDestructureAssignment) {
+		if isValidIdentOrDiscard(kind) && p.IsAssignment() {
 			res = p.ParseDestructureVars()
 			break
 		}

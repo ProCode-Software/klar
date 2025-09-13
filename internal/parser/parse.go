@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // Parse parses p.Tokens into a [*ast.Program].
@@ -19,8 +20,7 @@ func (p *Parser) Parse() *ast.Program {
 		}
 	}()
 	body := make([]ast.Statement, 0, len(p.Tokens)/3)
-	comments := p.RemoveComments() // Move comments
-	p.InsertEOS()                  // Add the "semicolons"
+	comments := p.InsertEOS()
 	for p.HasTokens() {
 		if p.Options.StopOnError && len(p.Errors) > 0 {
 			break
@@ -38,32 +38,28 @@ func (p *Parser) Parse() *ast.Program {
 	return prog
 }
 
-func (p *Parser) ParseNew() *ast.Program {
-	defer func() {
-		switch err := recover(); err {
-		case nil, stopParsing{}:
-			return
-		default:
-			panic(err)
+// ParseComment takes tok, a [lexer.LineComment], [lexer.BlockComment] or [lexer.Hashbang]
+// token and parses it into an [*ast.Comment] node.
+// Errors are reported to the parser if block comments are unterminated or shebangs
+// are not on the first line. These are the first errors reported in the parsing process.
+func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
+	switch {
+	case tok.Kind == lexer.Hashbang:
+		if tok.Position != (lexer.Position{1, 1}) {
+			p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
 		}
-	}()
-	body := make([]ast.Statement, 0, len(p.Tokens)/3)
-	comments := p.InsertEOSNew()
-	for p.HasTokens() {
-		if p.Options.StopOnError && len(p.Errors) > 0 {
-			break
-		}
-		if p.CurrKind() == lexer.EndOfStatement {
-			p.Advance()
-		}
-		body = append(body, p.ParseTopLevelStatement())
+	case tok.Attributes["unterm"] == true:
+		p.Error(errors.ParseError{
+			ErrorCode: errors.ErrUnterminatedComment,
+			Token:     tok,
+			Position:  tok.Position,
+		})
 	}
-	prog := &ast.Program{
-		Body:     body[:len(body):len(body)],
-		Comments: comments,
-		BaseNode: newBaseNode(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position),
+	return &ast.Comment{
+		Value:    tok.Source,
+		Type:     tok.Kind,
+		BaseNode: ast.BaseNode{ranges.FromToken(tok)},
 	}
-	return prog
 }
 
 func (p *Parser) unknownTokenErr() {

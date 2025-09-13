@@ -39,7 +39,7 @@ func (p *Parser) isModifierUse(_ lexer.TokenType) bool {
 	case lexer.Identifier, lexer.Type, lexer.Func, lexer.HashLeftCurlyBrace, lexer.Underscore:
 		return true
 	case lexer.LeftParenthesis, lexer.LeftBracket:
-		return p.Lookahead(isDestructureAssignment)
+		return p.IsAssignment()
 	}
 	return false
 }
