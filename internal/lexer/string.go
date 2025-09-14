@@ -295,15 +295,11 @@ loop:
 		b.WriteRune(r)
 		isNewline = false
 	}
-	var prefix []rune
+	var prefix string
 	if quoteN > 0 {
-		prefix = make([]rune, quoteN+1)
-		prefix[0] = '@'
-		for i := range quoteN {
-			prefix[i+1] = delim
-		}
+		prefix = repeat('@', delim, quoteN)
 	} else {
-		prefix = []rune{delim}
+		prefix = string(delim)
 	}
 	str := string(prefix) + b.String()
 	return NewToken(pos, String, str).

@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"unicode"
+
+	"github.com/ProCode-Software/klar/internal/char"
 )
 
 type Builder = strings.Builder
@@ -233,4 +235,21 @@ func IsIdent(r rune) bool {
 
 func isASCIILetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+}
+
+func repeat(prefix, r rune, n int) string {
+	var (
+		arr, ok   = char.QuoteMap[byte(r)]
+		strPrefix = string(prefix)
+		prefLen   = len(strPrefix)
+	)
+	if ok && n <= 40 {
+		return strPrefix + string(arr[:n])
+	}
+	quotes := make([]byte, 0, n+prefLen)
+	quotes = append(quotes, strPrefix...)
+	for len(quotes) < n+prefLen {
+		quotes = append(quotes, arr...)
+	}
+	return string(quotes)[:n+prefLen]
 }

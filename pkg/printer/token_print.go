@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -15,23 +16,18 @@ const (
 	SingleLine
 )
 
-var (
-	// Avoid allocating a new slice when printing spaces
-	spaces   = []byte("                                ")
-	spaceLen = uint32(len(spaces))
-)
-
 func space(n uint32) []byte {
 	if n > 10000000 && n >= ^uint32(0)-100 {
 		panic("overflow of n")
 	}
-	if n <= spaceLen {
-		return spaces[:n]
+	cl := uint32(char.Length)
+	if n <= cl {
+		return char.Spaces[:n]
 	}
 	// More than 32 spaces
 	arr := make([]byte, n)
-	copy(arr, spaces)
-	for i := spaceLen; i < n; i++ {
+	copy(arr, char.Spaces)
+	for i := cl; i < n; i++ {
 		arr[i] = ' '
 	}
 	return arr
@@ -100,7 +96,7 @@ func prettyPrintTokens(tokens []lexer.Token, flags PrintFlags) []byte {
 				b = append(b, '\n')
 			}
 			if addSpaceBefore(kind) {
-				b = append(b, spaces[:4]...) // 4 spaces
+				b = append(b, char.Spaces[:4]...) // 4 spaces
 			}
 		} else if addSpaceBefore(kind) {
 			b = append(b, ' ')

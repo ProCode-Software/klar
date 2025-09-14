@@ -314,15 +314,11 @@ loop:
 		b.WriteRune(r)
 		isNewline = false
 	}
-	var prefix []rune
+	var prefix string
 	if slashN > 0 {
-		prefix = make([]rune, slashN+1)
-		prefix[0] = '@'
-		for i := range slashN {
-			prefix[i+1] = '/'
-		}
+		prefix = repeat('@', '/', slashN)
 	} else {
-		prefix = []rune{'/'}
+		prefix = "/"
 	}
 	flagStr := l.TokenizeFunc(func(r rune, _ *Builder) bool {
 		if isASCIILetter(r) {

@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/cmd/klar/internal/klarcmd"
+	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
@@ -37,7 +38,7 @@ func main() {
 			)
 			os.Exit(2)
 		}
-		RunString(args[2])
+		runString(args[2])
 	case "--help", "-h":
 		ShowHelp(true)
 	case "-v", "--version":
@@ -52,17 +53,34 @@ func main() {
 			os.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help
-		os.Args[1] = os.Args[2]
-		os.Args = append(os.Args, "--help")
+		os.Args = []string{"klar", os.Args[1], "--help"}
 		fallthrough
 	default:
+		if args[1][0] == '-' {
+			// Invalid usage
+			os.Exit(2)
+		}
 		cmd := command.Lookup(cmdName, Commands, Aliases)
 		if cmd != nil {
 			command.Run(cmd)
 			os.Exit(0)
 		}
 		// Equivalent to `klar run [file]`
-		os.Args = slices.Insert(os.Args, 1, "run")
+		os.Args = append([]string{"klar", "run"}, os.Args[1:]...)
 		command.Run(Commands["run"])
 	}
+}
+
+func tryPipe() {
+	stat, err := os.Stdin.Stat()
+	if err != nil || (stat.Mode()&os.ModeCharDevice) != 0 {
+		return
+	}
+	// Is pipe
+	run.RunInput(os.Stdin, "stdin")
+	os.Exit(0)
+}
+
+func runString(s string) {
+	run.RunInput(strings.NewReader(s), "string")
 }

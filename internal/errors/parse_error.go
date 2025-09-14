@@ -92,6 +92,7 @@ const (
 	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrInterfaceDefaultValue   // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
+	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
 
 	// When =====
 
@@ -356,6 +357,8 @@ func (e ParseError) error() string {
 		return "Invalid function alias: target must be a function name"
 	case ErrInterfaceDefaultValue:
 		return "An interface field can't have a default value"
+	case ErrIntfMultiKeyMethod:
+		return "Function declarations cannot appear in comma-separated keys; split the function into its own entry"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

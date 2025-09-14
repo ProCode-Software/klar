@@ -56,10 +56,10 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		case isComment(kind):
 			comments = append(comments, p.ParseComment(tok))
 			continue
-		// TODO: cache assignmenta
+		// TODO: cache assignment
 		case isAssignment(kind):
 
-		case prev == lexer.EndOfStatement:
+		case prev == lexer.EndOfStatement, prev == lexer.For:
 
 		}
 		switch kind {

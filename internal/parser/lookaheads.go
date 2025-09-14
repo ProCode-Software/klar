@@ -50,13 +50,6 @@ loop:
 	return handler(p.Tokens[i+1].Kind, true, brackCount) == passLookahead
 }
 
-func passLookaheadIf(cond bool) int {
-	if cond {
-		return passLookahead
-	}
-	return failLookahead
-}
-
 func (p *Parser) IsArrowFunc() bool {
 	_, ok := p.lambdaTokens[p.Index]
 	return ok

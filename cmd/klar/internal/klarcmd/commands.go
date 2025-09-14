@@ -3,6 +3,7 @@ package klarcmd
 import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/build"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/repl"
+	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
 	"github.com/ProCode-Software/klar/internal/command"
 )
 
@@ -22,6 +23,12 @@ var KlarCommands = map[string]*command.Command{
 		LongDescription:  KlarREPLHelp,
 		Run:              repl.Run,
 		SeeAlso:          s{"run", "build"},
+	},
+	"run": {
+		ShortDescription: "Run a Klar project, file, or module",
+		LongDescription:  KlarRunHelp,
+		Run:              run.Run,
+		SeeAlso:          s{"build", "test"},
 	},
 }
 
