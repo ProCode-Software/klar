@@ -188,97 +188,59 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 	}
 }
 
+// Similar to [*Parser.ParseTupleType]
 func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
-	var (
-		tuple            = &ast.TupleType{}
-		names            [][2]ast.Identifier
-		isType, hasColon bool
-	)
+	var names [][2]ast.Identifier
+	var isType, hasColon, hasLabel bool
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
-		// (a, b, c) = 3 types
-		// (a, b, c: Int) = 3 labels
-		// (a, [b], c) = 3 types
-		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
-		if k := p.CurrKind(); !isType &&
-			(isValidIdentOrDiscard(k) || isValidIdentOrDiscard(p.Peek().Kind)) &&
-			p.Peek().Kind != lexer.Dot {
-			i := 0
+		if k := p.CurrKind(); !isType && (hasLabel || isValidIdentOrDiscard(k) ||
+			isValidIdentOrDiscard(p.Peek().Kind)) && p.Peek().Kind != lexer.Dot {
 			var name [2]ast.Identifier
-			if isValidIdentifier(p.Peek().Kind) {
+			if hasLabel || isValidIdentifier(p.Peek().Kind) {
 				name[0] = p.ParseMapIdentifier(false, true)
-				i++
 			}
-			name
-			name := [2]ast.Identifier{p.ParseValidIdent()}
-			names = append(names)
-			if isValidIdentifier(p.CurrKind()) {
-				name[1] = p.ParseIdentifier()
-			}
+			name[1] = p.ParseValidIdent()
+			names = append(names, name)
 			if p.CurrKind() == lexer.Colon {
 				if isType {
 					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
 				}
 				p.Advance() // :
-				pair := &ast.TypePair{
-					Keys: names, Value: p.ParseType(DefaultTypeBindingPower),
-				}
-				tuple.Values = append(tuple.Values, pair)
+				params = append(params, &ast.MethodTypeParam{
+					Names: names, Type: p.ParseType(DefaultTypeBindingPower),
+				})
 				names = names[:0]
 				hasColon = true
 			}
 		} else {
 			isType = true
 			t := p.ParseType(DefaultTypeBindingPower)
-			tuple.Values = append(tuple.Values, &ast.TypePair{Value: t})
 			if hasColon {
 				p.Error(errors.Node(errors.ErrMixTypeTupleLabels, t))
 			}
-		}
-		if len(tuple.Values) <= 1 && p.CurrKind() == lexer.RightParenthesis {
-			// No comma
-			break
+			params = append(params, &ast.MethodTypeParam{Type: t})
 		}
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
 		}
 	}
 	if len(names) > 0 {
-		if hasColon {
-			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
+		// TODO: can improve error
+		if peek := p.PeekBehind(); hasColon {
+			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, peek))
+		} else if hasLabel {
+			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, peek))
 		}
 		for _, name := range names {
-			tuple.Values = append(tuple.Values, &ast.TypePair{
-				Value: &ast.TypeAlias{
-					BaseNode:   name.BaseNode(),
-					Identifier: name.Name,
+			params = append(params, &ast.MethodTypeParam{
+				Type: &ast.TypeAlias{
+					BaseNode:   name[1].BaseNode(),
+					Identifier: name[1].Name,
 				},
 			})
 		}
 	}
-	parseSeries(p, &params, func() *ast.MethodTypeParam {
-		var label, name ast.Identifier
-		if peek := p.Peek().Kind; isValidIdentOrDiscard(peek) ||
-			peek == lexer.EndOfStatement {
-			// Label: fib(length length: Int)
-			label = p.ParseMapIdentifier(false, true)
-			if p.CurrKind() == lexer.EndOfStatement {
-				p.Advance()
-			}
-			name = p.ParseIdentifier()
-			p.Expect(lexer.Colon)
-		} else if p.Peek().Kind == lexer.Colon {
-			// Declared wih a name
-			name = p.ParseIdentifier()
-			p.Expect(lexer.Colon)
-		}
-		// Type
-		return &ast.MethodTypeParam{
-			Type:       p.ParseType(DefaultTypeBindingPower),
-			Label:      label,
-			Identifier: name,
-		}
-	}, lexer.RightParenthesis, lexer.Comma, false)
-	return
+	return params
 }
 
 func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *ast.InterfaceDeclaration {

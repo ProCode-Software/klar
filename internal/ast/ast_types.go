@@ -283,8 +283,8 @@ type MethodType struct {
 }
 
 type MethodTypeParam struct {
-	Label, Identifier Identifier
-	Type              Type
+	Names [][2]Identifier // label, name
+	Type  Type
 	BaseNode
 }
 
