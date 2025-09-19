@@ -111,12 +111,6 @@ func (tw *TabWriter) Flush() (n int, err error) {
 				writeArray = [][]byte{cell.content, offset}
 			case tw.Flags&AlignCenter != 0:
 				half := len(offset) / 2
-				last := half
-				// Odd-numbered columns
-				if tw.cellWidths[colI]%2 != 0 {
-					last++
-				}
-				// TODO: use last
 				// If cell ends in newline, add after the spaces
 				if l := len(cell.content); l > 0 && cell.content[l-1] == '\n' {
 					writeArray = [][]byte{
