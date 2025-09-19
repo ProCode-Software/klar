@@ -101,7 +101,7 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	tw.init()
 	for _, line := range tw.cells {
 		for colI, cell := range line {
-			cl := len(cell.content)
+			cl := utf8.RuneCount(cell.content)
 			if tw.Flags&DiscardEmptyColumns != 0 && cl == 0 {
 				continue
 			}
@@ -112,9 +112,9 @@ func (tw *TabWriter) Flush() (n int, err error) {
 			case tw.Flags&AlignCenter != 0:
 				half := len(offset) / 2
 				// If cell ends in newline, add after the spaces
-				if l := len(cell.content); l > 0 && cell.content[l-1] == '\n' {
+				if cl > 0 && cell.content[cl-1] == '\n' {
 					writeArray = [][]byte{
-						offset[:half], cell.content[:l-1], offset[half:], {'\n'},
+						offset[:half], cell.content[:cl-1], offset[half:], {'\n'},
 					}
 				} else {
 					writeArray = [][]byte{offset[:half], cell.content, offset[half:]}
