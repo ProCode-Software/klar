@@ -419,6 +419,11 @@ type ReturnStatement struct {
 	BaseNode
 }
 
+type Block struct {
+	BaseNode
+	Body []Statement
+}
+
 // A FunctionDeclaration is a basic Klar function or method declaration.
 type FunctionDeclaration struct {
 	Identifier    Identifier
@@ -426,7 +431,7 @@ type FunctionDeclaration struct {
 	GenericParams []Identifier
 	Parameters    []*FunctionParam
 	ReturnType    Type
-	Body          []Statement
+	Body          *Block
 	Expression    Expression
 	BaseNode
 }
@@ -528,7 +533,7 @@ type ForStatement struct {
 	BaseNode
 	Variables  []*DestructureTypePair
 	Expression Expression // When used as while loop or repeat
-	Body       []Statement
+	Body       *Block
 }
 
 // A WhileStatement executes Body while Condition is true
@@ -539,7 +544,7 @@ type WhileStatement struct {
 	BaseNode
 	Infinite  bool // No condition
 	Condition Expression
-	Body      []Statement
+	Body      *Block
 }
 
 type WhenExpression struct {
@@ -552,7 +557,7 @@ type WhenCase struct {
 	BaseNode
 	Options  [][]Expression // cases -> subjects
 	Guard    Expression     // <case> when <expr>
-	Body     []Statement    // -> <expr> | -> {...}
+	Body     *Block         // -> <expr> | -> {...}
 	BodyExpr Node
 	InBraces bool
 }
@@ -567,7 +572,7 @@ type WhenCanCase struct {
 type LambdaExpression struct {
 	BaseNode
 	Params   []*DestructureTypePair
-	Body     []Statement
+	Body     *Block
 	ExprBody Expression
 }
 
@@ -618,7 +623,7 @@ type ForExpression struct {
 	Iterator  Expression
 	Operator  Operator
 	Value     Expression
-	Block     []Statement
+	Block     *Block
 }
 
 type ObjectPipeline struct {
@@ -702,5 +707,5 @@ type AwaitExpression struct {
 type GoExpression struct {
 	BaseNode
 	Expression Expression
-	Body       []Statement // If block
+	Body       *Block // If block
 }

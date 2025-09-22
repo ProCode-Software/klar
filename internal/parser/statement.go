@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPower) ast.Statement {
@@ -176,11 +177,15 @@ func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 	return w
 }
 
-func (p *Parser) ParseBlock() (body []ast.Statement) {
-	p.Expect(lexer.LeftCurlyBrace)
+func (p *Parser) ParseBlock() *ast.Block {
+	var body []ast.Statement
+	start := p.Expect(lexer.LeftCurlyBrace).Position
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		body = append(body, p.ParseStatement())
 	}
-	p.Expect(lexer.RightCurlyBrace)
-	return
+	end := p.Expect(lexer.RightCurlyBrace).Position
+	return &ast.Block{
+		Body:     body,
+		BaseNode: ast.BaseNode{Range: ranges.Range{start, end}},
+	}
 }

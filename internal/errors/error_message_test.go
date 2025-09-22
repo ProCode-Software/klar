@@ -39,7 +39,7 @@ func runTest(name string, spec errorType, t *testing.T) {
 			err := spec.err(code)
 			msg := err.Error()
 			if msg == "" || strings.HasPrefix(msg, fmt.Sprintf("%s: %s", name, code)) {
-				t.Errorf("missing: %s / %s", name, code)
+				t.Errorf("missing: %s - %s", name, code)
 			}
 		}()
 	}
