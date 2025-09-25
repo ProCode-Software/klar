@@ -81,9 +81,11 @@ const (
 	Await
 	Break
 	Can
+	Else
 	For
 	Func
 	Go
+	If
 	Import
 	In
 	Next
@@ -93,6 +95,7 @@ const (
 	Or
 	Public
 	Return
+	Try
 	Type
 	When
 	While
@@ -154,16 +157,19 @@ var KeywordMap = map[string]TokenType{
 	"await":  Await,
 	"break":  Break,
 	"can":    Can,
+	"else":   Else,
 	"for":    For,
 	"func":   Func,
 	"go":     Go,
 	"import": Import,
+	"if":     If,
 	"in":     In,
 	"next":   Next,
 	"opaque": Opaque,
 	"or":     Or,
 	"public": Public,
 	"return": Return,
+	"try":    Try,
 	"type":   Type,
 	"when":   When,
 	"while":  While,

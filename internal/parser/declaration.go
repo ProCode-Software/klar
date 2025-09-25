@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -154,8 +156,9 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.StructField{}
 		field.Attributes = p.maybeParseAttributes()
+		fmt.Println(p.Index, p.Curr())
 		parseSeries(p, &field.Names, func() ast.Identifier {
-			name := p.ParseMapIdentifier(false)
+			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
@@ -165,15 +168,21 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 			return name
 		}, 0, lexer.Comma, false)
 		// Type
-		p.ExpectError(errors.Token(
-			errors.ErrRequiredStructFieldType, p.Curr(),
-		), lexer.Colon)
-		field.Type = p.ParseType(DefaultTypeBindingPower)
+		if isAssignment(p.CurrKind()) {
+			p.Error(errors.Token(errors.ErrRequiredStructFieldType, p.Curr()))
+		} else {
+			p.ExpectErrorNoAdvance(
+				errors.Slice(errors.ErrRequiredStructFieldType, field.Names),
+				lexer.Colon,
+			)
+			field.Type = p.ParseType(DefaultTypeBindingPower)
+		}
 		// Default value
 		if p.isEqualOrColonEqualAndError() {
 			p.Advance()
 			field.Value = p.ParseExpression(ExpressionBindingPower)
 		}
+		fmt.Println("end", p.Index, p.Curr())
 		markStartEndPos(p, field, field.Names[0].Position)
 		fields = append(fields, field)
 		if p.CurrKind() != lexer.RightCurlyBrace {
@@ -197,7 +206,7 @@ func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
 			isValidIdentOrDiscard(p.Peek().Kind)) && p.Peek().Kind != lexer.Dot {
 			var name [2]ast.Identifier
 			if hasLabel || isValidIdentifier(p.Peek().Kind) {
-				name[0] = p.ParseMapIdentifier(false, true)
+				name[0] = p.ParseMapIdentifier(isLabel)
 			}
 			name[1] = p.ParseValidIdent()
 			names = append(names, name)
@@ -224,6 +233,7 @@ func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
 			p.Expect(lexer.Comma)
 		}
 	}
+	p.Expect(lexer.RightParenthesis)
 	if len(names) > 0 {
 		// TODO: can improve error
 		if peek := p.PeekBehind(); hasColon {
@@ -251,7 +261,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.InterfaceItem{Attributes: p.maybeParseAttributes()}
 		parseSeries(p, &field.Keys, func() ast.Identifier {
-			name := p.ParseMapIdentifier(false)
+			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
@@ -262,9 +272,9 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 		}, 0, lexer.Comma, false)
 		// Type
 		if p.CurrKind() == lexer.LeftParenthesis {
-			// Parse function: #{ Kind() -> string }
+			// Parse function: #{ kind() -> String }
 			if len(field.Keys) > 1 {
-				// Invalid x, y, z() syntax
+				// Invalid: x, y, z()
 				p.Error(errors.Token(errors.ErrIntfMultiKeyMethod, p.Curr()))
 			}
 			fn := &ast.MethodType{} // TODO: position data?
@@ -276,7 +286,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 			}
 			field.Value = fn
 		} else {
-			p.Expect(lexer.Colon)
+			p.ExpectNoAdvance(lexer.Colon)
 			field.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
@@ -307,7 +317,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	if p.CurrKind() == lexer.Dot {
 		f.Struct = rec
 		p.Advance() // .
-		f.Identifier = p.ParseMapIdentifier(false)
+		f.Identifier = p.ParseMapIdentifier(0)
 	} else {
 		f.Identifier = rec
 	}
@@ -353,7 +363,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 				(peek != lexer.Colon && peek != lexer.Equal && peek != lexer.ColonEqual) {
 				// Optional label:
 				// 	func replace(src, with replacement: String)
-				key.Label = p.ParseMapIdentifier(false, true)
+				key.Label = p.ParseMapIdentifier(isLabel)
 				if peek == lexer.EndOfStatement {
 					p.Advance()
 				}

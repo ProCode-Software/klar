@@ -103,6 +103,9 @@ func (p *Parser) HasTokens() bool {
 func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
+func (p *Parser) ExpectNoAdvance(need ...lexer.TokenType) lexer.Token {
+	return p.ExpectErrorNoAdvance(nil, need...)
+}
 
 // WhileNot reports whether the current token kind is not kind and the parser is not at EOF.
 func (p *Parser) WhileNot(kind lexer.TokenType) bool {
@@ -132,6 +135,23 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 // current token is not in need.
 func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(ParseError{ErrorCode: code}, need...)
+}
+
+func (p *Parser) ExpectErrorNoAdvance(err error, need ...lexer.TokenType) lexer.Token {
+	token := p.Curr()
+	got := token.Kind
+	if !slices.Contains(need, got) {
+		parseErr, _ := err.(ParseError)
+		if err == nil {
+			err = errors.ExpectedToken(need[0], token)
+		} else if parseErr.Token.Kind == 0 {
+			parseErr.Token = token
+			err = parseErr
+		}
+		p.Error(err.(ParseError))
+		return token
+	}
+	return p.Advance()
 }
 
 // Expect advances the parser if the current token is of typ, otherwise throws err.

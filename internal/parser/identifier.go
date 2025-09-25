@@ -8,6 +8,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+// Valid unless explicitly parsed
+var validIdents = map[lexer.TokenType]struct{}{
+	lexer.Identifier: {}, lexer.Import: {}, lexer.Can: {},
+}
+
 // isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
 // [lexer.Identifier] and types in [ast.Modifiers].
 func isValidIdentifier(tok lexer.TokenType) bool {
@@ -23,9 +28,6 @@ func isValidIdentOrDiscard(tok lexer.TokenType) bool {
 // validateIdentifier reports whether tok is a valid identifier. If it is false,
 // validateIdentifier reports an error to the parser.
 func (p *Parser) validateIdentifier(tok lexer.Token) bool {
-	if tok.Kind == lexer.Identifier {
-		return true
-	}
 	if _, ok := validIdents[tok.Kind]; !ok {
 		switch {
 		case tok.Kind == lexer.Underscore:
@@ -61,19 +63,17 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
 
+const includingNumber, isLabel uint8 = 1, 2
+
 // opt1: includingNumber, opt2: isLabel (for a better error)
-func (p *Parser) ParseMapIdentifier(opts ...bool) ast.Identifier {
-	var (
-		includingNumber = len(opts) > 0 && opts[0]
-		isLabel         = len(opts) > 1 && opts[1]
-		tok             = p.AdvanceNonBoundary()
-		kind            = tok.Kind
-	)
+func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
+	tok := p.AdvanceNonBoundary()
+	kind := tok.Kind
 	switch {
 	case kind == lexer.Identifier:
 		break
-	case kind == lexer.Numeric && !includingNumber:
-		if isLabel {
+	case kind == lexer.Numeric && opts&includingNumber == 0:
+		if opts&isLabel != 0 {
 			p.Error(errors.Token(errors.ErrInvalidLabel, tok))
 			break
 		}

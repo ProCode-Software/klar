@@ -6,44 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// Valid unless explicitly parsed
-var validIdents = map[lexer.TokenType]struct{}{
-	lexer.Identifier: {}, lexer.Import: {}, lexer.Can: {},
-}
-
-// Valid unless followed by a modifier
-var modifiers = map[lexer.TokenType]struct{}{
-	lexer.Opaque: {}, lexer.Public: {},
-}
-
-func init() {
-	for _, tok := range ast.Modifiers {
-		validIdents[tok] = struct{}{}
-		modifiers[tok] = struct{}{}
-	}
-}
-
-// isModifierUse reports whether the current token is followed by a modifier
-// or assignment
-func (p *Parser) isModifierUse(_ lexer.TokenType) bool {
-	if p.Index > 0 {
-		if _, ok := modifiers[p.PeekBehind().Kind]; ok {
-			return true
-		}
-	}
-	nextKind := p.Peek().Kind
-	if _, ok := modifiers[nextKind]; ok {
-		return true
-	}
-	switch nextKind {
-	case lexer.Identifier, lexer.Type, lexer.Func, lexer.HashLeftCurlyBrace, lexer.Underscore:
-		return true
-	case lexer.LeftParenthesis, lexer.LeftBracket:
-		return p.IsAssignment()
-	}
-	return false
-}
-
 func (p *Parser) validatePublic() {
 	if p.CurrKind() == lexer.Public {
 		p.Error(errors.Token(errors.ErrPublicFirst, p.Curr()))

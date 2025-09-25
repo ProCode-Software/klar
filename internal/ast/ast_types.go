@@ -709,3 +709,23 @@ type GoExpression struct {
 	Expression Expression
 	Body       *Block // If block
 }
+
+// try [expression]
+type TryExpression struct {
+	BaseNode
+	Expression Expression
+}
+
+// [expr]!
+type AssertExpression struct {
+	BaseNode
+	Expression Expression
+}
+
+// [then] when [condition] else [else]
+type TernaryExpression struct {
+	BaseNode
+	Value     Expression
+	Condition Expression
+	Else Expression
+}

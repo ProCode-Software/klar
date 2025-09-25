@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -49,7 +48,7 @@ func (p *Parser) ParseParamList() *ast.DestructureTuple {
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
-	if p.IsArrowFunc() {
+	if p.IsArrowFuncStart() {
 		return p.ParseParamList()
 	}
 	fmt.Println()
@@ -152,7 +151,7 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 		// Allow use of keywords as fields
 		return &ast.IndexExpression{
 			Object:   left,
-			Property: p.ParseMapIdentifier(false).Symbol(),
+			Property: p.ParseMapIdentifier(0).Symbol(),
 			Computed: false,
 		}
 	}
@@ -218,7 +217,7 @@ func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallEx
 			arg.Label, arg.Value = symbolToIdentifier(key), val
 		case p.Peek().Kind == lexer.Colon:
 			// Label (allow keywords)
-			arg.Label = p.ParseMapIdentifier(false, true)
+			arg.Label = p.ParseMapIdentifier(isLabel)
 			p.Advance() // :
 			fallthrough
 		default:
@@ -452,7 +451,7 @@ loop:
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
-		p.Expect(lexer.EndOfStatement)
+		p.ExpectEOSSmart()
 	default:
 		res := p.ParseStatement()
 		switch res := res.(type) {
@@ -536,10 +535,6 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	endSlashPos := p.ExpectError(err, lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
 	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line && !canGoOnNewline(curr.Kind) {
-		p.Tokens = slices.Insert(
-			p.Tokens, p.Index,
-			lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
-		)
 	} else if curr.Kind == lexer.Identifier &&
 		curr.Position == ranges.Add(endSlashPos, 0, 1) {
 		r.Flags = []rune(p.Advance().Source)
@@ -651,7 +646,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	f := &ast.ForExpression{}
 	// Peek for `in` before parsing destructure
-	if p.IsAssignment() {
+	if p.IsAssignmentStart() {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}

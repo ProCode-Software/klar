@@ -27,6 +27,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	var (
 		new      = make([]lexer.Token, 0, len(p.Tokens))
 		brackets = make([]int, 0, len(p.Tokens)/8)
+		assign   = make([]int, 0, len(p.Tokens)/12)
 	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
@@ -56,11 +57,16 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		case isComment(kind):
 			comments = append(comments, p.ParseComment(tok))
 			continue
-		// TODO: cache assignment
-		case isAssignment(kind):
-
-		case prev == lexer.EndOfStatement, prev == lexer.For:
-
+		// TODO: cache assignment (not done)
+		// edge case: #{ a, b, c }[a] = 2 doesn't work
+		// keep a global bracket level count
+		case isAssignment(kind), kind == lexer.Colon, kind == lexer.In:
+			if len(assign) > 0 {
+				p.assignmentTokens[assign[len(assign)-1]] = struct{}{}
+			}
+		// Add tokens that go before a destructure assignment here
+		case prev == lexer.EndOfStatement, prev == lexer.For, len(new) == 0:
+			assign = append(assign, len(new))
 		}
 		switch kind {
 		// Mark start position for brackets

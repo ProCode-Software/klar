@@ -57,6 +57,8 @@ func (WhenCanCase) expr()          {}
 func (GoExpression) expr()         {}
 func (AwaitExpression) expr()      {}
 func (RelationalExpression) expr() {}
+func (TryExpression) expr()        {}
+func (AssertExpression) expr()        {}
 
 // Statements
 func (BadExpression) stmt()        {}

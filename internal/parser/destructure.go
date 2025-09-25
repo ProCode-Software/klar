@@ -67,7 +67,7 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 	parseSeries(p, &items, func() *ast.ObjectDestructureEntry {
 		entry := &ast.ObjectDestructureEntry{}
 		identTok := p.Curr()
-		ident := p.ParseMapIdentifier(true)
+		ident := p.ParseMapIdentifier(includingNumber)
 		var end lexer.Position
 		if curr := p.CurrKind(); curr == lexer.Colon {
 			entry.Alias = ident

@@ -35,7 +35,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.HashLeftCurlyBrace:
 		res = p.ParseMap()
 	case lexer.LeftBracket:
-		if p.IsListCast() {
+		if p.IsListCastStart() {
 			res = p.ParseListCast()
 		} else {
 			res = p.ParseList()
@@ -171,14 +171,11 @@ func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statemen
 	default:
 		return nil, false
 	case lexer.Import:
-		if !p.isModifierUse(kind) {
+		if p.Peek().Kind != lexer.Identifier {
 			return nil, false
 		}
 		res = p.ParseImportStatement()
 	case lexer.Public:
-		if !p.isModifierUse(kind) {
-			return nil, false
-		}
 		res = p.ParsePublicModifier()
 	case lexer.At:
 		res = p.ParseAttribute()
@@ -210,9 +207,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = &ast.BreakStatement{}
 		p.Advance()
 	case lexer.Opaque:
-		if !p.isModifierUse(kind) {
-			return nil, false
-		}
 		res = p.ParseOpaqueModifier()
 	}
 	res.SetPos(startPos, p.lastTokEnd())
@@ -225,13 +219,13 @@ func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, h
 	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
 		// For better errors
 		lexer.Numeric, lexer.Boolean, lexer.Nil, lexer.Regex:
-		if p.IsAssignment() {
+		if p.IsAssignmentStart() {
 			res = p.ParseDestructureVars()
 			break
 		}
 		return nil, false
 	default:
-		if isValidIdentOrDiscard(kind) && p.IsAssignment() {
+		if isValidIdentOrDiscard(kind) && p.IsAssignmentStart() {
 			res = p.ParseDestructureVars()
 			break
 		}
@@ -296,4 +290,19 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
+}
+
+func (p *Parser) IsArrowFuncStart() bool {
+	_, ok := p.lambdaTokens[p.Index]
+	return ok
+}
+
+func (p *Parser) IsListCastStart() bool {
+	_, ok := p.listCastTokens[p.Index]
+	return ok
+}
+
+func (p *Parser) IsAssignmentStart() bool {
+	_, ok := p.assignmentTokens[p.Index]
+	return ok
 }
