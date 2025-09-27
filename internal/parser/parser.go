@@ -103,6 +103,7 @@ func (p *Parser) HasTokens() bool {
 func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
+
 func (p *Parser) ExpectNoAdvance(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectErrorNoAdvance(nil, need...)
 }

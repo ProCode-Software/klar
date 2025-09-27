@@ -114,19 +114,13 @@ func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
 	return left
 }
 
-func (p *Parser) ExpectEOSSmart() {
-	switch p.PeekBehind().Kind {
-	case lexer.Asterisk, lexer.Slash:
-		return
-	}
-	p.Expect(lexer.EndOfStatement)
-}
-
 func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrKind()
 	res, handled := p.handleTopLevelStatement(kind)
 	if handled {
-		p.ExpectEOSSmart()
+		if p.PeekBehind().Kind != lexer.Asterisk {
+			p.Expect(lexer.EndOfStatement)
+		}
 		return res
 	}
 	return p.ParseStatement()
@@ -137,7 +131,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	var res ast.Node
 	res, handled := p.handleStatement(kind)
 	if handled {
-		p.ExpectEOSSmart()
+		p.Expect(lexer.EndOfStatement)
 		return res.(ast.Statement)
 	}
 	res, handled = p.handleStatementNUD(kind)
@@ -153,7 +147,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 			res = p.ParseLED(res, DefaultBindingPower)
 		}
 	}
-	p.ExpectEOSSmart()
+	p.Expect(lexer.EndOfStatement)
 	switch res := res.(type) {
 	// Left-denoted statement
 	case ast.Statement:

@@ -727,5 +727,5 @@ type TernaryExpression struct {
 	BaseNode
 	Value     Expression
 	Condition Expression
-	Else Expression
+	Else      Expression
 }

@@ -25,9 +25,9 @@ import (
 // An EOS token is always added after a [lexer.RightCurlyBrace] '}' token.
 func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	var (
-		new      = make([]lexer.Token, 0, len(p.Tokens))
-		brackets = make([]int, 0, len(p.Tokens)/8)
-		assign   = make([]int, 0, len(p.Tokens)/12)
+		new       = make([]lexer.Token, 0, len(p.Tokens))
+		brackets  = make([]int, 0, len(p.Tokens)/8)
+		assignMap = make(map[int]struct{}, len(p.Tokens)/15)
 	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
@@ -43,6 +43,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	p.listCastTokens = make(map[int]struct{})
 
 	for i := 0; i < len(p.Tokens); i++ {
+		// TODO: unmatched brackets
 		var (
 			tok       = p.Tokens[i]
 			kind      = tok.Kind
@@ -52,27 +53,20 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		if len(new) > 0 {
 			prev = new[len(new)-1].Kind
 		}
-		switch {
-		// Comment
-		case isComment(kind):
+		switch kind {
+		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
 			comments = append(comments, p.ParseComment(tok))
 			continue
-		// TODO: cache assignment (not done)
-		// edge case: #{ a, b, c }[a] = 2 doesn't work
-		// keep a global bracket level count
-		case isAssignment(kind), kind == lexer.Colon, kind == lexer.In:
-			if len(assign) > 0 {
-				p.assignmentTokens[assign[len(assign)-1]] = struct{}{}
-			}
-		// Add tokens that go before a destructure assignment here
-		case prev == lexer.EndOfStatement, prev == lexer.For, len(new) == 0:
-			assign = append(assign, len(new))
-		}
-		switch kind {
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
 			lexer.LeftParenthesis:
 			brackets = append(brackets, len(new))
+			// Check for destructure assignment
+			switch prev {
+			// '/' if last statement ends in regex, or '*' for import
+			case 0, lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
+				assignMap[len(new)] = struct{}{}
+			}
 		case lexer.EOF:
 			// Add before EOF
 			if i > 0 && prev != lexer.EndOfStatement && canAddEOSAfter(prev) {
@@ -98,6 +92,9 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				lastBrackI   = len(brackets) - 1
 				firstNewline int // Cannot be zero because preceded by bracket
 			)
+			if lastBrackI < 0 { // Unmatched bracket
+				continue
+			}
 			// List cast: [Int](...)
 			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
 				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
@@ -111,22 +108,32 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			}
 			new = append(new, tok)
 			next := p.Tokens[newI]
+			switch next.Kind {
 			// Check for '->' (arrow function)
-			if next.Kind == lexer.Arrow {
+			case lexer.Arrow:
 				p.lambdaTokens[brackets[lastBrackI]] = struct{}{} // Cache it
-				// Remove the bracket from the array
-				brackets = brackets[:lastBrackI]
 				// Don't reparse the arrow
 				new = append(new, next)
 				i = newI
-			} else if firstNewline > 0 && !canGoOnNewline(next.Kind) {
-				// Still add the EOS
-				newTok := p.Tokens[firstNewline]
-				newTok.Kind = lexer.EndOfStatement
-				new = append(new, newTok)
-				i = newI - 1
+			// Followed by assignment
+			case lexer.Colon, lexer.In, lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
+				lexer.MinusEqual, lexer.Comma:
+				startBrackI := brackets[lastBrackI]
+				if _, ok := assignMap[startBrackI]; ok {
+					p.assignmentTokens[startBrackI] = struct{}{}
+				}
+				delete(assignMap, startBrackI)
+			default:
+				if firstNewline > 0 && !canGoOnNewline(next.Kind) {
+					// Still add the EOS
+					newTok := p.Tokens[firstNewline]
+					newTok.Kind = lexer.EndOfStatement
+					new = append(new, newTok)
+					i = newI - 1
+				}
 			}
-			continue // Already appended above
+			brackets = brackets[:lastBrackI] // Remove the bracket from the array
+			continue                         // Already appended above
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)
@@ -146,7 +153,9 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		}
 		i = nextTokI - 1 // Continuing the loop
 	}
+	// Free resources
 	p.Tokens = new[:len(new):len(new)]
+	assignMap, brackets = nil, nil
 	return
 }
 

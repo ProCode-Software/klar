@@ -51,5 +51,4 @@ func TestNewTabWriter(t *testing.T) {
 			t.Errorf("want:\n\n%s\n\ngot:\n\n%s\n", expected1, str)
 		}
 	})
-	
 }

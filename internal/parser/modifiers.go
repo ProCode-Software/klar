@@ -19,7 +19,7 @@ func (p *Parser) ParseOpaqueModifier() ast.Statement {
 	switch stmt := stmt.(type) {
 	case *ast.InterfaceDeclaration, *ast.StructDeclaration:
 		return &ast.OpaqueDeclaration{Declaration: stmt.(ast.TypeDeclaration)}
-	case *ast.PublicDeclaration:
+	case *ast.PublicDeclaration: // Already checked and invalid
 	default:
 		p.Error(errors.Node(errors.ErrInvalidOpaque, stmt))
 	}

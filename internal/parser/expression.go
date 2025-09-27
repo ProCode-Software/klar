@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -451,7 +452,7 @@ loop:
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
-		p.ExpectEOSSmart()
+		p.Expect(lexer.EndOfStatement)
 	default:
 		res := p.ParseStatement()
 		switch res := res.(type) {
@@ -534,7 +535,11 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	err := errors.Position(errors.ErrUnterminatedRegex, p.Curr().Position)
 	endSlashPos := p.ExpectError(err, lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
-	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line && !canGoOnNewline(curr.Kind) {
+	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line &&
+		!canGoOnNewline(curr.Kind) {
+		p.Tokens = slices.Insert(
+			p.Tokens, p.Index, lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
+		)
 	} else if curr.Kind == lexer.Identifier &&
 		curr.Position == ranges.Add(endSlashPos, 0, 1) {
 		r.Flags = []rune(p.Advance().Source)
