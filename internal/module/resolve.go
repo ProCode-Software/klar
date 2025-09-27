@@ -7,6 +7,16 @@ import (
 	"strings"
 )
 
+// Directories in the root of a project, as defined by the [Klar Project Structure Spec].
+//
+// [Klar Project Structure Spec]: https://github.com/ProCode-Software/klar/tree/main/docs/ProjectStructure.md
+var KlarProjectDirs = map[string]struct{}{
+	".klar": {}, "src": {}, "cmd": {}, "shared": {}, "external": {}, "pkg": {},
+	"recipes": {}, "scripts": {}, "generated": {}, "dist": {}, "docs": {},
+}
+
+const sep = string(filepath.Separator)
+
 const (
 	ManifestName  = "glas.pack"
 	PackageFolder = "pkg"
@@ -89,4 +99,31 @@ func ResolveProjectManifest(firstPath string) (string, error) {
 		}
 	}
 	return firstPath, nil
+}
+
+// ProjectDir returns the path to the root of a Klar project. If from contains
+// a folder part of the standard Klar project folders, ProjectDir returns the parent
+// of that folder. Otherwise, ProjectDir returns from. There may not be a glas.pack
+// file present in path.
+func ProjectDir(from string) (path string, err error) {
+	from, err = filepath.Abs(from)
+	if err != nil {
+		return
+	}
+	if info, err := os.Stat(from); err == nil && !info.IsDir() {
+		from = filepath.Dir(from)
+		if info.Name() == ManifestName {
+			return from, nil
+		}
+	} else if _, err := os.Stat(from + sep + ManifestName); err == nil {
+		return from, nil
+	}
+	parts := strings.Split(from, sep)
+	for i := len(parts) - 1; i >= 0; i-- {
+		part := parts[i]
+		if _, ok := KlarProjectDirs[part]; ok {
+			return filepath.Join(parts[:i]...), nil
+		}
+	}
+	return from, nil
 }
