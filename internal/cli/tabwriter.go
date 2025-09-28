@@ -27,19 +27,23 @@ var newline = []byte{'\n'}
 // A TabWriter writes bytes to a writer with vertical column alignment. A zero TabWriter
 // is ready for use. Unlike Go's [text/tabwriter.Writer],
 type TabWriter struct {
-	Output    io.Writer
-	Spacing   int  // Spacing between columns
-	MinWidth  int  // Minimum width of each column
-	PadChar   byte // Pad character, ' ' by default
-	Separator byte // Separator character, '\t' by default
-	Flags     TabWriterFlags
+	Output     io.Writer
+	Spacing    int  // Spacing between columns
+	MinWidth   int  // Minimum width of each column
+	Margin     int  // Left margin of each line
+	PadChar    byte // Pad character between printed cells, ' ' by default
+	Separator  byte // Separator character, '\t' by default
+	MarginChar byte // Margin character, ' ' by default
+	Flags      TabWriterFlags
 
 	isInit     bool
 	cells      [][]cell
+	cellWidths []int
 	colCap     int
 	currLine   int
-	padBytes   []byte
-	cellWidths []int
+
+	padBytes    []byte
+	marginBytes []byte
 }
 
 type cell struct {
@@ -47,14 +51,28 @@ type cell struct {
 	length  int
 }
 
-// NewTabWriter returns a [*TabWriter] with the recommended settings,
+// NewTabWriter returns a [*TabWriter] with the recommended settings
 func NewTabWriter() *TabWriter {
 	return &TabWriter{
-		Output:    os.Stdout,
-		Spacing:   2,
-		Separator: '\t',
-		PadChar:   ' ',
-		isInit:    true,
+		Output:     os.Stdout,
+		Spacing:    2,
+		Separator:  '\t',
+		MarginChar: ' ',
+		PadChar:    ' ',
+		isInit:     true,
+	}
+}
+
+// NewTabWriter returns a [*TabWriter] with the recommended settings and
+// Output set to w.
+func NewTabWriterOutput(w io.Writer) *TabWriter {
+	return &TabWriter{
+		Output:     w,
+		Spacing:    2,
+		Separator:  '\t',
+		PadChar:    ' ',
+		MarginChar: ' ',
+		isInit:     true,
 	}
 }
 
@@ -71,6 +89,9 @@ func (tw *TabWriter) init() {
 	if tw.PadChar == 0 {
 		tw.PadChar = ' '
 	}
+	if tw.MarginChar == 0 {
+		tw.MarginChar = ' '
+	}
 	tw.isInit = true
 }
 
@@ -86,10 +107,21 @@ func (tw *TabWriter) ReserveCapacity(lines, cols int) {
 }
 
 func (tw *TabWriter) fill(n int) []byte {
-	if n > len(tw.padBytes) || (len(tw.padBytes) > 0 && tw.padBytes[0] != tw.Separator) {
-		tw.padBytes = char.Repeat(tw.Separator, n)
+	if n > len(tw.padBytes) || (len(tw.padBytes) > 0 && tw.padBytes[0] != tw.PadChar) {
+		tw.padBytes = char.Repeat(tw.PadChar, n)
 	}
 	return tw.padBytes[:n]
+}
+
+func (tw *TabWriter) margin() []byte {
+	if tw.MarginChar == tw.PadChar {
+		return tw.fill(tw.Margin)
+	}
+	if tw.Margin > len(tw.marginBytes) ||
+		(len(tw.marginBytes) > 0 && tw.marginBytes[0] != tw.MarginChar) {
+		tw.marginBytes = char.Repeat(tw.MarginChar, tw.Margin)
+	}
+	return tw.marginBytes[:tw.Margin]
 }
 
 // Flush writes the calculated cells to tw.Output, returning the number of bytes written,
@@ -97,10 +129,18 @@ func (tw *TabWriter) fill(n int) []byte {
 func (tw *TabWriter) Flush() (n int, err error) {
 	var writeArray [][]byte
 	tw.init()
+	write := func(b []byte) error {
+		wn, err := tw.Output.Write(b)
+		n += wn
+		return err
+	}
 	/* if len(tw.cells) > 0 {
 		tw.cells = tw.cells[:len(tw.cells)-1] // Remove last empty row
 	} */
 	for _, line := range tw.cells {
+		if err := write(tw.margin()); err != nil {
+			return n, err
+		}
 		for colI, cell := range line {
 			if tw.Flags&DiscardEmptyColumns != 0 && cell.length == 0 {
 				continue
@@ -116,19 +156,19 @@ func (tw *TabWriter) Flush() (n int, err error) {
 				writeArray = [][]byte{cell.content, offset}
 			}
 			for _, seg := range writeArray {
-				wn, err := tw.Output.Write(seg)
-				n += wn
-				if err != nil {
+				if err = write(seg); err != nil {
 					return n, err
 				}
 			}
 		}
-		wn, err := tw.Output.Write(newline)
-		n += wn
-		if err != nil {
+		if err := write(newline); err != nil {
 			return n, err
 		}
 	}
+	tw.cells = tw.cells[:0]
+	tw.cellWidths = tw.cellWidths[:0]
+	tw.currLine = 0
+
 	return
 }
 

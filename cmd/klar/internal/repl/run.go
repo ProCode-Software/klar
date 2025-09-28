@@ -20,100 +20,160 @@ import (
 	"github.com/sanity-io/litter"
 )
 
-var ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
-
-var ctrlCMessage = fmt.Sprintf(
-	"%[1]sTo exit, type %[2]sexit%[1]s, press %[2]sCtrl+D%[1]s, or press %[2]sCtrl+C%[1]s again.",
-	ansi.Partial(ansi.CodeYellow), ansi.Partial(ansi.CodeCyan),
-)
-
 var (
 	defaultPrompt    = ansi.Magenta("> ")
 	incompletePrompt = ansi.Green("... ")
+
+	ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
 )
 
-func Run(*command.Runner) {
-	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+version.KlarVersion))
-	fmt.Printf("%[1]sType %[2]shelp%[1]s for more information. "+
-		"Press %[2]sCtrl+D%[1]s or type %[2]sexit%[1]s to exit.\n",
-		ansi.Partial(ansi.CodeGray), ansi.Partial(ansi.CodeCyan),
-	)
+type Session struct {
+	tokens      []lexer.Token // Incomplete/multiline tokens
+	interrupted bool          // If interrupted once
+	done        bool
+	multiline   bool   // Multiline editing enabled
+	line        uint32 // Current line, greater than 0 if multiline
+	*readline.Instance
+}
+
+func NewSession() (*Session, error) {
+	hist, err := HistoryFile()
+	if err != nil {
+		return nil, err
+	}
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          defaultPrompt,
-		HistoryFile:     "", // TODO: history file
+		HistoryFile:     hist,
 		InterruptPrompt: ansi.Red("Ctrl+C"),
 		EOFPrompt:       ansi.Red("Ctrl+D"),
 	})
 	if err != nil {
+		return nil, err
+	}
+	log.SetOutput(rl.Stderr())
+	return &Session{Instance: rl}, nil
+}
+
+func Run(*command.Runner) {
+	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+version.KlarVersion))
+	ansi.Println(ansi.CodeGray,
+		"Type %s for more information. Press %s or type %s to exit.",
+		ansi.Cyan("help"), ansi.Cyan("Ctrl+D"), ansi.Cyan("exit"),
+	)
+	s, err := NewSession()
+	if err != nil {
 		cli.InternalError(err)
 	}
-	defer rl.Close()
-	log.SetOutput(rl.Stderr())
-	var (
-		interruptCount   int
-		incompleteTokens []lexer.Token
-	)
-loop:
-	for {
-		input, err := rl.ReadLine()
-		switch err {
-		case nil:
-		case readline.ErrInterrupt:
-			/* if len(input) > 0 { // Never true because of the package
-				break // ignore Ctrl+C if there was input
-			} */
-			if interruptCount == 1 {
-				break loop
-			}
-			fmt.Println(ctrlCMessage)
-			interruptCount++
-			continue loop
-		case io.EOF:
-			break loop
-		default:
-			cli.InternalError(err)
+	for !s.done {
+		s.Prompt()
+	}
+}
+
+func HistoryFile() (string, error) {
+	// TODO: history file
+	return "", nil
+}
+
+func (s *Session) Prompt() {
+	if s.multiline {
+		s.line++
+		s.SetPrompt(linePrompt(s.line))
+	}
+	input, err := s.ReadLine()
+	switch err {
+	case nil:
+	case readline.ErrInterrupt:
+		/* if len(input) > 0 { // Never true because of the package
+			break // ignore Ctrl+C if there was input
+		} */
+		if s.interrupted {
+			s.Finish()
+			return
 		}
-		interruptCount = 0
-		tokens, err := parser.TokenizeString(input, true)
-		if err != nil { // TODO: maybe better handling
-			cli.Error("Lexer error: ", err)
-			continue
+		fmt.Fprintln(s.Stderr(), ctrlCMessage)
+		s.interrupted = true
+		return
+	case io.EOF:
+		s.Finish()
+		return
+	default:
+		cli.InternalError(err)
+	}
+	s.interrupted = false
+	tokens, err := parser.TokenizeString(input, true)
+	if err != nil {
+		// TODO: maybe better handling
+		cli.Error("Lexer error: ", err)
+		return
+	}
+	if len(tokens) > 1 && tokens[0].Kind == lexer.Identifier {
+		valid, exit := s.handleCommand(tokens[0].Source, tokens[1:len(tokens)-1])
+		if exit {
+			s.Finish()
 		}
-		if len(tokens) == 2 && tokens[0].Kind == lexer.Identifier {
-			switch tokens[0].Source {
-			case "exit":
-				break loop
-			}
-		}
-		if incompleteTokens != nil {
-			tokens = updateIncompleteTokens(incompleteTokens, tokens)
-		}
-		if isIncomplete(tokens) {
-			rl.SetPrompt(incompletePrompt)
-			incompleteTokens = tokens
-			continue
-		} else {
-			rl.SetPrompt(defaultPrompt)
-			incompleteTokens = nil
-		}
-		ErrPrinter.LoadTokens(tokens)
-		prog, errs := parser.Parse(tokens, &parser.Options{
-			File: "repl",
-		})
-		if len(errs) > 0 {
-			printErrors(errs)
-			continue
-		}
-		litter.Dump(prog)
-		_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
-			FilePath: "repl",
-			Target:   target.Double{Target: target.KlarVM},
-		})
-		if len(typeErrs) > 0 {
-			printErrors(typeErrs)
-			continue
+		if valid {
+			return
 		}
 	}
+	s.appendTokens(tokens)
+	if s.multiline {
+		s.checkMultilineEnd(tokens)
+	} else {
+		s.send()
+	}
+}
+
+func (s *Session) send() {
+	t := s.tokens
+	if isIncomplete(t) {
+		s.SetPrompt(incompletePrompt)
+		return
+	} else {
+		s.SetPrompt(defaultPrompt)
+		s.tokens = nil
+	}
+	for _, tok := range t {
+		fmt.Printf("%-20s %-5s %#q\n", tok.Kind, tok.Position, tok.Source)
+	}
+	ErrPrinter.LoadTokens(t)
+	prog, errs := parser.Parse(t, &parser.Options{
+		File: "repl",
+	})
+	if len(errs) > 0 {
+		printErrors(errs)
+		return
+	}
+	litter.Dump(prog)
+	_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
+		FilePath: "repl",
+		Target:   target.Double{Target: target.KlarVM},
+	})
+	if len(typeErrs) > 0 {
+		printErrors(typeErrs)
+		return
+	}
+}
+
+func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {
+	switch cmd {
+	case "exit":
+		return true, true
+	case "help":
+		s.PrintHelp()
+	case "load":
+	case "save":
+	case "multiline":
+		s.multiline = !s.multiline
+		if s.multiline {
+			fmt.Fprintln(s.Stderr(), multilineEnabledMsg)
+		} else {
+			fmt.Fprintln(s.Stderr(), multilineDisabledMsg)
+			s.resetMultiline()
+		}
+	default:
+		return false, false
+	}
+	return true, false
 }
 
 func printErrors[T errors.KlarError](errs []T) {
@@ -139,17 +199,48 @@ func isIncomplete(tokens []lexer.Token) bool {
 	return brackCount > 0
 }
 
-func updateIncompleteTokens(incompleteTokens, tokens []lexer.Token) []lexer.Token {
-	last := len(incompleteTokens)-1
-	// Replace EOF with newline
-	incompleteTokens[last].Kind = lexer.Newline
-	incompleteTokens[last].Source = "\n"
-	// Get last line
-	lastLine := incompleteTokens[last].Line
-	// Update lines of new tokens
-	for i := range tokens {
-		tokens[i].Line += lastLine
+func (s *Session) appendTokens(newTokens []lexer.Token) {
+	if len(s.tokens) == 0 {
+		s.tokens = newTokens
+		return
 	}
-	tokens = append(incompleteTokens, tokens...) // Append new tokens
-	return tokens
+	last := len(s.tokens) - 1
+	// Replace EOF with newline
+	s.tokens[last].Kind = lexer.Newline
+	s.tokens[last].Source = "\n"
+	// Get last line
+	lastLine := s.tokens[last].Line
+	// Update lines of new tokens
+	for i := range newTokens {
+		newTokens[i].Line += lastLine
+	}
+	s.tokens = append(s.tokens, newTokens...) // Append new tokens
+}
+
+func (s *Session) checkMultilineEnd(tokens []lexer.Token) {
+	// Guaranteed to have at least 2 tokens, already appended above
+	if ln := len(tokens); ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
+		s.tokens[ln-2] = s.tokens[ln-1]       // Replace dot with EOF
+		s.tokens = s.tokens[:len(s.tokens)-1] // Remove last EOF
+		s.multiline = false
+		s.resetMultiline()
+	}
+}
+
+func (s *Session) resetMultiline() {
+	s.send()
+	s.line = 0
+}
+
+func linePrompt(n uint32) string {
+	return ansi.Blue(fmt.Sprintf("%2d | ", n))
+}
+
+func (s *Session) Printf(color, format string, a ...any) {
+	ansi.Fprintln(s.Stderr(), color, format, a...)
+}
+
+func (s *Session) Finish() {
+	s.done = true
+	s.Close()
 }

@@ -162,7 +162,7 @@ func (p *Printer) PrintError(err errors.KlarError) {
 	// Error file path
 	b.Write(space(digitLen + 1))
 	box(icons.BoxTopLeft)
-	box(icons.BoxTop)
+	box(icons.BoxLine)
 	b.WriteByte(' ')
 	b.WriteString(ColorizeLine(err.GetFile(), err.At().Start))
 	b.WriteByte('\n')
@@ -181,7 +181,7 @@ func (p *Printer) PrintError(err errors.KlarError) {
 		}
 		// Line number
 		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Partial(lineColor), digitLen, line))
-		box(icons.BoxLeft)
+		box(icons.BoxSide)
 		b.WriteByte(' ')
 		// Each token on line
 		for lastCol = 1; currTok < len(p.tokens) && p.tokens[currTok].Line == line; currTok++ {

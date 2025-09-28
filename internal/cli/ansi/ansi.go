@@ -1,6 +1,11 @@
 package ansi
 
-import "os"
+import (
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+)
 
 const (
 	CodeYellow  = "\033[33m"
@@ -75,3 +80,21 @@ func DimCyan(s string) string     { return Color(CodeDimCyan, s) }
 func BrightRed(s string) string   { return Color(CodeBrightRed, s) }
 
 func BoldBrightWhite(s string) string { return Color(CodeBoldBrightWhite, s) }
+
+var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
+
+func Sprintf(color, format string, a ...any) string {
+	if DisableColor {
+		return fmt.Sprintf(format, a...)
+	}
+	new := formatRegex.ReplaceAllString(format, "$1"+CodeReset+color)
+	return fmt.Sprintf(color+new, a...) + CodeReset
+}
+
+func Println(color, format string, a ...any) {
+	fmt.Println(Sprintf(color, format, a...))
+}
+
+func Fprintln(file io.Writer, color, format string, a ...any) {
+	fmt.Fprintln(file, Sprintf(color, format, a...))
+}
