@@ -675,7 +675,7 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 	} else {
 		g.Expression = p.ParseExpression(UnaryBindingPower)
 		if _, ok := g.Expression.(*ast.CallExpression); !ok {
-			p.Error(errors.Node(errors.ErrGoMustBeFuncCall, g.Expression))
+			p.Error(errors.Node(errors.ErrMustBeFuncCall, g.Expression))
 		}
 	}
 	return g
@@ -684,4 +684,14 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 func (p *Parser) ParseAwaitExpression() *ast.AwaitExpression {
 	p.Advance() // await
 	return &ast.AwaitExpression{Expression: p.ParseExpression(UnaryBindingPower)}
+}
+
+func (p *Parser) ParseTryExpression() *ast.TryExpression {
+	p.Advance() // try
+	t := &ast.TryExpression{}
+	t.Expression = p.ParseExpression(UnaryBindingPower)
+	if _, ok := t.Expression.(*ast.CallExpression); !ok {
+		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression))
+	}
+	return t
 }

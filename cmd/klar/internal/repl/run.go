@@ -23,7 +23,7 @@ import (
 var ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
 
 var ctrlCMessage = fmt.Sprintf(
-	"%[1]sTo exit, type %[2]s'exit'%[1]s, press %[2]sCtrl+D%[1]s, or press %[2]sCtrl+C%[1]s again.",
+	"%[1]sTo exit, type %[2]sexit%[1]s, press %[2]sCtrl+D%[1]s, or press %[2]sCtrl+C%[1]s again.",
 	ansi.Partial(ansi.CodeYellow), ansi.Partial(ansi.CodeCyan),
 )
 
@@ -34,9 +34,9 @@ var (
 
 func Run(*command.Runner) {
 	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+version.KlarVersion))
-	fmt.Printf("%[1]sType %[1]shelp%[2]s for more information."+
-		"Press %[1]sCtrl+D%[2]s or type %[1]sexit%[2]s to exit.\n",
-		ansi.Partial(ansi.CodeReset), ansi.Partial(ansi.CodeCyan),
+	fmt.Printf("%[1]sType %[2]shelp%[1]s for more information. "+
+		"Press %[2]sCtrl+D%[1]s or type %[2]sexit%[1]s to exit.\n",
+		ansi.Partial(ansi.CodeGray), ansi.Partial(ansi.CodeCyan),
 	)
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          defaultPrompt,

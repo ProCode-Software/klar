@@ -82,7 +82,7 @@ const (
 	ErrMultipleKeysInMapRest        // Expected 1 key in map rest (comma not allowed)
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
-	ErrGoMustBeFuncCall             // Expression after go must be a function call
+	ErrMustBeFuncCall               // Expression after go or try must be a function call
 
 	// Type =====
 
@@ -233,8 +233,8 @@ func (e ParseError) error() string {
 		return "I expected '{' or '=' after type, but found " + NameToken(tok) + " instead"
 	case ErrRequiredStructFieldType:
 		return "A struct field must have an explicit type"
-	case ErrGoMustBeFuncCall:
-		return "The expression after 'go' must be a function call"
+	case ErrMustBeFuncCall:
+		return "The expression after 'go' or 'try' must be a function call"
 	case ErrExpectedHex:
 		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 	case ErrExpectedBinary:

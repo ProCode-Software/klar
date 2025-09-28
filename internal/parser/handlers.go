@@ -58,6 +58,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 		res = p.ParseGoExpression()
 	case lexer.Await:
 		res = p.ParseAwaitExpression()
+	case lexer.Try:
+		res = p.ParseTryExpression()
 	case lexer.Underscore:
 		if u := p.Advance(); !p.isWhenCase {
 			p.Error(errors.Token(errors.ErrUnderscoreValue, u))

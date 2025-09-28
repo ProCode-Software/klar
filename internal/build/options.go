@@ -1,8 +1,12 @@
 package build
 
 import (
+	"log"
+	"os"
+
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
@@ -74,8 +78,22 @@ type Compiler struct {
 	Verbose bool
 	Errors  []errors.KlarError
 	Options []*Options
+	Project *module.ProjectInfo
+	*log.Logger
 }
 
 func (o JSOptions) HasFlag(flag Flags) bool {
 	return (o.Flags & flag) != 0
+}
+
+// Logging
+// ==========
+
+func (c *Compiler) InitLogger() {
+	c.Logger = log.New(os.Stderr, "[compiler] ", log.Ltime)
+}
+
+// Equivalent to c.Logger.Println
+func (c *Compiler) Log(v ...any) {
+	c.Println(v...)
 }

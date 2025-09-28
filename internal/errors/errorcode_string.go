@@ -64,7 +64,7 @@ func _() {
 	_ = x[ErrMultipleKeysInMapRest-50]
 	_ = x[ErrExpectedExprAfterClosedRange-51]
 	_ = x[ErrEllipsisForClosedRange-52]
-	_ = x[ErrGoMustBeFuncCall-53]
+	_ = x[ErrMustBeFuncCall-53]
 	_ = x[ErrExpectedTypeAssignment-54]
 	_ = x[ErrRequiredStructFieldType-55]
 	_ = x[ErrEmptyGeneric-56]

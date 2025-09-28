@@ -101,21 +101,22 @@ func ResolveProjectManifest(firstPath string) (string, error) {
 	return firstPath, nil
 }
 
-// ProjectDir returns the path to the root of a Klar project. If from contains
-// a folder part of the standard Klar project folders, ProjectDir returns the parent
-// of that folder. Otherwise, ProjectDir returns from. There may not be a glas.pack
+// ProjectRoot returns the path to the root of a Klar project. If from contains
+// a folder part of the standard Klar project folders, ProjectRoot returns the parent
+// of that folder. Otherwise, ProjectRoot returns from. There may not be a glas.pack
 // file present in path.
-func ProjectDir(from string) (path string, err error) {
-	from, err = filepath.Abs(from)
+func ProjectRoot(from string) (string, error) {
+	from, err := filepath.Abs(from)
 	if err != nil {
-		return
+		return from, err
 	}
 	if info, err := os.Stat(from); err == nil && !info.IsDir() {
 		from = filepath.Dir(from)
 		if info.Name() == ManifestName {
 			return from, nil
 		}
-	} else if _, err := os.Stat(from + sep + ManifestName); err == nil {
+	}
+	if _, err = os.Stat(from + sep + ManifestName); err == nil {
 		return from, nil
 	}
 	parts := strings.Split(from, sep)
@@ -125,5 +126,45 @@ func ProjectDir(from string) (path string, err error) {
 			return filepath.Join(parts[:i]...), nil
 		}
 	}
+	// Return the current directory if a project wasn't found
 	return from, nil
+}
+
+// PackageRoot returns the folder where 
+func PackageRoot(from string) (pkg, project string, err error) {
+	from, err = filepath.Abs(from)
+	if err != nil {
+		return from, from, err
+	}
+	// Check if a manifest is located in dir
+	if info, err := os.Stat(from); err == nil && !info.IsDir() {
+		from = filepath.Dir(from)
+		if info.Name() == ManifestName {
+			return from, from, nil
+		}
+	}
+	if _, err = os.Stat(from + sep + ManifestName); err == nil {
+		return from, from, nil
+	}
+	pkg, project = projectRootFast(from)
+	return
+}
+
+// [PackageRoot] without calling [os.Stat]
+func projectRootFast(from string) (pkg, project string) {
+	parts := strings.Split(from, sep)
+	// Loop backwards for closest package
+	for i := len(parts) - 1; i >= 0; i-- {
+		part := parts[i]
+		if part == "pkg" {
+			project = filepath.Join(parts[:i]...)
+			subPackage := strings.Join([]string{project, part, parts[i+1]}, sep)
+			return subPackage, project
+		} else if _, ok := KlarProjectDirs[part]; ok {
+			project = filepath.Join(parts[:i]...)
+			return project, project
+		}
+	}
+	// Return the current directory if a project wasn't found
+	return from, from
 }
