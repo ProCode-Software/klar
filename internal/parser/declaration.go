@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -156,7 +154,6 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		field := &ast.StructField{}
 		field.Attributes = p.maybeParseAttributes()
-		fmt.Println(p.Index, p.Curr())
 		parseSeries(p, &field.Names, func() ast.Identifier {
 			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
@@ -182,7 +179,6 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 			p.Advance()
 			field.Value = p.ParseExpression(ExpressionBindingPower)
 		}
-		fmt.Println("end", p.Index, p.Curr())
 		markStartEndPos(p, field, field.Names[0].Position)
 		fields = append(fields, field)
 		if p.CurrKind() != lexer.RightCurlyBrace {

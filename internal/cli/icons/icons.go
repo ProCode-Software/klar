@@ -11,3 +11,13 @@ const (
 	BoxLeftSplit   = '├'
 	Bullet         = '·'
 )
+
+const dingbats = `
+  Hex
+✓ 2713
+✔ 2714
+✕ 2715
+✖ 2716
+✗ 2717
+✘ 2718
+`

@@ -69,7 +69,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			}
 		case lexer.EOF:
 			// Add before EOF
-			if i > 0 && prev != lexer.EndOfStatement && canAddEOSAfter(prev) {
+			if i > 0 && prev != lexer.EndOfStatement && CanAddEOSAfter(prev) {
 				new = append(new, lexer.Token{
 					Kind:     lexer.EndOfStatement,
 					Position: tok.Position,
@@ -79,7 +79,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		// as an expression: { x + 3 }
 		case lexer.RightCurlyBrace:
 			if i > 0 && prev != lexer.LeftCurlyBrace &&
-				prev != lexer.HashLeftCurlyBrace && canAddEOSAfter(prev) {
+				prev != lexer.HashLeftCurlyBrace && CanAddEOSAfter(prev) {
 				new = append(new, lexer.Token{
 					Kind:     lexer.EndOfStatement,
 					Position: tok.Position,
@@ -124,7 +124,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				}
 				delete(assignMap, startBrackI)
 			default:
-				if firstNewline > 0 && !canGoOnNewline(next.Kind) {
+				if firstNewline > 0 && !CanGoOnNewline(next.Kind) {
 					// Still add the EOS
 					newTok := p.Tokens[firstNewline]
 					newTok.Kind = lexer.EndOfStatement
@@ -140,11 +140,11 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			continue
 		}
 		if i > 0 {
-			insertEOS = canAddEOSAfter(prev)
+			insertEOS = CanAddEOSAfter(prev)
 		}
 		nextTokI := readComments(i)
 		// Should add EOS before next token?
-		if insertEOS && canGoOnNewline(p.Tokens[nextTokI].Kind) {
+		if insertEOS && CanGoOnNewline(p.Tokens[nextTokI].Kind) {
 			insertEOS = false
 		}
 		if insertEOS {
@@ -161,7 +161,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 
 // Never add EOS after these tokens. All of the handled tokens are NUDs, otherwise
 // an EOS is added if canGoOnNewline(t) returns false.
-func canAddEOSAfter(t lexer.TokenType) bool {
+func CanAddEOSAfter(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Punctuation
@@ -175,7 +175,7 @@ func canAddEOSAfter(t lexer.TokenType) bool {
 	case lexer.RightParenthesis, lexer.RightBracket:
 		return true
 	default:
-		return !canGoOnNewline(t)
+		return !CanGoOnNewline(t)
 	}
 }
 
@@ -190,7 +190,7 @@ func canAddEOSAfter(t lexer.TokenType) bool {
 // Tokens that begin statements (such as keywords) aren't here either. [lexer.Newline]
 // is included and return true so that extra newlines are removed. Apart from that,
 // all of the handled tokens are LEDs.
-func canGoOnNewline(t lexer.TokenType) bool {
+func CanGoOnNewline(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Assignment

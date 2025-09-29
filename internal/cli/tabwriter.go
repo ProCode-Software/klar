@@ -134,9 +134,10 @@ func (tw *TabWriter) Flush() (n int, err error) {
 		n += wn
 		return err
 	}
-	/* if len(tw.cells) > 0 {
-		tw.cells = tw.cells[:len(tw.cells)-1] // Remove last empty row
-	} */
+	// Remove last empty row
+	if l := len(tw.cells); l > 0 && len(tw.cells[l-1]) == 0 {
+		tw.cells = tw.cells[:len(tw.cells)-1]
+	}
 	for _, line := range tw.cells {
 		if err := write(tw.margin()); err != nil {
 			return n, err
@@ -146,14 +147,18 @@ func (tw *TabWriter) Flush() (n int, err error) {
 				continue
 			}
 			offset := tw.fill(tw.cellWidths[colI] - cell.length)
+			space := tw.fill(tw.Spacing)
 			switch {
 			default:
-				writeArray = [][]byte{cell.content, offset}
+				writeArray = [][]byte{cell.content, offset, space}
 			case tw.Flags&AlignCenter != 0:
 				half := len(offset) / 2
-				writeArray = [][]byte{offset[:half], cell.content, offset[half:]}
+				writeArray = [][]byte{offset[:half], cell.content, offset[half:], space}
 			case tw.Flags&AlignRight != 0:
-				writeArray = [][]byte{cell.content, offset}
+				writeArray = [][]byte{cell.content, offset, space}
+			}
+			if colI == len(line)-1 { // Trim whitespace at end of line
+				writeArray = writeArray[:len(writeArray)-2]
 			}
 			for _, seg := range writeArray {
 				if err = write(seg); err != nil {
@@ -165,10 +170,10 @@ func (tw *TabWriter) Flush() (n int, err error) {
 			return n, err
 		}
 	}
+	// Reset cells after flushing
 	tw.cells = tw.cells[:0]
 	tw.cellWidths = tw.cellWidths[:0]
 	tw.currLine = 0
-
 	return
 }
 
@@ -203,8 +208,8 @@ func (tw *TabWriter) readANSIEscape(b []byte) (escapeLen int) {
 	var ansiEndMin byte = 0x30
 	start := 1
 	if b[1] == '[' {
-		ansiEndMin = 0x40
-		start = 2
+		ansiEndMin, start = 0x40, 2
+		escapeLen++
 	}
 	for _, c := range b[start:] {
 		escapeLen++
@@ -232,9 +237,6 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 		case '\x1b':
 			// ANSI escape
 			escapeLen := tw.readANSIEscape(b[i:])
-			if cellStart == i {
-				cellStart += escapeLen + 1
-			}
 			exclude += escapeLen + 1
 			i += escapeLen
 		case tw.Separator:
@@ -259,6 +261,7 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 		line = append(line, cell{content: b[cellStart:]})
 		tw.evalCellWidth(line, exclude)
 	}
+	tw.cells[tw.currLine] = line
 }
 
 func (tw *TabWriter) breakLine() {
@@ -269,7 +272,8 @@ func (tw *TabWriter) breakLine() {
 func (tw *TabWriter) evalCellWidth(line []cell, exclude int) {
 	col := len(line) - 1
 	width := utf8.RuneCount(line[col].content)
-	line[col].length = width - exclude
+	width -= exclude
+	line[col].length = width
 	if len(tw.cellWidths) <= col {
 		tw.cellWidths = append(tw.cellWidths, max(width, tw.MinWidth))
 		return

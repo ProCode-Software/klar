@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -52,7 +51,6 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	if p.IsArrowFuncStart() {
 		return p.ParseParamList()
 	}
-	fmt.Println()
 	p.Advance() // (
 	if p.CurrKind() == lexer.RightParenthesis {
 		// Empty tuple
@@ -536,7 +534,7 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	endSlashPos := p.ExpectError(err, lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
 	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line &&
-		!canGoOnNewline(curr.Kind) {
+		!CanGoOnNewline(curr.Kind) {
 		p.Tokens = slices.Insert(
 			p.Tokens, p.Index, lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)

@@ -20,7 +20,7 @@ func Print(msg string, detail ...any) {
 
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
-	str := ansi.BoldRed(errorType) + ansi.BoldDim(": ") + ansi.Bold(msg)
+	str := ansi.BoldBrightRed(errorType) + ansi.BoldDim(": ") + ansi.Bold(msg)
 	if len(detail) > 0 {
 		str += fmt.Sprint(detail...)
 	}
@@ -68,6 +68,7 @@ func InternalError(err any) {
 	Failure("Internal Error: ", err)
 }
 
+// TODO: update
 func InvalidUsage(title, passed, usage string) {
 	Print(title+": ", ansi.Yellow(passed)+"\n\n"+
 		ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
@@ -82,7 +83,7 @@ func FileNotFound(path string) {
 }
 
 func HintIndent(hint string) {
-	Custom(ansi.Blue("    Hint"), "", hint)
+	Custom(ansi.BrightBlue("    Hint"), "", hint)
 }
 
 func HandleInternalErr(err error, detail ...string) {

@@ -12,6 +12,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/analysis"
@@ -31,8 +32,9 @@ type Session struct {
 	tokens      []lexer.Token // Incomplete/multiline tokens
 	interrupted bool          // If interrupted once
 	done        bool
-	multiline   bool   // Multiline editing enabled
-	line        uint32 // Current line, greater than 0 if multiline
+	multiline   bool            // Multiline editing enabled
+	line        uint32          // Current line, greater than 0 if multiline
+	evaluated   [][]lexer.Token // Successfully evaluated lines
 	*readline.Instance
 }
 
@@ -45,7 +47,7 @@ func NewSession() (*Session, error) {
 		Prompt:          defaultPrompt,
 		HistoryFile:     hist,
 		InterruptPrompt: ansi.Red("Ctrl+C"),
-		EOFPrompt:       ansi.Red("Ctrl+D"),
+		EOFPrompt:       ansi.Red("exit"),
 	})
 	if err != nil {
 		return nil, err
@@ -103,7 +105,7 @@ func (s *Session) Prompt() {
 	tokens, err := parser.TokenizeString(input, true)
 	if err != nil {
 		// TODO: maybe better handling
-		cli.Error("Lexer error: ", err)
+		s.handleLexerError(err)
 		return
 	}
 	if len(tokens) > 1 && tokens[0].Kind == lexer.Identifier {
@@ -123,6 +125,10 @@ func (s *Session) Prompt() {
 	}
 }
 
+func (s *Session) handleLexerError(err error) {
+	s.Printf(ansi.CodeBold, "%s: %v", ansi.BoldBrightRed("Lexer error"), err)
+}
+
 func (s *Session) send() {
 	t := s.tokens
 	if isIncomplete(t) {
@@ -132,13 +138,15 @@ func (s *Session) send() {
 		s.SetPrompt(defaultPrompt)
 		s.tokens = nil
 	}
-	for _, tok := range t {
-		fmt.Printf("%-20s %-5s %#q\n", tok.Kind, tok.Position, tok.Source)
+	s.parse(t)
+}
+
+func (s *Session) parse(t []lexer.Token) {
+	if len(t) < 2 {
+		return
 	}
 	ErrPrinter.LoadTokens(t)
-	prog, errs := parser.Parse(t, &parser.Options{
-		File: "repl",
-	})
+	prog, errs := parser.Parse(t, &parser.Options{File: "repl"})
 	if len(errs) > 0 {
 		printErrors(errs)
 		return
@@ -161,6 +169,7 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 	case "help":
 		s.PrintHelp()
 	case "load":
+		s.LoadFile(args)
 	case "save":
 	case "multiline":
 		s.multiline = !s.multiline
@@ -196,7 +205,8 @@ func isIncomplete(tokens []lexer.Token) bool {
 			brackCount--
 		}
 	}
-	return brackCount > 0
+	return brackCount > 0 ||
+		(len(tokens) > 1 && !astParser.CanAddEOSAfter(tokens[len(tokens)-2].Kind))
 }
 
 func (s *Session) appendTokens(newTokens []lexer.Token) {
@@ -220,8 +230,9 @@ func (s *Session) appendTokens(newTokens []lexer.Token) {
 func (s *Session) checkMultilineEnd(tokens []lexer.Token) {
 	// Guaranteed to have at least 2 tokens, already appended above
 	if ln := len(tokens); ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
-		s.tokens[ln-2] = s.tokens[ln-1]       // Replace dot with EOF
-		s.tokens = s.tokens[:len(s.tokens)-1] // Remove last EOF
+		existingL := len(s.tokens)
+		s.tokens[existingL-2] = s.tokens[existingL-1] // Replace dot with EOF
+		s.tokens = s.tokens[:existingL-1]             // Remove last EOF
 		s.multiline = false
 		s.resetMultiline()
 	}

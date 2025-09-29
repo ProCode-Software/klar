@@ -31,9 +31,16 @@ const (
 	CodeResetBold    = "\033[0;1m"
 	CodeResetBoldDim = "\033[0;1;2m"
 
-	CodeBrightWhite     = "\033[97m"
-	CodeBrightRed       = "\033[91m"
+	CodeBrightWhite   = "\033[97m"
+	CodeBrightRed     = "\033[91m"
+	CodeBrightGreen   = "\033[92m"
+	CodeBrightYellow  = "\033[93m"
+	CodeBrightBlue    = "\033[94m"
+	CodeBrightMagenta = "\033[95m"
+	CodeBrightCyan    = "\033[96m"
+
 	CodeBoldBrightWhite = "\033[1;97m"
+	CodeBoldBrightRed   = "\033[1;91m"
 
 	CodeDimCyan = "\033[2;36m"
 )
@@ -77,9 +84,16 @@ func BoldMagenta(s string) string { return Color(CodeBoldMagenta, s) }
 func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
 func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
 func DimCyan(s string) string     { return Color(CodeDimCyan, s) }
-func BrightRed(s string) string   { return Color(CodeBrightRed, s) }
+
+func BrightRed(s string) string     { return Color(CodeBrightRed, s) }
+func BrightGreen(s string) string   { return Color(CodeBrightGreen, s) }
+func BrightYellow(s string) string  { return Color(CodeBrightYellow, s) }
+func BrightBlue(s string) string    { return Color(CodeBrightBlue, s) }
+func BrightMagenta(s string) string { return Color(CodeBrightMagenta, s) }
+func BrightCyan(s string) string    { return Color(CodeBrightCyan, s) }
 
 func BoldBrightWhite(s string) string { return Color(CodeBoldBrightWhite, s) }
+func BoldBrightRed(s string) string   { return Color(CodeBoldBrightRed, s) }
 
 var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
 

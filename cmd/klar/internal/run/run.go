@@ -9,5 +9,6 @@ import (
 func Run(r *command.Runner) {
 }
 
-func RunInput(r io.Reader, src string) {
+// Runs in its own module
+func RunInput(r io.Reader, fileName string) {
 }

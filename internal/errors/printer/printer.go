@@ -53,7 +53,7 @@ func GetMessage(err errors.KlarError) string {
 	default:
 		title, msg = "Error", first
 	}
-	return ansi.BoldRed(title) + ansi.BoldDim(": ") + ansi.Bold(msg) + desc
+	return ansi.BoldBrightRed(title) + ansi.BoldDim(": ") + ansi.Bold(msg) + desc
 }
 
 func ColorizeLine(file string, pos lexer.Position) string {
@@ -215,7 +215,7 @@ func (p *Printer) PrintError(err errors.KlarError) {
 			box(icons.Bullet)
 			b.WriteByte(' ')
 			b.Write(space(at.Start.Col - 1))
-			b.WriteString(ansi.BoldRed(highlight))
+			b.WriteString(ansi.BoldBrightRed(highlight)) // TODO: yellow for warnings
 			b.WriteByte('\n')
 		}
 	}

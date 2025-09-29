@@ -1,9 +1,6 @@
 package parser
 
 import (
-	"fmt"
-	"reflect"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -101,7 +98,6 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.Function
 		// Allow (Int) -> (Int) -> Int
 		tuple = left.Parameters
 	default:
-		fmt.Println(reflect.TypeOf(left).String())
 		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
 	}
 	p.Expect(lexer.Arrow)
