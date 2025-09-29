@@ -170,7 +170,8 @@ func CanAddEOSAfter(t lexer.TokenType) bool {
 		lexer.HashLeftCurlyBrace, lexer.Newline,
 		// Keywords
 		lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type,
-		lexer.Go, lexer.While, lexer.Can, lexer.NotCan:
+		lexer.Go, lexer.Await, lexer.While, lexer.Can, lexer.NotCan,
+		lexer.Try, lexer.Opaque, lexer.Public:
 		return false
 	case lexer.RightParenthesis, lexer.RightBracket:
 		return true
