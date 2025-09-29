@@ -9,10 +9,19 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPower) ast.Statement {
+func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Statement {
 	p.Advance() // :
+	var v *ast.DestructureVars
+	switch left := left.(type) {
+	case *ast.DestructureVars:
+		v = left
+	case *ast.Symbol:
+		v = &ast.DestructureVars{Values: []ast.Assignable{left}}
+	default:
+		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
+	}
 	annot := &ast.TypeAnnotation{
-		Variable: left,
+		Variable: v,
 		Type:     p.ParseType(DefaultTypeBindingPower),
 	}
 	switch curr := p.Curr(); curr.Kind {
@@ -20,7 +29,7 @@ func (p *Parser) ParseVarTypeAnnotation(left *ast.DestructureVars, bp BindingPow
 		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
 		fallthrough
 	case lexer.ColonEqual:
-		return p.ParseAssignment(left, bpOf(curr.Kind))
+		return p.ParseAssignment(v, bpOf(curr.Kind))
 	default:
 		p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
 		return &ast.BadExpression{Value: annot}
@@ -33,17 +42,19 @@ func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.Varia
 	if annot, ok := left.(*ast.TypeAnnotation); ok {
 		left, explicitType = annot.Variable, annot.Type
 	}
-	if left2, ok := left.(*ast.DestructureVars); ok {
-		vars = make([]ast.Destructure, len(left2.Values))
-		for i, v := range left2.Values {
+	switch left := left.(type) {
+	case *ast.DestructureVars:
+		vars = make([]ast.Destructure, len(left.Values))
+		for i, v := range left.Values {
 			if _, ok := v.(ast.Destructure); !ok {
 				p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
 				v = &ast.BadExpression{Value: v}
 			}
 			vars[i] = v.(ast.Destructure)
 		}
-	} else {
-		println("!!!") // TODO: fix
+	case *ast.Symbol:
+		vars = []ast.Destructure{left}
+	default:
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
 	}
 	return &ast.VariableDeclaration{
@@ -61,12 +72,14 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		return p.ParseVariableDeclaration(left, rhs)
 	}
 	var values []ast.Assignable
-	if l, ok := left.(*ast.DestructureVars); ok {
-		values = l.Values
-	} else {
-		// I think this is already prevented
-		panic("left side of assignment is not *ast.DestructureVars")
-		// values = []ast.Assignable{&ast.BadExpression{Value: left}}
+	switch left := left.(type) {
+	case *ast.DestructureVars:
+		values = left.Values
+	case ast.Assignable:
+		values = []ast.Assignable{left}
+	default:
+		p.Error(errors.Node(errors.ErrInvalidAssignment, left))
+		values = []ast.Assignable{&ast.BadExpression{Value: left}}
 	}
 	return &ast.AssignmentStatement{
 		Assignee: values,

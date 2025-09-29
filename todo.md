@@ -2,9 +2,6 @@
 ## Lexer
 
 ## Parser
-- in when case, map destructuring
-- Error handling similar to Rust's `?` postfix, but with explicit `return`
-- _ in lambda param: `_ -> ...`, `(_) -> ...`, `(_: Int) -> ...`
 
 ## Analysis
 - behaviour of () and (x) tuples

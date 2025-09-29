@@ -61,7 +61,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 	case lexer.Try:
 		res = p.ParseTryExpression()
 	case lexer.Underscore:
-		if u := p.Advance(); !p.isWhenCase {
+		if u := p.Advance(); !p.isWhenCase && p.CurrKind() != lexer.Arrow {
 			p.Error(errors.Token(errors.ErrUnderscoreValue, u))
 		}
 		res = &ast.Discard{}
@@ -139,11 +139,7 @@ func (p *Parser) handleStatementLED(
 		return left, false
 	// Type annotation
 	case lexer.Colon:
-		if left, ok := left.(*ast.DestructureVars); ok {
-			res = p.ParseVarTypeAnnotation(left, bp)
-		} else {
-			return nil, false
-		}
+		res = p.ParseVarTypeAnnotation(left, bp)
 	// Assignment
 	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
 		res = p.ParseAssignment(left.(ast.Expression), bp)
@@ -218,19 +214,13 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
 	startPos := p.Curr().Position
 	switch kind {
-	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis,
-		// For better errors
-		lexer.Numeric, lexer.Boolean, lexer.Nil, lexer.Regex:
+	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis:
 		if p.IsAssignmentStart() {
 			res = p.ParseDestructureVars()
 			break
 		}
-		return nil, false
+		fallthrough
 	default:
-		if isValidIdentOrDiscard(kind) && p.IsAssignmentStart() {
-			res = p.ParseDestructureVars()
-			break
-		}
 		return nil, false
 	}
 	res.SetPos(startPos, p.lastTokEnd())

@@ -96,7 +96,7 @@ loop:
 			}
 			if cmtLevel == 0 {
 				b.WriteRune(r)
-				endPos = l.nextCol()
+				endPos = l.Pos
 				break loop
 			}
 		case r == '*' && last == '/':
