@@ -24,7 +24,7 @@ func GetProjectInfo(fromPath string) (*ProjectInfo, error) {
 }
 
 // Returns an empty string if no manifest was found.
-func (i *ProjectInfo) Manifest() (string) {
+func (i *ProjectInfo) Manifest() string {
 	man := i.ProjectRoot + sep + ManifestName
 	if _, err := os.Stat(man); err == nil {
 		return man

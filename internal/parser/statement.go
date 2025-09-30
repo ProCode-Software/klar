@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"strings"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -90,7 +88,6 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 
 // Soft keywords are not allowed in module names
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
-	var b strings.Builder
 	i := &ast.ImportStatement{}
 	p.Advance() // import
 	// Parse maybe alias
@@ -99,9 +96,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		p.Advance() // =
 	}
 	// First part of module
-	first := p.Expect(lexer.Identifier)
-	modStart := first.Position
-	b.WriteString(first.Source)
+	i.Module = append(i.Module, p.ParseStrictIdentifier())
 	for p.CurrKind() == lexer.Dot {
 		p.Advance()
 		// Wildcard import
@@ -112,10 +107,8 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		} else if curr == lexer.LeftCurlyBrace {
 			break
 		}
-		b.WriteByte('.')
-		b.WriteString(p.Expect(lexer.Identifier).Source)
+		i.Module = append(i.Module, p.ParseStrictIdentifier())
 	}
-	i.Module = ast.Identifier{Position: modStart, Name: b.String()}
 
 	// Unqualified import
 	if p.CurrKind() == lexer.LeftCurlyBrace {

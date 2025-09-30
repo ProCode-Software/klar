@@ -330,7 +330,8 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 //	import fetch = klar.http.requests.{get}
 type ImportStatement struct {
 	BaseNode
-	Module, Alias      Identifier // Alias is nil if no unqualified imports
+	Alias              Identifier // Alias is nil if no unqualified imports
+	Module             []Identifier
 	Wildcard           bool
 	UnqualifiedImports []*UnqualifiedImport
 }

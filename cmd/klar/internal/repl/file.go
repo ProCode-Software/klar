@@ -2,6 +2,7 @@ package repl
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 
@@ -54,4 +55,21 @@ func (s *Session) LoadFile(args []lexer.Token) {
 }
 
 func (s *Session) SaveFile(args []lexer.Token) {
+	path, ok := parseArg(args)
+	if !ok {
+		if path = s.lastSaveLoc; path == "" {
+			
+		}
+	} else {
+		s.lastSaveLoc = path
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		s.fileError(path, "write to", err)
+		return
+	}
+	defer file.Close()
+	for _, tok := range s.evaluated {
+		fmt.Printf("%#q\n", printer.PrintTokens(tok))
+	}
 }

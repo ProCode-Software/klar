@@ -47,6 +47,10 @@ func (p *Parser) ParseIdentifier() ast.Identifier {
 	p.validateIdentifier(tok)
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
+func (p *Parser) ParseStrictIdentifier() ast.Identifier {
+	tok := p.Expect(lexer.Identifier)
+	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+}
 
 // [*Parser.ParseIdentifier] but will not validate. Expected use case if for already
 // validated identifiers. [lexer.Underscore] is allowed (because any token is allowed)

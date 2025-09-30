@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	defaultPrompt    = ansi.Magenta("> ")
+	defaultPrompt    = ansi.Magenta("> ") // ansi.Magenta("(repl)") + " > "
 	incompletePrompt = ansi.Green("... ")
 
 	ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
@@ -35,6 +35,7 @@ type Session struct {
 	multiline   bool            // Multiline editing enabled
 	line        uint32          // Current line, greater than 0 if multiline
 	evaluated   [][]lexer.Token // Successfully evaluated lines
+	lastSaveLoc string
 	*readline.Instance
 }
 
@@ -119,7 +120,7 @@ func (s *Session) Prompt() {
 	}
 	s.appendTokens(tokens)
 	if s.multiline {
-		s.checkMultilineEnd(tokens)
+		s.checkMultilineEnd()
 	} else {
 		s.send()
 	}
@@ -160,6 +161,7 @@ func (s *Session) parse(t []lexer.Token) {
 		printErrors(typeErrs)
 		return
 	}
+	s.evaluated = append(s.evaluated, t)
 }
 
 func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {
@@ -227,12 +229,12 @@ func (s *Session) appendTokens(newTokens []lexer.Token) {
 	s.tokens = append(s.tokens, newTokens...) // Append new tokens
 }
 
-func (s *Session) checkMultilineEnd(tokens []lexer.Token) {
+func (s *Session) checkMultilineEnd() {
+	tokens, ln := s.tokens, len(s.tokens)
 	// Guaranteed to have at least 2 tokens, already appended above
-	if ln := len(tokens); ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
-		existingL := len(s.tokens)
-		s.tokens[existingL-2] = s.tokens[existingL-1] // Replace dot with EOF
-		s.tokens = s.tokens[:existingL-1]             // Remove last EOF
+	if ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
+		tokens[ln-2] = tokens[ln-1] // Replace dot with EOF
+		s.tokens = tokens[:ln-1]    // Remove last EOF
 		s.multiline = false
 		s.resetMultiline()
 	}

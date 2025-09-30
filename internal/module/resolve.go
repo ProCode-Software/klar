@@ -130,7 +130,7 @@ func ProjectRoot(from string) (string, error) {
 	return from, nil
 }
 
-// PackageRoot returns the folder where 
+// PackageRoot returns the folder where
 func PackageRoot(from string) (pkg, project string, err error) {
 	from, err = filepath.Abs(from)
 	if err != nil {
