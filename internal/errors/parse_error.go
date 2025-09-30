@@ -70,6 +70,7 @@ const (
 	ErrInvalidPublic        // Public modifier applied to non-declaration
 	ErrPublicFirst          // Public modifier always goes first
 	ErrDuplicateModifier    // More than 1 of the same modifier
+	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
 
 	// Expression =====
 
@@ -157,10 +158,6 @@ func (e ParseError) error() string {
 			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
 	case ErrNotAnExpression:
-		if node, ok := e.Node.(*ast.AssignmentStatement); ok &&
-			node.Operator.Kind == lexer.Equal {
-			return "An assignment can't be used as an expression in Klar; did you mean to use '==' instead?"
-		}
 		switch e.Node.(type) {
 		case *ast.UpdateStatement:
 			return "'++' and '--' can only be used as postfix statements"
@@ -169,9 +166,6 @@ func (e ParseError) error() string {
 		}
 		return "This isn't an expression"
 	case ErrAssignmentAsExpr:
-		if e.Token.Kind == lexer.Equal {
-			return "An assignment can't be used as an expression in Klar; did you mean to use '==' instead?"
-		}
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
 		return "Can't assign to this kind of expression"
@@ -336,13 +330,13 @@ func (e ParseError) error() string {
 	case ErrPublicFirst:
 		return "'public' must be the first modifier"
 	case ErrEmptyDestructure:
-		return "Destructure pattern can't be empty"
+		return "A destructure pattern can't be empty"
 	case ErrColonEqual:
 		return "Expected '=' instead of ':='"
 	case ErrEllipsisForClosedRange:
 		return "Expected '...' instead of '..<'"
 	case ErrExpectedExprAfterClosedRange:
-		return "Expected expression after '..<'"
+		return "I expected an expression after '..<'"
 	case ErrBraceAroundStmt:
 		return "Braces are required around this statement"
 	case ErrDestructPatAfterColon:
@@ -359,6 +353,8 @@ func (e ParseError) error() string {
 		return "An interface field can't have a default value"
 	case ErrIntfMultiKeyMethod:
 		return "Function declarations cannot appear in comma-separated keys; split the function into its own entry"
+	case ErrFuncDotAfterSelf:
+		return "Expected '.' between ')' and identifier in function declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

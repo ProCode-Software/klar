@@ -69,12 +69,6 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		)
 		return tuple
 	default:
-		if isAssignment(next.Kind) {
-			p.Error(errors.Token(errors.ErrAssignmentAsExpr, next))
-			// Skip the rest
-			p.Advance() // =
-			p.ParseExpression(DefaultBindingPower)
-		}
 		// Grouped expression
 		p.Expect(lexer.RightParenthesis)
 		return &ast.ParenExpression{Expression: expr}

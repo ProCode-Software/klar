@@ -306,12 +306,29 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
-	rec := p.ParseIdentifier()
+	var rec ast.Identifier
+	// func (p: Parser)
+	if p.CurrKind() == lexer.LeftParenthesis {
+		p.Advance() // (
+		self := p.ParseIdentifier() // self name
+		f.SelfName = &self
+		p.Expect(lexer.Colon) // :
+		rec = p.ParseIdentifier() // Struct name
+		p.Expect(lexer.RightParenthesis) // )
+		if p.CurrKind() != lexer.Dot {
+			p.Error(errors.Token(errors.ErrFuncDotAfterSelf, p.Curr()))
+			// Just set it for error tolerance
+			f.Struct = &rec
+			f.Identifier = p.ParseMapIdentifier(0)
+		}
+	} else {
+		rec = p.ParseIdentifier()
+	}
 
 	// Struct receiver
 	// 	func Person.greet()
 	if p.CurrKind() == lexer.Dot {
-		f.Struct = rec
+		f.Struct = &rec
 		p.Advance() // .
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else {

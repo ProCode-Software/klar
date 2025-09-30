@@ -217,6 +217,7 @@ func (p *Printer) PrintError(err errors.KlarError) {
 			b.Write(space(at.Start.Col - 1))
 			b.WriteString(ansi.BoldBrightRed(highlight)) // TODO: yellow for warnings
 			b.WriteByte('\n')
+			break
 		}
 	}
 printMsg:

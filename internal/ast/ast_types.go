@@ -426,9 +426,14 @@ type Block struct {
 }
 
 // A FunctionDeclaration is a basic Klar function or method declaration.
+//
+//	func run()
+//	func Parser.run()
+//	func (p: Parser).run()
 type FunctionDeclaration struct {
 	Identifier    Identifier
-	Struct        Identifier
+	Struct        *Identifier // Struct.Identifier
+	SelfName      *Identifier // If (p: Parser) is used instead of Parser
 	GenericParams []Identifier
 	Parameters    []*FunctionParam
 	ReturnType    Type
@@ -437,10 +442,11 @@ type FunctionDeclaration struct {
 	BaseNode
 }
 
+// func x = y
+// func Parser.x = Parser.y
 type FuncAliasDeclaration struct {
 	BaseNode
-
-	Struct     Identifier
+	Struct     *Identifier
 	Identifier Identifier
 	Alias      Expression
 }
@@ -707,14 +713,17 @@ type AwaitExpression struct {
 //	go { ...body }
 type GoExpression struct {
 	BaseNode
-	Expression Expression
-	Body       *Block // If block
+	Expression Expression // Is a *CallExpression if valid
+	Body       *Block     // If block
 }
+
+// NOT IMPLEMENTED YET
+// ===================
 
 // try [expression]
 type TryExpression struct {
 	BaseNode
-	Expression Expression
+	Expression Expression // Is a *CallExpression if valid
 }
 
 // [expr]!

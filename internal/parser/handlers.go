@@ -126,6 +126,17 @@ func (p *Parser) handleLED(
 			return left, false
 		}
 		res = p.ParseVersion(left, bp)
+	// Invalid assignment
+	case lexer.PlusEqual, lexer.ColonEqual, lexer.MinusEqual, lexer.Equal:
+		err := errors.Token(errors.ErrAssignmentAsExpr, p.Advance())
+		if kind == lexer.Equal {
+			err.Hint("Did you mean to use '==' instead?")
+		}
+		p.Error(err)
+		res = &ast.BadExpression{
+			Token: kind,
+			Value: p.ParseExpression(ExpressionBindingPower),
+		}
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true

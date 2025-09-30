@@ -247,11 +247,13 @@ loop:
 			if isEscape {
 				escape(EscCharacter, 0)
 			} else if delim != '\'' {
+				endSegment()
 				initEscapes()
 				e := l.parseStrInterp()
 				escapes[l.prevCol()] = e
 				isEscape = false
 				b.WriteString(e.Value)
+				segStart = b.Len()
 				continue loop
 			} // "
 		case 'b', 'e', 'f', 'n', 'r', 't':
@@ -309,5 +311,6 @@ loop:
 			QuoteStyle:   delim,
 			Unterminated: unterm,
 			QuoteCount:   quoteN,
+			Segments:     segms,
 		})
 }

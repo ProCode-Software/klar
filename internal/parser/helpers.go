@@ -9,11 +9,15 @@ import (
 )
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
-	p.Error(errors.ParseError{
+	err := errors.ParseError{
 		ErrorCode: errors.ErrNotAnExpression,
 		Node:      got,
 		Range:     got.GetRange(),
-	})
+	}
+	if n, ok := got.(*ast.AssignmentStatement); ok && n.Operator.Kind == lexer.Equal {
+		err.Hint("Did you mean to use '==' instead?")
+	}
+	p.Error(err)
 }
 
 func newOperator(t lexer.Token) ast.Operator {

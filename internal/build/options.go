@@ -13,7 +13,7 @@ import (
 type (
 	InputKind int
 	BuildMode int
-	Flags     int32
+	Flags     int16
 )
 
 const (

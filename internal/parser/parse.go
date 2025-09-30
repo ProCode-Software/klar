@@ -43,6 +43,7 @@ func (p *Parser) Parse() *ast.Program {
 // Errors are reported to the parser if block comments are unterminated or shebangs
 // are not on the first line. These are the first errors reported in the parsing process.
 func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
+	end := len(tok.Source)
 	switch {
 	case tok.Kind == lexer.Hashbang:
 		if tok.Position != (lexer.Position{1, 1}) {
@@ -54,9 +55,11 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 			Token:     tok,
 			Position:  tok.Position,
 		})
+	case tok.Kind == lexer.BlockComment: // But not if unterminated
+		end -= 2
 	}
 	return &ast.Comment{
-		Value:    tok.Source,
+		Value:    tok.Source[2:end],
 		Type:     tok.Kind,
 		BaseNode: ast.BaseNode{ranges.FromToken(tok)},
 	}
