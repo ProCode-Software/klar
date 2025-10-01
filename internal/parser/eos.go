@@ -168,9 +168,9 @@ func CanAddEOSAfter(t lexer.TokenType) bool {
 		lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
 		lexer.HashLeftCurlyBrace, lexer.Newline,
 		// Keywords
-		lexer.Import, lexer.Func, lexer.For, lexer.When, lexer.Type,
+		lexer.Func, lexer.For, lexer.When, lexer.Type,
 		lexer.Go, lexer.Await, lexer.While, lexer.Can, lexer.NotCan,
-		lexer.Try, lexer.Opaque, lexer.Public:
+		lexer.Try, lexer.Opaque, lexer.Public, lexer.If, lexer.Else:
 		return false
 	case lexer.RightParenthesis, lexer.RightBracket:
 		return true
@@ -208,7 +208,7 @@ func CanGoOnNewline(t lexer.TokenType) bool {
 		lexer.DotDotLessThan,
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
-		lexer.LessEqualTo, lexer.NotEqual, lexer.Not, lexer.AndAnd,
+		lexer.LessEqualTo, lexer.NotEqual, lexer.AndAnd,
 		lexer.OrOr, lexer.In, lexer.NotIn,
 		// Whitespace
 		lexer.Newline:
