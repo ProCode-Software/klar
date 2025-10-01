@@ -708,8 +708,6 @@ type AwaitExpression struct {
 // Spawns an asynchronous task
 //
 //	go fn()
-//	go (a, b, c)
-//	go [a, b, c]
 //	go { ...body }
 type GoExpression struct {
 	BaseNode
@@ -717,14 +715,16 @@ type GoExpression struct {
 	Body       *Block     // If block
 }
 
-// NOT IMPLEMENTED YET
-// ===================
-
-// try [expression]
+// where 'fn' returns a Result, returns from the enclosing function if
+// it returns an error value. Only available in function bodies.
+// try fn() -- must be function call
 type TryExpression struct {
 	BaseNode
 	Expression Expression // Is a *CallExpression if valid
 }
+
+// NOT IMPLEMENTED YET
+// ===================
 
 // [expr]!
 type AssertExpression struct {

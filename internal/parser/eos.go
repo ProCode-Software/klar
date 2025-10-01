@@ -43,7 +43,6 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	p.listCastTokens = make(map[int]struct{})
 
 	for i := 0; i < len(p.Tokens); i++ {
-		// TODO: unmatched brackets
 		var (
 			tok       = p.Tokens[i]
 			kind      = tok.Kind
@@ -93,7 +92,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				firstNewline int // Cannot be zero because preceded by bracket
 			)
 			if lastBrackI < 0 { // Unmatched bracket
-				continue
+				break
 			}
 			// List cast: [Int](...)
 			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
@@ -140,7 +139,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			continue
 		}
 		if i > 0 {
-			insertEOS = CanAddEOSAfter(prev)
+			insertEOS = i > 0 && CanAddEOSAfter(prev)
 		}
 		nextTokI := readComments(i)
 		// Should add EOS before next token?

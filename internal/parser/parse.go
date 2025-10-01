@@ -27,6 +27,9 @@ func (p *Parser) Parse() *ast.Program {
 		}
 		if p.CurrKind() == lexer.EndOfStatement {
 			p.Advance()
+			if !p.HasTokens() {
+				break
+			}
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
