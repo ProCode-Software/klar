@@ -57,9 +57,8 @@ type StringLiteral struct {
 	QuoteCount int
 	// Full string contents including escape literals
 	Content string
-	Escapes map[lexer.Position]StringEscape
 	// Parts of string split by newlines (at end of segment) and escapes (skipped)
-	Segments []string
+	Fragments []StringFragment
 }
 
 type IntegerLiteral struct {
@@ -128,6 +127,16 @@ type RelationalExpression struct {
 	Expressions []Expression
 	Operators   []Operator // Should be len(Expressions) - 1
 }
+
+type StringFragment interface {
+	ASTFrag()
+}
+
+type EscapeFragment struct {
+	Value StringEscape
+}
+
+func (EscapeFragment) ASTFrag() {}
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
 type StringEscape interface {
@@ -563,7 +572,7 @@ type WhenExpression struct {
 type WhenCase struct {
 	BaseNode
 	Options  [][]Expression // cases -> subjects
-	Guard    Expression     // <case> when <expr>
+	Guard    Expression     // <case> if <expr>
 	Body     *Block         // -> <expr> | -> {...}
 	BodyExpr Node
 	InBraces bool
@@ -633,6 +642,7 @@ type ForExpression struct {
 	Block     *Block
 }
 
+// A pipeline step may be an assignment or method call (ignoring return values)
 type ObjectPipeline struct {
 	BaseNode
 	Object Expression
@@ -732,7 +742,7 @@ type AssertExpression struct {
 	Expression Expression
 }
 
-// [then] when [condition] else [else]
+// [value] when [condition] else [else]
 type TernaryExpression struct {
 	BaseNode
 	Value     Expression

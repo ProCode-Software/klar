@@ -153,9 +153,17 @@ func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	}
 }
 
-func (p *Parser) ParseUpdateStatement(left ast.Expression) *ast.UpdateStatement {
+func (p *Parser) ParseUpdateStatement(left ast.Node) *ast.UpdateStatement {
 	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus)
-	return &ast.UpdateStatement{Operator: newOperator(op), Left: left}
+	var l ast.Expression
+	switch left.(type) {
+	case *ast.Symbol, *ast.IndexExpression:
+		l = left.(ast.Expression)
+	default:
+		l = &ast.BadExpression{Value: left}
+		p.Error(errors.Node(errors.ErrInvalidAssignment, left))
+	}
+	return &ast.UpdateStatement{Operator: newOperator(op), Left: l}
 }
 
 func (p *Parser) ParseForStatement() *ast.ForStatement {

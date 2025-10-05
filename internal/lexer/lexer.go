@@ -177,18 +177,8 @@ func (l *Lexer) TokenizeEOFFunc(
 	}
 }
 
-func (l *Lexer) nextCol() Position {
-	l.Pos.Col++
-	p := l.Pos
-	l.Pos.Col--
-	return p
-}
-
 func (l *Lexer) prevCol() Position {
-	l.Pos.Col--
-	p := l.Pos
-	l.Pos.Col++
-	return p
+	return Position{Line: l.Pos.Line, Col: l.Pos.Col - 1}
 }
 
 // BackupPeek backs up the lexer, peeks n + 1 bytes, re-reads the rune, and returns n bytes.
@@ -237,19 +227,7 @@ func isASCIILetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
 
+// r should be an ASCII character
 func repeat(prefix, r rune, n int) string {
-	var (
-		arr, ok   = char.QuoteMap[byte(r)]
-		strPrefix = string(prefix)
-		prefLen   = len(strPrefix)
-	)
-	if ok && n <= 40 {
-		return strPrefix + string(arr[:n])
-	}
-	quotes := make([]byte, 0, n+prefLen)
-	quotes = append(quotes, strPrefix...)
-	for len(quotes) < n+prefLen {
-		quotes = append(quotes, arr...)
-	}
-	return string(quotes)[:n+prefLen]
+	return string(prefix) + string(char.Repeat(byte(r), n))
 }

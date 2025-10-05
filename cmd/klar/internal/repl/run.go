@@ -77,6 +77,7 @@ func HistoryFile() (string, error) {
 	return "", nil
 }
 
+// TODO: fix '.' in multiline and incomplete multiline
 func (s *Session) Prompt() {
 	if s.multiline {
 		s.line++
@@ -196,6 +197,10 @@ func printErrors[T errors.KlarError](errs []T) {
 	}
 }
 
+func isIncompleteToken(tok lexer.TokenType) bool {
+	return !astParser.CanAddEOSAfter(tok) && tok != lexer.Slash && tok != lexer.Asterisk
+}
+
 func isIncomplete(tokens []lexer.Token) bool {
 	var brackCount int
 	for _, tok := range tokens {
@@ -208,7 +213,7 @@ func isIncomplete(tokens []lexer.Token) bool {
 		}
 	}
 	return brackCount > 0 ||
-		(len(tokens) > 1 && !astParser.CanAddEOSAfter(tokens[len(tokens)-2].Kind))
+		(len(tokens) > 1 && isIncompleteToken(tokens[len(tokens)-2].Kind))
 }
 
 func (s *Session) appendTokens(newTokens []lexer.Token) {
@@ -235,7 +240,6 @@ func (s *Session) checkMultilineEnd() {
 	if ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
 		tokens[ln-2] = tokens[ln-1] // Replace dot with EOF
 		s.tokens = tokens[:ln-1]    // Remove last EOF
-		s.multiline = false
 		s.resetMultiline()
 	}
 }

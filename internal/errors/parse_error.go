@@ -84,6 +84,7 @@ const (
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
 	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
 	ErrMustBeFuncCall               // Expression after go or try must be a function call
+	ErrSelfExecFuncNotAllowed       // Self-executing functions are not allowed in Klar
 
 	// Type =====
 
@@ -101,6 +102,10 @@ const (
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInWhen   // When expression not allowed in when case guard
 	ErrBraceAroundStmt    // Required braces around statement in when case
+
+	// Misc =====
+	ErrTryBlock    // Klar doesn't have try-catch blocks
+	ErrIfStatement // Klar doesn't have if statements
 
 	// Analysis-time syntax errors =====
 
@@ -230,7 +235,7 @@ func (e ParseError) error() string {
 	case ErrMustBeFuncCall:
 		return "The expression after 'go' or 'try' must be a function call"
 	case ErrExpectedHex:
-		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
+		return "I expected 2 hexadecimal digits (0-9, a-f or A-F) after"
 	case ErrExpectedBinary:
 		return "I expected a binary digit (0-1)"
 	case ErrExpectedOctal:
@@ -244,13 +249,13 @@ func (e ParseError) error() string {
 		kind := e.Params["type"].(lexer.EscapeType)
 		switch reason {
 		case lexer.ErrEscapeExpHex:
-			return "I expected a hexadecimal digit (0-9, a-f or A-F)"
+			return `I expected 2 hexadecimal digits (0-9, a-f or A-F) after '\x'`
 		case lexer.ErrEscapeUnknown:
 			esc := e.Params["escape"].(string)
-			return "Invalid character escape " + Quote(esc)
+			return "Unknown character escape " + Quote(esc)
 		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
 			if kind == lexer.EscUnicode {
-				return "Expected 1-6 hex digits in Unicode escape"
+				return "I expected 1-6 hex digits between { } in Unicode escape"
 			}
 			return "I expected an expression"
 		default:
@@ -259,7 +264,7 @@ func (e ParseError) error() string {
 	case ErrForInvalidCond:
 		return "Expected an assignment or expression in for condition"
 	case ErrEmptyGeneric:
-		return "At least 1 type parameter is required in generic"
+		return "At least 1 type is required inside < >"
 	case ErrInvalidPublic:
 		return "Expected a declaration after public modifier"
 	case ErrTrailingSep:
@@ -271,8 +276,7 @@ func (e ParseError) error() string {
 	case ErrNotAllowedInWhen:
 		return "A 'when' case can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
-		return "The comment starting at " + e.Position.String() +
-			" was left open"
+		return "The comment starting at " + e.Position.String() + " was left open"
 	case ErrMisplacedShebang:
 		return "A shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrMissingFuncParamType:
@@ -297,6 +301,8 @@ func (e ParseError) error() string {
 		return fmt.Sprintf("Invalid version literal '%s'",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
+	case ErrSelfExecFuncNotAllowed:
+		return "Self-executing functions are not allowed in Klar"
 	case ErrInvalidLambdaParams:
 		return "Invalid parameter list before '->' in lambda"
 	case ErrParenRequiredFunc:
@@ -407,7 +413,7 @@ func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseErro
 
 func StringEscape(e lexer.StringEscape) ParseError {
 	return ParseError{
-		Position:  ranges.Sub(e.ErrorPosition, 0, 1),
+		Position:  ranges.Sub(*e.ErrorPosition, 0, 1),
 		ErrorCode: ErrStringEscape,
 		Params: ErrorParams{
 			"reason": e.Invalid,

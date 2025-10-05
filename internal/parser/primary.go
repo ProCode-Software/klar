@@ -96,21 +96,22 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		escapes = p.parseStringEscapes(token)
 		start   = 1 + a.QuoteCount
 		strLen  = len(src) - 2
+		full    string
 	)
 	if a.QuoteCount > 0 {
 		strLen = len(src) - 2*a.QuoteCount - 1
 	}
-	full := src[start : start+strLen] // Remove quotes
 	if a.Unterminated {
 		p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 		full = src[start:]
+	} else {
+		full = src[start : start+strLen] // Remove quotes
 	}
 	return &ast.StringLiteral{
 		QuoteStyle: a.QuoteStyle,
-		Segments:   a.Segments,
+		Fragments:  escapes,
 		QuoteCount: a.QuoteCount,
 		Content:    full,
-		Escapes:    escapes,
 	}
 }
 

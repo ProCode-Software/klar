@@ -9,54 +9,56 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-type EscapeMap = map[lexer.Position]ast.StringEscape
+func parseHex(str string) int32 {
+	return int32(unwrap(strconv.ParseInt(str, 16, 32)))
+}
 
-func (p *Parser) parseStringEscapes(tok lexer.Token) EscapeMap {
+func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 	var (
-		lexEscapes = tok.Attributes["params"].(lexer.StringAttrs).Escapes
-		escapes    = make(EscapeMap, len(lexEscapes))
+		lexEscapes = tok.Attributes["params"].(lexer.StringAttrs).Fragments
+		frags      = make([]ast.StringFragment, len(lexEscapes))
+		val        = ast.EscapeFragment{}
 	)
 	if len(lexEscapes) == 0 {
 		return nil
 	}
-	for i, e := range lexEscapes {
-		var (
-			val      ast.StringEscape
-			src      = e.Value
-			parseHex = func(str string) int32 {
-				return int32(unwrap(strconv.ParseInt(str, 16, 32)))
-			}
-		)
+	for i, frag := range lexEscapes {
+		if frag, ok := frag.(lexer.TextFragment); ok {
+			frags[i] = frag
+			continue
+		}
+		e := frag.(lexer.StringEscape)
+		src := e.Value
 		if e.Invalid > 0 {
 			p.Error(errors.StringEscape(e))
-			escapes[i] = ast.BadEscape{Source: src}
+			frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
 			continue
 		}
 		switch e.Type {
 		case lexer.EscCharacter:
-			val = ast.CharacterEscape{Character: rune(src[1])}
+			val.Value = ast.CharacterEscape{Character: rune(src[1])}
 		case lexer.EscHex:
-			val = ast.HexadecimalEscape{Hex: parseHex(src[2:])}
+			val.Value = ast.HexadecimalEscape{Hex: parseHex(src[2:])}
 		case lexer.EscUnicode:
 			hex := parseHex(src[3 : len(src)-1])
 			if hex > 0x10FFFF {
 				p.Error(errors.Range(errors.ErrUnicodeEscTooBig, ranges.Range{
-					ranges.Add(i, 0, 3),
-					ranges.Add(i, 0, uint32(len(src)-1)),
+					ranges.Add(e.Pos, 0, 3),
+					ranges.Add(e.Pos, 0, uint32(len(src)-1)),
 				}))
-				escapes[i] = ast.BadEscape{Source: src}
+				frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
 				continue
 			}
-			val = ast.HexadecimalEscape{Hex: hex}
+			val.Value = ast.HexadecimalEscape{Hex: hex}
 		case lexer.EscInterpolation:
-			p2, bp := p.newInterpParser(e.Interpolated)
-			val = ast.StringInterpolation{
+			p2, bp := p.newInterpParser(*e.Interpolated)
+			val.Value = ast.StringInterpolation{
 				Expression: p2.ParseExpression(bp),
 			}
 		}
-		escapes[i] = val
+		frags[i] = val
 	}
-	return escapes
+	return frags
 }
 
 func (p *Parser) newInterpParser(tokens []lexer.Token) (*Parser, BindingPower) {

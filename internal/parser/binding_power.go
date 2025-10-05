@@ -36,7 +36,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Comma: CommaBindingPower,
 
 	// For error tolerance
-	lexer.Colon:      LambdaBindingPower,
 	lexer.ColonEqual: LambdaBindingPower,
 	lexer.Equal:      LambdaBindingPower,
 	lexer.PlusEqual:  LambdaBindingPower,

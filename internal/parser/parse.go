@@ -106,7 +106,7 @@ func (p *Parser) nudError() {
 	p.skipUntilBoundary()
 }
 
-func (p *Parser) ParseLED(left ast.Node, bp BindingPower) ast.Node {
+func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Node {
 	var handled bool
 	for BindingPowerMap[p.CurrKind()] > bp {
 		kind := p.CurrKind()
@@ -150,7 +150,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	if handled { // reassigned in handleNUD() call
 		kind = p.CurrKind()
 		if res, handled = p.handleStatementLED(kind, res, DefaultBindingPower); !handled {
-			res = p.ParseLED(res, DefaultBindingPower)
+			res = p.ParseLED(res.(ast.Expression), DefaultBindingPower)
 		}
 	}
 	p.Expect(lexer.EndOfStatement)

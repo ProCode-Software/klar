@@ -10,7 +10,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) ParseBinaryExpression(left ast.Node, bp BindingPower) *ast.BinaryExpression {
+func (p *Parser) ParseBinaryExpression(left ast.Expression, bp BindingPower) *ast.BinaryExpression {
 	op := p.Advance()
 	right := p.ParseExpression(bp)
 	return &ast.BinaryExpression{
@@ -27,9 +27,9 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 }
 
 // TODO: fix funcs such as ParseRange for checking if left is ast.Expression
-func (p *Parser) ParseRelationalExpression(left ast.Node, bp BindingPower) *ast.RelationalExpression {
+func (p *Parser) ParseRelationalExpression(left ast.Expression, bp BindingPower) *ast.RelationalExpression {
 	rel := &ast.RelationalExpression{}
-	rel.Expressions = append(rel.Expressions, left.(ast.Expression)) // First expression
+	rel.Expressions = append(rel.Expressions, left) // First expression
 	for isRelational(p.CurrKind()) {
 		rel.Operators = append(rel.Operators, newOperator(p.Advance()))
 		rel.Expressions = append(rel.Expressions, p.ParseExpression(bp))
@@ -138,7 +138,7 @@ func (p *Parser) ParseList() *ast.ListLiteral {
 //	list[0]    list.first
 //	list[1:3]  list[1:]
 //	list[:3]   list[:]
-func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expression {
+func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.Expression {
 	var item ast.Expression
 	if p.Advance().Kind != lexer.LeftBracket {
 		// Allow use of keywords as fields
@@ -192,8 +192,16 @@ func (p *Parser) ParseIndexExpression(left ast.Node, bp BindingPower) ast.Expres
 	}
 }
 
-func (p *Parser) ParseCallExpression(left ast.Node, bp BindingPower) *ast.CallExpression {
+func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.CallExpression {
 	p.Expect(lexer.LeftParenthesis)
+	switch left := left.(type) {
+	case *ast.ParenExpression:
+		if left, ok := left.Expression.(*ast.LambdaExpression); ok {
+			p.Error(errors.Node(errors.ErrSelfExecFuncNotAllowed, left))
+		}
+	case *ast.LambdaExpression:
+		p.Error(errors.Node(errors.ErrSelfExecFuncNotAllowed, left))
+	}
 	var args []*ast.CallParam
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		arg := &ast.CallParam{}
@@ -240,7 +248,7 @@ func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
 	return &ast.StructDotInit{Params: call.Args}
 }
 
-func (p *Parser) ParseLambda(left ast.Node, bp BindingPower) *ast.LambdaExpression {
+func (p *Parser) ParseLambda(left ast.Expression, bp BindingPower) *ast.LambdaExpression {
 	l := &ast.LambdaExpression{}
 	p.Expect(lexer.Arrow)
 	// TODO: destructure for [...] and #{...}
@@ -282,13 +290,12 @@ func (p *Parser) ParseLeftRest() *ast.RestExpression {
 	}
 }
 
-func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
+func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression {
 	op := p.Advance() // ... or ..<
-	l := left.(ast.Expression)
 	if right, handled := p.handleNUD(p.CurrKind()); handled {
 		// Range operator
 		rang := &ast.RangeExpression{
-			From:     l,
+			From:     left,
 			To:       p.ParseLED(right, bp).(ast.Expression),
 			Operator: newOperator(op),
 		}
@@ -313,10 +320,10 @@ func (p *Parser) ParseRange(left ast.Node, bp BindingPower) ast.Expression {
 		// _... not allowed
 		p.Error(errors.Node(errors.ErrUnderscoreWithRest, left))
 	}
-	return &ast.RestExpression{Left: false, Expression: l}
+	return &ast.RestExpression{Left: false, Expression: left}
 }
 
-func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) *ast.PipelineExpression {
+func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.PipelineExpression {
 	var returnIndex int
 	steps := make([]ast.Node, 1, 2)
 	steps[0] = left // First step
@@ -338,151 +345,6 @@ func (p *Parser) ParsePipeline(left ast.Node, bp BindingPower) *ast.PipelineExpr
 		p.Error(errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]))
 	}
 	return &ast.PipelineExpression{Steps: steps}
-}
-
-func (p *Parser) parseCaseSubExpr() ast.Expression {
-	tok := p.Curr()
-	var res ast.Expression
-outer:
-	switch tok.Kind {
-	// Relational operators don't need explicit LHS
-	// 	when x {
-	// 		< 5 -> ...
-	// }
-	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
-		res = p.ParseBinaryExpression(nil, BindingPowerMap[tok.Kind])
-	case lexer.Question:
-		p.Advance()
-		res = &ast.NilLiteral{Shorthand: true}
-	case lexer.Underscore:
-		p.Advance()
-		res = &ast.Discard{}
-	case lexer.NotCan:
-		res = p.ParseWhenCan()
-	case lexer.Can:
-		switch peek := p.Peek().Kind; peek {
-		default:
-			if !isValidIdentifier(peek) {
-				break
-			}
-			fallthrough
-		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.Identifier,
-			lexer.Stroke, lexer.Ellipsis:
-			res = p.ParseWhenCan()
-			break outer
-		}
-		fallthrough
-	default:
-		res = p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
-	}
-	return markStartEndPos(p, res, tok.Position)
-}
-
-func (p *Parser) ParseWhenCan() *ast.WhenCanCase {
-	op := newOperator(p.Advance())            // can, !can
-	typ := p.ParseType(UnionTypeBindingPower) // Don't include '|'
-	// Parse types with lower binding power than '|': '?' and '...'
-	switch curr := p.CurrKind(); curr {
-	case lexer.Question, lexer.Ellipsis:
-		typ = p.ParseTypeLED(typ, TypeBindingPowerMap[curr])
-	}
-	when := &ast.WhenCanCase{Operator: op, Type: typ}
-	if p.CurrKind() == lexer.LeftParenthesis {
-		params := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
-		when.Params = params.Args
-	}
-	return when
-}
-
-func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
-	var (
-		c        = &ast.WhenCase{}
-		commaExp = make([]ast.Expression, 0, subjects)
-		orOpts   [][]ast.Expression
-	)
-	p.isWhenCase = true
-	// ',' binds tighter than '|' in case
-loop:
-	for p.HasTokens() {
-		if p.IsCurrently(lexer.When, lexer.Arrow, lexer.EndOfStatement) {
-			break loop
-		}
-		if p.CurrKind() == lexer.Stroke {
-			p.Advance()
-		}
-		commaExp = append(commaExp, p.parseCaseSubExpr())
-		switch p.CurrKind() {
-		case lexer.Stroke:
-			orOpts = append(orOpts, commaExp)
-			clear(commaExp)
-			commaExp = commaExp[:0]
-			p.Advance()
-		case lexer.When, lexer.Arrow:
-			orOpts = append(orOpts, commaExp)
-			break loop
-		case lexer.Comma:
-			p.Advance()
-		default:
-			break loop
-		}
-	}
-	c.Options = orOpts
-	// Guard clause
-	// 	when x, y {
-	//		5, _ when y < 10 -> ...
-	// 	}
-	if p.CurrKind() == lexer.When {
-		p.Advance()
-		p.isWhenGuard = true
-		c.Guard = p.ParseExpression(LambdaBindingPower)
-		p.isWhenGuard = false
-	}
-	p.isWhenCase = false
-	p.Expect(lexer.Arrow)
-	switch p.CurrKind() {
-	case lexer.LeftCurlyBrace:
-		c.Body = p.ParseBlock()
-		c.InBraces = true
-		p.Expect(lexer.EndOfStatement)
-	default:
-		res := p.ParseStatement()
-		switch res := res.(type) {
-		// All expressions are allowed
-		case *ast.ExpressionStatement:
-			c.BodyExpr = res.Expression
-		// Allow some kinds of statements outside of braces
-		case *ast.AssignmentStatement, *ast.ReturnStatement,
-			*ast.NextStatement, *ast.UpdateStatement, *ast.BreakStatement:
-			c.BodyExpr = res
-		default:
-			// Expected expression error
-			p.Error(errors.Node(errors.ErrBraceAroundStmt, res))
-			c.BodyExpr = &ast.BadExpression{Value: res}
-		}
-	}
-	return c
-}
-
-func (p *Parser) ParseWhenBlock() *ast.WhenExpression {
-	p.Expect(lexer.When)
-	w := &ast.WhenExpression{}
-	if p.CurrKind() != lexer.LeftCurlyBrace {
-		// Subjects
-		parseExprSeries(
-			p, &w.Subjects, ExpressionBindingPower,
-			lexer.LeftCurlyBrace, lexer.Comma,
-		)
-	} else {
-		p.Expect(lexer.LeftCurlyBrace)
-	}
-	lenSubj := len(w.Subjects)
-	parseSeries(
-		p, &w.Cases,
-		func() *ast.WhenCase { return p.parseWhenCase(lenSubj) },
-		lexer.RightCurlyBrace, 0, true,
-	)
-	return w
 }
 
 func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
@@ -527,19 +389,22 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	err := errors.Position(errors.ErrUnterminatedRegex, p.Curr().Position)
 	endSlashPos := p.ExpectError(err, lexer.Slash).Position
 	// Manually add EOS because regex ends in / which is operator
-	if curr := p.Curr(); curr.Position.Line > endSlashPos.Line &&
-		!CanGoOnNewline(curr.Kind) {
+	curr := p.Curr()
+	switch {
+	case curr.Position.Line > endSlashPos.Line && !CanGoOnNewline(curr.Kind),
+		curr.Kind == lexer.EOF,
+		curr.Kind == lexer.RightCurlyBrace:
 		p.Tokens = slices.Insert(
 			p.Tokens, p.Index, lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
 		)
-	} else if curr.Kind == lexer.Identifier &&
-		curr.Position == ranges.Add(endSlashPos, 0, 1) {
+	case curr.Kind == lexer.Identifier &&
+		curr.Position == ranges.Add(endSlashPos, 0, 1):
 		r.Flags = []rune(p.Advance().Source)
 	}
 	return r
 }
 
-func (p *Parser) ParseVersion(left ast.Node, bp BindingPower) ast.Node {
+func (p *Parser) ParseVersion(left ast.Expression, bp BindingPower) ast.Expression {
 	var (
 		b     strings.Builder
 		err   bool
@@ -594,8 +459,8 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	}
 }
 
-func (p *Parser) ParseObjectPipeline(obj ast.Node, bp BindingPower) *ast.ObjectPipeline {
-	pipeline := &ast.ObjectPipeline{Object: obj.(ast.Expression)}
+func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.ObjectPipeline {
+	pipeline := &ast.ObjectPipeline{Object: obj}
 	for p.CurrKind() == lexer.StrokeDot {
 		p.Advance() // |.
 		var lhs ast.Expression
@@ -647,7 +512,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}
-	f.Iterator = p.ParseExpression(ExpressionBindingPower)
+	f.Iterator = p.ParseExpression(LambdaBindingPower)
 	p.isEqualOrColonEqualAndError() // Report error if ':='
 	switch p.CurrKind() {
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual, lexer.Arrow:
@@ -685,5 +550,14 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
 		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression))
 	}
+	return t
+}
+
+func (p *Parser) ParseTernaryExpression(left ast.Expression, bp BindingPower) ast.Expression {
+	p.Advance() // if
+	t := &ast.TernaryExpression{Value: left}
+	t.Condition = p.ParseExpression(bp)
+	p.Expect(lexer.Else)
+	t.Else = p.ParseExpression(bp)
 	return t
 }

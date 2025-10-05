@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
+func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
 	startPos := p.Curr().Position
 	switch kind {
 	default:
@@ -71,8 +71,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Node, handled bool) {
 }
 
 func (p *Parser) handleLED(
-	kind lexer.TokenType, left ast.Node, bp BindingPower,
-) (res ast.Node, handled bool) {
+	kind lexer.TokenType, left ast.Expression, bp BindingPower,
+) (res ast.Expression, handled bool) {
 	switch kind {
 	default:
 		return left, false
@@ -156,8 +156,7 @@ func (p *Parser) handleStatementLED(
 		res = p.ParseAssignment(left.(ast.Expression), bp)
 	// Increment/decrement (statements, not expressions)
 	case lexer.PlusPlus, lexer.MinusMinus:
-		p.validateAssignable(left)
-		res = p.ParseUpdateStatement(left.(ast.Expression))
+		res = p.ParseUpdateStatement(left)
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
