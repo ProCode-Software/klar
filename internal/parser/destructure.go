@@ -14,7 +14,19 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 		p.Advance()
 		return p.ParseObjectDestructure()
 	}
-	return p.ParseDestructureInner()
+	d := p.ParseDestructureInner()
+	switch p.CurrKind() {
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
+		lexer.Colon, lexer.In, lexer.Comma:
+	default:
+		// Continue parsing expressions starting with identifiers (invalid)
+		if expr, ok := d.(ast.Expression); ok {
+			expr := p.ParseLED(expr, AssignBindingPower)
+			p.Error(errors.Node(errors.ErrInvalidAssignment, expr))
+			return &ast.BadExpression{Value: expr}
+		}
+	}
+	return d
 }
 
 func (p *Parser) ParseDestructureInner() ast.Destructure {
@@ -36,7 +48,7 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 		if isValidIdentifier(kind) {
 			return p.ParseValidIdent().Symbol()
 		}
-		parsed := p.ParseExpression(ExpressionBindingPower)
+		parsed := p.ParseExpression(AssignBindingPower)
 		p.Error(errors.Node(errors.ErrInvalidAssignment, parsed))
 		// p.unknownTokenErr() // p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
 		return &ast.BadExpression{Token: kind, Value: parsed}
@@ -109,7 +121,7 @@ func (p *Parser) errorIfEmptyDestruct(endKind lexer.TokenType) bool {
 	if p.CurrKind() == endKind {
 		start := p.Tokens[p.Index-1].Position
 		end := ranges.FromToken(p.Curr()).End
-		p.Error(errors.Range(errors.ErrEmptyDestructure, ranges.BetweenPos(start, end)))
+		p.Error(errors.Range(errors.ErrEmptyDestructure, ranges.FromPosition(start, end)))
 		p.Advance()
 		return true
 	}
@@ -155,10 +167,7 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 				p.unknownTokenErr()
 				res = dest2
 			}
-			if !p.validateAssignable(res) {
-				res = &ast.BadExpression{Value: res}
-			}
-			vars = append(vars, res.(ast.Assignable))
+			vars = append(vars, p.validateAssignableOrFix(res))
 		} else {
 			vars = append(vars, dest)
 		}

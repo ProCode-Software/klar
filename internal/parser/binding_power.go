@@ -12,10 +12,9 @@ type BindingPower int
 
 const (
 	DefaultBindingPower BindingPower = iota
-	CommaBindingPower                // ,
-	AssignBindingPower               // :=, +=, -=, =
 
 	ExpressionBindingPower     // Minimum for expressions
+	AssignBindingPower         // For error tolerance
 	LambdaBindingPower         // ->
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
@@ -33,13 +32,11 @@ const (
 )
 
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
-	lexer.Comma: CommaBindingPower,
-
 	// For error tolerance
-	lexer.ColonEqual: LambdaBindingPower,
-	lexer.Equal:      LambdaBindingPower,
-	lexer.PlusEqual:  LambdaBindingPower,
-	lexer.MinusEqual: LambdaBindingPower,
+	lexer.ColonEqual: AssignBindingPower,
+	lexer.Equal:      AssignBindingPower,
+	lexer.PlusEqual:  AssignBindingPower,
+	lexer.MinusEqual: AssignBindingPower,
 
 	lexer.Arrow: LambdaBindingPower,
 
@@ -94,7 +91,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 }
 
 const (
-	_ BindingPower = AssignBindingPower + iota
+	_ BindingPower = (ExpressionBindingPower - 1) + iota
 	DefaultTypeBindingPower
 	FunctionTypeBindingPower  // ->
 	VariadicTypeBindingPower  // ...

@@ -296,7 +296,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		// Range operator
 		rang := &ast.RangeExpression{
 			From:     left,
-			To:       p.ParseLED(right, bp).(ast.Expression),
+			To:       p.ParseLED(right, bp),
 			Operator: newOperator(op),
 		}
 		curr := p.CurrKind()
@@ -480,17 +480,17 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 		}
 		// Index or call
 		if k := p.CurrKind(); !isAssignment(k) && k != lexer.StrokeDot {
-			lhs = p.ParseLED(lhs, bp).(ast.Expression)
+			lhs = p.ParseLED(lhs, bp)
 		}
 		// Assignment
 		if k := p.CurrKind(); isAssignment(k) && k != lexer.ColonEqual {
-			p.validateAssignable(lhs)
+			l := p.validateAssignableOrFix(lhs)
 			assg := &ast.AssignmentStatement{
-				Assignee: []ast.Assignable{lhs.(ast.Assignable)},
+				Assignee: []ast.Assignable{l},
 				Operator: newOperator(p.Advance()),
-				Value:    p.ParseExpression(bp),
+				Values:   []ast.Expression{p.ParseExpression(bp)},
 			}
-			markStartEndPos(p, assg, lhs.GetRange().Start)
+			markStartEndPos(p, assg, l.GetRange().Start)
 			pipeline.Steps = append(pipeline.Steps, assg)
 		} else {
 			// Validate method call

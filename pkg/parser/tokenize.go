@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"fmt"
+	"bytes"
 	"io"
 	"os"
 	"strings"
@@ -10,33 +10,34 @@ import (
 	"github.com/ProCode-Software/klar/internal/parser"
 )
 
-// TokenizeFile reads from a file and converts it into lexer tokens.
-func TokenizeFile(file *os.File, includeComments bool) ([]lexer.Token, error) {
+type LexerFlags = lexer.Flags
+
+const (
+	// Include comments when tokenizing. Useful for documentation parsing.
+	IncludeComments = lexer.IncludeComments
+)
+
+// TokenizeFile reads from file and converts it into lexer tokens.
+func TokenizeFile(file *os.File, flags LexerFlags) ([]lexer.Token, error) {
 	// Estimate token capacity
 	stat, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
 	byteSize := stat.Size()
-	return Tokenize(file, includeComments, byteSize/4)
+	return Tokenize(file, flags, byteSize/4)
 }
 
-// Tokenize reads from reader and converts it into lexer tokens.
-func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
+// Tokenize reads from r and converts it into lexer tokens.
+func Tokenize(r io.Reader, flags LexerFlags, cap int64) (
 	tokens []lexer.Token, err error,
 ) {
-	lex := lexer.NewLexer(reader)
-	lex.IncludeComments = includeComments
-	tokens = make([]lexer.Token, 0, sizeEstimate)
-
-	// Recover if panics
+	lex := lexer.NewLexer(r, flags)
+	tokens = make([]lexer.Token, 0, cap)
+	// Recover if the lexer panics (read error)
 	defer func() {
-		if err2 := recover(); err2 != nil {
-			if err2, ok := err2.(error); ok {
-				err = err2
-				return
-			}
-			err = fmt.Errorf("%v", err2)
+		if r := recover(); r != nil {
+			err, _ = r.(error)
 		}
 	}()
 	for {
@@ -49,10 +50,16 @@ func Tokenize(reader io.Reader, includeComments bool, sizeEstimate int64) (
 	return tokens, nil
 }
 
-// TokenizeString reads from a string and converts it into lexer tokens.
-func TokenizeString(source string, includeComments bool) ([]lexer.Token, error) {
-	file := strings.NewReader(source)
-	return Tokenize(file, includeComments, int64(len(source)/3))
+// TokenizeString reads from src and converts it into lexer tokens.
+func TokenizeString(src string, flags LexerFlags) ([]lexer.Token, error) {
+	file := strings.NewReader(src)
+	return Tokenize(file, flags, int64(len(src)/3))
+}
+
+// TokenizeBytes reads from b and converts it into lexer tokens.
+func TokenizeBytes(b []byte, flags LexerFlags) ([]lexer.Token, error) {
+	file := bytes.NewReader(b)
+	return Tokenize(file, flags, int64(len(b)/3))
 }
 
 // AddSemicolons returns tokens with all [lexer.Newline] tokens either replaced with

@@ -171,7 +171,7 @@ type PublicDeclaration struct {
 type VariableDeclaration struct {
 	BaseNode
 	Variables    []Destructure
-	Value        Expression
+	Values       []Expression // Either 1 item or len(Variables)
 	ExplicitType Type
 }
 
@@ -179,7 +179,7 @@ type AssignmentStatement struct {
 	BaseNode
 	Assignee []Assignable
 	Operator Operator
-	Value    Expression
+	Values   []Expression // Either 1 item or len(Variables)
 }
 
 type Pair struct {

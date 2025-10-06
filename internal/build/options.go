@@ -76,7 +76,7 @@ type AssetOptions struct {
 type Compiler struct {
 	Mode    BuildMode
 	Verbose bool
-	Errors  []errors.KlarError
+	Errors  []errors.CompileError
 	Options []*Options
 	Project *module.ProjectInfo
 	*log.Logger

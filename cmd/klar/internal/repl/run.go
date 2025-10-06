@@ -30,6 +30,7 @@ var (
 
 type Session struct {
 	tokens      []lexer.Token // Incomplete/multiline tokens
+	buf         []byte        // Multiline tokens
 	interrupted bool          // If interrupted once
 	done        bool
 	multiline   bool            // Multiline editing enabled
@@ -104,7 +105,13 @@ func (s *Session) Prompt() {
 		cli.InternalError(err)
 	}
 	s.interrupted = false
-	tokens, err := parser.TokenizeString(input, true)
+	if s.multiline {
+		s.buf = append(s.buf, input...)
+		s.buf = append(s.buf, '\n')
+		s.checkMultilineEnd()
+		return
+	}
+	tokens, err := parser.TokenizeString(input, lexer.IncludeComments)
 	if err != nil {
 		// TODO: maybe better handling
 		s.handleLexerError(err)
@@ -120,15 +127,11 @@ func (s *Session) Prompt() {
 		}
 	}
 	s.appendTokens(tokens)
-	if s.multiline {
-		s.checkMultilineEnd()
-	} else {
-		s.send()
-	}
+	s.send()
 }
 
 func (s *Session) handleLexerError(err error) {
-	s.Printf(ansi.CodeBold, "%s: %v", ansi.BoldBrightRed("Lexer error"), err)
+	s.Printf(ansi.CodeBold, "%s: %v", ansi.BoldBrightRed("Failed to read tokens"), err)
 }
 
 func (s *Session) send() {
@@ -144,9 +147,6 @@ func (s *Session) send() {
 }
 
 func (s *Session) parse(t []lexer.Token) {
-	if len(t) < 2 {
-		return
-	}
 	ErrPrinter.LoadTokens(t)
 	prog, errs := parser.Parse(t, &parser.Options{File: "repl"})
 	if len(errs) > 0 {
@@ -175,12 +175,11 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 		s.LoadFile(args)
 	case "save":
 	case "multiline":
-		s.multiline = !s.multiline
-		if s.multiline {
+		if s.multiline = !s.multiline; s.multiline {
 			fmt.Fprintln(s.Stderr(), multilineEnabledMsg)
 		} else {
 			fmt.Fprintln(s.Stderr(), multilineDisabledMsg)
-			s.resetMultiline()
+			s.sendMultiline()
 		}
 	default:
 		return false, false
@@ -188,7 +187,7 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 	return true, false
 }
 
-func printErrors[T errors.KlarError](errs []T) {
+func printErrors[T errors.CompileError](errs []T) {
 	for i, err := range errs {
 		if i > 0 {
 			fmt.Fprintln(os.Stderr)
@@ -198,7 +197,14 @@ func printErrors[T errors.KlarError](errs []T) {
 }
 
 func isIncompleteToken(tok lexer.TokenType) bool {
-	return !astParser.CanAddEOSAfter(tok) && tok != lexer.Slash && tok != lexer.Asterisk
+	if !astParser.CanAddEOSAfter(tok) {
+		switch tok {
+		case lexer.Slash, lexer.Newline, lexer.Asterisk:
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func isIncomplete(tokens []lexer.Token) bool {
@@ -235,18 +241,23 @@ func (s *Session) appendTokens(newTokens []lexer.Token) {
 }
 
 func (s *Session) checkMultilineEnd() {
-	tokens, ln := s.tokens, len(s.tokens)
-	// Guaranteed to have at least 2 tokens, already appended above
-	if ln >= 2 && tokens[ln-2].Kind == lexer.Dot {
-		tokens[ln-2] = tokens[ln-1] // Replace dot with EOF
-		s.tokens = tokens[:ln-1]    // Remove last EOF
-		s.resetMultiline()
+	// Last byte is the newline
+	if buf, ln := s.buf, len(s.buf); ln >= 2 && buf[ln-2] == '.' {
+		s.buf = buf[:ln-2] // Remove newline and dot
+		s.sendMultiline()
 	}
 }
 
-func (s *Session) resetMultiline() {
+func (s *Session) sendMultiline() {
+	tokens, err := parser.TokenizeBytes(s.buf, lexer.IncludeComments)
+	if err != nil {
+		s.handleLexerError(err)
+		return
+	}
+	s.tokens = tokens
 	s.send()
 	s.line = 0
+	s.buf = nil
 }
 
 func linePrompt(n uint32) string {

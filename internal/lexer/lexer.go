@@ -20,16 +20,20 @@ func (p Position) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Col)
 }
 
+type Flags uint8
+
+const (
+	IncludeComments Flags = 1 << iota // For documentation parsers
+)
+
 type Lexer struct {
-	Pos             Position
-	Reader          *bufio.Reader
-	IncludeComments bool // Only for doc parsers
+	Pos    Position
+	Reader *bufio.Reader
+	Flags  Flags
 }
 
-func NewLexer(reader io.Reader) *Lexer {
-	return &Lexer{
-		Position{1, 1}, bufio.NewReader(reader), false,
-	}
+func NewLexer(reader io.Reader, flags Flags) *Lexer {
+	return &Lexer{Position{1, 1}, bufio.NewReader(reader), flags}
 }
 
 func (l *Lexer) Tokenize() *Token {
@@ -40,7 +44,6 @@ func (l *Lexer) Tokenize() *Token {
 		if handleReadError(err) {
 			return NewToken(pos, EOF, "")
 		}
-
 		switch r {
 		case '\n':
 			l.ResetPosition()
@@ -73,7 +76,7 @@ func (l *Lexer) Tokenize() *Token {
 			case Hashbang:
 				tok = l.ParseShebang(pos)
 			}
-			if !l.IncludeComments {
+			if l.Flags & IncludeComments == 0 {
 				continue
 			}
 			return tok

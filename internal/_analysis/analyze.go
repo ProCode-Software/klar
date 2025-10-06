@@ -19,10 +19,10 @@ type (
 
 // A Checker type-checks a [ast.Program].
 type Checker struct {
-	Errors  []errors.KlarError
+	Errors  []errors.CompileError
 	Exports map[string]runtime.Exportable
 	Program *ast.Program
-	OnError func(err errors.KlarError)
+	OnError func(err errors.CompileError)
 
 	FilePath string
 	Target   target.Double
@@ -38,7 +38,7 @@ func NewChecker(program *ast.Program) *Checker {
 	}
 }
 
-func (c *Checker) Error(err errors.KlarError) {
+func (c *Checker) Error(err errors.CompileError) {
 	switch newErr := err.(type) {
 	case errors.ParseError:
 		newErr.File = c.FilePath

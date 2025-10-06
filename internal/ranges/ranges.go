@@ -78,16 +78,19 @@ func Add(p Position, line, col uint32) Position {
 	return Position{Line: p.Line + line, Col: p.Col + col}
 }
 
+// Add returns a new Position with n.Line and n.Col added to p.
 func AddPosition(p Position, n Position) Position {
 	return Add(p, n.Line, n.Col)
 }
 
+// Between returns a [Range] that starts at r1.Start and ends at r2.End.
 func Between(r1, r2 Range) Range {
 	return Range{Start: r1.Start, End: r2.End}
 }
 
-func BetweenPos(r1, r2 Position) Range {
-	return Range{Start: r1, End: r2}
+// FromPosition returns a [Range] that starts at start and ends at end.
+func FromPosition(start, end Position) Range {
+	return Range{Start: start, End: end}
 }
 
 // In reports whether p is in the range r.
@@ -99,6 +102,7 @@ func (r Range) PosIn(p Position) bool {
 		p.Col <= r.End.Col
 }
 
+// RangeIn reports whether r2 is entirely inside r.
 func (r Range) RangeIn(r2 Range) bool {
 	return r.PosIn(r2.Start) && r.PosIn(r2.End)
 }
@@ -107,6 +111,8 @@ func (r Range) IsSingleLine() bool {
 	return r.Start.Line == r.End.Line
 }
 
+// LineLength returns the column length between r.Start and r.End. If r is
+// multiline, LineLength returns 0.
 func (r Range) LineLength() uint32 {
 	if !r.IsSingleLine() {
 		return 0
@@ -118,10 +124,12 @@ func (r Range) String() string {
 	return fmt.Sprintf("%s-%s", r.Start, r.End)
 }
 
+// IsZero reports whether r is the zero value.
 func (r Range) IsZero() bool {
 	return IsZeroPosition(r.Start) && IsZeroPosition(r.End)
 }
 
+// Lines returns the number of lines r covers. If r is on a single line, Lines returns 1.
 func (r Range) Lines() uint32 {
 	return r.End.Col - r.Start.Col + 1
 }

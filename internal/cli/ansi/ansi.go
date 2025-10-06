@@ -39,8 +39,9 @@ const (
 	CodeBrightMagenta = "\033[95m"
 	CodeBrightCyan    = "\033[96m"
 
-	CodeBoldBrightWhite = "\033[1;97m"
-	CodeBoldBrightRed   = "\033[1;91m"
+	CodeBoldBrightWhite  = "\033[1;97m"
+	CodeBoldBrightRed    = "\033[1;91m"
+	CodeBoldBrightYellow = "\033[1;93m"
 
 	CodeDimCyan = "\033[2;36m"
 )

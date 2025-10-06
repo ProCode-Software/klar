@@ -6,7 +6,7 @@ type Platform string
 
 const (
 	PlatformJS   Platform = "js"
-	PlatformKlar          = "klar"
+	PlatformKlar Platform = "klar"
 )
 
 type Package struct {

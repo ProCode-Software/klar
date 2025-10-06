@@ -9,13 +9,13 @@ import (
 )
 
 type CheckOptions struct {
-	OnError  func(err errors.KlarError)
+	OnError  func(err errors.CompileError)
 	Target   target.Double
 	FilePath string
 }
 
 func CheckProgram(program *ast.Program, options CheckOptions) (
-	typedProgram *typed.Program, errors []errors.KlarError,
+	typedProgram *typed.Program, errors []errors.CompileError,
 ) {
 	return nil, nil
 	/*

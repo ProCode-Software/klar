@@ -19,7 +19,7 @@ type Parser struct {
 	// Conditional flags
 	isWhenGuard bool // Disable some types of expressions
 	isWhenCase  bool // Allow '_'
-	isAttribute bool
+	isAttribute bool // Allow version parsing
 
 	// Stored token properties
 	listCastTokens, assignmentTokens, lambdaTokens map[int]struct{}
@@ -39,14 +39,8 @@ func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	if options == nil {
 		options = &ParseOptions{}
 	}
-	t := make([]lexer.Token, len(tokens))
-	copy(t, tokens)
-	// Add EOS if missing
-	if len(t) == 0 || t[len(t)-1].Kind != lexer.EOF {
-		t = append(t, lexer.Token{Kind: lexer.EOF}) // TODO: Add position info?
-	}
 	return &Parser{
-		Tokens:  t,
+		Tokens:  tokens,
 		Index:   0,
 		File:    options.File,
 		Options: *options,

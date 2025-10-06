@@ -106,7 +106,7 @@ func (p *Parser) nudError() {
 	p.skipUntilBoundary()
 }
 
-func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Node {
+func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {
 	var handled bool
 	for BindingPowerMap[p.CurrKind()] > bp {
 		kind := p.CurrKind()
@@ -134,13 +134,12 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 
 func (p *Parser) ParseStatement() ast.Statement {
 	kind := p.CurrKind()
-	var res ast.Node
-	res, handled := p.handleStatement(kind)
-	if handled {
+	if res, handled := p.handleStatement(kind); handled {
 		p.Expect(lexer.EndOfStatement)
-		return res.(ast.Statement)
+		return res
 	}
-	res, handled = p.handleStatementNUD(kind)
+	var r ast.Node
+	res, handled := p.handleStatementNUD(kind)
 	if !handled {
 		if res, handled = p.handleNUD(kind); !handled {
 			p.unknownTokenErr()
@@ -149,23 +148,28 @@ func (p *Parser) ParseStatement() ast.Statement {
 	}
 	if handled { // reassigned in handleNUD() call
 		kind = p.CurrKind()
-		if res, handled = p.handleStatementLED(kind, res, DefaultBindingPower); !handled {
-			res = p.ParseLED(res.(ast.Expression), DefaultBindingPower)
+		r, handled = p.handleStatementLED(kind, res, DefaultBindingPower)
+		if !handled {
+			r = p.ParseLED(res, DefaultBindingPower)
+			r, _ = p.handleStatementLED(p.CurrKind(), r.(ast.Expression), DefaultBindingPower)
 		}
 	}
+	if r == nil {
+		r = res
+	}
 	p.Expect(lexer.EndOfStatement)
-	switch res := res.(type) {
+	switch r := r.(type) {
 	// Left-denoted statement
 	case ast.Statement:
-		return res
+		return r
 	// Then it is an expression
 	case ast.Expression:
-		stmt := &ast.ExpressionStatement{Expression: res}
-		copyPos(res, stmt)
+		stmt := &ast.ExpressionStatement{Expression: r}
+		copyPos(r, stmt)
 		return stmt
 	// I don't know what this is. If this occurs, then it is a bug.
 	default:
-		panic(fmt.Sprintf("node %v (type %[1]T) is neither an expression nor statement", res))
+		panic(fmt.Sprintf("node %v (type %[1]T) is neither an expression nor statement", r))
 	}
 }
 

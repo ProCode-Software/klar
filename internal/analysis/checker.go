@@ -13,11 +13,9 @@ type File struct {
 type ModuleChecker struct {
 	Contexts map[ContextID]*Context
 	Files    []File
-	Errors  []errors.KlarError
-	
+	Errors   []errors.CompileError
 }
 
 type Checker struct {
 	Program *ast.Program
-	
 }

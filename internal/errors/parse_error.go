@@ -52,6 +52,7 @@ const (
 	// Assignment =====
 
 	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
+	ErrInvalidExprInUpdate   // You can only update variables and properties
 	ErrColonEqual            // := used instead of = in default value assignment
 	ErrAssignmentAsExpr      // Assignment used as expression
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
@@ -60,6 +61,7 @@ const (
 	ErrInvalidTypeAnnotation // Type annotation on existing variable assignment
 	ErrDestructPatAfterColon // Non-identifier after : in destructure
 	ErrDestructInvalidEqual  // Default value provided in non-object destructure
+	ErrMismatchedAssignment  // Mismatched number of variables and values in assignment
 
 	// Declaration =====
 
@@ -173,9 +175,12 @@ func (e ParseError) error() string {
 	case ErrAssignmentAsExpr:
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
-		return "Can't assign to this kind of expression"
+		return "You can only assign to a variable, property, list slice, or destructuring pattern"
+		// Can't assign to this kind of expression
+	case ErrInvalidExprInUpdate:
+		return "You can only increment/decrement a variable or property"
 	case ErrInvalidComma:
-		return "A newline must be used to separate multiple statements"
+		return "Expected an assignment, or a newline to separate multiple statements"
 	case ErrUnderscoreValue:
 		return "Can't use '_' as a value: '_' is only allowed as a name placeholder or as a discard in declarations"
 	case ErrInvalidTypeAnnotation:
@@ -359,6 +364,13 @@ func (e ParseError) error() string {
 		return "An interface field can't have a default value"
 	case ErrIntfMultiKeyMethod:
 		return "Function declarations cannot appear in comma-separated keys; split the function into its own entry"
+	case ErrMismatchedAssignment:
+		exp, got := e.Params["left"].(int), e.Params["right"].(int)
+		s := fmt.Sprintf("left has %d, but right has %d", exp, got)
+		if got < exp {
+			return "Not enough values on right-hand side of assignment: " + s
+		}
+		return "Too many values on right-hand side of assignment: " + s
 	case ErrFuncDotAfterSelf:
 		return "Expected '.' between ')' and identifier in function declaration"
 	case ErrUnusedValue:

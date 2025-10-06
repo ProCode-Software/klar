@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -13,10 +15,15 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Stat
 	switch left := left.(type) {
 	case *ast.DestructureVars:
 		v = left
-	case *ast.Symbol:
-		v = &ast.DestructureVars{Values: []ast.Assignable{left}}
+	case *ast.Symbol, *ast.Discard, *ast.BadExpression:
+		v = &ast.DestructureVars{
+			Values: []ast.Assignable{left.(ast.Assignable)},
+		}
 	default:
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
+		v = &ast.DestructureVars{
+			Values: []ast.Assignable{&ast.BadExpression{Value: left}},
+		}
 	}
 	annot := &ast.TypeAnnotation{
 		Variable: v,
@@ -34,7 +41,7 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Stat
 	}
 }
 
-func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.VariableDeclaration {
+func (p *Parser) ParseVariableDeclaration(left ast.Expression, right []ast.Expression) *ast.VariableDeclaration {
 	var explicitType ast.Type
 	var vars []ast.Destructure
 	if annot, ok := left.(*ast.TypeAnnotation); ok {
@@ -50,14 +57,15 @@ func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.Varia
 			}
 			vars[i] = v.(ast.Destructure)
 		}
-	case *ast.Symbol:
-		vars = []ast.Destructure{left}
+	case *ast.Symbol, *ast.Discard:
+		vars = []ast.Destructure{left.(ast.Destructure)}
 	default:
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
+		vars = []ast.Destructure{&ast.BadExpression{Value: left}}
 	}
 	return &ast.VariableDeclaration{
 		Variables:    vars,
-		Value:        right,
+		Values:       right,
 		ExplicitType: explicitType,
 	}
 }
@@ -65,10 +73,6 @@ func (p *Parser) ParseVariableDeclaration(left, right ast.Expression) *ast.Varia
 // ParseAssignment parses a variable declaration or reassignment statement.
 func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.Statement {
 	op := p.Advance()
-	rhs := p.ParseExpression(bp)
-	if op.Kind == lexer.ColonEqual {
-		return p.ParseVariableDeclaration(left, rhs)
-	}
 	var values []ast.Assignable
 	switch left := left.(type) {
 	case *ast.DestructureVars:
@@ -79,11 +83,46 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 		p.Error(errors.Node(errors.ErrInvalidAssignment, left))
 		values = []ast.Assignable{&ast.BadExpression{Value: left}}
 	}
+	expLen := len(values)
+	rhs := make([]ast.Expression, 0, expLen)
+	for {
+		rhs = append(rhs, p.ParseExpression(bp))
+		if p.CurrKind() != lexer.Comma {
+			break
+		}
+		p.Advance() // ,
+	}
+	rhs = slices.Clip(rhs)
+	if gotLen := len(rhs); gotLen > 1 && gotLen != expLen {
+		err := errors.Slice(errors.ErrMismatchedAssignment, rhs)
+		err.Params = errors.ErrorParams{"left": expLen, "right": gotLen}
+		p.Error(err)
+	}
+	if op.Kind == lexer.ColonEqual {
+		return p.ParseVariableDeclaration(left, rhs)
+	}
 	return &ast.AssignmentStatement{
 		Assignee: values,
 		Operator: newOperator(op),
-		Value:    rhs,
+		Values:   rhs,
 	}
+}
+
+func (p *Parser) ParseCommaStatement(first ast.Expression, bp BindingPower) ast.Statement {
+	items := make([]ast.Assignable, 1, 2)
+	items[0] = p.validateAssignableOrFix(first)
+	for p.CurrKind() == lexer.Comma {
+		p.Advance()
+		items = append(items, p.ParseDestructure())
+	}
+	d := &ast.DestructureVars{Values: items}
+	if curr := p.CurrKind(); isAssignment(curr) {
+		return p.ParseAssignment(d, bpOf(curr))
+	} else if curr == lexer.Colon {
+		return p.ParseVarTypeAnnotation(d, bpOf(curr))
+	}
+	p.Error(errors.Slice(errors.ErrInvalidComma, items))
+	return &ast.BadExpression{Value: d}
 }
 
 // Soft keywords are not allowed in module names
@@ -161,7 +200,7 @@ func (p *Parser) ParseUpdateStatement(left ast.Node) *ast.UpdateStatement {
 		l = left.(ast.Expression)
 	default:
 		l = &ast.BadExpression{Value: left}
-		p.Error(errors.Node(errors.ErrInvalidAssignment, left))
+		p.Error(errors.Node(errors.ErrInvalidExprInUpdate, left))
 	}
 	return &ast.UpdateStatement{Operator: newOperator(op), Left: l}
 }

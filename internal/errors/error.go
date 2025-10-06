@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-type KlarError interface {
+type CompileError interface {
 	error
 	At() ranges.Range
 	Code() ErrorCode

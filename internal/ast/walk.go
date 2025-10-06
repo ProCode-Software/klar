@@ -68,7 +68,7 @@ func Walk(t Node, visitor func(Node)) {
 			Walk(v, visitor)
 		}
 		Walk(t.ExplicitType, visitor)
-		Walk(t.Value, visitor)
+		walkList(t.Values, visitor)
 	case *RegexLiteral, *StringLiteral, *BooleanLiteral, *NilLiteral,
 		*EnumLiteral, *FloatLiteral, *IntegerLiteral, *VersionLiteral, *Symbol:
 	default:

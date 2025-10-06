@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // InsertEOS performs automatic semicolon insertion by removing [lexer.Newline]
@@ -52,6 +53,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		if len(new) > 0 {
 			prev = new[len(new)-1].Kind
 		}
+	inner:
 		switch kind {
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
 			comments = append(comments, p.ParseComment(tok))
@@ -62,7 +64,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			brackets = append(brackets, len(new))
 			// Check for destructure assignment
 			switch prev {
-			// '/' if last statement ends in regex, or '*' for import
+			// '/' if last statement ends in regex, or '*' for import. 0 = first token
 			case 0, lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
 				assignMap[len(new)] = struct{}{}
 			}
@@ -91,8 +93,8 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				lastBrackI   = len(brackets) - 1
 				firstNewline int // Cannot be zero because preceded by bracket
 			)
-			if lastBrackI < 0 { // Unmatched bracket
-				break
+			if lastBrackI < 0 || newI >= len(p.Tokens) { // Unmatched bracket or EOF
+				break inner
 			}
 			// List cast: [Int](...)
 			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
@@ -102,7 +104,9 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			if p.Tokens[newI].Kind == lexer.Newline {
 				firstNewline = newI
 				for p.Tokens[newI].Kind == lexer.Newline {
-					newI = readComments(newI)
+					if newI = readComments(newI); newI >= len(p.Tokens) {
+						break inner
+					}
 				}
 			}
 			new = append(new, tok)
@@ -143,7 +147,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		}
 		nextTokI := readComments(i)
 		// Should add EOS before next token?
-		if insertEOS && CanGoOnNewline(p.Tokens[nextTokI].Kind) {
+		if insertEOS && nextTokI < len(p.Tokens) && CanGoOnNewline(p.Tokens[nextTokI].Kind) {
 			insertEOS = false
 		}
 		if insertEOS {
@@ -151,6 +155,13 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			new = append(new, tok)
 		}
 		i = nextTokI - 1 // Continuing the loop
+	}
+	// Add EOF if not present
+	if len(new) > 0 && new[len(new)-1].Kind != lexer.EOF {
+		new = append(new, lexer.Token{
+			Kind:     lexer.EOF,
+			Position: ranges.FromToken(new[len(new)-1]).End,
+		})
 	}
 	// Free resources
 	p.Tokens = new[:len(new):len(new)]

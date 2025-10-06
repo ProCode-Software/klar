@@ -46,7 +46,7 @@ func (s *Session) LoadFile(args []lexer.Token) {
 		return
 	}
 	defer f.Close()
-	tokens, err := parser.TokenizeFile(f, false)
+	tokens, err := parser.TokenizeFile(f, 0)
 	if err != nil {
 		s.handleLexerError(err)
 		return

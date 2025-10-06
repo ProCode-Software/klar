@@ -10,21 +10,21 @@ import (
 
 type errorType struct {
 	prefix ErrorCode
-	err    func(ErrorCode) KlarError
+	err    func(ErrorCode) CompileError
 }
 
 var errorTypes = map[string]errorType{
 	"SyntaxError": {
-		SyntaxErrorPrefix, func(ec ErrorCode) KlarError { return ParseError{ErrorCode: ec} },
+		SyntaxErrorPrefix, func(ec ErrorCode) CompileError { return ParseError{ErrorCode: ec} },
 	},
 	"TypeError": {
-		TypeErrorPrefix, func(ec ErrorCode) KlarError { return TypeError{ErrorCode: ec} },
+		TypeErrorPrefix, func(ec ErrorCode) CompileError { return TypeError{ErrorCode: ec} },
 	},
 	"ReferenceError": {
-		ReferenceErrorPrefix, func(ec ErrorCode) KlarError { return ReferenceError{ErrorCode: ec} },
+		ReferenceErrorPrefix, func(ec ErrorCode) CompileError { return ReferenceError{ErrorCode: ec} },
 	},
 	"Warning": {
-		WarningPrefix, func(ec ErrorCode) KlarError { return Warning{ErrorCode: ec} },
+		WarningPrefix, func(ec ErrorCode) CompileError { return Warning{ErrorCode: ec} },
 	},
 }
 
