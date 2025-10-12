@@ -19,14 +19,13 @@ func Build(r *command.Runner) {
 			{JS: &build.JSOptions{}},
 		},
 	}
-	b.InitLogger()
+	b.InitLogger(r.Flag("verbose"))
 	b.Println("Starting build...")
 	manifest := cli.ResolveManifest(projDir)
-	b.Log("Manifest found at " + manifest)
+	b.Printf("Manifest found at %s\n", manifest)
 	projDir = filepath.Dir(manifest)
 
 	ParseFlags(r, b.Options[0])
-	b.Log("Done parsing command line flags")
 	fmt.Println(manifest)
 }
 

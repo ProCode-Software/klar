@@ -1,6 +1,7 @@
 package build
 
 import (
+	"io"
 	"log"
 	"os"
 
@@ -89,8 +90,12 @@ func (o JSOptions) HasFlag(flag Flags) bool {
 // Logging
 // ==========
 
-func (c *Compiler) InitLogger() {
-	c.Logger = log.New(os.Stderr, "[compiler] ", log.Ltime)
+func (c *Compiler) InitLogger(verbose any) {
+	if verbose == true {
+		c.Logger = log.New(os.Stderr, "[compiler] ", log.Ltime)
+		return
+	}
+	c.Logger = log.New(io.Discard, "[compiler] ", log.Ltime)
 }
 
 // Equivalent to c.Logger.Println

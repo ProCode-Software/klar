@@ -7,11 +7,11 @@ import (
 )
 
 var (
-	targetList = map[string]any{
-		"node":    target.Double{target.JavaScript, target.JSNode},
-		"deno":    target.Double{target.JavaScript, target.JSDeno},
-		"bun":     target.Double{target.JavaScript, target.JSBun},
-		"browser": target.Double{target.JavaScript, target.JSBrowser},
+	targetList = map[string]target.Double{
+		"node":    {target.JavaScript, target.JSNode},
+		"deno":    {target.JavaScript, target.JSDeno},
+		"bun":     {target.JavaScript, target.JSBun},
+		"browser": {target.JavaScript, target.JSBrowser},
 	}
 	bundleModes = map[string]any{
 		"off":    js.BundleOff,
