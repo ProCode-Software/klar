@@ -24,8 +24,8 @@ func TestMain(t *testing.T) {
 		- obj2:
 			-- value: 5`, struct0{struct0_inner{2, valStruct{5}}})
 	testCase(t, "anomynous struct but in braces", `options: {
-			value: 5, obj2: 
-				- value: 42 
+			value: 5, obj2:
+				- value: 42
 		}`, struct0{struct0_inner{5, valStruct{42}}}) */
 }
 

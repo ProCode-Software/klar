@@ -11,13 +11,13 @@ const (
 )
 
 type Context struct {
-	Id ContextID
+	Id           ContextID
 	Declarations map[string]Declaration
-	Parent ContextID
+	Parent       ContextID
 }
 
 type Declaration struct {
-	Kind DeclKind
-	Value any
+	Kind     DeclKind
+	Value    any
 	Constant bool
 }

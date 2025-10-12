@@ -76,7 +76,7 @@ func (l *Lexer) Tokenize() *Token {
 			case Hashbang:
 				tok = l.ParseShebang(pos)
 			}
-			if l.Flags & IncludeComments == 0 {
+			if l.Flags&IncludeComments == 0 {
 				continue
 			}
 			return tok

@@ -58,7 +58,6 @@ func (s *Session) SaveFile(args []lexer.Token) {
 	path, ok := parseArg(args)
 	if !ok {
 		if path = s.lastSaveLoc; path == "" {
-			
 		}
 	} else {
 		s.lastSaveLoc = path

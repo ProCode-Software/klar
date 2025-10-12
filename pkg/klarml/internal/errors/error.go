@@ -28,7 +28,7 @@ type NumberRange struct {
 type ExpectedToken struct {
 	Expected, Got byte
 }
-type UnexpectedEOF struct{
+type UnexpectedEOF struct {
 	Expected byte
 }
 
@@ -96,6 +96,7 @@ func (err *InvalidArrayLength) Error() string {
 		err.Need, err.Got,
 	)
 }
+
 func (err *UnexpectedEOF) Error() string {
 	return fmt.Sprintf("klarml: expected %q, but found end of file", err.Expected)
 }

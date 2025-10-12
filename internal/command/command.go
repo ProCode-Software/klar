@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/argparse"
 )
 
 var ExecName string = "klar"
@@ -22,7 +22,7 @@ type Command struct {
 
 	// Shown in command help
 	Subcommands     []*Command
-	Flags           *cli.ArgParser
+	Flags           *argparse.Parser
 	LongDescription string
 	SeeAlso         []string
 	Examples        []ExampleCmd
@@ -31,16 +31,21 @@ type Command struct {
 type RunFunc func(r *Runner)
 
 type Runner struct {
-	Parser *cli.ArgParser
+	Parser *argparse.Parser
 }
 
-func (r *Runner) Arg(i int) string           { return r.Parser.ArgAt(i) }
-func (r *Runner) Flag(n string) any          { return r.Parser.Flag(n) }
-func (r *Runner) IsDefault(n string) bool    { return r.Parser.IsDefault(n) }
-func (r *Runner) AllFlags() map[string]any   { return r.Parser.Flags }
-func (r *Runner) AllArgs() []string          { return r.Parser.Args }
-func (r *Runner) StringFlag(n string) string { return r.Flag(n).(string) }
-func (r *Runner) BoolFlag(n string) bool     { return r.Flag(n).(bool) }
+func (r *Runner) Arg(i int) string                   { return r.Parser.ArgAt(i) }
+func (r *Runner) Flag(n string) any                  { return r.Parser.Flag(n) }
+func (r *Runner) IsDefault(n string) bool            { return r.Parser.IsDefault(n) }
+func (r *Runner) AllFlags() map[string]argparse.Flag { return r.Parser.Flags }
+func (r *Runner) AllArgs() []string                  { return r.Parser.Args }
+func (r *Runner) StringFlag(n string) string {
+	return r.Flag(n).(*argparse.StringFlag).Val
+}
+
+func (r *Runner) BoolFlag(n string) bool {
+	return r.Flag(n).(*argparse.BoolFlag).Val
+}
 
 func Lookup(
 	name string, commands map[string]*Command, aliases map[string]string,
@@ -62,7 +67,7 @@ func Run(cmd *Command) {
 		panic("cannot run command '" + cmd.Name + ": Run function is not defined")
 	}
 	if cmd.Flags == nil {
-		cmd.Flags = cli.NewArgParser(0)
+		cmd.Flags = argparse.NewParser()
 	}
 	cmd.Flags.Parse()
 	cmd.Run(&Runner{Parser: cmd.Flags})

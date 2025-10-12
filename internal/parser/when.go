@@ -119,7 +119,7 @@ loop:
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
-		// If next when case is '< ...', don't expect EOS	
+		// If next when case is '< ...', don't expect EOS
 		if curr := p.Curr(); !isImplicitWhenOp(curr.Kind) ||
 			curr.Position.Line == c.Body.Range.End.Line {
 			p.Expect(lexer.EndOfStatement)

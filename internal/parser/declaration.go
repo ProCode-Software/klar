@@ -309,11 +309,11 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	var rec ast.Identifier
 	// func (p: Parser)
 	if p.CurrKind() == lexer.LeftParenthesis {
-		p.Advance() // (
+		p.Advance()                 // (
 		self := p.ParseIdentifier() // self name
 		f.SelfName = &self
-		p.Expect(lexer.Colon) // :
-		rec = p.ParseIdentifier() // Struct name
+		p.Expect(lexer.Colon)            // :
+		rec = p.ParseIdentifier()        // Struct name
 		p.Expect(lexer.RightParenthesis) // )
 		if p.CurrKind() != lexer.Dot {
 			p.Error(errors.Token(errors.ErrFuncDotAfterSelf, p.Curr()))

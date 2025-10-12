@@ -47,6 +47,7 @@ func (p *Parser) ParseIdentifier() ast.Identifier {
 	p.validateIdentifier(tok)
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
 }
+
 func (p *Parser) ParseStrictIdentifier() ast.Identifier {
 	tok := p.Expect(lexer.Identifier)
 	return ast.Identifier{Name: tok.Source, Position: tok.Position}
