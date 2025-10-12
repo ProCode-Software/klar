@@ -98,7 +98,7 @@ func (d *Decoder) GetField(fields StructFields, name string) (*StructField, bool
 
 func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 	fields, _ := makeStructFields(rt, d.Flags)
-	return func(v reflect.Value, d *Decoder) (ast.Node, error) {
+	return func(v reflect.Value, d *Decoder, f parseFlags) (ast.Node, error) {
 		if err := d.SkipSpaceNewline(); err != nil {
 			// Nothing to read if EOF
 			return nil, err
@@ -118,20 +118,15 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		once.Do(func() {
 			for _, field := range fields.Fields {
 				if field.Decode == nil {
-					field.Decode = d.lookupMarshallFunc(field.Type)
+					field.Decode = d.lookupDecodeFunc(field.Type)
 				}
 			}
 		})
 		// Object literal
 		if d.Curr() == '{' {
 			oldDepth := d.Depth
-			oldComma := d.CommaSep
-			defer func() {
-				d.Depth = oldDepth
-				d.CommaSep = oldComma
-			}()
+			defer func() { d.Depth = oldDepth }()
 			d.Depth = 0
-			d.CommaSep = true
 			seps = append(seps, ',', '}')
 			if _, err := d.Advance(); err != nil {
 				if err == EOF {
@@ -191,7 +186,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			if err = d.SkipSpace(); err != nil {
 				if err == EOF {
 					// Null
-					prop.Value = &ast.Null{}
+					prop.Value = &ast.Nil{}
 					obj.Props = append(obj.Props, prop)
 					return obj, nil
 				}
@@ -199,7 +194,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			}
 			// Read a value
 			d.Depth++
-			valNode, err := field.Decode(rv, d)
+			valNode, err := field.Decode(rv, d, f)
 			if valNode != nil {
 				prop.Value = valNode.(ast.Value)
 			}

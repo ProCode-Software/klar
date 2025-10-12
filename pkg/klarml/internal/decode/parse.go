@@ -26,38 +26,60 @@ func checkEOF(err *error) {
 	}
 }
 
-func (d *Decoder) ReadValue() (lit ast.Value, err error) {
+func (d *Decoder) ReadValue(pf parseFlags) (lit ast.Value, err error) {
 	if err := d.SkipSpace(); err != nil {
 		checkEOF(&err)
 		return nil, err
 	}
-	curr := d.Curr()
+	curr, start := d.Curr(), d.Offset
 	switch curr {
 	case '\'', '"':
 		// String literal
-		return d.readString()
+		lit, err = d.readString()
 	case '+', '-', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		return d.readNumber()
+		lit, err = d.readNumber(pf)
 	case '[':
-		return d.readArray()
+		lit, err = d.readArray(pf)
 	case ']':
 		_, err = d.Advance()
 		if err != nil {
 			return lit, err
 		}
-		return nil, ErrUnexpectedBracket
+		lit, err = &ast.String{Value: "]"}, ErrUnexpectedBracket
 	case '{': // TODO: object
-	}
-	if unicode.IsSpace(rune(d.Curr())) {
-		if err := d.SkipSpaceNewline(); err != nil {
-			if err == EOF {
-				return &ast.Null{}, nil
+
+	default:
+		if d.Curr() != '\n' {
+			lit, err = d.readUnquotedString(pf)
+			break
+		}
+		// Value on newline or object/array
+		switch err = d.SkipSpaceNewline(); err {
+		case nil:
+		case EOF:
+			lit = &ast.Nil{} // Nil if EOF
+		default:
+			return lit, err
+		}
+		next, err := d.ReadN(2)
+		switch err {
+		case nil:
+			// Object or array (could also be a number if followed by digit)
+			if next[0] == '-' && !isDigit(next[1]) {
+				// TODO: Read object/array
+				break
 			}
+			fallthrough
+		case EOF: // Value on newline
+			lit, err = d.ReadValue(pf)
+		default:
 			return lit, err
 		}
 	}
-	// TODO: check for - if array or object
-	return d.readUnquotedString(false)
+	if lit != nil {
+		lit.SetRange(start, d.Offset)
+	}
+	return lit, err
 }
 
 func (d *Decoder) readString() (*ast.String, error) {
@@ -93,33 +115,33 @@ func (d *Decoder) readString() (*ast.String, error) {
 	return ret(err)
 }
 
-func (d *Decoder) readArray() (*ast.Array, error) {
-	_, err := d.Advance()
+func (d *Decoder) readArray(pf parseFlags) (*ast.Array, error) {
+	_, err := d.Advance() // [
 	if err != nil {
-		return nil, ErrUnterminatedArray
+		if err == EOF {
+			return nil, ErrUnterminatedArray
+		}
+		return nil, err
 	}
 	a := &ast.Array{}
-
-	oldComma := d.CommaSep
-	defer func() { d.CommaSep = oldComma }() // Restore
-	d.CommaSep = true
-
 	for d.Curr() != ']' {
-		val, err := d.ReadValue()
+		val, err := d.ReadValue(pf | comma)
 		if err != nil {
 			return a, err
 		}
 		a.Items = append(a.Items, val)
 		if d.Curr() != ']' {
-			if err := d.Expect(','); err != nil {
+			if err := d.ExpectSpacesThen(','); err != nil {
 				return a, err
 			}
 		}
 	}
-	return a, nil
+	_, err = d.Advance()
+	checkEOF(&err)
+	return a, err
 }
 
-func (d *Decoder) readNumber() (ast.Value, error) {
+func (d *Decoder) readNumber(flags parseFlags) (ast.Value, error) {
 	var b strings.Builder
 	isNumber := true
 	var isDecimal, wasUnderscore bool
@@ -140,13 +162,13 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 	b.WriteByte(first)
 	if err != nil {
 		checkEOF(&err)
-		if !isDigit(first) {
+		if !isDigit(first) { // + or -
 			return &ast.String{Value: string(first), Quote: 0}, err
 		}
 		return value(), err
 	}
 	for {
-		c := d.Curr()
+		c, size := d.CurrRune()
 		switch {
 		case c == '_' && wasUnderscore, c == '.' && isDecimal:
 			isNumber = false
@@ -154,18 +176,18 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 			wasUnderscore = true
 		case c == '.':
 			isDecimal = true
-		case unicode.IsSpace(rune(c)), d.isPunct(c):
+		case unicode.IsSpace(c), d.isPunct(byte(c), flags):
 			return value(), nil
-		case !isDigit(c): // letter
+		case !isDigit(byte(c)): // letter
 			isNumber = false
 		}
-		b.WriteByte(c)
-		if _, err := d.Advance(); err != nil {
+		b.WriteRune(c)
+		if err := d.AdvanceN(size); err != nil {
 			checkEOF(&err)
 			return value(), err
 		}
 		if !isNumber {
-			val, err := d.readUnquotedString(true)
+			val, err := d.readUnquotedString(flags | continuedString)
 			b.WriteString(val.(*ast.String).Value)
 			return value(), err
 		}
@@ -173,28 +195,28 @@ func (d *Decoder) readNumber() (ast.Value, error) {
 	// return value(), nil
 }
 
-func (d *Decoder) isPunct(c byte) bool {
+func (d *Decoder) isPunct(c byte, f parseFlags) bool {
 	switch c {
 	case '\n', '@', '$', ']', '}':
 		return true
 	case ',':
-		return d.CommaSep
+		return f&comma != 0
 	}
 	return false
 }
 
-func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
+func (d *Decoder) readUnquotedString(flags parseFlags) (ast.Value, error) {
 	var s strings.Builder
 	value := func() ast.Value {
 		str := strings.TrimSpace(s.String())
-		if !continued && (str == "true" || str == "false") {
+		if flags&continuedString == 0 && (str == "true" || str == "false") {
 			return &ast.Bool{Value: str == "true"}
 		}
 		return &ast.String{Value: str, Quote: 0}
 	}
 	for {
 		c := d.Curr()
-		if d.isPunct(c) {
+		if d.isPunct(c, flags) {
 			break
 		}
 		s.WriteByte(c)
@@ -211,11 +233,11 @@ func (d *Decoder) readUnquotedString(continued bool) (ast.Value, error) {
 func (d *Decoder) ReadIdent() (string, error) {
 	var b strings.Builder
 	for {
-		r := rune(d.Curr())
-		if unicode.IsLetter(r) || unicode.IsDigit(r) ||
-			r == '_' || (r == '-' && b.Len() > 0) {
+		r, size := d.CurrRune()
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r), r == '_', r == '-' && b.Len() > 0:
 			b.WriteRune(r)
-			if _, err := d.Advance(); err != nil {
+			if err := d.AdvanceN(size); err != nil {
 				return b.String(), err
 			}
 			continue

@@ -1,13 +1,16 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
 )
 
-type InvalidUnmarshallError struct {
+var ErrMaxDepth = errors.New("klarml: maximum depth exceeded")
+
+type InvalidUnmarshall struct {
 	Type reflect.Type
 }
 
@@ -16,21 +19,30 @@ type TypeError struct {
 	Value    ast.Node
 }
 
-type NumberRangeError struct {
+type NumberRange struct {
 	Value     float64
 	Expected  reflect.Type
 	Truncated bool // true: is supposed to be int; false: is supposed to be uint
 }
 
-type ExpectedTokenError struct {
+type ExpectedToken struct {
 	Expected, Got byte
 }
-
-type ExpectedEOFError struct {
-	Got byte
+type UnexpectedEOF struct{
+	Expected byte
 }
 
-func (err *InvalidUnmarshallError) Error() string {
+type ExpectedEOF struct {
+	Got byte
+}
+type UnsupportedType struct {
+	Type reflect.Type
+}
+type InvalidArrayLength struct {
+	Need, Got int
+}
+
+func (err *InvalidUnmarshall) Error() string {
 	switch {
 	case err.Type == nil:
 		return "klarml: nil argument passed to Unmarshall"
@@ -42,11 +54,12 @@ func (err *InvalidUnmarshallError) Error() string {
 
 func (err *TypeError) Error() string {
 	return fmt.Sprintf("klarml: can't serialize %s into Go %s type",
-		reflect.TypeOf(err.Value).Elem().Name(), err.Expected.String(),
+		reflect.TypeOf(err.Value).Elem().Name(),
+		err.Expected.String(),
 	)
 }
 
-func (err *NumberRangeError) Error() string {
+func (err *NumberRange) Error() string {
 	if err.Truncated {
 		return fmt.Sprintf(
 			"klarml: can't unmarshall float %f into Go integer type %s",
@@ -59,16 +72,30 @@ func (err *NumberRangeError) Error() string {
 	)
 }
 
-func (err *ExpectedEOFError) Error() string {
-	return fmt.Sprintf("klarml: expected end of file, but found '%c' instead", err.Got)
+func (err *ExpectedEOF) Error() string {
+	return fmt.Sprintf("klarml: expected end of file, but found %q instead", err.Got)
 }
 
-func (err *ExpectedTokenError) Error() string {
+func (err *ExpectedToken) Error() string {
 	expected := "'" + string(err.Expected) + "'"
 	if err.Expected == '\n' {
 		expected = "newline"
 	}
-	return fmt.Sprintf("klarml: expected %s, but found '%c' instead",
+	return fmt.Sprintf("klarml: expected %s, but found %q instead",
 		expected, err.Got,
 	)
+}
+
+func (err *UnsupportedType) Error() string {
+	return fmt.Sprintf("klarml: unsupported Go type %s", err.Type.String())
+}
+
+func (err *InvalidArrayLength) Error() string {
+	return fmt.Sprintf(
+		"klarml: mismatched array length: expected %d items, but source has %d",
+		err.Need, err.Got,
+	)
+}
+func (err *UnexpectedEOF) Error() string {
+	return fmt.Sprintf("klarml: expected %q, but found end of file", err.Expected)
 }

@@ -12,8 +12,8 @@ import (
 // Parse parses p.Tokens into a [*ast.Program].
 func (p *Parser) Parse() *ast.Program {
 	defer func() {
-		switch err := recover(); err {
-		case nil, stopParsing{}:
+		switch err := recover(); err.(type) {
+		case nil, stopParsing:
 			return
 		default:
 			panic(err)
@@ -150,7 +150,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 		kind = p.CurrKind()
 		r, handled = p.handleStatementLED(kind, res, DefaultBindingPower)
 		if !handled {
-			r = p.ParseLED(res, DefaultBindingPower)
+			r = p.ParseLED(res, AssignBindingPower)
 			r, _ = p.handleStatementLED(p.CurrKind(), r.(ast.Expression), DefaultBindingPower)
 		}
 	}

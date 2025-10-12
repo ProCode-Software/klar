@@ -10,8 +10,8 @@ const (
 )
 
 type Node interface {
-	Pos() int
-	End() int
+	Range() (start, end int)
+	SetRange(start, end int)
 }
 
 type Value interface {
@@ -20,7 +20,7 @@ type Value interface {
 }
 
 type baseNode struct {
-	StartPos, EndPos int
+	Start, End int
 }
 
 type Document struct {
@@ -88,4 +88,4 @@ type Class struct {
 	Name string
 }
 
-type Null struct{ baseNode }
+type Nil struct{ baseNode }

@@ -26,9 +26,9 @@ func (d *Decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Struct:
 		return d.makeStructDecoder(rt)
 	case reflect.Slice:
-		return makeSliceDecoder(rt)
+		return d.makeSliceDecoder(rt)
 	case reflect.Array:
-		return makeArrayDecoder(rt)
+		return d.makeArrayDecoder(rt)
 	case reflect.Pointer:
 		return makePointerDecoder(rt)
 	case reflect.Interface:
@@ -38,8 +38,8 @@ func (d *Decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	}
 }
 
-func decodeString(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	v, err := d.ReadValue()
+func decodeString(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	v, err := d.ReadValue(flags)
 	if err != nil {
 		return v, err
 	}
@@ -50,30 +50,30 @@ func decodeString(rv reflect.Value, d *Decoder) (ast.Node, error) {
 		rv.SetString(strconv.FormatBool(v.Value))
 	case *ast.Number:
 		rv.SetString(v.Source)
-	case *ast.Null:
+	case *ast.Nil:
 	default:
 		return v, d.TypeError(rv, v)
 	}
 	return v, nil
 }
 
-func decodeBool(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	val, err := d.ReadValue()
+func decodeBool(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	val, err := d.ReadValue(flags)
 	if err != nil {
 		return val, err
 	}
 	switch val := val.(type) {
 	case *ast.Bool:
 		rv.SetBool(val.Value)
-	case *ast.Null:
+	case *ast.Nil:
 	default:
 		return val, d.TypeError(rv, val)
 	}
 	return val, nil
 }
 
-func decodeInt(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	val, err := d.ReadValue()
+func decodeInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	val, err := d.ReadValue(flags)
 	if err != nil {
 		return val, err
 	}
@@ -82,29 +82,29 @@ func decodeInt(rv reflect.Value, d *Decoder) (ast.Node, error) {
 		asInt := int64(val.Value)
 		if float64(asInt) != val.Value {
 			// Truncated
-			return val, &errors.NumberRangeError{
+			return val, &errors.NumberRange{
 				Value:     val.Value,
 				Truncated: true,
 				Expected:  rv.Type(),
 			}
 		}
 		rv.SetInt(asInt)
-	case *ast.Null:
+	case *ast.Nil:
 	default:
 		return val, d.TypeError(rv, val)
 	}
 	return val, nil
 }
 
-func decodeUInt(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	val, err := d.ReadValue()
+func decodeUInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	val, err := d.ReadValue(flags)
 	if err != nil {
 		return val, err
 	}
 	switch val := val.(type) {
 	case *ast.Number:
 		if val.Value < 0 {
-			return val, &errors.NumberRangeError{
+			return val, &errors.NumberRange{
 				Value:     val.Value,
 				Truncated: false,
 				Expected:  rv.Type(),
@@ -112,30 +112,36 @@ func decodeUInt(rv reflect.Value, d *Decoder) (ast.Node, error) {
 		}
 		rv.SetUint(uint64(val.Value))
 		return val, nil
-	case *ast.Null:
+	case *ast.Nil:
 	}
 	return val, d.TypeError(rv, val)
 }
 
-func decodeFloat(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	val, err := d.ReadValue()
+func decodeFloat(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	val, err := d.ReadValue(flags)
 	if err != nil {
 		return val, err
 	}
 	switch val := val.(type) {
 	case *ast.Number:
 		rv.SetFloat(val.Value)
-	case *ast.Null:
+	case *ast.Nil:
 	default:
 		return val, d.TypeError(rv, val)
 	}
 	return val, nil
 }
 
-func decodeInvalid(rv reflect.Value, d *Decoder) (ast.Node, error) {
-	return nil, nil
+// Including reflect.Function, Chan, and UnsafePointer
+func decodeInvalid(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error) {
+	v, err := d.ReadValue(flags)
+	if err != nil {
+		return v, err
+	}
+	return v, &errors.UnsupportedType{rv.Type()}
 }
 
+// TODO
 func makeInterfaceDecoder(rt reflect.Type) decodeFunc {
 	return nil
 }

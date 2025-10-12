@@ -36,7 +36,6 @@ File extensions to include in compilation:
 - Media: .css, .scss, .less, .png, .jp(e)g, .svg
 option to convert klarml to json
 
-
 # Proposals
 - `shadow` keyword:
 ```klar

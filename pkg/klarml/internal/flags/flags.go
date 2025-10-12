@@ -18,6 +18,7 @@ const (
 	ValidateUTF8        // Validate UTF-8 strings
 	NoSingleItemToArray // Don't put single values into arrays
 	KeyedEmbeddedFields // If a struct has an embedded field, it may be keyed in the source or not
+	IgnoreArrayLength   // Don't validate array lengths; skip remaining items
 
 	// Unmarshalling to any
 

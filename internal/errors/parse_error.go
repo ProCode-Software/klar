@@ -309,7 +309,7 @@ func (e ParseError) error() string {
 	case ErrSelfExecFuncNotAllowed:
 		return "Self-executing functions are not allowed in Klar"
 	case ErrInvalidLambdaParams:
-		return "Invalid parameter list before '->' in lambda"
+		return "Expected (), a single destructure pattern, or a tuple of patterns before '->' in lambda"
 	case ErrParenRequiredFunc:
 		return "Parentheses are required around function parameter types"
 	case ErrInvalidObjPipeStep:
@@ -359,7 +359,7 @@ func (e ParseError) error() string {
 	case ErrMixTypeTupleLabels:
 		return "Can't mix 'label: type' and 'type' syntax in tuple or parameters"
 	case ErrNonNameFuncAlias:
-		return "Invalid function alias: target must be a function name"
+		return "A function alias target must be a function name"
 	case ErrInterfaceDefaultValue:
 		return "An interface field can't have a default value"
 	case ErrIntfMultiKeyMethod:

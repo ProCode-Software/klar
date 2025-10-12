@@ -9,10 +9,10 @@ import (
 )
 
 type (
-	ExpectedEOFError       = errors.ExpectedEOFError
-	ExpectedTokenError     = errors.ExpectedTokenError
-	InvalidUnmarshallError = errors.InvalidUnmarshallError
-	NumberRangeError       = errors.NumberRangeError
+	ExpectedEOFError       = errors.ExpectedEOF
+	ExpectedTokenError     = errors.ExpectedToken
+	InvalidUnmarshallError = errors.InvalidUnmarshall
+	NumberRangeError       = errors.NumberRange
 	TypeError              = errors.TypeError
 )
 

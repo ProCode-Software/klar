@@ -2,7 +2,6 @@ package decode
 
 import (
 	"bytes"
-	goerrors "errors"
 	"io"
 	"reflect"
 
@@ -11,27 +10,32 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
-type decodeFunc func(reflect.Value, *Decoder) (ast.Node, error)
+type parseFlags uint8
 
-var (
-	DecodeCache      = MakeCache[reflect.Type, decodeFunc]()
-	ErrDocumentEmpty = goerrors.New("document is empty")
+const (
+	topLevel        parseFlags = 1 << iota
+	comma                      // Values separated by commas
+	structLiteral              // for parseStruct
+	continuedString            // String continued from number
+	object
 )
 
-const BufferSize = 64
+type decodeFunc func(reflect.Value, *Decoder, parseFlags) (ast.Node, error)
+
+var DecodeCache = MakeCache[reflect.Type, decodeFunc]()
+
+const (
+	BufferSize = 64
+	MaxDepth   = 10000
+)
 
 type Decoder struct {
 	Buffer []byte
 	Reader io.Reader
 	Flags  flags.Flags
-	Pos    int
-
-	Line, Col int
-	FilePos   int
-
-	Depth    int // For nested keys
-	TopLevel bool
-	CommaSep bool // When reading object or array literals
+	Pos    int // Buffer position
+	Depth  int // For nested keys
+	Offset int // File position
 
 	Document *ast.Document
 }
@@ -41,7 +45,6 @@ func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {
 		Document: &ast.Document{},
 		Buffer:   buf,
 		Flags:    flags.Parse(f...),
-		Line:     1, Col: 1,
 	}
 }
 
@@ -55,12 +58,11 @@ func NewStreamDecoder(r io.Reader, f ...flags.Flags) *Decoder {
 		Buffer:   buf,
 		Reader:   r,
 		Flags:    flags.Parse(f...),
-		Line:     1, Col: 1,
 	}
 }
 
 // Looks up a decoder or creates one if it doesn't exist.
-func (d *Decoder) lookupMarshallFunc(rt reflect.Type) decodeFunc {
+func (d *Decoder) lookupDecodeFunc(rt reflect.Type) decodeFunc {
 	if marsh, ok := DecodeCache.Get(rt); ok {
 		return marsh
 	}
@@ -72,33 +74,32 @@ func (d *Decoder) lookupMarshallFunc(rt reflect.Type) decodeFunc {
 func (d *Decoder) Decode(v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return &errors.InvalidUnmarshallError{Type: reflect.TypeOf(v)}
+		return &errors.InvalidUnmarshall{Type: reflect.TypeOf(v)}
 	}
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
-	marsh := d.lookupMarshallFunc(rt)
+	marsh := d.lookupDecodeFunc(rt)
 	// Refill if needed. Not needed if the bytes are buffered
 	if err := d.Refill(); err != nil && err != EOF {
 		return err
 	}
-	// If this returns an error, the document is empty
-	if err := d.SkipSpaceNewline(); err != nil {
-		if err == EOF {
-			return ErrDocumentEmpty
-		}
+	// If this returns an error, the document is empty (treated as nil)
+	if err := d.SkipSpaceNewline(); err != nil && err != EOF {
 		return err
 	}
-	body, err := marsh(rv, d)
+	body, err := marsh(rv, d, topLevel)
 	if err != nil {
 		return err
 	}
-	d.Document.Body = body.(ast.Value)
+	if body != nil { // TODO: check if all non-nil results are Values
+		d.Document.Body = body.(ast.Value)
+	}
 	// Make sure there is nothing else after decoding
 	switch err := d.SkipSpaceNewline(); err {
 	case EOF:
 		return nil
 	case nil:
-		return &errors.ExpectedEOFError{Got: d.Curr()}
+		return &errors.ExpectedEOF{Got: d.Curr()}
 	default:
 		return err
 	}
@@ -108,5 +109,18 @@ func (d *Decoder) TypeError(rv reflect.Value, got ast.Node) error {
 	return &errors.TypeError{
 		Expected: rv.Type(),
 		Value:    got,
+	}
+}
+
+func (d *Decoder) increaseDepth() error {
+	if d.Depth++; d.Depth > MaxDepth {
+		return errors.ErrMaxDepth
+	}
+	return nil
+}
+
+func (d *Decoder) decreaseDepth() {
+	if d.Depth--; d.Depth < 0 {
+		panic("d.Depth is negative")
 	}
 }

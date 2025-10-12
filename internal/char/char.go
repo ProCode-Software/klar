@@ -18,7 +18,7 @@ var (
 
 func Repeat(r byte, n int) []byte {
 	rep := QuoteMap[r]
-	if rep != nil && n <= Length {
+	if rep != nil && n <= len(rep) {
 		return rep[:n]
 	}
 	// More than 32 chars

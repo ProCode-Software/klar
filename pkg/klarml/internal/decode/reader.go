@@ -4,6 +4,7 @@ import (
 	"io"
 	"slices"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
 )
@@ -69,12 +70,7 @@ func (d *Decoder) Curr() byte {
 func (d *Decoder) Advance() (byte, error) {
 	curr := d.Curr()
 	d.Pos++
-	d.FilePos++
-	d.Col++
-	if curr == '\n' {
-		d.Col = 1
-		d.Line++
-	}
+	d.Offset++
 	if d.NeedsMore() {
 		if err := d.Refill(); err != nil {
 			if err != EOF || d.Pos >= len(d.Buffer) {
@@ -88,7 +84,7 @@ func (d *Decoder) Advance() (byte, error) {
 func (d *Decoder) ExpectOne(exp ...byte) error {
 	got := d.Curr()
 	if !slices.Contains(exp, got) {
-		return &errors.ExpectedTokenError{Expected: exp[0], Got: got}
+		return &errors.ExpectedToken{Expected: exp[0], Got: got}
 	}
 	_, err := d.Advance()
 	return err
@@ -100,10 +96,21 @@ func (d *Decoder) Expect(exp byte, e ...error) error {
 		if len(e) > 0 {
 			return e[0]
 		}
-		return &errors.ExpectedTokenError{Expected: exp, Got: got}
+		return &errors.ExpectedToken{Expected: exp, Got: got}
 	}
 	_, err := d.Advance()
 	return err
+}
+
+func (d *Decoder) ExpectSpacesThen(exp byte) error {
+	switch err := d.SkipSpace(); err {
+	case EOF:
+		return &errors.UnexpectedEOF{Expected: exp}
+	case nil:
+		return d.Expect(exp)
+	default:
+		return err
+	}
 }
 
 func (d *Decoder) SkipSpace() error {
@@ -130,4 +137,21 @@ func (d *Decoder) skipws(includingNewline bool) error {
 			return err
 		}
 	}
+}
+
+func (d *Decoder) CurrRune() (r rune, size int) {
+	return utf8.DecodeRune(d.Buffer[d.Pos:])
+}
+
+func (d *Decoder) AdvanceN(n int) error {
+	d.Pos += n
+	d.Offset += n
+	if d.NeedsMore() {
+		if err := d.Refill(); err != nil {
+			if err != EOF || d.Pos >= len(d.Buffer) {
+				return err
+			}
+		}
+	}
+	return nil
 }
