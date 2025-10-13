@@ -37,7 +37,7 @@ type ResolvedModule struct {
 
 func NormalizeNamespace(ns string) (normalized string, isStd bool) {
 	isStd = strings.SplitN(ns, ".", 2)[0] == "klar"
-	normalized = strings.ReplaceAll(ns, ".", string(filepath.Separator))
+	normalized = strings.ReplaceAll(ns, ".", sep)
 	return
 }
 

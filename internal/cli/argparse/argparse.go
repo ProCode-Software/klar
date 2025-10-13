@@ -139,6 +139,16 @@ func (p *Parser) Parse() (err error) {
 		case strings.HasPrefix(item, "--"):
 			// Long flag
 			name := item[2:]
+			if _, ok := p.FlagDefinitions[name]; !ok {
+				if !p.AllowUnknownFlags {
+					return &ErrUnknownFlag{name}
+				}
+				continue
+			}
+			def := p.FlagDefinitions[name]
+			switch kind := def.Type; kind {
+
+			}
 		case item[0] == '-':
 			// Short flag(s)
 			val, shouldSkip := true, false	
