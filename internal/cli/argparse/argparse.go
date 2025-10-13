@@ -93,11 +93,6 @@ func NewParser(pattern ...string) *Parser {
 	return p
 }
 
-// cutDashes removes leading dashes from s.
-func cutDashes(s string) string {
-	return strings.TrimLeft(s, "-")
-}
-
 // errReqBeforeOpt panics if an optional argument has already been declared
 // (hasOptional == true) and argument f is not optional (optional == false).
 func errReqBeforeOpt(f string, i int) {
@@ -129,7 +124,8 @@ func (p *Parser) Parse() (err error) {
 	if p.InputArgs == nil {
 		p.InputArgs = os.Args[1:]
 	}
-	for i, item := range p.InputArgs {
+	for i := 0; i < len(p.InputArgs); i++ {
+		item := p.InputArgs[i]
 		switch {
 		case item == "--":
 			p.Args = append(p.Args, p.InputArgs[i+1:]...)
@@ -142,11 +138,37 @@ func (p *Parser) Parse() (err error) {
 			p.Args = append(p.Args, item)
 		case strings.HasPrefix(item, "--"):
 			// Long flag
+			name := item[2:]
 		case item[0] == '-':
 			// Short flag(s)
+			val, shouldSkip := true, false	
+			if nextI := i + 1; nextI < len(p.InputArgs) {
+				if next := p.InputArgs[nextI]; next == "true" || next == "false" {
+					val = next == "true"
+					shouldSkip = true
+				}
+			}
+			for name := range strings.SplitSeq(item[1:], "") {
+				def, ok := p.FlagDefinitions[name]
+				switch {
+				case !ok && !p.AllowUnknownFlags:
+					return &ErrUnknownFlag{name}
+				case def.Type != TypeBoolFlag:
+					return &ErrInvalidBool{name}
+				default:
+					p.Flags[name] = newBoolFlag(name, i, val)
+				}
+			}
+			if shouldSkip {
+				i++ // Skip the true or false after
+			}
 		}
 	}
 	return
+}
+
+func newBoolFlag(flag string, i int, val bool) Flag {
+	return &BoolFlag{baseFlag: baseFlag{idx: i}, Val: val}
 }
 
 // VariadicArgByName returns the variadic parameters for the argument named arg.
@@ -205,4 +227,16 @@ func (p *Parser) resolve(name string) string {
 		return target
 	}
 	return name
+}
+
+func FormatFlag(flag string) string {
+	if len(flag) == 1 {
+		return "-" + flag
+	}
+	return "--" + flag
+}
+
+// cutDashes removes leading dashes from s.
+func cutDashes(s string) string {
+	return strings.TrimLeft(s, "-")
 }
