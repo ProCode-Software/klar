@@ -40,7 +40,7 @@ func (f *EnumFlag) Type() FlagType { return TypeEnumFlag }
 
 type ListFlag struct {
 	baseFlag
-	Val any // should be a slice
+	Val []any
 }
 
 func (f *ListFlag) Value() any     { return f.Val }

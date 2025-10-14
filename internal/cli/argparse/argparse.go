@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -40,7 +41,8 @@ type ArgDefinition struct {
 // TODO: Parser.SetOptions(flag string, optMap map[passed string]any)
 // and Parser.SetDefaults
 type Parser struct {
-	AllowUnknownFlags bool     // Whether to allow unknown flags
+	AllowUnknownFlags bool // Whether to allow unknown flags
+	ShiftFirst        bool
 	InputArgs         []string // The input arguments to parse; default: [os.Args]
 	FlagDefinitions   map[string]FlagDefinition
 	ArgDefinitions    []ArgDefinition
@@ -55,6 +57,13 @@ type Parser struct {
 	enumOpts                    map[string]map[string]any
 }
 
+func first(s string) byte {
+	if len(s) == 0 {
+		return 0
+	}
+	return s[0]
+}
+
 // NewParser returns a [*Parser] with arguments specified in pattern.
 //
 // The syntax for each item in pattern is:
@@ -64,11 +73,14 @@ type Parser struct {
 //	<arg...>  Variadic argument requiring at least 1 parameter. Must be the last argument.
 //	[arg...]  Variadic argument accepting any amount of parameters. Must be the last argment.
 func NewParser(pattern ...string) *Parser {
-	p := &Parser{ArgDefinitions: make([]ArgDefinition, len(pattern))}
+	p := &Parser{
+		ArgDefinitions:  make([]ArgDefinition, len(pattern)),
+		ArgNames:        make(map[string]int, len(pattern)),
+		FlagDefinitions: make(map[string]FlagDefinition),
+	}
 	var hasVariadic, hasOptional bool
 	for i, pat := range pattern {
-		// Also checks if empty
-		if pre := pat[:0]; pre != "[" && pre != "<" {
+		if pre := first(pat); pre != '[' && pre != '<' {
 			panic(fmt.Sprintf("invalid pattern %s (#%d)", pat, i))
 		}
 		optional := pat[0] == '['
@@ -124,6 +136,12 @@ func (p *Parser) Parse() (err error) {
 	if p.InputArgs == nil {
 		p.InputArgs = os.Args[1:]
 	}
+	if p.ShiftFirst {
+		p.InputArgs = p.InputArgs[1:]
+	}
+	if len(p.FlagDefinitions) > 0 && p.Flags == nil {
+		p.Flags = make(map[string]Flag, len(p.FlagDefinitions))
+	}
 	for i := 0; i < len(p.InputArgs); i++ {
 		item := p.InputArgs[i]
 		switch {
@@ -145,13 +163,87 @@ func (p *Parser) Parse() (err error) {
 				}
 				continue
 			}
-			def := p.FlagDefinitions[name]
+			var (
+				def  = p.FlagDefinitions[name]
+				next string
+				skip bool
+				flag Flag
+				n    = i + 1
+			)
+			switch {
+			case n < len(p.InputArgs) && first(p.InputArgs[i]) != '-':
+				next = p.InputArgs[i+1]
+			case def.Type == TypeBoolFlag:
+				flag = newBoolFlag(i, true)
+			default:
+				return &ErrMissingValue{name, def.Type}
+			}
 			switch kind := def.Type; kind {
-
+			case TypeBoolFlag:
+				if next == "true" || next == "false" {
+					flag = newBoolFlag(i, next == "true")
+					skip = true
+				}
+			case TypeStringFlag:
+				flag = &StringFlag{baseFlag: baseFlag{idx: i}, Val: next}
+			case TypeNumberFlag:
+				num, err := p.checkNumber(name, next)
+				if err != nil {
+					return err
+				}
+				flag = &NumberFlag{baseFlag: baseFlag{idx: i}, Val: num}
+				skip = true
+			case TypeEnumFlag:
+				val, err := p.checkEnum(name, next)
+				if err != nil {
+					return err
+				}
+				flag = &EnumFlag{baseFlag: baseFlag{idx: i}, Val: val}
+				skip = true
+			case TypeListFlag:
+				// Add existing items
+				var f *ListFlag
+				if existing, ok := p.Flags[name].(*ListFlag); ok {
+					f = existing
+				} else {
+					f = &ListFlag{baseFlag: baseFlag{idx: i}, Val: []any{next}}
+				}
+				for n := i + 2; n < len(p.InputArgs); n++ {
+					item := p.InputArgs[n]
+					if len(item) == 0 || item[len(item)-1] != ',' {
+						break
+					}
+					var (
+						itemName = item[:len(item)-1]
+						val      any
+						err      error
+					)
+					switch def.ItemType {
+					case TypeStringFlag:
+						f.Val = append(f.Val, itemName)
+						continue
+					case TypeNumberFlag:
+						val, err = p.checkNumber(name, next)
+					case TypeEnumFlag:
+						val, err = p.checkEnum(name, next)
+					default:
+						panic("list of list flags are not currently supported")
+					}
+					if err != nil {
+						return err
+					}
+					f.Val = append(f.Val, val)
+				}
+				skip = true
+				flag = f
+			}
+			p.Flags[name] = flag
+			if skip {
+				i++
 			}
 		case item[0] == '-':
 			// Short flag(s)
-			val, shouldSkip := true, false	
+			val, shouldSkip := true, false
 			if nextI := i + 1; nextI < len(p.InputArgs) {
 				if next := p.InputArgs[nextI]; next == "true" || next == "false" {
 					val = next == "true"
@@ -166,7 +258,7 @@ func (p *Parser) Parse() (err error) {
 				case def.Type != TypeBoolFlag:
 					return &ErrInvalidBool{name}
 				default:
-					p.Flags[name] = newBoolFlag(name, i, val)
+					p.Flags[name] = newBoolFlag(i, val)
 				}
 			}
 			if shouldSkip {
@@ -174,16 +266,62 @@ func (p *Parser) Parse() (err error) {
 			}
 		}
 	}
+	if lastArgI := len(p.ArgDefinitions) - 1; lastArgI >= 0 {
+		switch {
+		case !p.ArgDefinitions[lastArgI].Optional &&
+			len(p.Args) < len(p.ArgDefinitions):
+			missingLn := len(p.ArgDefinitions)-len(p.Args)
+			missingNames := make([]string, 0, len(p.ArgDefinitions)-len(p.Args))
+			return &ErrMissingArgs{
+				Missing: p.ArgDefinitions[len(p.Args)-len(p.ArgDefinitions):],
+			}
+		case p.ArgDefinitions[lastArgI].Variadic:
+		}
+	}
+	if lastArgI >= 0 && !p.ArgDefinitions[lastArgI].Variadic {
+		// Variadic argument
+		if len(p.Args) < lastArgI {
+			return &ErrMissingArgument{p.ArgDefinitions[lastArgI].Name}
+		}
+	} else if len(p.Args) != len(p.ArgDefinitions) {
+		return &ErrMissingArgument{p.ArgDefinitions[len(p.Args)].Name}
+	}
+	// Set defaults
+	for name, def := range p.FlagDefinitions {
+		if _, ok := p.Flags[name]; !ok {
+			p.Flags[name] = def.Default
+		}
+	}
 	return
 }
 
-func newBoolFlag(flag string, i int, val bool) Flag {
+func newBoolFlag(i int, val bool) Flag {
 	return &BoolFlag{baseFlag: baseFlag{idx: i}, Val: val}
 }
 
-// VariadicArgByName returns the variadic parameters for the argument named arg.
+func (p *Parser) checkEnum(flag, input string) (any, error) {
+	if p.enumOpts == nil || p.enumOpts[flag] == nil {
+		panic("enum options not set for flag " + flag)
+	}
+	val, ok := p.enumOpts[flag][input]
+	if !ok {
+		// TODO: ExpOptions in A-Z order
+		return nil, &ErrInvalidOption{Flag: flag, ExpOptions: nil}
+	}
+	return val, nil
+}
+
+func (p *Parser) checkNumber(flag, input string) (val float64, err error) {
+	val, err = strconv.ParseFloat(input, 64)
+	if err != nil {
+		return 0, &ErrInvalidNumber{flag, input}
+	}
+	return
+}
+
+// VarArgByName returns the variadic parameters for the argument named arg.
 // It panics if arg is not defined or is not the last argument.
-func (p *Parser) VariadicArgByName(arg string) []string {
+func (p *Parser) VarArgByName(arg string) []string {
 	if len(p.ArgDefinitions) == 0 {
 		panic("argument " + arg + " not defined")
 	} else if len(p.Args) == 0 {
@@ -249,4 +387,99 @@ func FormatFlag(flag string) string {
 // cutDashes removes leading dashes from s.
 func cutDashes(s string) string {
 	return strings.TrimLeft(s, "-")
+}
+
+func (p *Parser) BoolFlag(name, desc string, def bool, aliases ...string) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeBoolFlag,
+		Default:     &BoolFlag{Val: def},
+		Description: desc,
+	}
+	p.makeAliases(name, aliases)
+	return p
+}
+
+func (p *Parser) StringFlag(name, desc, param, def string, aliases ...string) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeStringFlag,
+		Default:     &StringFlag{Val: def},
+		Description: desc,
+		ParamName:   param,
+	}
+	p.makeAliases(name, aliases)
+	return p
+}
+
+func (p *Parser) OptionFlag(
+	name, desc, param string,
+	opts map[string]any, def string, aliases ...string,
+) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeEnumFlag,
+		Default:     &EnumFlag{Val: opts[def]},
+		Description: desc,
+		ParamName:   param,
+	}
+	if p.enumOpts == nil {
+		p.enumOpts = map[string]map[string]any{name: opts}
+	} else {
+		p.enumOpts[name] = opts
+	}
+	p.makeAliases(name, aliases)
+	return p
+}
+
+func (p *Parser) NumberFlag(name, desc, param string, def float64, aliases ...string) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeNumberFlag,
+		Default:     &NumberFlag{Val: def},
+		Description: desc,
+		ParamName:   param,
+	}
+	p.makeAliases(name, aliases)
+	return p
+}
+
+func (p *Parser) ListFlag(name, desc, param string, def []any, aliases ...string) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeListFlag,
+		Default:     &ListFlag{Val: def},
+		Description: desc,
+		ParamName:   param,
+	}
+	p.makeAliases(name, aliases)
+	return p
+}
+
+func (p *Parser) ListFlagOf(
+	name, desc, param string,
+	itemType FlagType, opts map[string]any,
+	def []any, aliases ...string,
+) *Parser {
+	p.FlagDefinitions[name] = FlagDefinition{
+		Type:        TypeListFlag,
+		ItemType:    itemType,
+		Default:     &ListFlag{Val: def},
+		Description: desc,
+		ParamName:   param,
+	}
+	p.makeAliases(name, aliases)
+	if opts == nil {
+		return p
+	}
+	if p.enumOpts == nil {
+		p.enumOpts = map[string]map[string]any{name: opts}
+	} else {
+		p.enumOpts[name] = opts
+	}
+	return p
+}
+
+func (p *Parser) makeAliases(flag string, aliases []string) {
+	if p.FlagAliases == nil {
+		p.FlagAliases = make(map[string]string, len(aliases)+1)
+	}
+	for _, alias := range aliases {
+		p.FlagAliases[alias] = p.FlagAliases[flag]
+	}
 }

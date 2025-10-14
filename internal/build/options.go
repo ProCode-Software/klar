@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ProCode-Software/klar/internal/build/js"
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
@@ -43,13 +44,13 @@ const (
 
 type Options struct {
 	Inputs       []Input
-	Target       target.Double
+	Target       target.Double `arg:"target"`
 	Outputs      []string
-	OutputDir    string
+	OutputDir    string `arg:"output"`
 	JS           *JSOptions
 	AssetOptions *AssetOptions
 	Paths        map[string]string
-	Watch        bool
+	Watch        bool `arg:"watch"`
 	EmitPackage  bool
 	// ProjectDir   string
 }
@@ -89,16 +90,32 @@ func (o JSOptions) HasFlag(flag Flags) bool {
 
 // Logging
 // ==========
+var KLAR_LOG_FILE *os.File
 
-func (c *Compiler) InitLogger(verbose any) {
-	if verbose == true {
-		c.Logger = log.New(os.Stderr, "[compiler] ", log.Ltime)
-		return
+func (c *Compiler) InitLogger() (hasLogFile bool) {
+	logFile := os.Getenv("KLAR_LOG_FILE")
+	var out io.Writer
+	switch {
+	case logFile != "":
+		file, err := os.Create(logFile)
+		if err != nil {
+			cli.Failure("Unable to open KLAR_LOG_FILE '"+logFile+"': ", err)
+		}
+		out, KLAR_LOG_FILE, hasLogFile = file, file, true
+	case c.Verbose:
+		out = os.Stderr
+	default:
+		out = io.Discard
 	}
-	c.Logger = log.New(io.Discard, "[compiler] ", log.Ltime)
+	c.Logger = log.New(out, "[compiler] ", log.Ltime)
+	return
 }
 
 // Equivalent to c.Logger.Println
 func (c *Compiler) Log(v ...any) {
 	c.Println(v...)
+}
+
+func (c *Compiler) Errorf(s string, v ...any) {
+	c.Printf("[error] "+s, v...)
 }

@@ -12,9 +12,13 @@ type (
 	ErrUnknownFlag    struct{ Flag string }
 	ErrMissingArgs    struct{ Missing []string }
 	ErrExtraneousArgs struct{ Extra []string }
-	ErrInvalidNumber  struct{ Flag string }
 	ErrInvalidBool    struct{ Flag string }
-	ErrInvalidOption  struct {
+	ErrInvalidNumber  struct{ Flag, Input string }
+	ErrMissingValue   struct {
+		Flag string
+		Type FlagType
+	}
+	ErrInvalidOption struct {
 		Flag       string
 		ExpOptions []string
 	}
@@ -33,7 +37,7 @@ func (err *ErrExtraneousArgs) Error() string {
 }
 
 func (err *ErrInvalidNumber) Error() string {
-	return "expected a number for flag " + err.Flag
+	return fmt.Sprintf("invalid number for flag %s: %s", err.Flag, err.Input)
 }
 
 func (err *ErrInvalidBool) Error() string {
@@ -44,4 +48,18 @@ func (err *ErrInvalidOption) Error() string {
 	return fmt.Sprintf("invalid option for flag %s: expected one of: %s",
 		err.Flag, strings.Join(err.ExpOptions, ", "),
 	)
+}
+
+func (err *ErrMissingValue) Error() string {
+	return fmt.Sprintf(
+		"missing value for flag %s: expected %s", err.Flag, TypeNames[err.Type],
+	)
+}
+
+var TypeNames = []string{
+	TypeStringFlag: "string",
+	TypeNumberFlag: "number",
+	TypeBoolFlag:   "boolean",
+	TypeEnumFlag:   "option",
+	TypeListFlag:   "list",
 }

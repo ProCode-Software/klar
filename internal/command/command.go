@@ -1,6 +1,9 @@
 package command
 
 import (
+	"io"
+	"os"
+
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 )
 
@@ -36,7 +39,6 @@ type Runner struct {
 
 func (r *Runner) Arg(i int) string                   { return r.Parser.ArgAt(i) }
 func (r *Runner) Flag(n string) any                  { return r.Parser.Flag(n) }
-func (r *Runner) IsDefault(n string) bool            { return r.Parser.IsDefault(n) }
 func (r *Runner) AllFlags() map[string]argparse.Flag { return r.Parser.Flags }
 func (r *Runner) AllArgs() []string                  { return r.Parser.Args }
 func (r *Runner) StringFlag(n string) string {
@@ -69,6 +71,33 @@ func Run(cmd *Command) {
 	if cmd.Flags == nil {
 		cmd.Flags = argparse.NewParser()
 	}
-	cmd.Flags.Parse()
+	cmd.Flags.ShiftFirst = true
+	cmd.Flags.InputArgs = os.Args[1:]
+	if err := cmd.Flags.Parse(); err != nil {
+		cmd.handleFlagError(err)
+	}
 	cmd.Run(&Runner{Parser: cmd.Flags})
+}
+
+func (c *Command) handleFlagError(err error) {
+	if err == argparse.ErrHelp {
+		c.Help(os.Stdout)
+		os.Exit(0)
+	}
+	switch err.(type) {
+	case *argparse.ErrInvalidBool:
+	case *argparse.ErrExtraneousArgs:
+	case *argparse.ErrInvalidNumber:
+	case *argparse.ErrInvalidOption:
+	case *argparse.ErrMissingArgs:
+	case *argparse.ErrMissingValue:
+	case *argparse.ErrUnknownFlag:
+	}
+}
+
+func (c *Command) Help(file io.Writer) {
+	
+}
+func (c *Command) Print(file io.Writer) {
+
 }

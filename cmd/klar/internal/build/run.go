@@ -7,6 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/target"
 )
@@ -18,8 +19,11 @@ func Build(r *command.Runner) {
 		Options: []*build.Options{
 			{JS: &build.JSOptions{}},
 		},
+		Verbose: r.Flag("verbose") == true,
 	}
-	b.InitLogger(r.Flag("verbose"))
+	if hasLogFile := b.InitLogger(); hasLogFile {
+		defer build.KLAR_LOG_FILE.Close()
+	}
 	b.Println("Starting build...")
 	manifest := cli.ResolveManifest(projDir)
 	b.Printf("Manifest found at %s\n", manifest)
@@ -38,47 +42,43 @@ var jsBoolFlags = map[string]build.Flags{
 }
 
 func ParseFlags(r *command.Runner, o *build.Options) {
-	var firstJSFlag string
 	for flag, v := range r.AllFlags() {
 		if v == nil {
 			continue
 		}
-		if flag, ok := jsBoolFlags[flag]; ok && v == true {
+		if flag, ok := jsBoolFlags[flag]; ok && v.Value() == true {
 			o.JS.Flags |= flag
+			continue
 		}
 		switch flag {
 		case "config":
-			continue
+			continue // TODO
 		case "watch":
-			o.Watch = v.(bool)
-			continue
+			o.Watch = v.Value().(bool)
 		case "output":
-			o.OutputDir = v.(string)
-			continue
+			o.OutputDir = v.Value().(string)
 		case "target":
-			o.Target = v.(target.Double)
-			continue
-
-		// JavaScript options
-		case "banner":
-			o.JS.Banner = v.(string)
-		case "bundle":
-			o.JS.Bundle = v.(js.BundleMode)
-		case "declaration-dir":
-			o.JS.DeclarationDir = v.(string)
-		case "format":
-			o.JS.Format = v.(js.ModuleFormat)
+			o.Target = v.Value().(target.Double)
 		default:
-			panic("unhandled flag: " + flag)
+			switch flag {
+			case "banner":
+				o.JS.Banner = v.Value().(string)
+			case "bundle":
+				o.JS.Bundle = v.Value().(js.BundleMode)
+			case "declaration-dir":
+				o.JS.DeclarationDir = v.Value().(string)
+			case "format":
+				o.JS.Format = v.Value().(js.ModuleFormat)
+			default:
+				panic("unhandled flag: " + flag)
+			}
+			// Check if a JavaScript flag was used when not targeting JavaScript
+			if t := o.Target.Target; t != target.JavaScript {
+				cli.Failure(fmt.Sprintf(
+					"Can't use JavaScript flag '%s' with target '%s'",
+					argparse.FormatFlag(flag), t,
+				))
+			}
 		}
-		if firstJSFlag == "" && !r.IsDefault(flag) {
-			firstJSFlag = flag
-		}
-	}
-	// Check if a JavaScript flag was used when not targeting JavaScript
-	if t := o.Target.Target; t != target.JavaScript && firstJSFlag != "" {
-		cli.Failure(fmt.Sprintf(
-			"Can't use JavaScript flag '--%s' with target '%s'", firstJSFlag, t,
-		))
 	}
 }

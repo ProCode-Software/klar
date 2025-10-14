@@ -101,7 +101,7 @@ func defFromReflectValue(rt reflect.Type, rv reflect.Value) (def FlagDefinition)
 		def.Default = &EnumFlag{Val: rv.Interface()}
 	case TypeListFlag:
 		def.ItemType = typeFromReflectType(rt.Elem().Kind())
-		def.Default = &ListFlag{Val: rv.Interface()}
+		def.Default = &ListFlag{Val: rv.Interface().([]any)}
 	case TypeBoolFlag:
 		def.Default = &BoolFlag{Val: rv.Bool()}
 	case TypeStringFlag:
@@ -119,4 +119,8 @@ func defFromReflectValue(rt reflect.Type, rv reflect.Value) (def FlagDefinition)
 		def.Default = f
 	}
 	return
+}
+
+func (p *Parser) setStructFields() {
+	
 }
