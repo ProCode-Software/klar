@@ -1,13 +1,21 @@
 package command
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"strings"
+	"text/template"
 
+	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 )
 
-var ExecName string = "klar"
+var (
+	ExecName string = "klar"
+	Commands map[string]*Command
+)
 
 type ExampleCmd struct {
 	Command     string
@@ -19,7 +27,7 @@ type ExampleCmd struct {
 type Command struct {
 	Name             string
 	ShortDescription string
-	Usage            string
+	Usage            []string
 	Aliases          []string
 	Run              RunFunc
 
@@ -80,11 +88,12 @@ func Run(cmd *Command) {
 }
 
 func (c *Command) handleFlagError(err error) {
-	if err == argparse.ErrHelp {
-		c.Help(os.Stdout)
-		os.Exit(0)
-	}
+	stdout, stderr := os.Stdout, os.Stderr
+	_ = stderr
 	switch err.(type) {
+	case *argparse.ErrHelp:
+		c.Help(stdout)
+		os.Exit(0)
 	case *argparse.ErrInvalidBool:
 	case *argparse.ErrExtraneousArgs:
 	case *argparse.ErrInvalidNumber:
@@ -95,9 +104,68 @@ func (c *Command) handleFlagError(err error) {
 	}
 }
 
-func (c *Command) Help(file io.Writer) {
-	
+func newTemplate(name, t string) *template.Template {
+	return template.Must(template.New(name).Funcs(templFuncs).Parse(t))
 }
-func (c *Command) Print(file io.Writer) {
 
+func (c *Command) Help(f io.Writer) {
+	t := newTemplate("help", fullHelpTemplate)
+	template.Must(t, t.Execute(f, newHelper(c)))
+}
+
+func (c *Command) ArgUsage() string {
+	if c.Usage == nil {
+		c.Usage = c.Flags.Pattern
+	}
+	var w strings.Builder
+	fmt.Fprint(&w, ansi.Bold("Usage")+ansi.BoldDim(": "),
+		ansi.BoldGreen(ExecName), " ", ansi.BoldYellow(c.Name),
+	)
+	for _, arg := range c.Usage {
+		fmt.Fprint(&w, ansi.Cyan(" "+arg))
+	}
+	return w.String()
+}
+
+func (c *Command) SeeAlsoString(indent int) string {
+	b := &strings.Builder{}
+	tw := cli.NewTabWriterOutput(b)
+	tw.Margin = indent
+	for _, cmd := range c.SeeAlso {
+		tw.Write(ansi.BoldGreen(ExecName) + " " + ansi.BoldYellow(cmd), getDesc(cmd))
+	}
+	tw.Flush()
+	return b.String()
+}
+
+type helper struct {
+	*Command
+	ExecName string
+}
+
+func newHelper(c *Command) *helper {
+	return &helper{
+		Command:  c,
+		ExecName: ExecName,
+	}
+}
+
+var templFuncs = template.FuncMap{
+	"join": strings.Join,
+}
+
+func (helper) ANSI(color, s string) string   { return ansi.Color("\x1b["+color+"m", s) }
+func (h helper) Bold(color, s string) string { return ansi.Color("\x1b[1;"+color+"m", s) }
+func (h helper) Title(title string) string   { return ansi.Bold(title) + ansi.BoldDim(": ") }
+func (helper) FormatExecName() string        { return ansi.BoldGreen(ExecName) }
+func (helper) Join(items []string, color, sep string) string {
+	c := ansi.Partial("\x1b[" + color + "m")
+	return ansi.Color(color, strings.Join(items, ansi.Reset()+sep+c))
+}
+
+func getDesc(cmd string) string {
+	if Commands == nil || Commands[cmd] == nil {
+		return ""
+	}
+	return Commands[cmd].ShortDescription
 }

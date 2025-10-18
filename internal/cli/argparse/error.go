@@ -1,12 +1,9 @@
 package argparse
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
-
-var ErrHelp = errors.New("--help or -h flag passed")
 
 type (
 	ErrUnknownFlag    struct{ Flag string }
@@ -14,6 +11,7 @@ type (
 	ErrExtraneousArgs struct{ Extra []string }
 	ErrInvalidBool    struct{ Flag string }
 	ErrInvalidNumber  struct{ Flag, Input string }
+	ErrHelp           struct{}
 	ErrMissingValue   struct {
 		Flag string
 		Type FlagType
@@ -55,6 +53,8 @@ func (err *ErrMissingValue) Error() string {
 		"missing value for flag %s: expected %s", err.Flag, TypeNames[err.Type],
 	)
 }
+
+func (*ErrHelp) Error() string { return "help requested" }
 
 var TypeNames = []string{
 	TypeStringFlag: "string",

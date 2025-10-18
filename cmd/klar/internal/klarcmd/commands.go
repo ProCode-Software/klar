@@ -14,8 +14,9 @@ var KlarCommands = map[string]*command.Command{
 		SeeAlso:          s{"run", "test", "check"},
 		Flags:            build.Flags,
 		Run:              build.Build,
-		Examples: examples{
+		Examples: ex{
 			{"build", nil, nil, "Build the current project to the default output directory"},
+			{"build", s{"a", "b"}, s{"-t", "file", "-x", "f"}, "Build the current project to the default output directory"},
 		},
 	},
 	"repl": {
@@ -34,11 +35,12 @@ var KlarCommands = map[string]*command.Command{
 
 type (
 	s        = []string
-	examples = []command.ExampleCmd
+	ex = []command.ExampleCmd
 )
 
 // Set command names
 func init() {
+	command.Commands = KlarCommands
 	for name, cmd := range KlarCommands {
 		cmd.Name = name
 	}

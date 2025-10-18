@@ -44,6 +44,7 @@ type Parser struct {
 	AllowUnknownFlags bool // Whether to allow unknown flags
 	ShiftFirst        bool
 	InputArgs         []string // The input arguments to parse; default: [os.Args]
+	Pattern []string
 	FlagDefinitions   map[string]FlagDefinition
 	ArgDefinitions    []ArgDefinition
 	ArgNames          map[string]int
@@ -102,6 +103,7 @@ func NewParser(pattern ...string) *Parser {
 		}
 		p.ArgNames[name] = i
 	}
+	p.Pattern = pattern
 	return p
 }
 
@@ -140,7 +142,7 @@ func (p *Parser) Parse() (err error) {
 		p.InputArgs = p.InputArgs[1:]
 	}
 	if len(p.FlagDefinitions) > 0 && p.Flags == nil {
-		p.Flags = make(map[string]Flag, len(p.FlagDefinitions))
+		p.Flags = make(map[string]Flag, len(p.FlagDefinitions)/3)
 	}
 	for i := 0; i < len(p.InputArgs); i++ {
 		item := p.InputArgs[i]
@@ -149,7 +151,7 @@ func (p *Parser) Parse() (err error) {
 			p.Args = append(p.Args, p.InputArgs[i+1:]...)
 			return
 		case item == "--help", item == "-h":
-			return ErrHelp
+			return &ErrHelp{}
 		case item == "-":
 			fallthrough
 		default:
@@ -266,25 +268,19 @@ func (p *Parser) Parse() (err error) {
 			}
 		}
 	}
-	if lastArgI := len(p.ArgDefinitions) - 1; lastArgI >= 0 {
-		switch {
-		case !p.ArgDefinitions[lastArgI].Optional &&
-			len(p.Args) < len(p.ArgDefinitions):
-			missingLn := len(p.ArgDefinitions)-len(p.Args)
-			missingNames := make([]string, 0, len(p.ArgDefinitions)-len(p.Args))
-			return &ErrMissingArgs{
-				Missing: p.ArgDefinitions[len(p.Args)-len(p.ArgDefinitions):],
-			}
-		case p.ArgDefinitions[lastArgI].Variadic:
+	lastArgI, argc := len(p.ArgDefinitions)-1, len(p.Args)
+	switch {
+	case lastArgI < 0:
+		break
+	case argc < len(p.ArgDefinitions) && !p.ArgDefinitions[lastArgI].Optional:
+		missingLn := len(p.ArgDefinitions) - argc
+		missingNames := make([]string, missingLn)
+		for i := range missingNames {
+			missingNames[i] = p.ArgDefinitions[argc-missingLn+i].Name
 		}
-	}
-	if lastArgI >= 0 && !p.ArgDefinitions[lastArgI].Variadic {
-		// Variadic argument
-		if len(p.Args) < lastArgI {
-			return &ErrMissingArgument{p.ArgDefinitions[lastArgI].Name}
-		}
-	} else if len(p.Args) != len(p.ArgDefinitions) {
-		return &ErrMissingArgument{p.ArgDefinitions[len(p.Args)].Name}
+		return &ErrMissingArgs{Missing: missingNames}
+	case argc > len(p.ArgDefinitions) && !p.ArgDefinitions[lastArgI].Variadic:
+		return &ErrExtraneousArgs{p.Args[len(p.ArgDefinitions):]}
 	}
 	// Set defaults
 	for name, def := range p.FlagDefinitions {
