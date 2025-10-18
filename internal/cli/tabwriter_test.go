@@ -28,8 +28,8 @@ func setup(tw *cli.TabWriter) (cli.TabWriter, *bytes.Buffer) {
 func TestNewTabWriter(t *testing.T) {
 	t.Run("Basic", func(t *testing.T) {
 		tw, buf := setup(nil)
-		tw.Write("a1", "b2", "cc3", "d4")
-		tw.WriteBytes([]byte("one\ttwo\tthree\n"))
+		tw.WriteCells("a1", "b2", "cc3", "d4")
+		tw.Write([]byte("one\ttwo\tthree\n"))
 		tw.WriteString("1\t2\t3\t4\n")
 		if _, err := tw.Flush(); err != nil {
 			panic(err)
@@ -41,8 +41,8 @@ func TestNewTabWriter(t *testing.T) {
 	// TODO: test ansi
 	t.Run("Advanced", func(t *testing.T) {
 		tw, buf := setup(&cli.TabWriter{Spacing: 0, Flags: cli.AlignRight, MinWidth: 4, Separator: ','})
-		tw.Write("a1", "b2", "cc3", "d4")
-		tw.WriteBytes([]byte("one,two,three\n"))
+		tw.WriteCells("a1", "b2", "cc3", "d4")
+		tw.Write([]byte("one,two,three\n"))
 		tw.WriteString("1,2,3,4\n")
 		if _, err := tw.Flush(); err != nil {
 			panic(err)

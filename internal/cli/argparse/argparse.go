@@ -44,7 +44,7 @@ type Parser struct {
 	AllowUnknownFlags bool // Whether to allow unknown flags
 	ShiftFirst        bool
 	InputArgs         []string // The input arguments to parse; default: [os.Args]
-	Pattern []string
+	Pattern           []string
 	FlagDefinitions   map[string]FlagDefinition
 	ArgDefinitions    []ArgDefinition
 	ArgNames          map[string]int
@@ -476,6 +476,6 @@ func (p *Parser) makeAliases(flag string, aliases []string) {
 		p.FlagAliases = make(map[string]string, len(aliases)+1)
 	}
 	for _, alias := range aliases {
-		p.FlagAliases[alias] = p.FlagAliases[flag]
+		p.FlagAliases[alias] = flag
 	}
 }

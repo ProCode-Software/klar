@@ -48,7 +48,7 @@ func main() {
 			"Command '%s' is not implemented yet.", cmdName,
 		))
 	case "help":
-		if len(args) < 3 {
+		if len(args) < 3 || args[2] == "" {
 			ShowHelp(true)
 			os.Exit(0)
 		}

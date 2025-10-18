@@ -122,5 +122,4 @@ func defFromReflectValue(rt reflect.Type, rv reflect.Value) (def FlagDefinition)
 }
 
 func (p *Parser) setStructFields() {
-	
 }

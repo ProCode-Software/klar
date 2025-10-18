@@ -1,31 +1,35 @@
 package command
 
 var fullHelpTemplate = `
-{{- $root := . -}}
-{{.ArgUsage}}
+{{- .ArgUsage}}
 
-{{or .LongDescription .ShortDescription -}}
+{{ or .LongDescription .ShortDescription -}}
+
+{{- if and .Flags (len .Flags.FlagDefinitions) }}
+
+{{ title "Flags" }}
+{{ .FlagString 2 }}
+{{- end -}}
 
 {{- if .Examples }}
 
-{{.Title "Examples" -}}
+{{ title "Examples" -}}
+{{ range .Examples }}
+  {{ printf "%s:" .Description | ansi "2" }}
+  {{ exec }} {{ bold "33" .Command }} {{- if .Args }} {{ join .Args " " }} {{- end }}
+	{{- range .Flags }} {{ if hasPrefix . '-' -}} {{ ansi "36" . }} 
+		{{- else -}} {{ ansi "34" . }} {{- end -}}
+	{{ end }}
+{{ end -}}
 
-{{range .Examples }}
-
-  {{.Description}}:
-  {{$root.FormatExecName }} {{$root.Bold "33" .Command }}
-	{{- if .Args }} {{ join .Args " "}} {{- end}}
-	{{- range .Flags }} {{if eq (index . 0) '-' -}}
-		{{ $root.ANSI "36" . }} 
-	{{- else -}}
-		{{ $root.ANSI "34" . }}
-	{{- end -}}
-	{{end}}
-{{- end -}}
 {{- end -}}
 
-{{- if gt (len .SeeAlso) 0}}
+{{- if .SeeAlso }}
 
-{{.Title "See also" }}
-{{.SeeAlsoString 2}}
-{{- end}}`
+{{ title "See also" }}
+{{ .SeeAlsoString 2 }}
+{{- end -}}`
+
+var usageTemplate = `
+{{- title "Usage" -}} {{ exec }} {{ bold "33" .Name }}
+{{- range .Usage }} {{ ansi "36" . }} {{- end -}}`

@@ -6,6 +6,10 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
+const LongDescription = `Starts a read-eval-print-loop (REPL) for Klar, which lets you type commands and Klar code to be evaluated in real time. Useful for quickly running code snippets. Code can also be imported and run in the REPL from a Klar script, or exported to a script.
+
+For available commands for the REPL, type 'help' in the REPL.`
+
 type action struct {
 	name, args, description, shortcut string
 }
@@ -38,7 +42,7 @@ func (s *Session) PrintHelp() {
 		if a.shortcut != "" {
 			str[1] += ansi.Gray(" (" + a.shortcut + ")")
 		}
-		tw.Write(str...)
+		tw.WriteCells(str...)
 	}
 	tw.Flush()
 	s.Printf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)

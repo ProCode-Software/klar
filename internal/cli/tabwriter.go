@@ -177,9 +177,9 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	return
 }
 
-// Write writes multiple strings to tw and breaks the row. Cells are escaped to avoid
+// WriteCells writes multiple strings to tw and breaks the row. Cells are escaped to avoid
 // breaking between strings.
-func (tw *TabWriter) Write(cells ...string) {
+func (tw *TabWriter) WriteCells(cells ...string) {
 	tw.init()
 	for _, col := range cells {
 		tw.readCell([]byte(col), true)
@@ -188,14 +188,16 @@ func (tw *TabWriter) Write(cells ...string) {
 }
 
 // WriteString is equivalent to tw.WriteBytes but accepts a string.
-func (tw *TabWriter) WriteString(s string) {
-	tw.WriteBytes([]byte(s))
+// WriteString always returns len(b) and a nil error.
+func (tw *TabWriter) WriteString(s string) (int, error) {
+	return tw.Write([]byte(s))
 }
 
-// WriteBytes writes b, calculating the cells in it.
-func (tw *TabWriter) WriteBytes(b []byte) {
+// Write writes b, calculating the cells in it. Write always returns len(b) and a nil error.
+func (tw *TabWriter) Write(b []byte) (int, error) {
 	tw.init()
 	tw.readCell(b, false)
+	return len(b), nil
 }
 
 const ansiEndMax byte = 0x7E
@@ -245,7 +247,7 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 			}
 			line = append(line, cell{content: b[cellStart:i]})
 			tw.evalCellWidth(line, exclude)
-			cellStart = i + 1 // Check if next character is counted or not
+			cellStart = i + 1
 		case '\n':
 			if isEscape {
 				continue

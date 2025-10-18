@@ -82,3 +82,5 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		}
 	}
 }
+
+const LongDescription = ``

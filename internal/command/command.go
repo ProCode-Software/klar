@@ -1,9 +1,11 @@
 package command
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -104,26 +106,16 @@ func (c *Command) handleFlagError(err error) {
 	}
 }
 
-func newTemplate(name, t string) *template.Template {
-	return template.Must(template.New(name).Funcs(templFuncs).Parse(t))
-}
-
 func (c *Command) Help(f io.Writer) {
-	t := newTemplate("help", fullHelpTemplate)
-	template.Must(t, t.Execute(f, newHelper(c)))
+	if c.Flags != nil {
+		c.Usage = c.Flags.Pattern
+	}
+	execTemplate(newTemplate("help", fullHelpTemplate), f, c)
 }
 
 func (c *Command) ArgUsage() string {
-	if c.Usage == nil {
-		c.Usage = c.Flags.Pattern
-	}
 	var w strings.Builder
-	fmt.Fprint(&w, ansi.Bold("Usage")+ansi.BoldDim(": "),
-		ansi.BoldGreen(ExecName), " ", ansi.BoldYellow(c.Name),
-	)
-	for _, arg := range c.Usage {
-		fmt.Fprint(&w, ansi.Cyan(" "+arg))
-	}
+	execTemplate(newTemplate("usage", usageTemplate), &w, c)
 	return w.String()
 }
 
@@ -132,35 +124,82 @@ func (c *Command) SeeAlsoString(indent int) string {
 	tw := cli.NewTabWriterOutput(b)
 	tw.Margin = indent
 	for _, cmd := range c.SeeAlso {
-		tw.Write(ansi.BoldGreen(ExecName) + " " + ansi.BoldYellow(cmd), getDesc(cmd))
+		tw.WriteCells(ansi.BoldGreen(ExecName)+" "+ansi.BoldYellow(cmd), getDesc(cmd))
 	}
 	tw.Flush()
 	return b.String()
 }
 
-type helper struct {
-	*Command
-	ExecName string
-}
-
-func newHelper(c *Command) *helper {
-	return &helper{
-		Command:  c,
-		ExecName: ExecName,
+func (c *Command) FlagString(indent int) string {
+	if c.Flags == nil {
+		return ""
 	}
+	var (
+		b       = &strings.Builder{}
+		b2   = strings.Builder{}
+		tw      = cli.NewTabWriterOutput(b)
+		aliases = make(map[string][]string, len(c.Flags.FlagDefinitions))
+		sep     = ansi.Reset() + ", " + ansi.Partial(ansi.CodeCyan)
+	)
+	tw.Margin = indent
+	for alias, actual := range c.Flags.FlagAliases {
+		aliases[actual] = append(aliases[actual], alias)
+	}
+	for name, flag := range c.Flags.FlagDefinitions {
+		al := aliases[name]
+		b2.Reset()
+		sortAliases(al) // Sort aliases by length
+		b2.WriteString(ansi.Partial(ansi.CodeCyan))
+		if len(al) > 0 && len(al[0]) == 1 {
+			// Short alias
+			b2.WriteString(
+				argparse.FormatFlag(al[0]) + sep + argparse.FormatFlag(name),
+			)
+			al = al[1:]
+		} else {
+			b2.WriteString("    " + argparse.FormatFlag(name))
+		}
+		for _, alias := range al {
+			b2.WriteString(sep)
+			b2.WriteString(argparse.FormatFlag(alias))
+		}
+		b2.WriteString(ansi.Reset())
+		b2.WriteByte('\t')
+		b2.WriteString(flag.Description)
+		if flag.Default != nil {
+			switch flag.Default.Value() {
+			case "", false, 0, nil:
+			default:
+				b2.WriteString(ansi.Gray(fmt.Sprintf(
+					" (default: %v)", flag.Default.Value(),
+				)))
+			}
+		}
+		b2.WriteByte('\n')
+		tw.WriteString(b2.String())
+	}
+	tw.Flush()
+	return b.String()
 }
 
 var templFuncs = template.FuncMap{
-	"join": strings.Join,
+	"join":      strings.Join,
+	"hasPrefix": strings.HasPrefix,
+
+	"exec":  func() string { return ansi.BoldGreen(ExecName) },
+	"ansi":  func(color, s string) string { return ansi.Color("\x1b["+color+"m", s) },
+	"bold":  func(color, s string) string { return ansi.Color("\x1b[1;"+color+"m", s) },
+	"title": func(title string) string { return ansi.Bold(title) + ansi.BoldDim(": ") },
 }
 
-func (helper) ANSI(color, s string) string   { return ansi.Color("\x1b["+color+"m", s) }
-func (h helper) Bold(color, s string) string { return ansi.Color("\x1b[1;"+color+"m", s) }
-func (h helper) Title(title string) string   { return ansi.Bold(title) + ansi.BoldDim(": ") }
-func (helper) FormatExecName() string        { return ansi.BoldGreen(ExecName) }
-func (helper) Join(items []string, color, sep string) string {
-	c := ansi.Partial("\x1b[" + color + "m")
-	return ansi.Color(color, strings.Join(items, ansi.Reset()+sep+c))
+func newTemplate(name, t string) *template.Template {
+	return template.Must(template.New(name).Funcs(templFuncs).Parse(t))
+}
+
+func execTemplate(t *template.Template, wr io.Writer, v any) {
+	if err := t.Execute(wr, v); err != nil {
+		panic(err)
+	}
 }
 
 func getDesc(cmd string) string {
@@ -168,4 +207,17 @@ func getDesc(cmd string) string {
 		return ""
 	}
 	return Commands[cmd].ShortDescription
+}
+
+func sortAliases(aliases []string) {
+	slices.SortFunc(aliases, func(a, b string) int {
+		la, lb := len(a), len(b)
+		switch {
+		case la == lb:
+			return cmp.Compare(a, b)
+		case la < lb:
+			return -1
+		}
+		return 1
+	})
 }
