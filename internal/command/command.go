@@ -40,6 +40,7 @@ type Command struct {
 	SeeAlso         []string
 	Examples        []ExampleCmd
 }
+// TODO: documentation URL
 
 type RunFunc func(r *Runner)
 
@@ -122,9 +123,13 @@ func (c *Command) ArgUsage() string {
 func (c *Command) SeeAlsoString(indent int) string {
 	b := &strings.Builder{}
 	tw := cli.NewTabWriterOutput(b)
+	tw.ReserveCapacity(len(c.SeeAlso), 2)
 	tw.Margin = indent
 	for _, cmd := range c.SeeAlso {
-		tw.WriteCells(ansi.BoldGreen(ExecName)+" "+ansi.BoldYellow(cmd), getDesc(cmd))
+		tw.WriteCells(
+			ansi.BoldGreen(ExecName)+" "+ansi.BoldYellow(cmd),
+			getDesc(cmd),
+		)
 	}
 	tw.Flush()
 	return b.String()
@@ -136,50 +141,60 @@ func (c *Command) FlagString(indent int) string {
 	}
 	var (
 		b       = &strings.Builder{}
-		b2   = strings.Builder{}
 		tw      = cli.NewTabWriterOutput(b)
-		aliases = make(map[string][]string, len(c.Flags.FlagDefinitions))
-		sep     = ansi.Reset() + ", " + ansi.Partial(ansi.CodeCyan)
+		defs    = c.Flags.FlagDefinitions
+		aliases = make(map[string][]string, len(defs))
+		cyan    = ansi.Partial(ansi.CodeCyan)
+		sep     = ansi.Reset() + ", " + cyan
 	)
 	tw.Margin = indent
+	tw.Spacing = 4
+	tw.ReserveCapacity(len(defs), 2)
+	// Make the alias map
 	for alias, actual := range c.Flags.FlagAliases {
 		aliases[actual] = append(aliases[actual], alias)
 	}
-	for name, flag := range c.Flags.FlagDefinitions {
+	// Print each line
+	for name, flag := range defs {
 		al := aliases[name]
-		b2.Reset()
 		sortAliases(al) // Sort aliases by length
-		b2.WriteString(ansi.Partial(ansi.CodeCyan))
 		if len(al) > 0 && len(al[0]) == 1 {
 			// Short alias
-			b2.WriteString(
-				argparse.FormatFlag(al[0]) + sep + argparse.FormatFlag(name),
+			tw.WriteString(
+				cyan + argparse.FormatFlag(al[0]) + sep + argparse.FormatFlag(name),
 			)
 			al = al[1:]
 		} else {
-			b2.WriteString("    " + argparse.FormatFlag(name))
+			tw.WriteString("    " + cyan + argparse.FormatFlag(name))
 		}
 		for _, alias := range al {
-			b2.WriteString(sep)
-			b2.WriteString(argparse.FormatFlag(alias))
+			tw.WriteString(sep + argparse.FormatFlag(alias))
 		}
-		b2.WriteString(ansi.Reset())
-		b2.WriteByte('\t')
-		b2.WriteString(flag.Description)
-		if flag.Default != nil {
-			switch flag.Default.Value() {
-			case "", false, 0, nil:
-			default:
-				b2.WriteString(ansi.Gray(fmt.Sprintf(
-					" (default: %v)", flag.Default.Value(),
-				)))
-			}
+		if flag.ParamName != "" {
+			tw.WriteString(ansi.DimBlue(" <" + flag.ParamName + ">"))
 		}
-		b2.WriteByte('\n')
-		tw.WriteString(b2.String())
+		fmt.Fprintf(tw, "%s\t%s %s\n", ansi.Reset(), flag.Description, getDefault(flag))
 	}
 	tw.Flush()
 	return b.String()
+}
+
+func getDefault(flag argparse.FlagDefinition) string {
+	var def any
+	switch {
+	case flag.Default == nil:
+		return ""
+	case flag.Type == argparse.TypeEnumFlag:
+		def = flag.Default.(*argparse.EnumFlag).Name
+	default:
+		switch v := flag.Default.Value(); v {
+		case "", false, 0, nil:
+			return ""
+		default:
+			def = v
+		}
+	}
+	return ansi.Gray(fmt.Sprintf("(default: %v)", def))
 }
 
 var templFuncs = template.FuncMap{

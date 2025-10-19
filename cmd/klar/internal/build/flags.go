@@ -28,7 +28,7 @@ var (
 var Flags = argparse.NewParser("[project]").
 	BoolFlag("verbose", "Enable verbose build progress", false, "v").
 	BoolFlag("watch", "Rebuild the project when the files are modified", false, "w").
-	StringFlag("output", "The directory or file to write output to", "dist", "o").
+	StringFlag("output", "The directory or file to write output to", "path", "dist", "o").
 	OptionFlag("target", "The JavaScript runtime to target", "target", targetList, "", "t").
 	StringFlag("banner", "Text to add at the top of each built file", "content", "").
 	OptionFlag("bundle", "How to bundle JavaScript output files", "mode", bundleModes, "off").
@@ -37,6 +37,6 @@ var Flags = argparse.NewParser("[project]").
 	BoolFlag("minify", "Whether to minify JavaScript output", false).
 	BoolFlag("sourcemap", "Whether to generated sourcemaps for debugging", true).
 	BoolFlag("jsdoc", "Whether to generate JSDoc comments in JavaScript output. Recommended if '--declaration' is disabled", false).
-	StringFlag("config", "Path to a klar.build config file", "klar.build", "c").
+	StringFlag("config", "Path to a klar.build config file", "file", "klar.build", "c").
 	BoolFlag("copy-node-modules", "Whether to copy node_modules and package.json to the output directory", true).
 	OptionFlag("format", "The JavaScript module format to use", "format", moduleFormats, "esm")

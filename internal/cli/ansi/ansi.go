@@ -44,6 +44,7 @@ const (
 	CodeBoldBrightYellow = "\033[1;93m"
 
 	CodeDimCyan = "\033[2;36m"
+	CodeDimBlue = "\033[2;34m"
 )
 
 var DisableColor = os.Getenv("NO_COLOR") != ""
@@ -85,6 +86,7 @@ func BoldMagenta(s string) string { return Color(CodeBoldMagenta, s) }
 func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
 func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
 func DimCyan(s string) string     { return Color(CodeDimCyan, s) }
+func DimBlue(s string) string     { return Color(CodeDimBlue, s) }
 
 func BrightRed(s string) string     { return Color(CodeBrightRed, s) }
 func BrightGreen(s string) string   { return Color(CodeBrightGreen, s) }

@@ -33,6 +33,7 @@ func (f *NumberFlag) Type() FlagType { return TypeNumberFlag }
 type EnumFlag struct {
 	baseFlag
 	Val any
+	Name string
 }
 
 func (f *EnumFlag) Value() any     { return f.Val }

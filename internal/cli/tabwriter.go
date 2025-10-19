@@ -42,6 +42,9 @@ type TabWriter struct {
 	colCap     int
 	currLine   int
 
+	rem        []byte // Bytes after last terminated cell
+	remExclude int
+
 	padBytes    []byte
 	marginBytes []byte
 }
@@ -245,23 +248,30 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 			if isEscape {
 				continue
 			}
-			line = append(line, cell{content: b[cellStart:i]})
-			tw.evalCellWidth(line, exclude)
-			cellStart = i + 1
+			content := append(tw.rem, b[cellStart:i]...) // Add previous bytes
+			line = append(line, cell{content: content})
+			tw.evalLastCellWidth(line, exclude+tw.remExclude)
+			tw.rem, tw.remExclude = nil, 0
+			cellStart, exclude = i+1, 0
 		case '\n':
 			if isEscape {
 				continue
 			}
-			line = append(line, cell{content: b[cellStart:i]}) // Exclude \n
-			tw.evalCellWidth(line, exclude)
+			content := append(tw.rem, b[cellStart:i]...) // Add previous bytes
+			line = append(line, cell{content: content})  // Exclude \n
+			tw.evalLastCellWidth(line, exclude+tw.remExclude)
+			tw.rem, tw.remExclude = nil, 0
+			cellStart, exclude = i+1, 0
+
+			tw.cells[tw.currLine] = line // Apply current line
 			tw.breakLine()
-			line = tw.cells[tw.currLine]
+			line = tw.cells[tw.currLine] // Get next line
 		}
 	}
 	// Last cell
-	if cellStart < len(b)-1 {
-		line = append(line, cell{content: b[cellStart:]})
-		tw.evalCellWidth(line, exclude)
+	if cellStart < len(b) {
+		tw.rem = append(tw.rem, b[cellStart:]...)
+		tw.remExclude = exclude
 	}
 	tw.cells[tw.currLine] = line
 }
@@ -271,7 +281,7 @@ func (tw *TabWriter) breakLine() {
 	tw.cells = append(tw.cells, make([]cell, 0, tw.colCap))
 }
 
-func (tw *TabWriter) evalCellWidth(line []cell, exclude int) {
+func (tw *TabWriter) evalLastCellWidth(line []cell, exclude int) {
 	col := len(line) - 1
 	width := utf8.RuneCount(line[col].content)
 	width -= exclude

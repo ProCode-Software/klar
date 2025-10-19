@@ -200,7 +200,7 @@ func (p *Parser) Parse() (err error) {
 				if err != nil {
 					return err
 				}
-				flag = &EnumFlag{baseFlag: baseFlag{idx: i}, Val: val}
+				flag = &EnumFlag{baseFlag: baseFlag{idx: i}, Val: val, Name: next}
 				skip = true
 			case TypeListFlag:
 				// Add existing items
@@ -412,7 +412,7 @@ func (p *Parser) OptionFlag(
 ) *Parser {
 	p.FlagDefinitions[name] = FlagDefinition{
 		Type:        TypeEnumFlag,
-		Default:     &EnumFlag{Val: opts[def]},
+		Default:     &EnumFlag{Val: opts[def], Name: def},
 		Description: desc,
 		ParamName:   param,
 	}
