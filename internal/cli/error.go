@@ -83,7 +83,10 @@ func FileNotFound(path string) {
 }
 
 func HintIndent(hint string) {
-	Custom(ansi.BrightBlue("    Hint"), "", hint)
+	Custom(ansi.BrightBlue("  Hint"), "", hint)
+}
+func Hint(hint string) {
+	Custom(ansi.BrightBlue("Hint"), "", hint)
 }
 
 func HandleInternalErr(err error, detail ...string) {
@@ -94,4 +97,8 @@ func HandleInternalErr(err error, detail ...string) {
 		InternalError(fmt.Errorf("%s: %w", detail[0], err))
 	}
 	InternalError(err)
+}
+
+func Eprintf(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, format, a...)
 }

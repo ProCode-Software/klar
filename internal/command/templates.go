@@ -25,7 +25,6 @@ var fullHelpTemplate = `
 {{- end -}}
 
 {{- if .SeeAlso }}
-
 {{ title "See also" }}
 {{ .SeeAlsoString 2 }}
 {{- end -}}`

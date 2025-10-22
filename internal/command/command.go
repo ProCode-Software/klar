@@ -40,6 +40,7 @@ type Command struct {
 	SeeAlso         []string
 	Examples        []ExampleCmd
 }
+
 // TODO: documentation URL
 
 type RunFunc func(r *Runner)
@@ -55,6 +56,7 @@ func (r *Runner) AllArgs() []string                  { return r.Parser.Args }
 func (r *Runner) StringFlag(n string) string {
 	return r.Flag(n).(*argparse.StringFlag).Val
 }
+func (r *Runner) NamedArg(name string) string { return r.Parser.ArgByName(name) }
 
 func (r *Runner) BoolFlag(n string) bool {
 	return r.Flag(n).(*argparse.BoolFlag).Val
@@ -86,6 +88,7 @@ func Run(cmd *Command) {
 	cmd.Flags.InputArgs = os.Args[1:]
 	if err := cmd.Flags.Parse(); err != nil {
 		cmd.handleFlagError(err)
+		return
 	}
 	cmd.Run(&Runner{Parser: cmd.Flags})
 }

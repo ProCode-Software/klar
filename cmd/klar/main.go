@@ -53,7 +53,9 @@ func main() {
 			os.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help
-		os.Args = []string{"klar", os.Args[1], "--help"}
+		if command.Lookup(args[2], Commands, Aliases) != nil {
+			os.Args = []string{"klar", os.Args[1], "--help"}
+		}
 		fallthrough
 	default:
 		if args[1][0] == '-' {

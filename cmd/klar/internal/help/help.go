@@ -1,11 +1,37 @@
+// TODO: incomplete
 package help
 
 import (
+	"os"
+
+	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
 )
 
+// Existing CLI commands already handled in main.go
 func Run(c *command.Runner) {
+	if len(c.AllArgs()) < 1 {
+		cli.Failure("Expected a command or topic name when '-d' flag is used")
+	}
+	name := c.NamedArg("command")
+	topic, ok := Topics[name]
+	switch {
+	case ok:
+	case c.BoolFlag("d"):
+		// Show documentation online
+		cli.Eprintf("Searching documentation for %s on %s\n",
+			ansi.Cyan(name), ansi.Magenta("site.url"),
+		)
+	default:
+		cli.Error("Can't find a CLI command or topic named ", ansi.Cyan(name))
+		cli.HintIndent(
+			"To search online documentation, use the " + ansi.Cyan("-d") + " flag.",
+		)
+		os.Exit(1)
+	}
+	_ = topic
 }
 
 var Flags = argparse.NewParser("[command]").

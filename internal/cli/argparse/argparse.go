@@ -158,7 +158,7 @@ func (p *Parser) Parse() (err error) {
 			p.Args = append(p.Args, item)
 		case strings.HasPrefix(item, "--"):
 			// Long flag
-			name := item[2:]
+			name := p.resolve(item[2:])
 			if _, ok := p.FlagDefinitions[name]; !ok {
 				if !p.AllowUnknownFlags {
 					return &ErrUnknownFlag{name}
@@ -172,8 +172,9 @@ func (p *Parser) Parse() (err error) {
 				flag Flag
 				n    = i + 1
 			)
+			isValue := func(flag string) bool { return first(flag) != '-' || flag == "" }
 			switch {
-			case n < len(p.InputArgs) && first(p.InputArgs[i]) != '-':
+			case n < len(p.InputArgs) && isValue(p.InputArgs[i]):
 				next = p.InputArgs[i+1]
 			case def.Type == TypeBoolFlag:
 				flag = newBoolFlag(i, true)
@@ -253,6 +254,7 @@ func (p *Parser) Parse() (err error) {
 				}
 			}
 			for name := range strings.SplitSeq(item[1:], "") {
+				name = p.resolve(name)
 				def, ok := p.FlagDefinitions[name]
 				switch {
 				case !ok && !p.AllowUnknownFlags:

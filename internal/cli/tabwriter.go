@@ -185,7 +185,7 @@ func (tw *TabWriter) Flush() (n int, err error) {
 func (tw *TabWriter) WriteCells(cells ...string) {
 	tw.init()
 	for _, col := range cells {
-		tw.readCell([]byte(col), true)
+		tw.readCell([]byte(col), true, true)
 	}
 	tw.breakLine()
 }
@@ -199,7 +199,7 @@ func (tw *TabWriter) WriteString(s string) (int, error) {
 // Write writes b, calculating the cells in it. Write always returns len(b) and a nil error.
 func (tw *TabWriter) Write(b []byte) (int, error) {
 	tw.init()
-	tw.readCell(b, false)
+	tw.readCell(b, false, false)
 	return len(b), nil
 }
 
@@ -225,7 +225,7 @@ func (tw *TabWriter) readANSIEscape(b []byte) (escapeLen int) {
 	return
 }
 
-func (tw *TabWriter) readCell(b []byte, isEscape bool) {
+func (tw *TabWriter) readCell(b []byte, isEscape, breakAfter bool) {
 	var cellStart, exclude int
 	if len(tw.cells) <= tw.currLine {
 		tw.cells = append(tw.cells, make([]cell, 0, tw.colCap))
@@ -269,7 +269,12 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 		}
 	}
 	// Last cell
-	if cellStart < len(b) {
+	switch {
+	case cellStart >= len(b):
+	case breakAfter:
+		line = append(line, cell{content: b[cellStart:]})
+		tw.evalLastCellWidth(line, exclude+tw.remExclude)
+	default:
 		tw.rem = append(tw.rem, b[cellStart:]...)
 		tw.remExclude = exclude
 	}
@@ -279,6 +284,7 @@ func (tw *TabWriter) readCell(b []byte, isEscape bool) {
 func (tw *TabWriter) breakLine() {
 	tw.currLine++
 	tw.cells = append(tw.cells, make([]cell, 0, tw.colCap))
+	tw.rem, tw.remExclude = nil, 0
 }
 
 func (tw *TabWriter) evalLastCellWidth(line []cell, exclude int) {

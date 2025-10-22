@@ -48,7 +48,7 @@ func ShowHelp(full bool) {
 	tw.Flush()
 
 	fmt.Fprintf(tw, "Use %s for more information about a command.\n\n",
-		ansi.Cyan("'klar help <subcommand>'"))
+		ansi.Cyan("klar help <subcommand>"))
 
 	if full {
 		tw.Init(os.Stdout, 0, 0, 2, ' ', 0)
@@ -60,5 +60,5 @@ func ShowHelp(full bool) {
 	}
 
 	fmt.Println(ansi.Bold("GitHub")+ansi.Dim(":"),
-		ansi.Blue("https://github.com/ProCode-Software/klar"))
+		ansi.Magenta("https://github.com/ProCode-Software/klar"))
 }

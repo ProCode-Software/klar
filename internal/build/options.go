@@ -113,9 +113,13 @@ func (c *Compiler) InitLogger() (hasLogFile bool) {
 
 // Equivalent to c.Logger.Println
 func (c *Compiler) Log(v ...any) {
-	c.Println(v...)
+	if c.Verbose {
+		c.Println(v...)
+	}
 }
 
 func (c *Compiler) Errorf(s string, v ...any) {
-	c.Printf("[error] "+s, v...)
+	if c.Verbose {
+		c.Printf("[error] "+s, v...)
+	}
 }
