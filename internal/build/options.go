@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -38,59 +37,40 @@ const (
 const (
 	KindDir InputKind = 1 << iota
 	KindFile
+
 	KindPackage = KindDir | (1 << iota)
 	KindModule  = KindDir | (1 << iota)
+	KindStdin   = KindFile | (1 << iota)
 )
 
 type Options struct {
-	Inputs       []Input
-	Target       target.Double `arg:"target"`
-	Outputs      []string
-	OutputDir    string `arg:"output"`
-	JS           *JSOptions
-	AssetOptions *AssetOptions
-	Paths        map[string]string
-	Watch        bool `arg:"watch"`
-	EmitPackage  bool
+	Inputs []Input
+	BuildFile
 	// ProjectDir   string
-}
-
-type JSOptions struct {
-	Bundle         js.BundleMode
-	Format         js.ModuleFormat
-	Flags          Flags
-	Banner         string
-	DeclarationDir string
-	TypeScriptLibs []string
 }
 
 type Input struct {
 	Kind InputKind
+	Parent string // Parent module
 	Path string
 }
 
-type AssetOptions struct {
-	Extensions   []string // Glob path of file name/extensions
-	AssetDir     string
-	KlarmlToJSON bool
-}
-
 type Compiler struct {
-	Mode    BuildMode
-	Verbose bool
-	Errors  []errors.CompileError
-	Options []*Options
-	Project *module.ProjectInfo
-	*log.Logger
-}
+	Mode                BuildMode
+	Target              target.Target
+	Verbose             bool
+	Errors              []errors.CompileError
+	Options             []*Options
+	Project             *module.ProjectInfo
+	PreBuild, PostBuild []any // TODO
+	OpenFiles           []*os.File
 
-func (o JSOptions) HasFlag(flag Flags) bool {
-	return (o.Flags & flag) != 0
+	SuppressWarnings, WarningsAsErrors []string // TODO: better type
+	*log.Logger
 }
 
 // Logging
 // ==========
-var KLAR_LOG_FILE *os.File
 
 func (c *Compiler) InitLogger() (hasLogFile bool) {
 	logFile := os.Getenv("KLAR_LOG_FILE")
@@ -101,7 +81,8 @@ func (c *Compiler) InitLogger() (hasLogFile bool) {
 		if err != nil {
 			cli.Failure("Unable to open KLAR_LOG_FILE '"+logFile+"': ", err)
 		}
-		out, KLAR_LOG_FILE, hasLogFile = file, file, true
+		c.OpenFiles = append(c.OpenFiles, file)
+		out = file
 	case c.Verbose:
 		out = os.Stderr
 	default:
@@ -121,5 +102,32 @@ func (c *Compiler) Log(v ...any) {
 func (c *Compiler) Errorf(s string, v ...any) {
 	if c.Verbose {
 		c.Printf("[error] "+s, v...)
+	}
+}
+
+func (c *Compiler) CloseAll() {
+	for _, file := range c.OpenFiles {
+		file.Close()
+	}
+}
+
+func ResolveInputs(inputs []string) (res []Input, err error) {
+	res = make([]Input, 0, len(inputs)*2)
+	for _, input := range inputs {
+		switch {
+		case len(input) == 0:
+			continue
+		case input == "-":
+			res = append(res, Input{Kind: KindStdin, Path: ""})
+		case input[0] == '@':
+			kind := KindPackage
+		default:
+
+		}
+		kind := KindFile
+		if input[len(input)-1] == '/' {
+			kind = KindDir
+		}
+		res = append(res, Input{Kind: kind, Path: input})
 	}
 }

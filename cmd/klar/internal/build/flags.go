@@ -8,10 +8,12 @@ import (
 
 var (
 	targetList = map[string]any{
-		"node":    target.Double{target.JavaScript, target.JSNode},
-		"deno":    target.Double{target.JavaScript, target.JSDeno},
-		"bun":     target.Double{target.JavaScript, target.JSBun},
-		"browser": target.Double{target.JavaScript, target.JSBrowser},
+		"js":      target.JavaScript,
+		"klarvm":  target.KlarVM,
+		"browser": target.Browser,
+		"node":    target.Node,
+		"deno":    target.Deno,
+		"bun":     target.Bun,
 	}
 	bundleModes = map[string]any{
 		"off":    js.BundleOff,
@@ -33,7 +35,7 @@ var Flags = argparse.NewParser("[project]").
 	StringFlag("banner", "Text to add at the top of each built file", "content", "").
 	OptionFlag("bundle", "How to bundle JavaScript output files", "mode", bundleModes, "off").
 	BoolFlag("declaration", "Whether TypeScript declaration files should be generated", true).
-	StringFlag("declaration-dir", "The folder type declarations should be created in", "dir", "").
+	StringFlag("declaration-path", "The folder type declarations should be created in", "dir", "").
 	BoolFlag("minify", "Whether to minify JavaScript output", false).
 	BoolFlag("sourcemap", "Whether to generated sourcemaps for debugging", true).
 	BoolFlag("jsdoc", "Whether to generate JSDoc comments in JavaScript output. Recommended if '--declaration' is disabled", false).

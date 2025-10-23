@@ -356,6 +356,9 @@ func (p *Parser) ArgByName(name string) string {
 	if !ok {
 		panic("argument " + name + " not defined")
 	}
+	if i >= len(p.Args) {
+		return ""
+	}
 	return p.Args[i]
 }
 

@@ -156,7 +156,7 @@ func (s *Session) parse(t []lexer.Token) {
 	litter.Dump(prog)
 	_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
 		FilePath: "repl",
-		Target:   target.Double{Target: target.KlarVM},
+		Target:   target.KlarVM,
 	})
 	if len(typeErrs) > 0 {
 		printErrors(typeErrs)

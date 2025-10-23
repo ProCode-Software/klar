@@ -10,7 +10,7 @@ import (
 
 type CheckOptions struct {
 	OnError  func(err errors.CompileError)
-	Target   target.Double
+	Target   target.Target
 	FilePath string
 }
 
