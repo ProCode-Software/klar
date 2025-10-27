@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/module"
 )
 
 var Colors ansi.Colors
@@ -85,6 +86,7 @@ func FileNotFound(path string) {
 func HintIndent(hint string) {
 	Custom(ansi.BrightBlue("  Hint"), "", hint)
 }
+
 func Hint(hint string) {
 	Custom(ansi.BrightBlue("Hint"), "", hint)
 }
@@ -101,4 +103,24 @@ func HandleInternalErr(err error, detail ...string) {
 
 func Eprintf(format string, a ...any) {
 	fmt.Fprintf(os.Stderr, format, a...)
+}
+
+func ErrNoManifest(dir string) {
+	if dir == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			Failure("Unable to get current working directory: ", err)
+		}
+		dir = cwd
+	}
+	Failure("Project not found: ", "Can't find a "+
+		ansi.Yellow(module.ManifestName)+" file for "+ansi.Cyan(dir),
+	)
+}
+
+func ErrNotFound(path, typ string) {
+	if typ != "" {
+		Failure("Can't find " + typ + " " + ansi.Cyan(path))
+	}
+	Failure("Can't find " + ansi.Cyan(path))
 }

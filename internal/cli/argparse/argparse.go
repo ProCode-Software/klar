@@ -284,12 +284,12 @@ func (p *Parser) Parse() (err error) {
 	case argc > len(p.ArgDefinitions) && !p.ArgDefinitions[lastArgI].Variadic:
 		return &ErrExtraneousArgs{p.Args[len(p.ArgDefinitions):]}
 	}
-	// Set defaults
+	/* // Set defaults
 	for name, def := range p.FlagDefinitions {
 		if _, ok := p.Flags[name]; !ok {
 			p.Flags[name] = def.Default
 		}
-	}
+	} */
 	return
 }
 
@@ -329,7 +329,7 @@ func (p *Parser) VarArgByName(arg string) []string {
 	defsBefore := len(p.ArgDefinitions) - 1
 	lastDef := p.ArgDefinitions[defsBefore]
 	if lastDef.Name != arg {
-		panic("argument " + arg + " not defined")
+		panic("argument " + arg + " not defined or is not the last argument")
 	}
 	return p.Args[defsBefore:]
 }
@@ -362,11 +362,12 @@ func (p *Parser) ArgByName(name string) string {
 	return p.Args[i]
 }
 
-// Flag returns the value of the flag name. It panics if name is not defined.
+// Flag returns the value of the flag name.
 func (p *Parser) Flag(name string) Flag {
-	f, ok := p.Flags[p.resolve(name)]
+	name = p.resolve(name)
+	f, ok := p.Flags[name]
 	if !ok {
-		panic("flag " + name + " not defined")
+		return p.FlagDefinitions[name].Default
 	}
 	return f
 }
@@ -483,4 +484,9 @@ func (p *Parser) makeAliases(flag string, aliases []string) {
 	for _, alias := range aliases {
 		p.FlagAliases[alias] = flag
 	}
+}
+
+// ResolveFlag finds the flag name from any alises. ResolveFlag returns name if not found.
+func (p *Parser) ResolveFlag(name string) string {
+	return p.resolve(name)
 }

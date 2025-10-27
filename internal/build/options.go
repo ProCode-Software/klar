@@ -8,13 +8,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/module"
-	"github.com/ProCode-Software/klar/internal/target"
 )
 
 type (
 	InputKind int
 	BuildMode int
-	Flags     int16
 )
 
 const (
@@ -22,16 +20,6 @@ const (
 	ModRun                       // Build to cache only
 	ModeAnalyze                  // Typed AST only: test, typecheck, LSP
 	ModeParse                    // Untyped + resolved AST: format
-)
-
-const (
-	CreateJSDoc Flags = 1 << iota
-	CreateDeclaration
-	Minify
-	CreateSourceMap
-	CopyNodeModules
-	BundleDeclaration
-	UseESNext
 )
 
 const (
@@ -50,14 +38,15 @@ type Options struct {
 }
 
 type Input struct {
-	Kind InputKind
-	Parent string // Parent module
-	Path string
+	Kind      InputKind
+	Parent    string // Parent module path // TODO: check if needed
+	Path      string // Filesystem path
+	Name      string // Module or package name
+	KlarBuild string // Path to klar.build file
 }
 
 type Compiler struct {
 	Mode                BuildMode
-	Target              target.Target
 	Verbose             bool
 	Errors              []errors.CompileError
 	Options             []*Options
@@ -72,7 +61,11 @@ type Compiler struct {
 // Logging
 // ==========
 
-func (c *Compiler) InitLogger() (hasLogFile bool) {
+// InitLogger sets c.Logger. If the $KLAR_LOG_FILE envionment variable is set,
+// c.Logger is set to write to that file (regardless of the value of c.Verbose).
+// If c.Verbose is false, c.Logger is set to [io.Discard]. Otherwise, c.Logger
+// is set to [os.Stderr].
+func (c *Compiler) InitLogger() {
 	logFile := os.Getenv("KLAR_LOG_FILE")
 	var out io.Writer
 	switch {
@@ -83,13 +76,13 @@ func (c *Compiler) InitLogger() (hasLogFile bool) {
 		}
 		c.OpenFiles = append(c.OpenFiles, file)
 		out = file
+		c.Verbose = true
 	case c.Verbose:
 		out = os.Stderr
 	default:
 		out = io.Discard
 	}
 	c.Logger = log.New(out, "[compiler] ", log.Ltime)
-	return
 }
 
 // Equivalent to c.Logger.Println
@@ -111,23 +104,3 @@ func (c *Compiler) CloseAll() {
 	}
 }
 
-func ResolveInputs(inputs []string) (res []Input, err error) {
-	res = make([]Input, 0, len(inputs)*2)
-	for _, input := range inputs {
-		switch {
-		case len(input) == 0:
-			continue
-		case input == "-":
-			res = append(res, Input{Kind: KindStdin, Path: ""})
-		case input[0] == '@':
-			kind := KindPackage
-		default:
-
-		}
-		kind := KindFile
-		if input[len(input)-1] == '/' {
-			kind = KindDir
-		}
-		res = append(res, Input{Kind: kind, Path: input})
-	}
-}

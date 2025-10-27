@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
+	"github.com/ProCode-Software/klar/pkg/klarml/context"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
 	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
@@ -38,6 +39,7 @@ type Decoder struct {
 	Offset int // File position
 
 	Document *ast.Document
+	Context  *context.Context
 }
 
 func NewBufferDecoder(buf []byte, f ...flags.Flags) *Decoder {

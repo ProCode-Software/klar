@@ -15,6 +15,7 @@ const (
 	AlignCenter TabWriterFlags = 1 << iota
 	AlignRight
 	DiscardEmptyColumns
+	WrapTerminalColumns // TODO
 )
 
 const (
@@ -31,6 +32,7 @@ type TabWriter struct {
 	Spacing    int  // Spacing between columns
 	MinWidth   int  // Minimum width of each column
 	Margin     int  // Left margin of each line
+	WrapIndent int  // Indent for wrapped lines
 	PadChar    byte // Pad character between printed cells, ' ' by default
 	Separator  byte // Separator character, '\t' by default
 	MarginChar byte // Margin character, ' ' by default

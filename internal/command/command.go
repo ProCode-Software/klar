@@ -50,7 +50,7 @@ type Runner struct {
 }
 
 func (r *Runner) Arg(i int) string                   { return r.Parser.ArgAt(i) }
-func (r *Runner) Flag(n string) any                  { return r.Parser.Flag(n) }
+func (r *Runner) Flag(n string) argparse.Flag        { return r.Parser.Flag(n) }
 func (r *Runner) AllFlags() map[string]argparse.Flag { return r.Parser.Flags }
 func (r *Runner) AllArgs() []string                  { return r.Parser.Args }
 func (r *Runner) StringFlag(n string) string {

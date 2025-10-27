@@ -2,35 +2,60 @@ package build
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func Build(r *command.Runner) {
-	projDir := r.Arg(1)
-	b := &build.Compiler{
-		Mode: build.ModeBuild,
-		Options: []*build.Options{{BuildFile: build.BuildFile{
-			FileConfiguration: build.FileConfiguration{
-				JS: &build.FileJSOptions{},
-			},
-		}}},
-		Verbose: r.Flag("verbose") == true,
+	inputArgs := r.Parser.VarArgByName("inputs")
+	b := &build.Compiler{Mode: build.ModeBuild}
+	if r.BoolFlag("verbose") {
+		b.Verbose = true
+		delete(r.AllFlags(), "verbose")
 	}
+	b.InitLogger()
 	defer b.CloseAll()
-	b.Println("Starting build...")
-	manifest := cli.ResolveManifest(projDir)
-	b.Printf("Manifest found at %s\n", manifest)
-	projDir = filepath.Dir(manifest)
 
-	ParseFlags(r, b.Options[0])
-	fmt.Println(manifest)
+	inps, err := build.ResolveInputs(inputArgs) // Resolve all inputs
+	// Build the nearest *package* if no path provided
+	if err == nil && len(inps) == 0 {
+		pkgPath, _, err := module.PackageRoot(".")
+		if err != nil {
+			cli.ErrNoManifest(pkgPath)
+		}
+		inps, err = build.ResolveInputs([]string{pkgPath})
+	}
+	if err != nil {
+		// Show a better error for file not found
+		if err, ok := err.(*build.FilesystemError); ok && err.IsNotExist() {
+			cli.ErrNotFound(err.Path, "")
+		}
+		cli.Failure(err.Error())
+	}
+	// Force a config path if --config flag was passed
+	var forceConfig string
+	if conf := r.StringFlag("config"); conf != "" {
+		forceConfig = conf
+		delete(r.AllFlags(), "config")
+	}
+	// Apply options for each input
+	b.Options = make([]*build.Options, 0, len(inps))
+	for _, inp := range inps {
+		if forceConfig != "" {
+			inp.KlarBuild = forceConfig
+		}
+		opt := &build.Options{} // TODO: parse klar.build here
+		ParseFlags(r, opt)
+		opt.Inputs = []build.Input{inp}
+		b.Options = append(b.Options, opt)
+	}
+	// TODO: error if --output is file and there are multiple inputs
 }
 
 func ParseFlags(r *command.Runner, o *build.Options) {
@@ -48,6 +73,10 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "target":
 			o.Target = v.Value().(target.Target)
 		default:
+			// The rest are all JS flags
+			if o.JS == nil {
+				o.JS = &build.FileJSOptions{}
+			}
 			switch flag {
 			case "declaration":
 				o.JS.Declaration = v.Value().(bool)
@@ -84,8 +113,9 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 
 const LongDescription = `Compiles Klar source files at the provided file or module paths. If none are provided, inputs defined in 'klar.build', the build configuration file, are used.
 
-An input passed to 'klar build' can be a directory path, to compile a module or package; a file path, to compile an individual file; '-', to compile as an individual file read from standard input, or a name prefixed with '@' to resolve a package and compile it.
+An input passed to 'klar build' can be a directory path, to compile a module or package; a file path, to compile an individual file; '-', to read from standard input and compile it as an individual file; or a name prefixed with '@' to resolve a module by its name and compile it.
 
-A 'klar.build' is used to customize the build process and how files are compiled. For more information on build settings, see [url]. Common build options are provided as flags to override klar.build options.
+A 'klar.build' is used to customize the build process and how files are compiled. For more information on build settings, see [url].
+For each input, its closest 'klar.build' file is used to configure the build. The '--config' flag can be used to override the configuration for all inputs. Common build options are provided as flags to override klar.build options.
 
 Currently, Klar files can be compiled to JavaScript.`

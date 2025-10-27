@@ -27,7 +27,7 @@ var (
 	}
 )
 
-var Flags = argparse.NewParser("[project]").
+var Flags = argparse.NewParser("[inputs...]").
 	BoolFlag("verbose", "Enable verbose build progress", false, "v").
 	BoolFlag("watch", "Rebuild the project when the files are modified", false, "w").
 	StringFlag("output", "The directory or file to write output to", "path", "dist", "o").

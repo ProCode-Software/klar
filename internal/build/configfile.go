@@ -117,7 +117,7 @@ type FileJSOptions struct {
 // In the dev server, links to compiled modules are made available.
 type FileJSServerOptions struct {
 	// Enable the dev server.
-	Enabled  bool
+	Enabled bool
 	// The HTML file to serve. This may also be a directory.
 	Document string
 	Port     int
