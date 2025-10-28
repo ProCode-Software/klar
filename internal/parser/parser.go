@@ -13,7 +13,6 @@ type Parser struct {
 	Options ParseOptions
 	Tokens  []lexer.Token
 	Index   int
-	File    string
 	Errors  []ParseError
 
 	// Conditional flags
@@ -25,16 +24,22 @@ type Parser struct {
 	listCastTokens, assignmentTokens, lambdaTokens map[int]struct{}
 }
 
+// ParseError is [errors.ParseError]
 type ParseError = errors.ParseError
 
+// ParseOptions is options provided to [Parser].
 type ParseOptions struct {
-	File        string
-	StopOnError bool
-	OnError     func(e ParseError)
-	MaxErrors   int // Parsing is stopped once len(p.Errors) equals this number. If set to 0 or less, there can be unlimited errors
+	// Path of the file being parsed. File is applied to all reported errors.
+	File string
+	// If Error != nil, Error is called for every reported error.
+	Error func(e ParseError)
+	// Parsing is stopped once len(p.Errors) equals MaxErrors.
+	// If MaxErrors <= 0, there is no limit.
+	MaxErrors int
 }
 
-// New returns a new [Parser] that reads from tokens.
+// New returns a new [Parser] that reads from tokens. If options == nil,
+// default options are used.
 func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	if options == nil {
 		options = &ParseOptions{}
@@ -42,7 +47,6 @@ func New(tokens []lexer.Token, options *ParseOptions) *Parser {
 	return &Parser{
 		Tokens:  tokens,
 		Index:   0,
-		File:    options.File,
 		Options: *options,
 	}
 }
@@ -169,17 +173,17 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	return p.Advance()
 }
 
+// If stopParsing is passed to panic, the parser will immediately stop parsing.
 type stopParsing struct{}
 
 // Error adds an error to the parser.
 func (p *Parser) Error(err errors.ParseError) {
-	err.File = p.File
+	err.File = p.Options.File
 	p.Errors = append(p.Errors, err)
-	if p.Options.OnError != nil {
-		p.Options.OnError(err)
+	if p.Options.Error != nil {
+		p.Options.Error(err)
 	}
-	if p.Options.StopOnError ||
-		(p.Options.MaxErrors > 0 && len(p.Errors) >= p.Options.MaxErrors) {
+	if mx := p.Options.MaxErrors; mx > 0 && len(p.Errors) >= mx {
 		panic(stopParsing{})
 	}
 }
@@ -196,4 +200,28 @@ func (p *Parser) AdvanceNonBoundary() lexer.Token {
 		p.Advance()
 	}
 	return c
+}
+
+func (p *Parser) handlePanic() {
+	switch err := recover(); err.(type) {
+	case nil, stopParsing: // Bailout
+		return
+	default:
+		panic(err) // Re-panic if other error
+	}
+}
+
+// Free resets all properties to defaults, freeing resources.
+func (p *Parser) Free() {
+	p.Options.Error = nil
+	p.Options.File = ""
+	p.Options.MaxErrors = 0
+
+	p.Tokens = nil
+	p.Index = 0
+	p.Errors = nil
+
+	p.isWhenGuard, p.isWhenCase, p.isAttribute = false, false, false
+
+	p.assignmentTokens, p.listCastTokens, p.lambdaTokens = nil, nil, nil
 }

@@ -11,34 +11,27 @@ import (
 
 // Parse parses p.Tokens into a [*ast.Program].
 func (p *Parser) Parse() *ast.Program {
-	defer func() {
-		switch err := recover(); err.(type) {
-		case nil, stopParsing:
-			return
-		default:
-			panic(err)
-		}
-	}()
-	body := make([]ast.Statement, 0, len(p.Tokens)/3)
-	comments := p.InsertEOS()
+	defer p.handlePanic()
+	var (
+		body     = make([]ast.Statement, 0, len(p.Tokens)/3)
+		comments = p.InsertEOS()
+	)
 	for p.HasTokens() {
-		if p.Options.StopOnError && len(p.Errors) > 0 {
-			break
-		}
 		if p.CurrKind() == lexer.EndOfStatement {
-			p.Advance()
-			if !p.HasTokens() {
+			if p.Advance(); !p.HasTokens() {
 				break
 			}
 		}
 		body = append(body, p.ParseTopLevelStatement())
 	}
-	prog := &ast.Program{
-		Body:     body[:len(body):len(body)],
+	return &ast.Program{
+		Body:     body[:len(body):len(body)], // Remove unused length
 		Comments: comments,
-		BaseNode: newBaseNode(p.Tokens[0].Position, p.Tokens[len(p.Tokens)-1].Position),
+		BaseNode: ast.BaseNode{Range: ranges.FromPosition(
+			p.Tokens[0].Position,
+			p.Tokens[len(p.Tokens)-1].Position,
+		)},
 	}
-	return prog
 }
 
 // ParseComment takes tok, a [lexer.LineComment], [lexer.BlockComment] or [lexer.Hashbang]

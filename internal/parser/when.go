@@ -80,9 +80,6 @@ func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 	// ',' binds tighter than '|' in case
 loop:
 	for p.HasTokens() {
-		if p.IsCurrently(lexer.If, lexer.Arrow, lexer.EndOfStatement) {
-			break loop
-		}
 		if p.CurrKind() == lexer.Stroke {
 			p.Advance()
 		}
@@ -125,7 +122,7 @@ loop:
 			p.Expect(lexer.EndOfStatement)
 		}
 	default:
-		// BUG: can't make it work with statements. Braces are required before '<'
+		// BUG: can't make it work with statements. Braces/comma required before '<'
 		res := p.ParseStatement()
 		switch res := res.(type) {
 		// All expressions are allowed
@@ -141,7 +138,7 @@ loop:
 			c.BodyExpr = &ast.BadExpression{Value: res}
 		}
 	}
-	p.Expect(lexer.EndOfStatement)
+	p.Expect(lexer.EndOfStatement, lexer.Comma)
 	return c
 }
 
