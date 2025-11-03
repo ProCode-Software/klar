@@ -56,19 +56,19 @@ type TypeError struct {
 	Hints   []string
 }
 
-func (e *TypeError) SetParam(key string, value any) TypeError {
+func (e *TypeError) SetParam(key string, value any) *TypeError {
 	if e.Params == nil {
 		e.Params = make(ErrorParams)
 	}
 	e.Params[key] = value
-	return *e
+	return e
 }
 
 func param[T any](params ErrorParams, key string) T {
 	return params[key].(T)
 }
 
-func (e TypeError) Error() string {
+func (e *TypeError) Error() string {
 	var (
 		expType = e.ExpectedType
 		gotType = e.GotType
@@ -152,8 +152,8 @@ func (e TypeError) Error() string {
 	}
 }
 
-func TypeMismatch(expType, gotType types.Type, rang ranges.Range) TypeError {
-	return TypeError{
+func TypeMismatch(expType, gotType types.Type, rang ranges.Range) *TypeError {
+	return &TypeError{
 		ErrorCode:    ErrTypeMismatch,
 		ExpectedType: expType,
 		GotType:      gotType,
@@ -161,32 +161,32 @@ func TypeMismatch(expType, gotType types.Type, rang ranges.Range) TypeError {
 	}
 }
 
-func NamedTypeError(code ErrorCode, name string, rang ranges.Range) TypeError {
-	return TypeError{
+func NamedTypeError(code ErrorCode, name string, rang ranges.Range) *TypeError {
+	return &TypeError{
 		ErrorCode: code,
 		Name:      name,
 		Range:     rang,
 	}
 }
 
-func RangedTypeError(code ErrorCode, rang ranges.Range, params ErrorParams) TypeError {
-	return TypeError{
+func RangedTypeError(code ErrorCode, rang ranges.Range, params ErrorParams) *TypeError {
+	return &TypeError{
 		ErrorCode: code,
 		Range:     rang,
 		Params:    params,
 	}
 }
 
-func NodeTypeError(code ErrorCode, node ast.Node, params ErrorParams) TypeError {
-	return TypeError{
+func NodeTypeError(code ErrorCode, node ast.Node, params ErrorParams) *TypeError {
+	return &TypeError{
 		ErrorCode: code,
 		Range:     node.GetRange(),
 		Params:    params,
 	}
 }
 
-func OperatorTypeError(rang ranges.Range, l, r types.Type, op lexer.TokenType) TypeError {
-	return TypeError{
+func OperatorTypeError(rang ranges.Range, l, r types.Type, op lexer.TokenType) *TypeError {
+	return &TypeError{
 		ErrorCode:    ErrMismatchedOperands,
 		Range:        rang,
 		ExpectedType: l,

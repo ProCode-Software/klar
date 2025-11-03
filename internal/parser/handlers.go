@@ -27,7 +27,12 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.Nil:
 		res = p.ParseNil()
 	// Prefix/Unary
-	case lexer.Minus, lexer.Plus, lexer.Not:
+	case lexer.Not:
+		if p.CurrKind() == lexer.EndOfStatement {
+			p.Advance()
+		}
+		fallthrough
+	case lexer.Minus, lexer.Plus:
 		res = p.ParseUnaryExpression()
 	// Group or tuple
 	case lexer.LeftParenthesis:
@@ -96,6 +101,7 @@ func (p *Parser) handleLED(
 		lexer.And, lexer.Or:
 		res = p.ParseBinaryExpression(left, bp)
 	// Relational
+
 	case lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
 		lexer.EqualEqual, lexer.NotEqual:
 		res = p.ParseRelationalExpression(left, bp)
@@ -118,14 +124,26 @@ func (p *Parser) handleLED(
 	// Function pipeline
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
+	// Object pipeline
 	case lexer.StrokeDot:
 		res = p.ParseObjectPipeline(left, bp)
+	// Ternary
+	case lexer.If:
+		res = p.ParseTernaryExpression(left, bp)
+	// Assertion
+	case lexer.Not:
+		res = p.ParseAssertExpression(left)
 	// Version
 	case lexer.Numeric:
-		if l, ok := left.(*ast.Symbol); !ok || !p.isAttribute || l.Identifier[0] != 'v' {
+		if !p.isAttribute {
 			return left, false
 		}
-		res = p.ParseVersion(left, bp)
+		if l, ok := left.(*ast.Symbol); !ok || l.Identifier[0] != 'v' {
+			return left, false
+		} else {
+			res = p.ParseVersion(l, bp)
+		}
+
 	// Invalid assignment
 	case lexer.PlusEqual, lexer.ColonEqual, lexer.MinusEqual, lexer.Equal:
 		err := errors.Token(errors.ErrAssignmentAsExpr, p.Advance())
@@ -167,7 +185,7 @@ func (p *Parser) handleStatementLED(
 
 func (p *Parser) validateAssignableOrFix(node ast.Node) ast.Assignable {
 	if _, ok := node.(ast.Assignable); !ok {
-		p.Error(errors.ParseError{
+		p.Error(&errors.ParseError{
 			ErrorCode: errors.ErrInvalidAssignment,
 			Node:      node,
 		})

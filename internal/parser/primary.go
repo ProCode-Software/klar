@@ -20,7 +20,7 @@ func unwrap[T any](res T, err error) T {
 
 func (p *Parser) handleInvalidNumber(code int, format lexer.IntegerFormat, tok lexer.Token) {
 	var (
-		err    errors.ParseError
+		err    *errors.ParseError
 		src    = tok.Source
 		tokPos = tok.Position
 		errPos = ranges.Add(tokPos, 0, uint32(tok.Attributes["errorPos"].(int)))

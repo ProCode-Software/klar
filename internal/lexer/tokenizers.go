@@ -256,10 +256,12 @@ type NumberAttrs struct {
 }
 
 func (l *Lexer) ParseIdentifier() (TokenType, string) {
+	var len uint32
 	id := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
 		// Use unicode.IsDigit to allow digit in any language
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			b.WriteRune(r)
+			len++
 			return true
 		}
 		return false

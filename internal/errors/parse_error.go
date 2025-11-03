@@ -108,6 +108,7 @@ const (
 	// Misc =====
 	ErrTryBlock    // Klar doesn't have try-catch blocks
 	ErrIfStatement // Klar doesn't have if statements
+	ErrTripleEqual // JavaScript == or === used in Klar
 
 	// Analysis-time syntax errors =====
 
@@ -135,19 +136,19 @@ type ParseError struct {
 	Params    map[string]any
 }
 
-func (e *ParseError) SetParam(key string, value any) ParseError {
+func (e *ParseError) SetParam(key string, value any) *ParseError {
 	if e.Params == nil {
 		e.Params = make(ErrorParams, 1)
 	}
 	e.Params[key] = value
-	return *e
+	return e
 }
 
-func (e ParseError) Error() string {
+func (e *ParseError) Error() string {
 	return "SyntaxError: " + e.error()
 }
 
-func (e ParseError) error() string {
+func (e *ParseError) error() string {
 	var (
 		tok  = e.Token
 		kind = tok.Kind
@@ -373,6 +374,12 @@ func (e ParseError) error() string {
 		return "Too many values on right-hand side of assignment: " + s
 	case ErrFuncDotAfterSelf:
 		return "Expected '.' between ')' and identifier in function declaration"
+	case ErrIfStatement:
+		return "Klar doesn't have if statements; use 'when' instead"
+	case ErrTryBlock:
+		return "Klar doesn't have try-catch statements"
+	case ErrTripleEqual:
+		return "In Klar, comparisons are always strict; use '==' or '!=' instead"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:
@@ -408,12 +415,12 @@ func (e ParseError) error() string {
 	}
 }
 
-func UnexpectedToken(token lexer.Token) ParseError {
-	return ParseError{Position: token.Position, Token: token, ErrorCode: ErrUnexpectedToken}
+func UnexpectedToken(token lexer.Token) *ParseError {
+	return &ParseError{Position: token.Position, Token: token, ErrorCode: ErrUnexpectedToken}
 }
 
-func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseError {
-	return ParseError{
+func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *ParseError {
+	return &ParseError{
 		Position:  gotToken.Position,
 		Token:     gotToken,
 		ErrorCode: ErrExpectedToken,
@@ -423,8 +430,8 @@ func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) ParseErro
 	}
 }
 
-func StringEscape(e lexer.StringEscape) ParseError {
-	return ParseError{
+func StringEscape(e lexer.StringEscape) *ParseError {
+	return &ParseError{
 		Position:  ranges.Sub(*e.ErrorPosition, 0, 1),
 		ErrorCode: ErrStringEscape,
 		Params: ErrorParams{
@@ -435,12 +442,12 @@ func StringEscape(e lexer.StringEscape) ParseError {
 	}
 }
 
-func Token(err ErrorCode, token lexer.Token) ParseError {
-	return ParseError{ErrorCode: err, Position: token.Position, Token: token}
+func Token(err ErrorCode, token lexer.Token) *ParseError {
+	return &ParseError{ErrorCode: err, Position: token.Position, Token: token}
 }
 
-func Node(err ErrorCode, node ast.Node) ParseError {
-	return ParseError{
+func Node(err ErrorCode, node ast.Node) *ParseError {
+	return &ParseError{
 		ErrorCode: err,
 		Node:      node,
 		Range:     node.GetRange(),
@@ -448,17 +455,17 @@ func Node(err ErrorCode, node ast.Node) ParseError {
 	}
 }
 
-func Position(err ErrorCode, pos lexer.Position) ParseError {
-	return ParseError{ErrorCode: err, Position: pos}
+func Position(err ErrorCode, pos lexer.Position) *ParseError {
+	return &ParseError{ErrorCode: err, Position: pos}
 }
 
-func Range(err ErrorCode, rang ranges.Range) ParseError {
-	return ParseError{ErrorCode: err, Range: rang, Position: rang.Start}
+func Range(err ErrorCode, rang ranges.Range) *ParseError {
+	return &ParseError{ErrorCode: err, Range: rang, Position: rang.Start}
 }
 
-func Slice[T ast.Node](err ErrorCode, nodes []T) ParseError {
+func Slice[T ast.Node](err ErrorCode, nodes []T) *ParseError {
 	start := nodes[0].GetRange().Start
-	return ParseError{
+	return &ParseError{
 		ErrorCode: err,
 		Range: ranges.Range{
 			Start: start,
@@ -468,18 +475,18 @@ func Slice[T ast.Node](err ErrorCode, nodes []T) ParseError {
 	}
 }
 
-func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) ParseError {
-	return ParseError{ErrorCode: err, Position: pos, Token: tok}
+func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) *ParseError {
+	return &ParseError{ErrorCode: err, Position: pos, Token: tok}
 }
 
-func Redeclared(name, kind string, p1, p2 ranges.Range) ParseError {
+func Redeclared(name, kind string, p1, p2 ranges.Range) *ParseError {
 	var code ErrorCode
 	if kind == "Type" {
 		code = ErrRedeclaredType
 	} else {
 		code = ErrRedeclaredVar
 	}
-	return ParseError{
+	return &ParseError{
 		Range:     p2,
 		Position:  p2.Start,
 		ErrorCode: code,

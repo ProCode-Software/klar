@@ -6,15 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func isImplicitWhenOp(t lexer.TokenType) bool {
-	switch t {
-	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
-		return true
-	}
-	return false
-}
-
 func (p *Parser) parseCaseSubExpr() ast.Expression {
 	tok := p.Curr()
 	var res ast.Expression
@@ -26,7 +17,7 @@ outer:
 	// }
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
-		res = p.ParseBinaryExpression(nil, BindingPowerMap[tok.Kind])
+		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
 	case lexer.Question:
 		p.Advance()
 		res = &ast.NilLiteral{Shorthand: true}
@@ -49,7 +40,11 @@ outer:
 		}
 		fallthrough
 	default:
-		res = p.ParseExpression(LambdaBindingPower) // Don't include -> (lambda)
+		res = p.ParseExpression(TernaryBindingPower)
+		// Continue parsing logical expression
+		if kind := p.CurrKind(); kind == lexer.AndAnd || kind == lexer.OrOr {
+			res = p.ParseBinaryExpression(res, bpOf(kind))
+		}
 	}
 	return markStartEndPos(p, res, tok.Position)
 }
@@ -72,9 +67,10 @@ func (p *Parser) ParseWhenCan() *ast.WhenCanCase {
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 	var (
-		c        = &ast.WhenCase{}
-		commaExp = make([]ast.Expression, 0, subjects)
-		orOpts   [][]ast.Expression
+		c         = &ast.WhenCase{}
+		commaExp  = make([]ast.Expression, 0, subjects)
+		orOpts    [][]ast.Expression
+		braceLine uint32
 	)
 	p.isWhenCase = true
 	// ',' binds tighter than '|' in case
@@ -107,7 +103,12 @@ loop:
 	if p.CurrKind() == lexer.If {
 		p.Advance()
 		p.isWhenGuard = true
-		c.Guard = p.ParseExpression(LambdaBindingPower)
+		c.Guard = p.ParseExpression(TernaryBindingPower)
+		// Continue parsing logical expression
+		if k := p.CurrKind(); k == lexer.AndAnd || k == lexer.OrOr {
+			c.Guard = p.ParseBinaryExpression(c.Guard, bpOf(k))
+			markEndPos(p, c.Guard)
+		}
 		p.isWhenGuard = false
 	}
 	p.isWhenCase = false
@@ -116,13 +117,9 @@ loop:
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
-		// If next when case is '< ...', don't expect EOS
-		if curr := p.Curr(); !isImplicitWhenOp(curr.Kind) ||
-			curr.Position.Line == c.Body.Range.End.Line {
-			p.Expect(lexer.EndOfStatement)
-		}
+		braceLine = c.Body.Range.End.Line
 	default:
-		// BUG: can't make it work with statements. Braces/comma required before '<'
+		// BUG: Braces/comma required before '<' starting next case
 		res := p.ParseStatement()
 		switch res := res.(type) {
 		// All expressions are allowed
@@ -138,8 +135,22 @@ loop:
 			c.BodyExpr = &ast.BadExpression{Value: res}
 		}
 	}
-	p.Expect(lexer.EndOfStatement, lexer.Comma)
+	// Optional comma before '}' or implicit operator case
+	if k := p.Curr(); k.Kind != lexer.RightCurlyBrace && !isImplicitWhenOp(braceLine, k) {
+		p.Expect(lexer.EndOfStatement, lexer.Comma)
+	}
 	return c
+}
+
+func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
+	switch t.Kind {
+	case lexer.Comma, lexer.EndOfStatement:
+		return false
+	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
+		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
+		return t.Position.Line != prevLine
+	}
+	return false
 }
 
 func (p *Parser) ParseWhenBlock() *ast.WhenExpression {

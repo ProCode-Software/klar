@@ -9,7 +9,7 @@ import (
 )
 
 func (p *Parser) errExpectedExpr(got ast.Node) {
-	err := errors.ParseError{
+	err := &errors.ParseError{
 		ErrorCode: errors.ErrNotAnExpression,
 		Node:      got,
 		Range:     got.GetRange(),

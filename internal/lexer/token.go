@@ -33,6 +33,15 @@ func (t *Token) SetAttribute(key string, value any) *Token {
 	return t
 }
 
+func (t *Token) Len() uint32 {
+	if t.Attributes != nil {
+		if v, ok := t.Attributes["length"].(uint32); ok {
+			return v
+		}
+	}
+	return uint32(len(t.Source))
+}
+
 func (t TokenType) LitterDump(w io.Writer) {
 	w.Write([]byte("{" + t.String() + "}"))
 }

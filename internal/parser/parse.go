@@ -27,10 +27,10 @@ func (p *Parser) Parse() *ast.Program {
 	return &ast.Program{
 		Body:     body[:len(body):len(body)], // Remove unused length
 		Comments: comments,
-		BaseNode: ast.BaseNode{Range: ranges.FromPosition(
-			p.Tokens[0].Position,
-			p.Tokens[len(p.Tokens)-1].Position,
-		)},
+		BaseNode: ast.BaseNode{Range: ranges.Range{
+			Start: p.Tokens[0].Position,
+			End:   p.Tokens[len(p.Tokens)-1].Position,
+		}},
 	}
 }
 
@@ -46,7 +46,7 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 			p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
 		}
 	case tok.Attributes["unterm"] == true:
-		p.Error(errors.ParseError{
+		p.Error(&errors.ParseError{
 			ErrorCode: errors.ErrUnterminatedComment,
 			Token:     tok,
 			Position:  tok.Position,
@@ -93,6 +93,9 @@ func (p *Parser) nudError() {
 	default:
 		p.unknownTokenErr()
 		return
+	case lexer.Illegal:
+	case lexer.If:
+		p.Error(errors.Token(errors.ErrIfStatement, curr))
 	case lexer.PlusPlus, lexer.MinusMinus:
 		p.Error(errors.Token(errors.ErrInvalidUpdate, curr))
 	}

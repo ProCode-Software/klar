@@ -32,7 +32,7 @@ func (f *NumberFlag) Type() FlagType { return TypeNumberFlag }
 
 type EnumFlag struct {
 	baseFlag
-	Val any
+	Val  any
 	Name string
 }
 

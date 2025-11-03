@@ -271,7 +271,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 			// Parse function: #{ kind() -> String }
 			if len(field.Keys) > 1 {
 				// Invalid: x, y, z()
-				p.Error(errors.Token(errors.ErrIntfMultiKeyMethod, p.Curr()))
+				p.Error(errors.Slice(errors.ErrIntfMultiKeyMethod, field.Keys))
 			}
 			fn := &ast.MethodType{} // TODO: position data?
 			p.Advance()             // (

@@ -121,7 +121,7 @@ func IsPackage(path string) (bool, error) {
 	parts := split(path)
 	for i := len(parts) - 1; i >= 0; i-- {
 		dir := parts[i]
-		if dir == PackageFolder && i == len(parts) - 2 {
+		if dir == PackageFolder && i == len(parts)-2 {
 			return true, nil
 		} else if _, ok := KlarProjectDirs[dir]; ok {
 			return false, nil

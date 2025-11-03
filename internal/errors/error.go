@@ -33,13 +33,11 @@ const (
 	WarningPrefix
 	TypeErrorPrefix
 	ReferenceErrorPrefix
+	ImplementationErrorPrefix
+	ResourceErrorPrefix // TODO: see if this is needed
 )
 
-func (e ParseError) At() ranges.Range {
-	return e.getRange()
-}
-
-func (e ParseError) getRange() ranges.Range {
+func (e *ParseError) At() ranges.Range {
 	if e.Range.Start.Line > 0 {
 		return e.Range
 	} else if e.Node != nil {
@@ -51,22 +49,22 @@ func (e ParseError) getRange() ranges.Range {
 }
 
 // SyntaxError
-func (e ParseError) Code() ErrorCode      { return e.ErrorCode }
-func (e ParseError) GetFile() string      { return e.File }
-func (e ParseError) GetHints() []string   { return e.Hints }
-func (e ParseError) GetDetails() []Detail { return nil }
-func (e *ParseError) Hint(hint string)    { e.Hints = append(e.Hints, hint) }
+func (e *ParseError) Code() ErrorCode      { return e.ErrorCode }
+func (e *ParseError) GetFile() string      { return e.File }
+func (e *ParseError) GetHints() []string   { return e.Hints }
+func (e *ParseError) GetDetails() []Detail { return nil }
+func (e *ParseError) Hint(hint string)     { e.Hints = append(e.Hints, hint) }
 func (e *ParseError) Hintf(hint string, a ...any) {
 	e.Hints = append(e.Hints, fmt.Sprintf(hint, a...))
 }
 
 // TypeError
-func (e TypeError) At() ranges.Range     { return e.Range }
-func (e TypeError) Code() ErrorCode      { return e.ErrorCode }
-func (e TypeError) GetFile() string      { return e.File }
-func (e TypeError) GetHints() []string   { return e.Hints }
-func (e TypeError) GetDetails() []Detail { return e.Details }
-func (e *TypeError) Hint(hint string)    { e.Hints = append(e.Hints, hint) }
+func (e *TypeError) At() ranges.Range     { return e.Range }
+func (e *TypeError) Code() ErrorCode      { return e.ErrorCode }
+func (e *TypeError) GetFile() string      { return e.File }
+func (e *TypeError) GetHints() []string   { return e.Hints }
+func (e *TypeError) GetDetails() []Detail { return e.Details }
+func (e *TypeError) Hint(hint string)     { e.Hints = append(e.Hints, hint) }
 func (e *TypeError) Hintf(hint string, a ...any) {
 	e.Hints = append(e.Hints, fmt.Sprintf(hint, a...))
 }
@@ -84,9 +82,9 @@ func (e *Warning) Hintf(hint string, a ...any) {
 }
 
 // ReferenceError
-func (e ReferenceError) GetFile() string       { return e.File }
-func (e ReferenceError) At() ranges.Range      { return e.Range }
-func (e ReferenceError) AtRange() ranges.Range { return e.Range }
-func (e ReferenceError) Code() ErrorCode       { return e.ErrorCode }
-func (e ReferenceError) GetHints() []string    { return e.Hints }
-func (e ReferenceError) GetDetails() []Detail  { return e.Details }
+func (e *ReferenceError) GetFile() string       { return e.File }
+func (e *ReferenceError) At() ranges.Range      { return e.Range }
+func (e *ReferenceError) AtRange() ranges.Range { return e.Range }
+func (e *ReferenceError) Code() ErrorCode       { return e.ErrorCode }
+func (e *ReferenceError) GetHints() []string    { return e.Hints }
+func (e *ReferenceError) GetDetails() []Detail  { return e.Details }

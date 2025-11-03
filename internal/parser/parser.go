@@ -13,7 +13,7 @@ type Parser struct {
 	Options ParseOptions
 	Tokens  []lexer.Token
 	Index   int
-	Errors  []ParseError
+	Errors  []*ParseError
 
 	// Conditional flags
 	isWhenGuard bool // Disable some types of expressions
@@ -32,7 +32,7 @@ type ParseOptions struct {
 	// Path of the file being parsed. File is applied to all reported errors.
 	File string
 	// If Error != nil, Error is called for every reported error.
-	Error func(e ParseError)
+	Error func(e *ParseError)
 	// Parsing is stopped once len(p.Errors) equals MaxErrors.
 	// If MaxErrors <= 0, there is no limit.
 	MaxErrors int
@@ -133,21 +133,20 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 // ExpectErrorCode adds a [errors.ParseError] with code to the parser if it the
 // current token is not in need.
 func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType) lexer.Token {
-	return p.ExpectError(ParseError{ErrorCode: code}, need...)
+	return p.ExpectError(&ParseError{ErrorCode: code}, need...)
 }
 
 func (p *Parser) ExpectErrorNoAdvance(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.Curr()
 	got := token.Kind
 	if !slices.Contains(need, got) {
-		parseErr, _ := err.(ParseError)
+		err, _ := err.(*ParseError)
 		if err == nil {
 			err = errors.ExpectedToken(need[0], token)
-		} else if parseErr.Token.Kind == 0 {
-			parseErr.Token = token
-			err = parseErr
+		} else if err.Token.Kind == 0 {
+			err.Token = token
 		}
-		p.Error(err.(ParseError))
+		p.Error(err)
 		return token
 	}
 	return p.Advance()
@@ -158,14 +157,14 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.Curr()
 	got := token.Kind
 	if !slices.Contains(need, got) {
-		parseErr, _ := err.(ParseError)
+		parseErr, _ := err.(*ParseError)
 		if err == nil {
 			err = errors.ExpectedToken(need[0], token)
 		} else if parseErr.Token.Kind == 0 {
 			parseErr.Token = token
 			err = parseErr
 		}
-		p.Error(err.(ParseError))
+		p.Error(err.(*ParseError))
 	}
 	if got == lexer.EOF {
 		return token // Avoid advancing
@@ -177,7 +176,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 type stopParsing struct{}
 
 // Error adds an error to the parser.
-func (p *Parser) Error(err errors.ParseError) {
+func (p *Parser) Error(err *errors.ParseError) {
 	err.File = p.Options.File
 	p.Errors = append(p.Errors, err)
 	if p.Options.Error != nil {

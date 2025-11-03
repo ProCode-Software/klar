@@ -13,7 +13,7 @@ type (
 )
 
 func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
-	program *ast.Program, errors []ParseError,
+	program *ast.Program, errors []*ParseError,
 ) {
 	p := parser.New(tokens, options)
 	program = p.Parse()
@@ -21,7 +21,7 @@ func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
 	return
 }
 
-func ParseString(src string) (program *ast.Program, parseErrs []ParseError, readErr error) {
+func ParseString(src string) (program *ast.Program, parseErrs []*ParseError, readErr error) {
 	tokens, err := TokenizeString(src, lexer.IncludeComments)
 	if err != nil {
 		return nil, nil, err

@@ -103,4 +103,3 @@ func (c *Compiler) CloseAll() {
 		file.Close()
 	}
 }
-

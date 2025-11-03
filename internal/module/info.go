@@ -8,9 +8,9 @@ type Submodule struct {
 type ModuleInfo struct {
 	Name        string
 	Importable  bool
-	Independent bool   // Cannot import non-std modules if individual file
+	Independent bool // Cannot import non-std modules if individual file
 	Path        string
-	CachePath string // Path in cache
+	CachePath   string // Path in cache
 }
 
 func (m *Submodule) GetModule(paths []string) (*Submodule, bool) {

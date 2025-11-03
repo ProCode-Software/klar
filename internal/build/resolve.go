@@ -10,7 +10,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
-
 func ResolveInputs(inputs []string) ([]Input, error) {
 	if len(inputs) == 0 {
 		return nil, nil

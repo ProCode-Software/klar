@@ -30,15 +30,15 @@ type ReferenceError struct {
 	Params    ErrorParams
 }
 
-func (e *ReferenceError) SetParam(key string, value any) ReferenceError {
+func (e *ReferenceError) SetParam(key string, value any) *ReferenceError {
 	if e.Params == nil {
 		e.Params = make(ErrorParams)
 	}
 	e.Params[key] = value
-	return *e
+	return e
 }
 
-func (e ReferenceError) Error() string {
+func (e *ReferenceError) Error() string {
 	name := Quote(e.Name)
 	switch e.ErrorCode {
 	default:
@@ -63,8 +63,8 @@ func (e ReferenceError) Error() string {
 	}
 }
 
-func Undefined(code ErrorCode, name string, rang ranges.Range) ReferenceError {
-	return ReferenceError{
+func Undefined(code ErrorCode, name string, rang ranges.Range) *ReferenceError {
+	return &ReferenceError{
 		ErrorCode: code,
 		Name:      name,
 		Range:     rang,

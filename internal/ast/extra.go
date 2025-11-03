@@ -1,8 +1,6 @@
 package ast
 
 import (
-	"unicode/utf8"
-
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -27,11 +25,8 @@ func (o Operator) End() lexer.Position {
 type Identifier struct {
 	Name     string
 	Position lexer.Position
+	Len      uint32
 	_range   ranges.Range
-}
-
-func (i Identifier) Len() uint32 {
-	return uint32(utf8.RuneCountInString(i.Name))
 }
 
 func (i Identifier) End() lexer.Position {
@@ -46,7 +41,7 @@ func (i Identifier) BaseNode() BaseNode {
 func (i Identifier) Range() ranges.Range {
 	if i._range.Start.Line == 0 {
 		i._range = ranges.Range{i.Position, lexer.Position{
-			i.Position.Line, i.Position.Col + i.Len(),
+			i.Position.Line, i.Position.Col + i.Len,
 		}}
 	}
 	return i._range
@@ -56,13 +51,12 @@ func (i Identifier) Symbol() *Symbol {
 	return &Symbol{Identifier: i.Name, BaseNode: BaseNode{Range: i.Range()}}
 }
 
-// Implementing [Node] just for error handling
+// Implementing [Node] just for error reporting
 
-// GetRange implements [Node]. It is an alias for i.Range
+// GetRange implements [Node]. GetRange is i.Range
 func (i Identifier) GetRange() ranges.Range {
 	return i.Range()
 }
 
-// SetPos implements [Node]. It does not change i's range and only exists for
-// error handling
-func (i Identifier) SetPos(_, _ lexer.Position) {}
+// SetPos implements [Node]. It does not change i's range.
+func (i Identifier) SetPos(start, end lexer.Position) {}

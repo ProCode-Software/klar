@@ -42,22 +42,26 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 	return true
 }
 
+func newIdentifier(t lexer.Token) ast.Identifier {
+	return ast.Identifier{Name: t.Source, Position: t.Position, Len: t.Len()}
+}
+
 func (p *Parser) ParseIdentifier() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	p.validateIdentifier(tok)
-	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+	return newIdentifier(tok)
 }
 
 func (p *Parser) ParseStrictIdentifier() ast.Identifier {
 	tok := p.Expect(lexer.Identifier)
-	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+	return newIdentifier(tok)
 }
 
 // [*Parser.ParseIdentifier] but will not validate. Expected use case if for already
 // validated identifiers. [lexer.Underscore] is allowed (because any token is allowed)
 func (p *Parser) ParseValidIdent() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
-	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+	return newIdentifier(tok)
 }
 
 func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
@@ -65,7 +69,7 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	if tok.Kind != lexer.Underscore {
 		p.validateIdentifier(tok)
 	}
-	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+	return newIdentifier(tok)
 }
 
 const includingNumber, isLabel uint8 = 1, 2
@@ -87,9 +91,13 @@ func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
 		!slices.Contains(ast.ReservedIdent, tok.Kind):
 		p.Error(errors.ExpectedToken(lexer.Identifier, tok))
 	}
-	return ast.Identifier{Name: tok.Source, Position: tok.Position}
+	return newIdentifier(tok)
 }
 
 func symbolToIdentifier(s *ast.Symbol) ast.Identifier {
-	return ast.Identifier{Name: s.Identifier, Position: s.Range.Start}
+	return ast.Identifier{
+		Name:     s.Identifier,
+		Position: s.Range.Start,
+		Len:      s.Range.LineLength(),
+	}
 }

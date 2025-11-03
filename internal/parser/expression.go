@@ -31,7 +31,15 @@ func (p *Parser) ParseRelationalExpression(left ast.Expression, bp BindingPower)
 	rel := &ast.RelationalExpression{}
 	rel.Expressions = append(rel.Expressions, left) // First expression
 	for isRelational(p.CurrKind()) {
-		rel.Operators = append(rel.Operators, newOperator(p.Advance()))
+		op := newOperator(p.Advance())
+		rel.Operators = append(rel.Operators, op)
+		// Add hint for invalid !== or ===
+		if (op.Kind == lexer.EqualEqual || op.Kind == lexer.NotEqual) &&
+			p.CurrKind() == lexer.Equal {
+			p.Error(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
+				op.Position, ranges.Add(p.Advance().Position, 0, 1),
+			)))
+		}
 		rel.Expressions = append(rel.Expressions, p.ParseExpression(bp))
 	}
 	return rel
@@ -404,11 +412,11 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	return r
 }
 
-func (p *Parser) ParseVersion(left ast.Expression, bp BindingPower) ast.Expression {
+func (p *Parser) ParseVersion(left *ast.Symbol, bp BindingPower) ast.Expression {
 	var (
 		b     strings.Builder
 		err   bool
-		first = left.(*ast.Symbol).Identifier
+		first = left.Identifier
 	)
 	expect := func(kind lexer.TokenType) string {
 		tok := p.Advance()
@@ -546,6 +554,12 @@ func (p *Parser) ParseAwaitExpression() *ast.AwaitExpression {
 func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	p.Advance() // try
 	t := &ast.TryExpression{}
+	// Invalid try-catch block: try {}
+	if p.CurrKind() == lexer.LeftCurlyBrace {
+		p.Error(errors.Token(errors.ErrTryBlock, p.Curr()))
+		p.ParseBlock() // Just parse it
+		return t
+	}
 	t.Expression = p.ParseExpression(UnaryBindingPower)
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
 		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression))
@@ -556,8 +570,13 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 func (p *Parser) ParseTernaryExpression(left ast.Expression, bp BindingPower) ast.Expression {
 	p.Advance() // if
 	t := &ast.TernaryExpression{Value: left}
-	t.Condition = p.ParseExpression(bp)
+	t.Condition = p.ParseExpression(ExpressionBindingPower)
 	p.Expect(lexer.Else)
 	t.Else = p.ParseExpression(bp)
 	return t
+}
+
+func (p *Parser) ParseAssertExpression(left ast.Expression) *ast.AssertExpression {
+	p.Advance() // !
+	return &ast.AssertExpression{Expression: left}
 }
