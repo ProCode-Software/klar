@@ -165,7 +165,7 @@ loop:
 				if len(tokens) == 0 {
 					err, errPos = ErrEscapeTooShort, l.Pos
 				} else {
-					tokens[len(tokens)-1].SetAttribute("end", l.Pos)
+					tokens[len(tokens)-1].setAttr("end", l.Pos)
 				}
 				b.WriteString(t.Source)
 				break loop
@@ -195,6 +195,7 @@ There are three types of strings in Klar:
 func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
 	var (
 		currQuoteN, fragStart       int
+		leng                        uint32
 		b                           Builder
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
@@ -229,6 +230,7 @@ loop:
 			break loop
 		}
 		l.Pos.Col++
+		leng++
 		if r != delim {
 			currQuoteN = 0
 		}
@@ -296,12 +298,14 @@ loop:
 	} else {
 		prefix = string(delim)
 	}
-	return NewToken(pos, String, string(prefix)+b.String()).
-		SetAttribute("end", end).
-		SetAttribute("params", StringAttrs{
+	return NewToken(pos, String, string(prefix)+b.String()).withAttrs(attrs{
+		"end":    end,
+		"length": leng,
+		"params": StringAttrs{
 			QuoteStyle:   delim,
 			Unterminated: unterm,
 			QuoteCount:   quoteN,
 			Fragments:    frags,
-		})
+		},
+	})
 }

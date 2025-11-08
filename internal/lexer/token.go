@@ -25,11 +25,18 @@ type Token struct {
 	Attributes map[string]any
 }
 
-func (t *Token) SetAttribute(key string, value any) *Token {
+type attrs = map[string]any
+
+func (t *Token) setAttr(key string, value any) *Token {
 	if t.Attributes == nil {
 		t.Attributes = make(map[string]any)
 	}
 	t.Attributes[key] = value
+	return t
+}
+
+func (t *Token) withAttrs(attrs attrs) *Token {
+	t.Attributes = attrs
 	return t
 }
 

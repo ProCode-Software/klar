@@ -60,15 +60,17 @@ func (l *Lexer) ParseShebang(pos Position) *Token {
 }
 
 func (l *Lexer) ParseLineComment(pos Position) *Token {
+	var leng uint32
 	cmt := l.TokenizeFunc(func(r rune, b *Builder) bool {
 		// Beginning // is already parsed
 		if r == '\n' {
 			return false
 		}
 		b.WriteRune(r)
+		leng++
 		return true
 	})
-	return NewToken(pos, LineComment, "//"+cmt)
+	return NewToken(pos, LineComment, "//"+cmt).withAttrs(attrs{"length": leng})
 }
 
 func (l *Lexer) ParseBlockComment(pos Position) *Token {
@@ -78,12 +80,14 @@ func (l *Lexer) ParseBlockComment(pos Position) *Token {
 		unterm   bool
 		b        Builder
 		last     rune
+		leng uint32
 	)
 	b.WriteString("/*")
 loop:
 	for {
 		r, _, err := l.Reader.ReadRune()
 		l.Pos.Col++
+		leng++
 		if handleReadError(err) {
 			unterm = true
 			endPos = l.Pos
@@ -109,7 +113,7 @@ loop:
 	}
 
 	return NewToken(pos, BlockComment, b.String()).
-		SetAttribute("unterm", unterm).SetAttribute("end", endPos)
+		withAttrs(attrs{"unterm": unterm, "end": endPos, "length": leng})
 }
 
 const (
@@ -236,14 +240,16 @@ func (l *Lexer) ParseNumber(pos Position) *Token {
 		newError(ErrIntMisplacedSeparator, nil)
 		errPos = len(digit) - 1
 	}
-	return NewToken(pos, Numeric, digit).SetAttribute("params", NumberAttrs{
-		Format:       format,
-		HasExponent:  isExp,
-		HasSeparator: hasSep,
-		Float:        isDecimal || isExp,
-		Invalid:      isIllegal,
-		ErrPos:       errPos,
-		Error:        errorType,
+	return NewToken(pos, Numeric, digit).withAttrs(attrs{
+		"params": NumberAttrs{
+			Format:       format,
+			HasExponent:  isExp,
+			HasSeparator: hasSep,
+			Float:        isDecimal || isExp,
+			Invalid:      isIllegal,
+			ErrPos:       errPos,
+			Error:        errorType,
+		},
 	})
 }
 
@@ -255,7 +261,7 @@ type NumberAttrs struct {
 	HasExponent bool
 }
 
-func (l *Lexer) ParseIdentifier() (TokenType, string) {
+func (l *Lexer) ParseIdentifier() (TokenType, string, uint32) {
 	var len uint32
 	id := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
 		// Use unicode.IsDigit to allow digit in any language
@@ -267,9 +273,9 @@ func (l *Lexer) ParseIdentifier() (TokenType, string) {
 		return false
 	})
 	if keyword, is := KeywordMap[id]; is {
-		return keyword, id
+		return keyword, id, len
 	}
-	return Identifier, id
+	return Identifier, id, len
 }
 
 type RegexAttrs struct {
@@ -288,6 +294,7 @@ func (l *Lexer) ParseRegex(startPos Position, slashN int) *Token {
 		hasNewline, isNewline bool
 		end                   Position
 		b                     strings.Builder
+		leng                  uint32
 	)
 loop:
 	for {
@@ -297,6 +304,7 @@ loop:
 			break loop
 		}
 		l.Pos.Col++
+		leng++
 		switch r {
 		case '/':
 			slashCt++
@@ -331,13 +339,15 @@ loop:
 		return false
 	})
 	str := string(prefix) + b.String()
-	return NewToken(startPos, Regex, str).
-		SetAttribute("end", end).
-		SetAttribute("params", RegexAttrs{
-			Source:       "",
+	return NewToken(startPos, Regex, str).withAttrs(attrs{
+		"end":    end,
+		"length": leng,
+		"params": RegexAttrs{
+			Source:       str,
 			Multiline:    hasNewline,
 			Flags:        []rune(flagStr),
 			Unterminated: unterm,
 			SlashCount:   slashN,
-		})
+		},
+	})
 }

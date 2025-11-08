@@ -125,10 +125,11 @@ func (l *Lexer) Tokenize() *Token {
 		case IsDigit(r):
 			return l.ParseNumber(pos)
 		case unicode.IsLetter(r), r == '_':
-			tt, val := l.ParseIdentifier()
-			return NewToken(pos, tt, val)
+			tt, val, leng := l.ParseIdentifier()
+			return NewToken(pos, tt, val).withAttrs(attrs{"length": leng})
 		default:
-			return NewToken(pos, Illegal, string(r))
+			return NewToken(pos, Illegal, string(r)).
+				withAttrs(attrs{"length": uint32(1)})
 		}
 	}
 }
