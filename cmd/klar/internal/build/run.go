@@ -56,6 +56,7 @@ func Build(r *command.Runner) {
 		b.Options = append(b.Options, opt)
 	}
 	// TODO: error if --output is file and there are multiple inputs
+	
 }
 
 func ParseFlags(r *command.Runner, o *build.Options) {

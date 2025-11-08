@@ -25,12 +25,15 @@ type Printer struct {
 	FunctionColor string
 	EscapeColor   string
 
-	tokens    []lexer.Token
+	tokens    map[string][]lexer.Token // File paths
 	IsRuntime bool
 }
 
-func (p *Printer) LoadTokens(tokens []lexer.Token) {
-	p.tokens = tokens
+func (p *Printer) LoadTokens(filePath string, tokens []lexer.Token) {
+	if p.tokens == nil {
+		p.tokens = map[string][]lexer.Token{}
+	}
+	p.tokens[filePath] = tokens
 	if p.TokenColors == nil {
 		p.TokenColors = defaultColors
 		p.TypeColor = colorType
@@ -84,7 +87,7 @@ func isSingleChar(r ranges.Range) bool {
 }
 
 func space(n uint32) []byte {
-	if n > 10000000 && n >= (1<<32)-10 {
+	if n > 10000000 {
 		panic("overflow of n")
 	}
 	arr := make([]byte, n)
@@ -116,6 +119,11 @@ func isPrimitive(name string) bool {
 func isBuiltinFunc(name string) bool {
 	_, ok := builtinFuncs[name]
 	return ok
+}
+
+type tokenContext struct {
+	file string
+	tokens []lexer.Token
 }
 
 func (p *Printer) colorize(i int) string {

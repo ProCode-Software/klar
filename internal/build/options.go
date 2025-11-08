@@ -5,8 +5,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
@@ -39,10 +42,21 @@ type Options struct {
 
 type Input struct {
 	Kind      InputKind
-	Parent    string // Parent module path // TODO: check if needed
 	Path      string // Filesystem path
 	Name      string // Module or package name
 	KlarBuild string // Path to klar.build file
+}
+
+type File struct {
+	Path    string
+	Tokens  []lexer.Token
+	AST     *ast.Program
+}
+
+type Module struct {
+	Submodules []string // Submodule paths
+	Files []string // File paths
+	// TODO: typechecked ast
 }
 
 type Compiler struct {
@@ -53,6 +67,12 @@ type Compiler struct {
 	Project             *module.ProjectInfo
 	PreBuild, PostBuild []any // TODO
 	OpenFiles           []*os.File
+
+	ModuleMap map[*Input]*Module
+	Modules   map[string]*Module // Module paths to modules
+	FlatFiles map[string]*File
+
+	ErrorPrinter *printer.Printer
 
 	SuppressWarnings, WarningsAsErrors []string // TODO: better type
 	*log.Logger

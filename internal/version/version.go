@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const KlarVersion = "0.0.1"
+var KlarVersion = "0.0.1"
 
 type Suffix int
 

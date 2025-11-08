@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
+set -e
+
+VERSION="0.0.2" # TODO: replace
+LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/version.KlarVersion=$VERSION'"
+# ldflags: separate with another -X ...
+
+# Generate files
 go generate ./{cmd,internal,pkg}/...
+
+# Clear console
 clear
-if [ "$1" = "repl" ]; then
-    go run ./cmd/klar repl
+
+# Build binary if '-build' passed
+if [[ $1 == "-build" ]]; then
+    go build -ldflags="$LDFLAGS" -o klar ./cmd/klar
     exit $?
 fi
-go run ./cmd/klar run "./samples/${1:-other}.klar"
+
+# Otherwise, run normally
+go run -ldflags="$LDFLAGS" ./cmd/klar $1
+

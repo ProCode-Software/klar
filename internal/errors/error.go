@@ -34,8 +34,9 @@ const (
 	TypeErrorPrefix
 	ReferenceErrorPrefix
 	ImplementationErrorPrefix
-	ResourceErrorPrefix // TODO: see if this is needed
 )
+
+const ErrMaxErrors = -1 // Too many errors
 
 func (e *ParseError) At() ranges.Range {
 	if e.Range.Start.Line > 0 {
