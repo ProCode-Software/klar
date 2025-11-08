@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -25,15 +26,19 @@ type Printer struct {
 	FunctionColor string
 	EscapeColor   string
 
-	tokens    map[string][]lexer.Token // File paths
-	IsRuntime bool
+	tokens map[string][]lexer.Token // File paths
+	rel    map[string]string
 }
 
-func (p *Printer) LoadTokens(filePath string, tokens []lexer.Token) {
+func (p *Printer) LoadTokens(filePath, relPath string, tokens []lexer.Token) {
 	if p.tokens == nil {
 		p.tokens = map[string][]lexer.Token{}
 	}
+	if p.rel == nil {
+		p.rel = map[string]string{}
+	}
 	p.tokens[filePath] = tokens
+	p.rel[filePath] = relPath
 	if p.TokenColors == nil {
 		p.TokenColors = defaultColors
 		p.TypeColor = colorType
@@ -97,18 +102,18 @@ func space(n uint32) []byte {
 	return arr
 }
 
-func (p *Printer) prevTok(i int) (tok lexer.TokenType) {
+func (p *Printer) prevTok(tokens []lexer.Token, i int) (tok lexer.TokenType) {
 	if i == 0 {
 		return
 	}
-	return p.tokens[i-1].Kind
+	return tokens[i-1].Kind
 }
 
-func (p *Printer) nextTok(i int) (tok lexer.TokenType) {
-	if len(p.tokens) <= i+1 {
+func (p *Printer) nextTok(tokens []lexer.Token, i int) (tok lexer.TokenType) {
+	if len(tokens) <= i+1 {
 		return
 	}
-	return p.tokens[i+1].Kind
+	return tokens[i+1].Kind
 }
 
 func isPrimitive(name string) bool {
@@ -121,25 +126,22 @@ func isBuiltinFunc(name string) bool {
 	return ok
 }
 
-type tokenContext struct {
-	file string
-	tokens []lexer.Token
-}
-
-func (p *Printer) colorize(i int) string {
-	tok := p.tokens[i]
+func (p *Printer) colorize(tokens []lexer.Token, i int) string {
+	tok := tokens[i]
 	color := p.TokenColors[tok.Kind]
 	if !p.Color {
 		color = ""
 	}
-	next := p.nextTok(i)
-	prev := p.prevTok(i)
+	next := p.nextTok(tokens, i)
+	prev := p.prevTok(tokens, i)
 	switch {
 	case tok.Kind != lexer.Identifier:
 		break
 	case isPrimitive(tok.Source),
 		prev == lexer.Arrow && next == lexer.LeftCurlyBrace,
-		prev == lexer.Type, next == lexer.Stroke, next == lexer.Question:
+		prev == lexer.Type,
+		next == lexer.Stroke,
+		next == lexer.Question:
 		color = p.TypeColor
 	case prev == lexer.Func, next == lexer.LeftParenthesis:
 		color = p.FunctionColor
@@ -155,8 +157,9 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		p.MaxLines = 3
 	}
 	var (
-		b              strings.Builder
+		b              bytes.Buffer
 		currTok        int
+		toks                  = p.tokens[err.GetFile()]
 		at                    = err.At()
 		start                 = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1))
 		end                   = start + uint32(p.MaxLines) - 1
@@ -164,15 +167,21 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		digitLen              = uint32(len(strconv.FormatUint(uint64(end), 10)))
 		lineColor             = ansi.CodeBlue
 		highlightColor        = ansi.CodeBrightRed
+		relPath = p.rel[err.GetFile()]
 		box                   = func(char rune) {
 			b.WriteString(ansi.Color(lineColor, string(char)))
 		}
 	)
-	if err.At().Start.Line == 0 {
-		goto printMsg
+	if toks == nil {
+		panic("tokens not defined for file: " + err.GetFile())
 	}
-	if p.IsRuntime {
-		lineColor = ansi.CodeMagenta
+	if relPath == "" {
+		relPath = err.GetFile()
+	}
+	if at.Start.Line == 0 {
+		b.WriteString(ColorizeLine(relPath, err.At().Start))
+		b.WriteByte('\n')
+		goto printMsg
 	}
 	if _, ok := err.(errors.Warning); ok {
 		highlightColor = ansi.CodeBrightYellow
@@ -182,11 +191,11 @@ func (p *Printer) PrintError(err errors.CompileError) {
 	box(icons.BoxTopLeft)
 	box(icons.BoxLine)
 	b.WriteByte(' ')
-	b.WriteString(ColorizeLine(err.GetFile(), err.At().Start))
+	b.WriteString(ColorizeLine(relPath, err.At().Start))
 	b.WriteByte('\n')
 
 	// Get first token
-	for i, tok := range p.tokens {
+	for i, tok := range toks {
 		if tok.Position.Line == start {
 			currTok = i
 			break
@@ -194,7 +203,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 	}
 	// Print each line
 	for line := start; line <= end; line++ {
-		if currTok >= len(p.tokens) {
+		if currTok >= len(toks) {
 			break
 		}
 		// Line number
@@ -202,8 +211,8 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		box(icons.BoxSide)
 		b.WriteByte(' ')
 		// Each token on line
-		for lastCol = 1; currTok < len(p.tokens) && p.tokens[currTok].Line == line; currTok++ {
-			tok := p.tokens[currTok]
+		for lastCol = 1; currTok < len(toks) && toks[currTok].Line == line; currTok++ {
+			tok := toks[currTok]
 			if tok.Source == "\n" {
 				continue
 			}
@@ -212,7 +221,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 			if at.RangeIn(tokRange) {
 				b.WriteString(ansi.Color(highlightColor, tok.Source))
 			} else {
-				b.WriteString(p.colorize(currTok))
+				b.WriteString(p.colorize(toks, currTok))
 			}
 			lastCol = tokRange.End.Col
 		}
@@ -243,9 +252,9 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		}
 	}
 printMsg:
-	msg := GetMessage(err)
-	b.WriteString(msg)
-	fmt.Fprintln(os.Stderr, b.String())
+	b.WriteString(GetMessage(err))
+	b.WriteByte('\n')
+	os.Stderr.Write(b.Bytes())
 	for _, hint := range err.GetHints() {
 		cli.HintIndent(hint)
 	}

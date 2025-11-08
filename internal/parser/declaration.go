@@ -312,15 +312,21 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		p.Advance()                 // (
 		self := p.ParseIdentifier() // self name
 		f.SelfName = &self
-		p.Expect(lexer.Colon)            // :
-		rec = p.ParseIdentifier()        // Struct name
-		p.Expect(lexer.RightParenthesis) // )
+		if p.CurrKind() != lexer.Colon { // :
+			p.Expect(lexer.Colon) // Report error
+		} else {
+			p.Advance()
+			rec = p.ParseIdentifier()        // Struct name
+			p.Expect(lexer.RightParenthesis) // )
+		}
 		if p.CurrKind() != lexer.Dot {
 			p.Error(errors.Token(errors.ErrFuncDotAfterSelf, p.Curr()))
 			// Just set it for error tolerance
-			f.Struct = &rec
-			f.Identifier = p.ParseMapIdentifier(0)
+			str := rec
+			f.Struct = &str
+			rec = p.ParseMapIdentifier(0) // Goes to f.Identifier = rec
 		}
+		// Otherwise, p.CurrKind() == lexer.Dot
 	} else {
 		rec = p.ParseIdentifier()
 	}
@@ -372,8 +378,10 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		// Trailing type params
 		parseSeries(p, &param.Names, func() *ast.FunctionParamName {
 			key := &ast.FunctionParamName{}
-			if peek := p.Peek().Kind; isValidIdentOrDiscard(peek) ||
-				(peek != lexer.Colon && peek != lexer.Equal && peek != lexer.ColonEqual) {
+			switch peek := p.Peek().Kind; peek {
+			case lexer.Colon, lexer.Equal, lexer.ColonEqual,
+				lexer.Comma, lexer.RightParenthesis:
+			default:
 				// Optional label:
 				// 	func replace(src, with replacement: String)
 				key.Label = p.ParseMapIdentifier(isLabel)

@@ -11,24 +11,19 @@ func unwrap<T, X>(optional: T?) -> T {
     // return x + 2
     when optional {
         ? -> panic("unwrap failed")
-        value -> return value
+        _ -> return optional
     }
 }
 
-
-
-
-
-type Point<X, T> {
+type Point {
     x, y: Int
     WHATEVR: Int
 }
 
-
-/* func Point(x, y: Int = 10) {
+func Point(x, y: Int = 10) {
     self.x = x
     self.y = y
-} */
+}
 
 type Color {
     .red, .orange, .yellow,

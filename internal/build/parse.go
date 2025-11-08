@@ -1,94 +1,220 @@
 package build
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/lexer"
+	parse "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/parser"
 )
 
+const maxErrors = 10
+
+type parseContext struct {
+	ctx           context.Context
+	cancel        context.CancelFunc
+	syntaxErrCh   chan []*errors.ParseError
+	criticalErrCh chan error
+	collectorDone chan struct{}
+	fileMu        sync.Mutex
+	wg            sync.WaitGroup
+	pool          *parsePool
+}
+
 func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalErr error) {
-	if c.FlatFiles == nil {
-		c.FlatFiles = make(map[string]*File)
+	// Initialize parse context
+	c.Printf("Begin parsing modules (%d modules)", len(c.Modules))
+	pctx := &parseContext{
+		syntaxErrCh:   make(chan []*errors.ParseError),
+		criticalErrCh: make(chan error, 1),
+		collectorDone: make(chan struct{}),
+		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
+			MaxErrors: maxErrors,
+		}),
 	}
+	pctx.ctx, pctx.cancel = context.WithCancel(context.Background())
+	defer pctx.cancel()
 
-	var mu sync.Mutex
-	var wg sync.WaitGroup
+	// Init files
+	c.FlatFiles = make(map[string]*File, len(c.Modules))
 
-	// Context for cancellation on critical failure
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Start error collector
+	go pctx.collectErrs(&syntaxErrors, &criticalErr)
 
-	criticalError := func(err error) {
-		mu.Lock()
-		if criticalErr == nil {
-			criticalErr = err
-			cancel()
-		}
-		mu.Unlock()
-	}
-
-	// Iterate over all modules
+	// Parse all module files
 	for _, module := range c.Modules {
-		// Process each file in the module
 		for _, filePath := range module.Files {
-			wg.Go(func() {
-				// Check if we should stop due to critical failure
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-				var (
-					fr   *os.File
-					err  error
-					file = &File{Path: filePath}
-				)
-				if filePath == "" {
-					fr = os.Stdin
-				} else {
-					fr, err = os.Open(filePath)
-					if err != nil {
-						criticalError(err)
-						return
-					}
-				}
-				c.OpenFiles = append(c.OpenFiles, fr)
-
-				// Create lexer tokens
-				toks, err := parser.TokenizeFile(fr, parser.IncludeComments)
-				if err != nil {
-					criticalError(err)
-					return
-				}
-				// Load into error printer
-				c.ErrorPrinter.LoadTokens(filePath, toks)
-
-				// Parse
-				ast, errs := parser.Parse(toks, &parser.Options{
-					MaxErrors: 10,
-					File: filePath,
-				})
-
-				// Example: Collect syntax errors
-				if len (errs) > 0 {
-				    mu.Lock()
-				    syntaxErrors = append(syntaxErrors, errs...)
-				    mu.Unlock()
-				}
-
-				// Add to FlatFiles map (thread-safe)
-				mu.Lock()
-				c.FlatFiles[filePath] = file
-				mu.Unlock()
-			})
+			c.Log("Processing file: " + filePath)
+			pctx.wg.Go(func() { c.parseFile(pctx, filePath) })
 		}
 	}
 
-	// Wait for all parsing to complete
-	wg.Wait()
+	// Wait and cleanup
+	pctx.wg.Wait()
+	close(pctx.syntaxErrCh)
+	close(pctx.criticalErrCh)
+	<-pctx.collectorDone
 
 	return syntaxErrors, criticalErr
+}
+
+// collectErrs runs in a separate goroutine to aggregate errors from channels
+func (pctx *parseContext) collectErrs(syntaxErrors *[]*errors.ParseError, criticalErr *error) {
+	defer close(pctx.collectorDone)
+	for {
+		select {
+		case errs, ok := <-pctx.syntaxErrCh:
+			if !ok {
+				// Channel closed, drain criticalErrCh and exit
+				select {
+				case err := <-pctx.criticalErrCh:
+					if *criticalErr == nil {
+						*criticalErr = err
+					}
+				default:
+				}
+				return
+			}
+			*syntaxErrors = append(*syntaxErrors, errs...)
+		case err := <-pctx.criticalErrCh:
+			if *criticalErr == nil {
+				*criticalErr = err
+				pctx.cancel()
+			}
+		}
+	}
+}
+
+// parseFile parses a single file and sends results/errors to channels
+func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
+	// Check if we should stop due to critical failure
+	select {
+	case <-pctx.ctx.Done():
+		return
+	default:
+	}
+
+	sendCriticalError := func(err error) {
+		select {
+		case pctx.criticalErrCh <- err:
+		case <-pctx.ctx.Done():
+		}
+	}
+
+	// Open file
+	var fr *os.File
+	var err error
+	if filePath == "" {
+		fr = os.Stdin
+		filePath = "stdin"
+		c.Log("Reading file from stdin")
+	} else {
+		fr, err = os.Open(filePath)
+		if err != nil {
+			c.Errorf("Error while opening file %s: %v", filePath, err)
+			sendCriticalError(err)
+			return
+		}
+		c.Printf("Opened %s", filePath)
+		defer fr.Close()
+	}
+
+	// === Tokenize ===
+
+	// Estimate file size
+	stat, err := fr.Stat()
+	if err != nil {
+		sendCriticalError(err)
+		return
+	}
+	lex := pctx.pool.GetLexer(fr)
+	defer pctx.pool.PutLexer(lex)
+	c.Log("Tokenizing file: " + filePath)
+
+	toks, err := parser.TokenizeLexer(lex, stat.Size()/10)
+	if err != nil {
+		c.Errorf("Error while tokenizing %s: %v", filePath, err)
+		sendCriticalError(err)
+		return
+	}
+
+	relPath, err := filepath.Rel("", filePath)
+	if err != nil {
+		c.Errorf("Unable to get short path of %s: %v", filePath, err)
+		sendCriticalError(err)
+		return
+	}
+	c.ErrorPrinter.LoadTokens(filePath, relPath, toks)
+
+	// === Parse ===
+	pa := pctx.pool.GetParser(toks, filePath)
+	defer pctx.pool.PutParser(pa)
+
+	c.Log("Parsing file: " + filePath)
+	ast := pa.Parse()
+	errs := pa.Errors
+
+	// Send syntax errors
+	if len(errs) > 0 {
+		c.Errorf("%d errors found while parsing %s", len(errs), filePath)
+		select {
+		case pctx.syntaxErrCh <- errs:
+		case <-pctx.ctx.Done():
+			return
+		}
+	}
+
+	// Store result
+	pctx.fileMu.Lock()
+	c.FlatFiles[filePath] = &File{
+		Path:   filePath,
+		AST:    ast,
+		Tokens: toks,
+	}
+	pctx.fileMu.Unlock()
+}
+
+// Lexer/parser pool
+type parsePool struct {
+	parser, lexer sync.Pool
+}
+
+func newParsePool(lexFlags lexer.Flags, parseOpts *parser.Options) *parsePool {
+	return &parsePool{
+		lexer: sync.Pool{New: func() any {
+			return lexer.NewLexer(nil, lexFlags)
+		}},
+		parser: sync.Pool{New: func() any {
+			return parse.New(nil, parseOpts)
+		}},
+	}
+}
+
+func (p *parsePool) GetLexer(r io.Reader) *lexer.Lexer {
+	l := p.lexer.Get().(*lexer.Lexer)
+	l.Reader = bufio.NewReader(r)
+	return l
+}
+
+func (p *parsePool) PutLexer(l *lexer.Lexer) {
+	l.Free()
+	p.lexer.Put(l)
+}
+
+func (p *parsePool) GetParser(tokens []lexer.Token, file string) *parse.Parser {
+	pa := p.parser.Get().(*parse.Parser)
+	pa.Tokens = tokens
+	pa.Options.File = file
+	return pa
+}
+
+func (p *parsePool) PutParser(pa *parse.Parser) {
+	pa.Free()
+	p.parser.Put(pa)
 }

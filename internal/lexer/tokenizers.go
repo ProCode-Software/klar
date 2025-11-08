@@ -80,7 +80,7 @@ func (l *Lexer) ParseBlockComment(pos Position) *Token {
 		unterm   bool
 		b        Builder
 		last     rune
-		leng uint32
+		leng     uint32
 	)
 	b.WriteString("/*")
 loop:

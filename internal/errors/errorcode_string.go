@@ -13,7 +13,6 @@ func _() {
 	_ = x[TypeErrorPrefix-200]
 	_ = x[ReferenceErrorPrefix-300]
 	_ = x[ImplementationErrorPrefix-400]
-	_ = x[ResourceErrorPrefix-500]
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrAliasInUnqualifiedImport-3]
@@ -135,7 +134,6 @@ const (
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
 	_ErrorCode_name_4 = "ImplementationErrorPrefix"
-	_ErrorCode_name_5 = "ResourceErrorPrefix"
 )
 
 var (
@@ -160,8 +158,6 @@ func (i ErrorCode) String() string {
 		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
 	case i == 400:
 		return _ErrorCode_name_4
-	case i == 500:
-		return _ErrorCode_name_5
 	default:
 		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

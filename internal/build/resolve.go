@@ -29,6 +29,7 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 				return nil, errors.New("Expected a module name after '@'")
 			}
 			i = Input{Kind: KindModule, Name: input[1:]}
+			// TODO: resolve klar.build
 		default:
 			info, err := os.Stat(input)
 			if err != nil {
@@ -36,15 +37,16 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 			}
 			if !info.IsDir() { // File
 				i = Input{Path: input, Kind: KindFile}
-			}
-			// Directory: module or package
-			i = Input{Path: input, Name: filepath.Base(input)}
-			if isPkg, err := module.IsPackage(input); err != nil {
-				return nil, &FilesystemError{"get", "working directory", err}
-			} else if isPkg {
-				i.Kind = KindPackage
 			} else {
-				i.Kind = KindModule
+				// Directory: module or package
+				i = Input{Path: input, Name: filepath.Base(input)}
+				if isPkg, err := module.IsPackage(input); err != nil {
+					return nil, &FilesystemError{"get", "working directory", err}
+				} else if isPkg {
+					i.Kind = KindPackage
+				} else {
+					i.Kind = KindModule
+				}
 			}
 			// Get path to closest klar.build file
 			ResolveKlarBuild(&i)

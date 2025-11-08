@@ -1,7 +1,9 @@
 // Package char provides cached characters for repeating.
 package char
 
-import "slices"
+import (
+	"slices"
+)
 
 var (
 	Spaces       = []byte("                                ")
@@ -25,7 +27,7 @@ func Repeat(r byte, n int) []byte {
 	arr := make([]byte, n)
 	copy(arr, rep)
 	for i := len(rep); i < n; i++ {
-		arr[i] = ' '
+		arr[i] = r
 	}
 	QuoteMap[r] = slices.Clone(arr)
 	return arr

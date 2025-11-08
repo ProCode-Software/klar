@@ -25,14 +25,10 @@ func TokenizeFile(file *os.File, flags LexerFlags) ([]lexer.Token, error) {
 		return nil, err
 	}
 	byteSize := stat.Size()
-	return Tokenize(file, flags, byteSize/4)
+	return Tokenize(file, flags, byteSize/10)
 }
 
-// Tokenize reads from r and converts it into lexer tokens.
-func Tokenize(r io.Reader, flags LexerFlags, cap int64) (
-	tokens []lexer.Token, err error,
-) {
-	lex := lexer.NewLexer(r, flags)
+func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) {
 	tokens = make([]lexer.Token, 0, cap)
 	// Recover if the lexer panics (read error)
 	defer func() {
@@ -41,13 +37,21 @@ func Tokenize(r io.Reader, flags LexerFlags, cap int64) (
 		}
 	}()
 	for {
-		token := lex.Tokenize()
+		token := l.Tokenize()
 		tokens = append(tokens, *token)
 		if token.Kind == lexer.EOF {
 			break
 		}
 	}
 	return tokens, nil
+}
+
+// Tokenize reads from r and converts it into lexer tokens.
+func Tokenize(r io.Reader, flags LexerFlags, cap int64) (
+	tokens []lexer.Token, err error,
+) {
+	lex := lexer.NewLexer(r, flags)
+	return TokenizeLexer(lex, cap)
 }
 
 // TokenizeString reads from src and converts it into lexer tokens.

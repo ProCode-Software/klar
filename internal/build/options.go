@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -48,14 +49,14 @@ type Input struct {
 }
 
 type File struct {
-	Path    string
-	Tokens  []lexer.Token
-	AST     *ast.Program
+	Path   string
+	Tokens []lexer.Token
+	AST    *ast.Program
 }
 
 type Module struct {
 	Submodules []string // Submodule paths
-	Files []string // File paths
+	Files      []string // File paths
 	// TODO: typechecked ast
 }
 
@@ -112,9 +113,22 @@ func (c *Compiler) Log(v ...any) {
 	}
 }
 
+func (c *Compiler) Printf(s string, v ...any) {
+	if c.Verbose {
+		c.Logger.Printf(s, v...)
+	}
+}
+
 func (c *Compiler) Errorf(s string, v ...any) {
 	if c.Verbose {
-		c.Printf("[error] "+s, v...)
+		c.Printf(ansi.Red("[error] ")+s, v...)
+	}
+}
+
+func (c *Compiler) Errorln(v ...any) {
+	if c.Verbose {
+		v = append([]any{ansi.Red("[error]")}, v...)
+		c.Println(v...)
 	}
 }
 

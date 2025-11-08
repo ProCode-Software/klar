@@ -18,5 +18,5 @@ if [[ $1 == "-build" ]]; then
 fi
 
 # Otherwise, run normally
-go run -ldflags="$LDFLAGS" ./cmd/klar $1
+go run -ldflags="$LDFLAGS" ./cmd/klar $@
 

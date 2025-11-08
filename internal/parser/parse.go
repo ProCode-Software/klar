@@ -45,6 +45,7 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 		if tok.Position != (lexer.Position{1, 1}) {
 			p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
 		}
+		// TODO: maybe error hints for newlines/spaces before
 	case tok.Attributes["unterm"] == true:
 		p.Error(&errors.ParseError{
 			ErrorCode: errors.ErrUnterminatedComment,

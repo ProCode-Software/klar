@@ -218,6 +218,13 @@ func (l *Lexer) ReadAll(char rune) (n int) {
 	return
 }
 
+func (l *Lexer) Free() {
+	l.Reader.Reset(nil)
+	l.Pos.Line = 1
+	l.Pos.Col = 1
+	l.Flags = 0
+}
+
 func IsDigit(r rune) bool {
 	return r >= '0' && r <= '9'
 }

@@ -17,7 +17,7 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 	d := p.ParseDestructureInner()
 	switch p.CurrKind() {
 	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
-		lexer.Colon, lexer.In, lexer.Comma:
+		lexer.Colon, lexer.In, lexer.Comma, lexer.RightParenthesis:
 	default:
 		// Continue parsing expressions starting with identifiers (invalid)
 		if expr, ok := d.(ast.Expression); ok {

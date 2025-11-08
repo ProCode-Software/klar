@@ -118,6 +118,11 @@ loop:
 		c.Body = p.ParseBlock()
 		c.InBraces = true
 		braceLine = c.Body.Range.End.Line
+
+		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
+			!isImplicitWhenOp(braceLine, k) {
+			p.Expect(lexer.EndOfStatement, lexer.Comma)
+		}
 	default:
 		// BUG: Braces/comma required before '<' starting next case
 		res := p.ParseStatement()
@@ -134,10 +139,9 @@ loop:
 			p.Error(errors.Node(errors.ErrBraceAroundStmt, res))
 			c.BodyExpr = &ast.BadExpression{Value: res}
 		}
-	}
-	// Optional comma before '}' or implicit operator case
-	if k := p.Curr(); k.Kind != lexer.RightCurlyBrace && !isImplicitWhenOp(braceLine, k) {
-		p.Expect(lexer.EndOfStatement, lexer.Comma)
+		if p.CurrKind() == lexer.Comma {
+			p.Advance()
+		}
 	}
 	return c
 }
@@ -147,7 +151,7 @@ func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
 	case lexer.Comma, lexer.EndOfStatement:
 		return false
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
+		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn, lexer.Question:
 		return t.Position.Line != prevLine
 	}
 	return false

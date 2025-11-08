@@ -147,7 +147,7 @@ func (s *Session) send() {
 }
 
 func (s *Session) parse(t []lexer.Token) {
-	ErrPrinter.LoadTokens(t)
+	ErrPrinter.LoadTokens("repl", "", t)
 	prog, errs := parser.Parse(t, &parser.Options{File: "repl"})
 	if len(errs) > 0 {
 		printErrors(errs)

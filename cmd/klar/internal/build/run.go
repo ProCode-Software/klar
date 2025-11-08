@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -29,6 +30,7 @@ func Build(r *command.Runner) {
 		if err != nil {
 			cli.ErrNoManifest(pkgPath)
 		}
+		b.Log("Compiling current package: " + pkgPath)
 		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
 	if err != nil {
@@ -56,7 +58,16 @@ func Build(r *command.Runner) {
 		b.Options = append(b.Options, opt)
 	}
 	// TODO: error if --output is file and there are multiple inputs
-	
+	parseErrs, err := b.Compile()
+	if err != nil {
+		cli.Failure("", err) // TODO: categorize errors (struct)
+	}
+	for _, err := range parseErrs {
+		b.ErrorPrinter.PrintError(err)
+	}
+	if len(parseErrs) == 0 {
+		fmt.Println(ansi.Green("Build succeeded!"))
+	}
 }
 
 func ParseFlags(r *command.Runner, o *build.Options) {
