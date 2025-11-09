@@ -14,6 +14,10 @@ const (
 	RoundTopRight    = '╮'
 	RoundBottomLeft  = '╰'
 	RoundBottomRight = '╯'
+	ThickX           = '✖'
+	ThinX            = '✕'
+	ThinXLarge       = '✗'
+	Check            = '✓'
 )
 
 const dingbats = `

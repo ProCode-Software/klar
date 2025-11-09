@@ -139,7 +139,7 @@ func (p *Parser) ParseStatement() ast.Statement {
 	res, handled := p.handleStatementNUD(kind)
 	if !handled {
 		if res, handled = p.handleNUD(kind); !handled {
-			p.unknownTokenErr()
+			p.nudError()
 			res = &ast.BadExpression{Token: kind}
 		}
 	}

@@ -12,11 +12,16 @@ go generate ./{cmd,internal,pkg}/...
 clear
 
 # Build binary if '-build' passed
-if [[ $1 == "-build" ]]; then
+case "$1" in
+"-build")
     go build -ldflags="$LDFLAGS" -o klar ./cmd/klar
-    exit $?
-fi
-
-# Otherwise, run normally
-go run -ldflags="$LDFLAGS" ./cmd/klar $@
-
+    ;;
+"-time")
+    shift
+    time go run -ldflags="$LDFLAGS" ./cmd/klar $@
+    ;;
+*)
+    go run -ldflags="$LDFLAGS" ./cmd/klar $@
+    ;;
+esac
+exit $?

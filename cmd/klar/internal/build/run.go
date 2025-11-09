@@ -2,13 +2,18 @@ package build
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 )
@@ -38,6 +43,9 @@ func Build(r *command.Runner) {
 		if err, ok := err.(*build.FilesystemError); ok && err.IsNotExist() {
 			cli.ErrNotFound(err.Path, "")
 		}
+		if err, ok := err.(*build.InterfaceError); ok {
+			printInterfaceErr(err)
+		}
 		cli.Failure(err.Error())
 	}
 	// Force a config path if --config flag was passed
@@ -59,14 +67,49 @@ func Build(r *command.Runner) {
 	}
 	// TODO: error if --output is file and there are multiple inputs
 	parseErrs, err := b.Compile()
-	if err != nil {
+	intfErr, isIntfErr := err.(*build.InterfaceError)
+	isMaxErrors := isIntfErr && intfErr.Code == build.ErrTooManyErrors
+	switch {
+	case isMaxErrors, len(parseErrs) > 0:
+		printErrors(parseErrs, isMaxErrors, b)
+	case isIntfErr:
+		printInterfaceErr(intfErr)
+	case err != nil:
 		cli.Failure("", err) // TODO: categorize errors (struct)
+	default:
+		fmt.Fprintln(os.Stderr, ansi.BoldGreen(string(icons.Check)),
+			ansi.Bold("Build"), ansi.BoldBrightGreen("succeeded")+ansi.Bold("!"),
+		)
 	}
-	for _, err := range parseErrs {
+}
+
+func printInterfaceErr(err *build.InterfaceError) {
+	main, detail := err.PrettyError()
+	cli.Failure(
+		ansi.Bold(strings.Join(main, ansi.Partial(ansi.CodeBold))),
+		detail,
+	)
+}
+
+func printErrors[T errors.CompileError](errs []T, isMaxErrors bool, b *build.Compiler) {
+	var count strings.Builder
+	count.WriteString(strconv.Itoa(len(errs)))
+	if isMaxErrors {
+		count.WriteByte('+')
+	}
+	count.WriteString(" error")
+	if len(errs) != 1 {
+		count.WriteByte('s')
+	}
+	fmt.Fprintln(os.Stderr, ansi.BoldRed(string(icons.ThinXLarge)),
+		ansi.Bold("Build"), ansi.BoldBrightRed("failed"), ansi.Bold("with"),
+		ansi.BoldBrightRed(count.String())+ansi.BoldDim(":"),
+	)
+	for _, err := range errs {
 		b.ErrorPrinter.PrintError(err)
 	}
-	if len(parseErrs) == 0 {
-		fmt.Println(ansi.Green("Build succeeded!"))
+	if isMaxErrors {
+		cli.Error("There are too many errors")
 	}
 }
 

@@ -79,7 +79,7 @@ func tryPipe() {
 		return
 	}
 	// Is pipe
-	run.RunInput(os.Stdin, "stdin")
+	run.RunInput(os.Stdin, "standardInput")
 	os.Exit(0)
 }
 

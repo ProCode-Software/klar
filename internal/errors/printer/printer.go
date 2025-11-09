@@ -68,7 +68,12 @@ func GetMessage(err errors.CompileError) string {
 	if _, ok := err.(errors.Warning); ok {
 		titleColor = ansi.CodeBoldBrightYellow
 	}
-	return ansi.Color(titleColor, title) + ansi.BoldDim(": ") + ansi.Bold(msg) + desc
+	var code string
+	if err.Code() != 0 {
+		code = ansi.Dim(" (" + err.Code().Format() + ")")
+	}
+	return ansi.Color(titleColor, title) + ansi.BoldDim(": ") + 
+		ansi.Bold(msg) + desc + code
 }
 
 func ColorizeLine(file string, pos lexer.Position) string {
@@ -167,7 +172,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		digitLen              = uint32(len(strconv.FormatUint(uint64(end), 10)))
 		lineColor             = ansi.CodeBlue
 		highlightColor        = ansi.CodeBrightRed
-		relPath = p.rel[err.GetFile()]
+		relPath               = p.rel[err.GetFile()]
 		box                   = func(char rune) {
 			b.WriteString(ansi.Color(lineColor, string(char)))
 		}

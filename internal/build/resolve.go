@@ -1,14 +1,16 @@
 package build
 
 import (
-	"errors"
-	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/module"
 )
+
+func IsKlarFile(file string) bool {
+	return strings.HasSuffix(file, ".klar") || !strings.Contains(file, ".")
+}
 
 func ResolveInputs(inputs []string) ([]Input, error) {
 	if len(inputs) == 0 {
@@ -26,7 +28,7 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 		case input[0] == '@':
 			// Module name reference: @foo.bar
 			if len(input) == 1 {
-				return nil, errors.New("Expected a module name after '@'")
+				return nil, &InterfaceError{Code: ErrModuleDescriptor}
 			}
 			i = Input{Kind: KindModule, Name: input[1:]}
 			// TODO: resolve klar.build
@@ -36,6 +38,9 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 				return nil, &FilesystemError{"stat", input, err}
 			}
 			if !info.IsDir() { // File
+				if !IsKlarFile(input) {
+					return nil, &InterfaceError{Code: ErrNotAKlarFile, Value: input}
+				}
 				i = Input{Path: input, Kind: KindFile}
 			} else {
 				// Directory: module or package
@@ -54,20 +59,6 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 		res = append(res, i)
 	}
 	return res, nil
-}
-
-type FilesystemError struct {
-	op   string
-	Path string
-	base error
-}
-
-func (err *FilesystemError) Error() string {
-	return fmt.Sprintf("Failed to %s %s: %v", err.op, err.Path, err.base)
-}
-func (err *FilesystemError) Unwrap() error { return err.base }
-func (err *FilesystemError) IsNotExist() bool {
-	return err.op == "stat" && errors.Is(err.base, fs.ErrNotExist)
 }
 
 // Does nothing if not found.

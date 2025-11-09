@@ -23,6 +23,7 @@ type parseContext struct {
 	criticalErrCh chan error
 	collectorDone chan struct{}
 	fileMu        sync.Mutex
+	printerMu     sync.RWMutex
 	wg            sync.WaitGroup
 	pool          *parsePool
 }
@@ -82,6 +83,14 @@ func (pctx *parseContext) collectErrs(syntaxErrors *[]*errors.ParseError, critic
 				return
 			}
 			*syntaxErrors = append(*syntaxErrors, errs...)
+			// Too many errors (global)
+			if len(*syntaxErrors) >= maxErrors {
+				if *criticalErr == nil {
+					*criticalErr = &InterfaceError{Code: ErrTooManyErrors}
+					pctx.cancel()
+				}
+				return
+			}
 		case err := <-pctx.criticalErrCh:
 			if *criticalErr == nil {
 				*criticalErr = err
@@ -112,7 +121,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	var err error
 	if filePath == "" {
 		fr = os.Stdin
-		filePath = "stdin"
+		filePath = "standardInput"
 		c.Log("Reading file from stdin")
 	} else {
 		fr, err = os.Open(filePath)
@@ -150,7 +159,9 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		sendCriticalError(err)
 		return
 	}
+	pctx.printerMu.Lock()
 	c.ErrorPrinter.LoadTokens(filePath, relPath, toks)
+	pctx.printerMu.Unlock()
 
 	// === Parse ===
 	pa := pctx.pool.GetParser(toks, filePath)

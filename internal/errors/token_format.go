@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/types"
@@ -12,6 +13,9 @@ import (
 func Quote(s string) string {
 	if strings.Contains(s, "'") {
 		return "`" + s + "`"
+	}
+	if len(s) == 1 && unicode.IsControl(rune(s[0])) {
+		return fmt.Sprintf("%q", s)
 	}
 	return "'" + s + "'"
 }
@@ -84,4 +88,12 @@ func WithA(str string) string {
 		return "an " + str
 	}
 	return "a " + str
+}
+
+// Format returns code as a camelCase string.
+func (code ErrorCode) Format() string {
+	str := code.String()
+	str = strings.TrimPrefix(str, "Err")
+	first := unicode.ToLower(rune(str[0]))
+	return string(first) + str[1:]
 }
