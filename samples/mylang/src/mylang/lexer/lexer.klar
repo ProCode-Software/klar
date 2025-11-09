@@ -1,0 +1,97 @@
+// Reads characters from a string and converts them into [Token]s
+type Lexer {
+    index: Int // The index of the lexer
+    input: String // The string to read from
+    prev: String // The previously read character
+    tokens: [Token] // List of tokens created
+
+    builder: [String] // 
+}
+
+// Returns a new lexer that reads from `input`
+func Lexer(input: String) {
+    return Lexer(:input, index: 0, prev: "", builder: [])
+}
+
+// Reads a single character
+func Lexer.read() -> String {
+    when self.index {
+        > 0 -> self.prev = self.input[self.index - 1]
+    }
+    char := self.input[self.index]
+    self.index++
+    return char
+}
+
+// Backs up the lexer. Crashouts if the lexer's `index` is 0
+func Lexer.backup() {
+    when self.index {
+        0 -> crashout("Cannot back up when index is 0")
+        _ -> self.index--
+    }
+}
+
+// Returns whether there are more characters to read
+func Lexer.hasTokens() = self.index < self.input.length
+
+func Lexer.tokenize() -> [Token] {
+    while self.hasTokens() {
+        self.tokens.append(self.readToken())
+    }
+    self.tokens.append(.(.eof, ""))
+    return self.tokens
+}
+
+// Whether `char` is an ASCII digit
+func isNumber(char: String) = char in "0"..."9"
+// Whether `char` is an ASCII letter
+func isLetter(char: String) = char in "A"..."Z" or "a"..."z"
+
+func Lexer.readToken() -> Token {
+    while self.hasTokens() {
+        char := self.read()
+        when char {
+            "-" -> return .(.dash, char)
+            "\\" -> return .(.backslash, char)
+            '"' | "'" -> return self.readString()
+            "0"..."9" -> return self.readString()
+            "#" -> return self.readComment()
+            "a"..."z" | "A"..."Z" -> return self.readIdentifier()
+            " " -> {}
+            _ -> crashout("Unexpected token '{char}'")
+        }
+    }
+}
+
+func Lexer.readIdentifier() -> Token {
+    self.append(self.prev)
+    while self.hasTokens() {
+        char := self.read()
+        when isLetter(char) {
+            true -> self.append(char)
+            false -> {
+                self.backup()
+                break // TODO: somehow break outer
+            }
+        }
+    }
+    token := self.buildToken(.identifier)
+    when token.source {
+        "true" | "false" -> token.kind = .boolean
+    }
+    return token
+}
+
+func Lexer.readString() -> Token = TODO()
+func Lexer.readNumber() -> Token = TODO()
+func Lexer.readComment() -> Token = TODO()
+
+func Lexer.append(char: String) {
+    self.builder.append(char)
+}
+
+func Lexer.buildToken(kind TokenKind) -> Token {
+    token := Token(kind, self.builder.join(""))
+    self.builder.clear()
+    return 
+}

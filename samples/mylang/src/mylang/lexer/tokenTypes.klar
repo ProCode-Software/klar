@@ -1,0 +1,9 @@
+type Token {
+    kind: TokenKind
+    source: String
+}
+
+type TokenKind {
+    .identifier, .number, .string, .comment, .eof,
+    .boolean, .dash, .backslash
+}

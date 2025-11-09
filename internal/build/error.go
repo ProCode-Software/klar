@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -47,7 +48,9 @@ func (err *InterfaceError) PrettyError() (main []string, det string) {
 	case ErrModuleDescriptor:
 		return []string{"Expected a module name after ", ansi.Cyan("'@'")}, ""
 	case ErrNotAKlarFile:
-		return []string{ansi.Cyan(err.Value), " isn't a Klar file"}, ""
+		ext := filepath.Ext(err.Value)[1:]
+		base := err.Value[:len(err.Value)-len(ext)]
+		return []string{ansi.Cyan(base + ansi.Underline(ext)), " isn't a Klar file"}, ""
 	case ErrIsADirectory:
 		return nil, ""
 	case ErrTooManyErrors:

@@ -1,0 +1,21 @@
+type Command {
+    name: String
+    args: [String]
+    flags: [Flag]
+}
+
+type Comment {
+    text: String
+}
+
+type Flag {
+    name: String
+    isShort: Bool
+    Value: Value
+}
+
+type #Value
+
+type StringValue: Value { value: String }
+type IntValue: Value { value: Int }
+type BoolValue: Value { value: Bool }

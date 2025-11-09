@@ -1,0 +1,7 @@
+import mylang.ast
+import mylang.lexer
+import mylang.parser
+
+func parseString(input: String) -> Result<Command> {
+
+}
