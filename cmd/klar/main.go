@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	Commands = klarcmd.KlarCommands
-	Aliases  = klarcmd.KlarCommandAliases
+	commands = klarcmd.KlarCommands
+	aliases  = klarcmd.KlarCommandAliases
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	switch cmdName {
 	case "-":
 		tryPipe()
-		command.Run(Commands["repl"])
+		command.Run(commands["repl"])
 	case "-c":
 		if len(args) < 3 {
 			cli.Failure("Expected program as string\n\nUsage: ",
@@ -38,14 +38,15 @@ func main() {
 			)
 			os.Exit(2)
 		}
-		runString(args[2])
+		run.RunInput(strings.NewReader(args[2]), "string")
 	case "--help", "-h":
 		ShowHelp(true)
 	case "-v", "--version":
 		fmt.Printf("Klar %s\n", version.KlarVersion)
-	case "test", "glas":
-		cli.Failure("Not implemented: ", fmt.Sprintf(
-			"Command '%s' is not implemented yet.", cmdName,
+	case "test", "glas", "upgrade", "new", "format", "check",
+		"docs", "lint", "clean", "generate":
+		cli.CustomFailure("Not implemented", ansi.Sprintf(ansi.CodeBold,
+			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "help":
 		if len(args) < 3 || args[2] == "" {
@@ -53,8 +54,10 @@ func main() {
 			os.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help
-		if command.Lookup(args[2], Commands, Aliases) != nil {
-			os.Args = []string{"klar", os.Args[1], "--help"}
+		cmd := args[2]
+		if command.Lookup(cmd, commands, aliases) != nil {
+			os.Args[1], cmdName = cmd, cmd
+			os.Args[2] = "--help"
 		}
 		fallthrough
 	default:
@@ -62,14 +65,14 @@ func main() {
 			// Invalid usage
 			os.Exit(2)
 		}
-		cmd := command.Lookup(cmdName, Commands, Aliases)
+		cmd := command.Lookup(cmdName, commands, aliases)
 		if cmd != nil {
 			command.Run(cmd)
 			os.Exit(0)
 		}
 		// Equivalent to `klar run [file]`
 		os.Args = append([]string{"klar", "run"}, os.Args[1:]...)
-		command.Run(Commands["run"])
+		command.Run(commands["run"])
 	}
 }
 
@@ -78,7 +81,7 @@ func tryPipe() {
 	if err != nil || (stat.Mode()&os.ModeCharDevice) != 0 {
 		return
 	}
-	// Is pipe
+	// Pipe
 	run.RunInput(os.Stdin, "standardInput")
 	os.Exit(0)
 }

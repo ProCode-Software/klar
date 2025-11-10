@@ -111,7 +111,7 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 		if p.CurrKind() == lexer.LeftParenthesis {
 			item.Parameters = p.ParseTupleType().Values
 		}
-		if p.isEqualOrColonEqualAndError() {
+		if p.isEqual() {
 			p.Advance()
 			item.Value = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -175,7 +175,7 @@ func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast
 			field.Type = p.ParseType(DefaultTypeBindingPower)
 		}
 		// Default value
-		if p.isEqualOrColonEqualAndError() {
+		if p.isEqual() {
 			p.Advance()
 			field.Value = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -351,7 +351,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		}
 	}
 	// Function alias
-	if p.isEqualOrColonEqualAndError() {
+	if p.isEqual() {
 		p.Advance()
 		if f.GenericParams != nil {
 			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
@@ -403,7 +403,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		}
 		// Default value:
 		// 	func List.join(by by: String = ", ")
-		if p.isEqualOrColonEqualAndError() {
+		if p.isEqual() {
 			p.Advance()
 			param.Default = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -423,7 +423,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// 	func Date.now() -> Date
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		f.Body = p.ParseBlock()
-	} else if p.isEqualOrColonEqualAndError() {
+	} else if p.isEqual() {
 		p.Advance()
 		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}

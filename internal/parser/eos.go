@@ -137,6 +137,21 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			}
 			brackets = brackets[:lastBrackI] // Remove the bracket from the array
 			continue                         // Already appended above
+		case lexer.Next, lexer.Stop:
+			// Always add newline following the loop to continue/terminate
+			if i = readComments(i); i >= len(p.Tokens) {
+				break inner
+			}
+			next := p.Tokens[i]
+			if next.Kind == lexer.Newline || next.Kind == lexer.EOF {
+				break inner
+			}
+			new = append(new, tok /* next, stop */, next /* loop kind */, lexer.Token{
+				Kind:     lexer.EndOfStatement,
+				Position: p.Tokens[min(i+1, len(p.Tokens)-1)].Position,
+			})
+			i++ // readComments skips next/stop + i++ skips loop kind + EOS skipped after
+			continue
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)

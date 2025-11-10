@@ -1,9 +1,10 @@
+// A simple group of characters read by [Lexer].
 type Token {
-    kind: TokenKind
-    source: String
-}
-
-type TokenKind {
-    .identifier, .number, .string, .comment, .eof,
-    .boolean, .dash, .backslash
+    .identifier(name: String),
+    .number(num: String),
+    .string(content: String, singleQuote: Bool),
+    .comment(text: String),
+    .boolean(value: Bool),
+    .illegal(char: String),
+    .dash, .backslash, .eof,
 }

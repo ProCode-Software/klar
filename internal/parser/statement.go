@@ -130,7 +130,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	i := &ast.ImportStatement{}
 	p.Advance() // import
 	// Parse maybe alias
-	if p.isEqualOrColonEqualAndError(p.Peek()) {
+	if p.isEqual(p.Peek()) {
 		i.Alias = p.ParseIdentifier()
 		p.Advance() // =
 	}
@@ -200,7 +200,7 @@ func (p *Parser) ParseUpdateStatement(left ast.Node) *ast.UpdateStatement {
 		l = left.(ast.Expression)
 	default:
 		l = &ast.BadExpression{Value: left}
-		p.Error(errors.Node(errors.ErrInvalidExprInUpdate, left))
+		p.Error(errors.Node(errors.ErrInvalidUpdateExpr, left))
 	}
 	return &ast.UpdateStatement{Operator: newOperator(op), Left: l}
 }
@@ -240,5 +240,29 @@ func (p *Parser) ParseBlock() *ast.Block {
 	return &ast.Block{
 		Body:     body,
 		BaseNode: ast.BaseNode{Range: ranges.Range{start, end}},
+	}
+}
+
+func (p *Parser) ParseControlStatement() ast.Statement {
+	stmtKind := p.Advance().Kind // next, stop
+	var loopKind lexer.TokenType
+	switch p.CurrKind() {
+	case lexer.EndOfStatement:
+		loopKind = 0
+	case lexer.When, lexer.For, lexer.While:
+		p.Advance()
+	default:
+		p.Error(errors.Token(errors.ErrInvalidLoop, p.Advance()).
+			SetParam("stmt", stmtKind),
+		)
+	}
+	switch stmtKind {
+	case lexer.Next:
+		return &ast.NextStatement{Loop: loopKind}
+	case lexer.Stop:
+		return &ast.StopStatement{Loop: loopKind}
+	default:
+		// Unreachable
+		panic("invalid control statement: " + stmtKind.String())
 	}
 }

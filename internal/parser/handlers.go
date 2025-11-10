@@ -229,12 +229,8 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = p.ParseForStatement()
 	case lexer.While:
 		res = p.ParseWhileStatement()
-	case lexer.Next:
-		res = &ast.NextStatement{}
-		p.Advance()
-	case lexer.Break:
-		res = &ast.BreakStatement{}
-		p.Advance()
+	case lexer.Next, lexer.Stop:
+		res = p.ParseControlStatement()
 	case lexer.Opaque:
 		res = p.ParseOpaqueModifier()
 	}

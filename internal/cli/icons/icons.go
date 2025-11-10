@@ -2,8 +2,8 @@ package icons
 
 const (
 	// Box Drawing
-	BoxSide          = '│'
-	BoxLine          = '─'
+	BoxVertical      = '│'
+	BoxHorizontal    = '─'
 	BoxTopLeft       = '┌'
 	BoxTopRight      = '┐'
 	BoxBottomLeft    = '└'

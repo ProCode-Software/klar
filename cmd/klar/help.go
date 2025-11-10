@@ -62,3 +62,5 @@ func ShowHelp(full bool) {
 	fmt.Println(ansi.Bold("GitHub")+ansi.Dim(":"),
 		ansi.Magenta("https://github.com/ProCode-Software/klar"))
 }
+
+const helpTemplate = ``

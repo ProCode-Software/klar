@@ -79,7 +79,7 @@ const (
 	// Keywords
 	And
 	Await
-	Break
+	Stop
 	Can
 	Else
 	For
@@ -155,7 +155,7 @@ var OperatorMap = map[string]TokenType{
 var KeywordMap = map[string]TokenType{
 	"and":    And,
 	"await":  Await,
-	"break":  Break,
+	"stop":  Stop,
 	"can":    Can,
 	"else":   Else,
 	"for":    For,

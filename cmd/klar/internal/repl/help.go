@@ -1,6 +1,8 @@
 package repl
 
 import (
+	"os"
+
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/version"
@@ -29,8 +31,9 @@ var actions = []action{
 func (s *Session) PrintHelp() {
 	s.Printf(ansi.CodeBold, "Available REPL commands%s", ansi.Dim(":"))
 	tw := cli.NewTabWriterOutput(s.Stderr())
-	tw.Margin = 4
-	tw.Spacing = 4
+	tw.Margin, tw.Spacing, tw.WrapIndent = 4, 4, 4
+	tw.Flags |= cli.WrapTerminalColumns
+	tw.TermFd = int(os.Stderr.Fd())
 	tw.ReserveCapacity(len(actions), 2)
 	for _, a := range actions {
 		str := make([]string, 2)
@@ -44,7 +47,9 @@ func (s *Session) PrintHelp() {
 		}
 		tw.WriteCells(str...)
 	}
-	tw.Flush()
+	if _, err := tw.Flush(); err != nil {
+		cli.InternalError("Failed to flush output while showing help: ", err)
+	}
 	s.Printf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)
 }
 

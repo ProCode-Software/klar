@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
+	"golang.org/x/term"
 )
 
 type TabWriterFlags uint8
@@ -15,7 +16,7 @@ const (
 	AlignCenter TabWriterFlags = 1 << iota
 	AlignRight
 	DiscardEmptyColumns
-	WrapTerminalColumns // TODO
+	WrapTerminalColumns
 )
 
 const (
@@ -36,6 +37,7 @@ type TabWriter struct {
 	PadChar    byte // Pad character between printed cells, ' ' by default
 	Separator  byte // Separator character, '\t' by default
 	MarginChar byte // Margin character, ' ' by default
+	TermFd     int  // File descriptor of terminal
 	Flags      TabWriterFlags
 
 	isInit     bool
@@ -143,6 +145,18 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	if l := len(tw.cells); l > 0 && len(tw.cells[l-1]) == 0 {
 		tw.cells = tw.cells[:len(tw.cells)-1]
 	}
+	// Calculate width of terminal and width of preceding columns
+	var termWidth, precColWidth int
+	if tw.Flags&WrapTerminalColumns != 0 {
+		termWidth, _, err = term.GetSize(tw.TermFd)
+		if err != nil {
+			return 0, err
+		}
+		precColWidth = tw.Margin
+		for _, colSize := range tw.cellWidths[:len(tw.cellWidths)-1] {
+			precColWidth += colSize + tw.Spacing
+		}
+	}
 	for _, line := range tw.cells {
 		if err := write(tw.margin()); err != nil {
 			return n, err
@@ -153,16 +167,21 @@ func (tw *TabWriter) Flush() (n int, err error) {
 			}
 			offset := tw.fill(tw.cellWidths[colI] - cell.length)
 			space := tw.fill(tw.Spacing)
+			isLast := colI == len(line)-1
 			switch {
+			case isLast && tw.Flags&WrapTerminalColumns != 0 &&
+				cell.length+precColWidth > termWidth:
+				writeArray = tw.wrapCell(writeArray, cell, precColWidth, termWidth)
+				isLast = false // Avoid clearing 2 items in writeArray
 			default:
 				writeArray = [][]byte{cell.content, offset, space}
 			case tw.Flags&AlignCenter != 0:
 				half := len(offset) / 2
 				writeArray = [][]byte{offset[:half], cell.content, offset[half:], space}
 			case tw.Flags&AlignRight != 0:
-				writeArray = [][]byte{cell.content, offset, space}
+				writeArray = [][]byte{offset, cell.content, space}
 			}
-			if colI == len(line)-1 { // Trim whitespace at end of line
+			if isLast { // Trim whitespace at end of line
 				writeArray = writeArray[:len(writeArray)-2]
 			}
 			for _, seg := range writeArray {
@@ -180,6 +199,37 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	tw.cellWidths = tw.cellWidths[:0]
 	tw.currLine = 0
 	return
+}
+
+// Left align only.
+func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth, termWidth int) [][]byte {
+	target := termWidth - prevColWidth
+	writeArray = writeArray[:0]
+	if estSize := (cell.length/target + 1) * 3; cap(writeArray) < estSize {
+		writeArray = make([][]byte, 0, estSize)
+	}
+	writeArray = append(writeArray, noBreakWords(cell.content, 0, target))
+	target -= tw.WrapIndent
+	i := len(writeArray[0])
+	for i < len(cell.content) {
+		cont := noBreakWords(cell.content, i, i+target)
+		writeArray = append(writeArray,
+			newline, tw.margin(), tw.fill(prevColWidth+tw.WrapIndent), cont,
+		)
+		i += len(cont)
+	}
+	return writeArray
+}
+
+func noBreakWords(b []byte, start, end int) (wrapped []byte) {
+	wrapped = b[start:min(end, len(b))]
+	println(string(wrapped))
+	for i := len(wrapped) - 1; i >= 0; i-- {
+		if wrapped[i] == ' ' {
+			return wrapped[:i+1]
+		}
+	}
+	return wrapped
 }
 
 // WriteCells writes multiple strings to tw and breaks the row. Cells are escaped to avoid
@@ -245,7 +295,6 @@ func (tw *TabWriter) readCell(b []byte, isEscape, breakAfter bool) {
 			// ANSI escape
 			escapeLen := tw.readANSIEscape(b[i:])
 			exclude += escapeLen + 1
-			i += escapeLen
 		case tw.Separator:
 			if isEscape {
 				continue
@@ -278,7 +327,7 @@ func (tw *TabWriter) readCell(b []byte, isEscape, breakAfter bool) {
 		tw.evalLastCellWidth(line, exclude+tw.remExclude)
 	default:
 		tw.rem = append(tw.rem, b[cellStart:]...)
-		tw.remExclude = exclude
+		tw.remExclude += exclude
 	}
 	tw.cells[tw.currLine] = line
 }

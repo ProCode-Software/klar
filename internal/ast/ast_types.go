@@ -189,7 +189,7 @@ type Pair struct {
 
 // ReservedIdent is the set of keywords that cannot be used as variable names.
 var ReservedIdent = []lexer.TokenType{
-	lexer.And, lexer.Await, lexer.Boolean, lexer.Break, lexer.For, lexer.Func,
+	lexer.And, lexer.Await, lexer.Boolean, lexer.Stop, lexer.For, lexer.Func,
 	lexer.Go, lexer.In, lexer.Next, lexer.Nil, lexer.Or,
 	lexer.Return, lexer.Type, lexer.When, lexer.While,
 }
@@ -474,10 +474,17 @@ type FunctionParam struct {
 
 // Continues a loop. In other languages, this is usually 'continue'.
 // Used for [ForStatement], [WhileStatement], and [WhenExpression] statements.
-type NextStatement struct{ BaseNode }
+type NextStatement struct {
+	BaseNode
+	Loop lexer.TokenType
+}
 
 // Breaks a [ForStatement], [WhileStatement], or [WhenExpression].
-type BreakStatement struct{ BaseNode }
+// In other languages, this is usually 'break'.
+type StopStatement struct {
+	BaseNode
+	Loop lexer.TokenType
+}
 
 type ListLiteral struct {
 	BaseNode
@@ -571,11 +578,10 @@ type WhenExpression struct {
 
 type WhenCase struct {
 	BaseNode
-	Options  [][]Expression // cases -> subjects
-	Guard    Expression     // <case> if <expr>
-	Body     *Block         // -> <expr> | -> {...}
-	BodyExpr Node
-	InBraces bool
+	Options [][]Expression // cases -> subjects
+	Guard   Expression     // <case> if <expr>
+	Braces  bool
+	Body    Node // [*Block], [Statement], or [Expression]. Syntax: -> <expr> | -> {...}
 }
 
 type WhenCanCase struct {

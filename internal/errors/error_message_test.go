@@ -24,7 +24,7 @@ var errorTypes = map[string]errorType{
 		ReferenceErrorPrefix, func(ec ErrorCode) CompileError { return &ReferenceError{ErrorCode: ec} },
 	},
 	"Warning": {
-		WarningPrefix, func(ec ErrorCode) CompileError { return Warning{ErrorCode: ec} },
+		WarningPrefix, func(ec ErrorCode) CompileError { return &Warning{ErrorCode: ec} },
 	},
 }
 

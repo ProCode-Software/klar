@@ -106,7 +106,7 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 			p.validateIdentifier(identTok)
 			entry.Object = ident.Symbol()
 		}
-		if p.isEqualOrColonEqualAndError() {
+		if p.isEqual() {
 			p.Advance()
 			entry.Default = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -193,7 +193,7 @@ func (p *Parser) ParseDestructureTypePairs(withDefaults bool) (pairs []*ast.Dest
 			p.Advance()
 			pair.Type = p.ParseType(DefaultTypeBindingPower)
 		}
-		if withDefaults && p.isEqualOrColonEqualAndError() {
+		if withDefaults && p.isEqual() {
 			p.Advance()
 			pair.Value = p.ParseExpression(ExpressionBindingPower)
 		}

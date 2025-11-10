@@ -72,8 +72,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Slash:    MultiplicativeBindingPower,
 	lexer.Percent:  MultiplicativeBindingPower,
 
-	lexer.PlusPlus:   UnaryBindingPower,
-	lexer.MinusMinus: UnaryBindingPower,
 	lexer.Not:        UnaryBindingPower,
 
 	lexer.Caret: ExponentiationBindingPower,

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -380,12 +381,12 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			continue
 		case tok.Line == lastPos.Line:
 			// Add spaces between tokens
-			b.Write(repeatByte(' ', int(tok.Col-lastPos.Col)))
+			b.Write(char.Repeat(' ', int(tok.Col-lastPos.Col)))
 		case lastPos.Col == 0:
 		case offset > 0:
 			// Trim whitespace from start of line if aligned with beginning /
 			// similar to backtick strings
-			b.Write(repeatByte(' ', int(offset)))
+			b.Write(char.Repeat(' ', int(offset)))
 		}
 		if !r.Multiline {
 			r.Multiline = tok.Line != lastPos.Line
@@ -521,7 +522,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		p.Expect(lexer.In)
 	}
 	f.Iterator = p.ParseExpression(LambdaBindingPower)
-	p.isEqualOrColonEqualAndError() // Report error if ':='
+	p.isEqual() // Report error if ':='
 	switch p.CurrKind() {
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual, lexer.Arrow:
 		f.Operator = newOperator(p.Advance())
@@ -540,7 +541,9 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 	} else {
 		g.Expression = p.ParseExpression(UnaryBindingPower)
 		if _, ok := g.Expression.(*ast.CallExpression); !ok {
-			p.Error(errors.Node(errors.ErrMustBeFuncCall, g.Expression))
+			p.Error(errors.Node(errors.ErrMustBeFuncCall, g.Expression).
+				SetParam("expr", lexer.Go),
+			)
 		}
 	}
 	return g
@@ -562,7 +565,9 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	}
 	t.Expression = p.ParseExpression(UnaryBindingPower)
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
-		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression))
+		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression).
+			SetParam("expr", lexer.Try),
+		)
 	}
 	return t
 }

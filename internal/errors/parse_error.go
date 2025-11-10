@@ -52,7 +52,7 @@ const (
 	// Assignment =====
 
 	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
-	ErrInvalidExprInUpdate   // You can only update variables and properties
+	ErrInvalidUpdateExpr     // You can only update variables and properties
 	ErrColonEqual            // := used instead of = in default value assignment
 	ErrAssignmentAsExpr      // Assignment used as expression
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
@@ -109,6 +109,7 @@ const (
 	ErrTryBlock    // Klar doesn't have try-catch blocks
 	ErrIfStatement // Klar doesn't have if statements
 	ErrTripleEqual // JavaScript == or === used in Klar
+	ErrInvalidLoop // Invalid loop kind in 'next' or 'stop' statement
 
 	// Analysis-time syntax errors =====
 
@@ -178,7 +179,7 @@ func (e *ParseError) error() string {
 	case ErrInvalidAssignment:
 		return "You can only assign to a variable, property, list slice, or destructuring pattern"
 		// Can't assign to this kind of expression
-	case ErrInvalidExprInUpdate:
+	case ErrInvalidUpdateExpr:
 		return "You can only increment/decrement a variable or property"
 	case ErrInvalidComma:
 		return "Expected an assignment, or a newline to separate multiple statements"
@@ -239,7 +240,8 @@ func (e *ParseError) error() string {
 	case ErrRequiredStructFieldType:
 		return "A struct field must have an explicit type"
 	case ErrMustBeFuncCall:
-		return "The expression after 'go' or 'try' must be a function call"
+		return "The expression after '" + e.Params["expr"].(lexer.TokenType).String() +
+			"' must be a function call"
 	case ErrExpectedHex:
 		return "I expected 2 hexadecimal digits (0-9, a-f or A-F) after"
 	case ErrExpectedBinary:
@@ -380,6 +382,15 @@ func (e *ParseError) error() string {
 		return "Klar doesn't have try-catch statements"
 	case ErrTripleEqual:
 		return "In Klar, comparisons are always strict; use '==' or '!=' instead"
+	case ErrInvalidLoop:
+		kind := e.Params["stmt"].(lexer.TokenType)
+		var loop string
+		if kind == lexer.Next {
+			loop = "continue"
+		} else {
+			loop = "stop"
+		}
+		return "You can only " + loop + " a for, when, or while loop"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

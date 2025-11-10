@@ -48,7 +48,7 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
 			unreachableStmt = "next"
 		case *ast.ReturnStatement:
 			unreachableStmt = "return"
-		case *ast.BreakStatement:
+		case *ast.StopStatement:
 			unreachableStmt = "break"
 		case *ast.UpdateStatement:
 		case *ast.ExpressionStatement:

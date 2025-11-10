@@ -24,7 +24,7 @@ const (
 
 // Builtins
 var builtinFuncs = map[string]struct{}{
-	"print": {}, "panic": {}, "assert": {}, "TODO": {}, "unwrap": {},
+	"print": {}, "crashout": {}, "assert": {}, "TODO": {}, "clone": {},
 }
 
 // Default color theme

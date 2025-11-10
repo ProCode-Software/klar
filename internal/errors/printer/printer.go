@@ -17,6 +17,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
+type file struct {
+	tokens []lexer.Token
+	rel    string
+}
+
 type Printer struct {
 	Color    bool
 	MaxLines int
@@ -26,19 +31,14 @@ type Printer struct {
 	FunctionColor string
 	EscapeColor   string
 
-	tokens map[string][]lexer.Token // File paths
-	rel    map[string]string
+	files map[string]file
 }
 
 func (p *Printer) LoadTokens(filePath, relPath string, tokens []lexer.Token) {
-	if p.tokens == nil {
-		p.tokens = map[string][]lexer.Token{}
+	if p.files == nil {
+		p.files = map[string]file{}
 	}
-	if p.rel == nil {
-		p.rel = map[string]string{}
-	}
-	p.tokens[filePath] = tokens
-	p.rel[filePath] = relPath
+	p.files[filePath] = file{tokens, relPath}
 	if p.TokenColors == nil {
 		p.TokenColors = defaultColors
 		p.TypeColor = colorType
@@ -65,14 +65,14 @@ func GetMessage(err errors.CompileError) string {
 	default:
 		title, msg = "Error", first
 	}
-	if _, ok := err.(errors.Warning); ok {
+	if _, ok := err.(*errors.Warning); ok {
 		titleColor = ansi.CodeBoldBrightYellow
 	}
 	var code string
 	if err.Code() != 0 {
 		code = ansi.Dim(" (" + err.Code().Format() + ")")
 	}
-	return ansi.Color(titleColor, title) + ansi.BoldDim(": ") + 
+	return ansi.Color(titleColor, title) + ansi.BoldDim(": ") +
 		ansi.Bold(msg) + desc + code
 }
 
@@ -85,6 +85,9 @@ func ColorizeLine(file string, pos lexer.Position) string {
 		}
 	)
 	b.WriteString(ansi.Cyan(file))
+	if pos.Line == 0 || pos.Col == 0 {
+		return b.String()
+	}
 	b.WriteString(colon)
 	b.WriteString(formatPos(pos.Line))
 	b.WriteString(colon)
@@ -157,44 +160,63 @@ func (p *Printer) colorize(tokens []lexer.Token, i int) string {
 	return ansi.Color(color, tok.Source)
 }
 
+func digitLen(x uint32) uint32 {
+	if x < 10 {
+		return 1
+	} else if x < 100 {
+		return 2
+	} else if x < 1000 {
+		return 3
+	}
+	return uint32(len(strconv.FormatUint(uint64(x), 10)))
+}
+
 func (p *Printer) PrintError(err errors.CompileError) {
 	if p.MaxLines <= 0 {
 		p.MaxLines = 3
 	}
 	var (
-		b              bytes.Buffer
-		currTok        int
-		toks                  = p.tokens[err.GetFile()]
-		at                    = err.At()
-		start                 = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1))
-		end                   = start + uint32(p.MaxLines) - 1
-		lastCol        uint32 = 1
-		digitLen              = uint32(len(strconv.FormatUint(uint64(end), 10)))
-		lineColor             = ansi.CodeBlue
-		highlightColor        = ansi.CodeBrightRed
-		relPath               = p.rel[err.GetFile()]
-		box                   = func(char rune) {
+		b    bytes.Buffer
+		f    = p.files[err.GetFile()]
+		toks = f.tokens
+
+		relPath = f.rel
+		at      = err.At()
+		start   = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1)) // 3 lines above
+		end     = start + uint32(p.MaxLines) - 1
+
+		lastCol uint32 = 1
+		currTok int
+
+		digitLen       = digitLen(end)
+		lineColor      = ansi.CodeBlue
+		highlightColor = ansi.CodeBrightRed
+		box            = func(char rune) {
 			b.WriteString(ansi.Color(lineColor, string(char)))
 		}
 	)
-	if toks == nil {
+	if f.tokens == nil {
 		panic("tokens not defined for file: " + err.GetFile())
 	}
 	if relPath == "" {
 		relPath = err.GetFile()
 	}
 	if at.Start.Line == 0 {
-		b.WriteString(ColorizeLine(relPath, err.At().Start))
+		b.Write(space(2))
+		box(icons.BoxTopLeft)
+		box(icons.BoxHorizontal)
+		b.WriteByte(' ')
+		b.WriteString(ansi.Cyan(relPath))
 		b.WriteByte('\n')
 		goto printMsg
 	}
-	if _, ok := err.(errors.Warning); ok {
+	if _, ok := err.(*errors.Warning); ok {
 		highlightColor = ansi.CodeBrightYellow
 	}
 	// Error file path
 	b.Write(space(digitLen + 1))
 	box(icons.BoxTopLeft)
-	box(icons.BoxLine)
+	box(icons.BoxHorizontal)
 	b.WriteByte(' ')
 	b.WriteString(ColorizeLine(relPath, err.At().Start))
 	b.WriteByte('\n')
@@ -213,7 +235,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		}
 		// Line number
 		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Partial(lineColor), digitLen, line))
-		box(icons.BoxSide)
+		box(icons.BoxVertical)
 		b.WriteByte(' ')
 		// Each token on line
 		for lastCol = 1; currTok < len(toks) && toks[currTok].Line == line; currTok++ {
@@ -248,7 +270,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 			b.WriteByte(' ')
 			b.Write(space(at.Start.Col - 1))
 
-			b.WriteString(ansi.Partial(ansi.CodeBold + highlightColor))
+			b.WriteString(ansi.Partial(highlightColor))
 			b.Write(highlight)
 			b.WriteString(ansi.Partial(ansi.CodeReset))
 

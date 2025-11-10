@@ -54,8 +54,8 @@ func Failuref(msg, detail string, v ...any) {
 	Failure(fmt.Sprintf(ansi.Bold(msg)+detail, v...))
 }
 
-func InternalError(err any) {
-	Failure("Internal Error: ", err)
+func InternalError(detail ... any) {
+	Failure("Internal Error: ", detail...)
 }
 
 // TODO: update

@@ -17,7 +17,7 @@ var fullHelpTemplate = `
 {{ range .Examples }}
   {{ printf "%s:" .Description | ansi "2" }}
   {{ exec }} {{ bold "33" .Command }} {{- if .Args }} {{ join .Args " " }} {{- end }}
-	{{- range .Flags }} {{ if hasPrefix . '-' -}} {{ ansi "36" . }} 
+	{{- range .Flags }} {{ if hasPrefix . "-" -}} {{ ansi "36" . }} 
 		{{- else -}} {{ ansi "34" . }} {{- end -}}
 	{{ end }}
 {{ end -}}

@@ -24,17 +24,9 @@ func newOperator(t lexer.Token) ast.Operator {
 	return ast.Operator{Kind: t.Kind, Position: t.Position}
 }
 
-func repeatByte(b byte, n int) []byte {
-	arr := make([]byte, n)
-	for i := range n {
-		arr[i] = b
-	}
-	return arr
-}
-
-// Returns true if the current token is '='. If it is ':=', this will report a specific
-// error and still returns true.
-func (p *Parser) isEqualOrColonEqualAndError(token ...lexer.Token) bool {
+// isEqual returns true if the current token is '='. If it is ':=', isEqual
+// reports an error and still returns true.
+func (p *Parser) isEqual(token ...lexer.Token) bool {
 	t := p.Curr()
 	if len(token) > 0 {
 		t = token[0]

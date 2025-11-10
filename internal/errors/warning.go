@@ -21,7 +21,7 @@ const (
 	WarnUnused      // Unused value
 )
 
-func (w Warning) Error() string {
+func (w *Warning) Error() string {
 	switch w.ErrorCode {
 	default:
 		return "Warning: " + w.ErrorCode.String()

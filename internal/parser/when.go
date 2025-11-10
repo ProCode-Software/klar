@@ -116,8 +116,8 @@ loop:
 	switch p.CurrKind() {
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
-		c.InBraces = true
-		braceLine = c.Body.Range.End.Line
+		c.Braces = true
+		braceLine = c.Body.(*ast.Block).Range.End.Line
 
 		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
 			!isImplicitWhenOp(braceLine, k) {
@@ -129,15 +129,15 @@ loop:
 		switch res := res.(type) {
 		// All expressions are allowed
 		case *ast.ExpressionStatement:
-			c.BodyExpr = res.Expression
+			c.Body = res.Expression
 		// Allow some kinds of statements outside of braces
 		case *ast.AssignmentStatement, *ast.ReturnStatement,
-			*ast.NextStatement, *ast.UpdateStatement, *ast.BreakStatement:
-			c.BodyExpr = res
+			*ast.NextStatement, *ast.UpdateStatement, *ast.StopStatement:
+			c.Body = res
 		default:
 			// Expected expression error
 			p.Error(errors.Node(errors.ErrBraceAroundStmt, res))
-			c.BodyExpr = &ast.BadExpression{Value: res}
+			c.Body = &ast.BadExpression{Value: res}
 		}
 		if p.CurrKind() == lexer.Comma {
 			p.Advance()

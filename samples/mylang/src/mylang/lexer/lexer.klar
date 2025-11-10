@@ -1,24 +1,25 @@
+/// This package exports the [Lexer] object, which extracts tokens from a string.
+/// The [Token] type defines the token types MyLang uses. Any character that is
+/// not understood by MyLang is tokenized as [Token.illegal].
+
 // Reads characters from a string and converts them into [Token]s
 type Lexer {
-    index: Int // The index of the lexer
     input: String // The string to read from
-    prev: String // The previously read character
-    tokens: [Token] // List of tokens created
-
-    builder: [String] // 
+    index: Int = 0 // The index of the lexer
+    prev: String = "" // The previously read character. Starts empty
+    tokens: [Token] = [] // List of tokens created
+    builder: [String] = [] // Characters combined to form a token
 }
 
 // Returns a new lexer that reads from `input`
 func Lexer(input: String) {
-    return Lexer(:input, index: 0, prev: "", builder: [])
+    self = Lexer(:input, index: 0)
 }
 
 // Reads a single character
 func Lexer.read() -> String {
-    when self.index {
-        > 0 -> self.prev = self.input[self.index - 1]
-    }
     char := self.input[self.index]
+    self.prev = char
     self.index++
     return char
 }
@@ -34,11 +35,12 @@ func Lexer.backup() {
 // Returns whether there are more characters to read
 func Lexer.hasTokens() = self.index < self.input.length
 
+// Reads all of [self.input] into a list of tokens. 
 func Lexer.tokenize() -> [Token] {
     while self.hasTokens() {
         self.tokens.append(self.readToken())
     }
-    self.tokens.append(.(.eof, ""))
+    self.tokens.append(.eof)
     return self.tokens
 }
 
@@ -51,14 +53,14 @@ func Lexer.readToken() -> Token {
     while self.hasTokens() {
         char := self.read()
         when char {
-            "-" -> return .(.dash, char)
-            "\\" -> return .(.backslash, char)
+            "-" -> return .dash
+            "\\" -> return .backslash
             '"' | "'" -> return self.readString()
             "0"..."9" -> return self.readString()
             "#" -> return self.readComment()
             "a"..."z" | "A"..."Z" -> return self.readIdentifier()
-            " " -> {}
-            _ -> crashout("Unexpected token '{char}'")
+            " " -> next while
+            _ -> return .illegal(char)
         }
     }
 }
@@ -71,27 +73,26 @@ func Lexer.readIdentifier() -> Token {
             true -> self.append(char)
             false -> {
                 self.backup()
-                break // TODO: somehow break outer
+                stop while
             }
         }
     }
-    token := self.buildToken(.identifier)
-    when token.source {
-        "true" | "false" -> token.kind = .boolean
-    }
-    return token
+    return self.buildToken(src -> when src {
+        "true" -> return .boolean(value: true)
+        "false" -> return .boolean(value: false)
+        _ -> return .identifier(name: src)
+    })
 }
 
 func Lexer.readString() -> Token = TODO()
 func Lexer.readNumber() -> Token = TODO()
 func Lexer.readComment() -> Token = TODO()
 
-func Lexer.append(char: String) {
-    self.builder.append(char)
-}
+// Appends `char` to the builder
+func Lexer.append(char: String) = self.builder.append(char)
 
-func Lexer.buildToken(kind TokenKind) -> Token {
-    token := Token(kind, self.builder.join(""))
+func Lexer.buildToken(fn: (content: String) -> Token) -> Token {
+    content := self.builder.join("")
     self.builder.clear()
-    return 
+    return fn(content)
 }

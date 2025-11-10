@@ -74,7 +74,7 @@ func (StructDeclaration) stmt()    {}
 func (TypeAliasDeclaration) stmt() {}
 func (InterfaceDeclaration) stmt() {}
 func (ReturnStatement) stmt()      {}
-func (BreakStatement) stmt()       {}
+func (StopStatement) stmt()        {}
 func (FunctionDeclaration) stmt()  {}
 func (NextStatement) stmt()        {}
 func (Attribute) stmt()            {}
