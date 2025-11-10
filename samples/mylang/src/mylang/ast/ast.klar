@@ -1,6 +1,6 @@
 type Command {
     name: String
-    args: [String]
+    args: [Value]
     flags: [Flag]
 }
 
@@ -16,6 +16,10 @@ type Flag {
 
 type #Value
 
-type StringValue: Value { value: String }
+type StringValue: Value {
+    value: String
+    singleQuote: Bool
+}
+
 type IntValue: Value { value: Int }
 type BoolValue: Value { value: Bool }
