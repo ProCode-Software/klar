@@ -1,4 +1,4 @@
-/// This package exports the [Lexer] object, which extracts tokens from a string.
+/// Contains the [Lexer] object, which extracts tokens from a string.
 /// The [Token] type defines the token types MyLang uses. Any character that is
 /// not understood by MyLang is tokenized as [Token.illegal].
 
@@ -24,7 +24,7 @@ func Lexer.read() -> String {
     return char
 }
 
-// Backs up the lexer. Crashouts if the lexer's `index` is 0
+// Backs up the lexer. Crashouts if [self.index] is 0
 func Lexer.backup() {
     when self.index {
         0 -> crashout("Cannot back up when index is 0")
