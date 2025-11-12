@@ -42,7 +42,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 		case lexer.EscUnicode:
 			hex := parseHex(src[3 : len(src)-1])
 			if hex > 0x10FFFF {
-				p.Error(errors.Range(errors.ErrUnicodeEscTooBig, ranges.Range{
+				p.Error(errors.Range(errors.ErrUnicodeEscapeTooBig, ranges.Range{
 					ranges.Add(e.Pos, 0, 3),
 					ranges.Add(e.Pos, 0, uint32(len(src)-1)),
 				}))

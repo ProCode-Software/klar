@@ -30,13 +30,13 @@ func (p *Parser) handleInvalidNumber(code int, format lexer.IntegerFormat, tok l
 		switch {
 		case strings.Contains(src, "__"):
 			// Consecutive separator
-			err = errors.Position(errors.ErrConsecutiveSep, errPos)
+			err = errors.Position(errors.ErrConsecutiveSeparator, errPos)
 		case src[len(src)-1] == '_':
 			// Separator at end of number
-			err = errors.Position(errors.ErrTrailingSep, errPos)
+			err = errors.Position(errors.ErrTrailingSeparator, errPos)
 		default:
 			// Somewhere else
-			err = errors.Position(errors.ErrMisplacedSep, errPos)
+			err = errors.Position(errors.ErrMisplacedSeparator, errPos)
 		}
 	case lexer.ErrIntIncompatibleDigit:
 		err = errors.TokenPos(

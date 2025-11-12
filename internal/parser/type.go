@@ -98,7 +98,7 @@ func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.Function
 		// Allow (Int) -> (Int) -> Int
 		tuple = left.Parameters
 	default:
-		p.Error(errors.Node(errors.ErrParenRequiredFunc, left))
+		p.Error(errors.Node(errors.ErrParenAroundParams, left))
 	}
 	p.Expect(lexer.Arrow)
 	return &ast.FunctionType{

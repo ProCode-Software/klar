@@ -7,7 +7,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
-	"golang.org/x/term"
 )
 
 type TabWriterFlags uint8
@@ -37,7 +36,7 @@ type TabWriter struct {
 	PadChar    byte // Pad character between printed cells, ' ' by default
 	Separator  byte // Separator character, '\t' by default
 	MarginChar byte // Margin character, ' ' by default
-	TermFd     int  // File descriptor of terminal
+	TermWidth  int  // File descriptor of terminal
 	Flags      TabWriterFlags
 
 	isInit     bool
@@ -146,12 +145,8 @@ func (tw *TabWriter) Flush() (n int, err error) {
 		tw.cells = tw.cells[:len(tw.cells)-1]
 	}
 	// Calculate width of terminal and width of preceding columns
-	var termWidth, precColWidth int
+	var precColWidth int
 	if tw.Flags&WrapTerminalColumns != 0 {
-		termWidth, _, err = term.GetSize(tw.TermFd)
-		if err != nil {
-			return 0, err
-		}
 		precColWidth = tw.Margin
 		for _, colSize := range tw.cellWidths[:len(tw.cellWidths)-1] {
 			precColWidth += colSize + tw.Spacing
@@ -165,13 +160,15 @@ func (tw *TabWriter) Flush() (n int, err error) {
 			if tw.Flags&DiscardEmptyColumns != 0 && cell.length == 0 {
 				continue
 			}
-			offset := tw.fill(tw.cellWidths[colI] - cell.length)
-			space := tw.fill(tw.Spacing)
-			isLast := colI == len(line)-1
+			var (
+				offset = tw.fill(tw.cellWidths[colI] - cell.length)
+				space  = tw.fill(tw.Spacing)
+				isLast = colI == len(line)-1
+			)
 			switch {
-			case isLast && tw.Flags&WrapTerminalColumns != 0 &&
-				cell.length+precColWidth > termWidth:
-				writeArray = tw.wrapCell(writeArray, cell, precColWidth, termWidth)
+			case tw.TermWidth > 0 && isLast && tw.Flags&WrapTerminalColumns != 0 &&
+				cell.length+precColWidth > tw.TermWidth:
+				writeArray = tw.wrapCell(writeArray, cell, precColWidth)
 				isLast = false // Avoid clearing 2 items in writeArray
 			default:
 				writeArray = [][]byte{cell.content, offset, space}
@@ -201,9 +198,9 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	return
 }
 
-// Left align only.
-func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth, termWidth int) [][]byte {
-	target := termWidth - prevColWidth
+// Left align only. TODO: fix
+func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth int) [][]byte {
+	target := tw.TermWidth - prevColWidth
 	writeArray = writeArray[:0]
 	if estSize := (cell.length/target + 1) * 3; cap(writeArray) < estSize {
 		writeArray = make([][]byte, 0, estSize)

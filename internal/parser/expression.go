@@ -310,7 +310,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		}
 		curr := p.CurrKind()
 		if curr == lexer.DotDotLessThan {
-			p.Error(errors.Token(errors.ErrEllipsisForClosedRange, p.Curr()))
+			p.Error(errors.Token(errors.ErrEllipsisForClosedRangeStep, p.Curr()))
 			curr = lexer.Ellipsis
 		}
 		if curr == lexer.Ellipsis {
@@ -452,7 +452,7 @@ func (p *Parser) ParseVersion(left *ast.Symbol, bp BindingPower) ast.Expression 
 	ver := &ast.VersionLiteral{Version: b.String()}
 	ver.SetPos(left.GetRange().Start, p.lastTokEnd())
 	if err {
-		p.Error(errors.Node(errors.ErrInvalidVersionLit, ver))
+		p.Error(errors.Node(errors.ErrInvalidVersion, ver))
 		return &ast.BadExpression{Value: ver}
 	}
 	return ver
@@ -483,7 +483,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 			if isValidIdentifier(p.Curr().Kind) {
 				lhs = p.ParseValidIdent().Symbol()
 			} else {
-				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
+				p.Error(errors.Node(errors.ErrInvalidObjectPipeStep, lhs))
 				lhs = &ast.BadExpression{Value: lhs}
 			}
 		}
@@ -504,7 +504,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 		} else {
 			// Validate method call
 			if _, ok := lhs.(*ast.CallExpression); !ok {
-				p.Error(errors.Node(errors.ErrInvalidObjPipeStep, lhs))
+				p.Error(errors.Node(errors.ErrInvalidObjectPipeStep, lhs))
 				lhs = &ast.BadExpression{Value: lhs}
 			}
 			pipeline.Steps = append(pipeline.Steps, lhs)

@@ -12,16 +12,21 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"golang.org/x/term"
 )
 
-var fd int
+var termWidth int
 
 func (c *Command) Help(f io.Writer) {
 	if c.Flags != nil {
 		c.Usage = c.Flags.Pattern
 	}
 	if f, ok := f.(*os.File); ok {
-		fd = int(f.Fd())
+		var err error
+		termWidth, _, err = term.GetSize(int(f.Fd()))
+		if err != nil {
+			termWidth = 80
+		}
 	}
 	execTemplate(newTemplate("help", fullHelpTemplate), f, c)
 }
@@ -62,7 +67,7 @@ func (c *Command) FlagString(indent int) string {
 	tw.Margin = indent
 	tw.Spacing, tw.WrapIndent = 4, 4
 	tw.ReserveCapacity(len(defs), 2)
-	tw.TermFd = fd
+	tw.TermWidth = termWidth
 	tw.Flags |= cli.WrapTerminalColumns
 	// Make the alias map
 	for alias, actual := range c.Flags.FlagAliases {

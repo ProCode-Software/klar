@@ -136,7 +136,7 @@ loop:
 			c.Body = res
 		default:
 			// Expected expression error
-			p.Error(errors.Node(errors.ErrBraceAroundStmt, res))
+			p.Error(errors.Node(errors.ErrRequiredBraces, res))
 			c.Body = &ast.BadExpression{Value: res}
 		}
 		if p.CurrKind() == lexer.Comma {

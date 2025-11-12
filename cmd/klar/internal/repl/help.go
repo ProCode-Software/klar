@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/version"
+	"golang.org/x/term"
 )
 
 const LongDescription = `Starts a read-eval-print-loop (REPL) for Klar, which lets you type commands and Klar code to be evaluated in real time. Useful for quickly running code snippets. Code can also be imported and run in the REPL from a Klar script, or exported to a script.
@@ -29,11 +30,15 @@ var actions = []action{
 }
 
 func (s *Session) PrintHelp() {
-	s.Printf(ansi.CodeBold, "Available REPL commands%s", ansi.Dim(":"))
-	tw := cli.NewTabWriterOutput(s.Stderr())
+	termWidth, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		termWidth = 0
+	}
+	s.Oprintf(ansi.CodeBold, "Available REPL commands%s", ansi.Dim(":"))
+	tw := cli.NewTabWriterOutput(s.Stdout())
 	tw.Margin, tw.Spacing, tw.WrapIndent = 4, 4, 4
 	tw.Flags |= cli.WrapTerminalColumns
-	tw.TermFd = int(os.Stderr.Fd())
+	tw.TermWidth = termWidth
 	tw.ReserveCapacity(len(actions), 2)
 	for _, a := range actions {
 		str := make([]string, 2)
@@ -50,7 +55,7 @@ func (s *Session) PrintHelp() {
 	if _, err := tw.Flush(); err != nil {
 		cli.InternalError("Failed to flush output while showing help: ", err)
 	}
-	s.Printf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)
+	s.Oprintf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)
 }
 
 var ctrlCMessage = ansi.Sprintf(ansi.CodeYellow,

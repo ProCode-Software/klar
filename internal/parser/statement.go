@@ -159,9 +159,9 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		case i.Wildcard:
 			// Wildcard and unqualified import
 			// import module.*.{...}
-			p.Error(errors.Token(errors.ErrWildcardAndUnqImport, p.PeekBehind()))
+			p.Error(errors.Token(errors.ErrWildcardWithUnqualified, p.PeekBehind()))
 		case p.CurrKind() == lexer.RightCurlyBrace:
-			p.Error(errors.Token(errors.ErrEmptyUnqImport, p.Curr()))
+			p.Error(errors.Token(errors.ErrEmptyUnqualifiedImport, p.Curr()))
 		}
 		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.UnqualifiedImport) {
 			u = &ast.UnqualifiedImport{}

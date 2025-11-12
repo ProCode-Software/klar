@@ -8,7 +8,7 @@ import (
 
 func (p *Parser) validatePublic() {
 	if p.CurrKind() == lexer.Public {
-		p.Error(errors.Token(errors.ErrPublicFirst, p.Curr()))
+		p.Error(errors.Token(errors.ErrPublicGoesFirst, p.Curr()))
 	}
 }
 

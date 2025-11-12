@@ -181,7 +181,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		toks = f.tokens
 
 		relPath = f.rel
-		at      = err.At()
+		at      = err.GetRange()
 		start   = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1)) // 3 lines above
 		end     = start + uint32(p.MaxLines) - 1
 
@@ -218,7 +218,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 	box(icons.BoxTopLeft)
 	box(icons.BoxHorizontal)
 	b.WriteByte(' ')
-	b.WriteString(ColorizeLine(relPath, err.At().Start))
+	b.WriteString(ColorizeLine(relPath, err.GetRange().Start))
 	b.WriteByte('\n')
 
 	// Get first token

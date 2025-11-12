@@ -20,10 +20,10 @@ const (
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
 	ErrImportExpectedModule     // Unqualified import without module name
 	ErrImportInvalidWildcard    // Wildcard must be last part of module
-	ErrImportTooManyWildcard    // More than 1 wildcard
-	ErrWildcardAndUnqImport     // Using unqualified import with wildcard
+	ErrImportMultipleWildcard   // More than 1 wildcard
+	ErrWildcardWithUnqualified  // Using unqualified import with wildcard
 	ErrWildcardAndAlias         // Using alias with wildcard
-	ErrEmptyUnqImport           // Empty unqualified import
+	ErrEmptyUnqualifiedImport   // Empty unqualified import
 	ErrImportsGoFirst           // Imports always go before other declarations
 
 	// Punctuation =====
@@ -36,18 +36,18 @@ const (
 
 	// Literal =====
 
-	ErrStringEscape        // Invalid string escape
-	ErrUnicodeEscTooBig    // Unicode escape over 0x10FFFF
-	ErrConsecutiveSep      // Number has consecutive _
-	ErrMisplacedSep        // Number has separator somewhere where it's not supposed to
-	ErrTrailingSep         // Number has misplaced _
-	ErrExpectedHex         // Expected hex digit (0-9, a-f, A-F)
-	ErrExpectedOctal       // Expected octal digit (0-7)
-	ErrExpectedBinary      // Expected binary digit (0 or 1)
-	ErrExpectedDecimal     // Expected decimal digit (0-9)
-	ErrInvalidLambdaParams // Non-variable or variable tuple used in lambda
-	ErrInvalidVersionLit   // Invalid version literal syntax
-	ErrUnderscoreValue     // Use of _ as a value
+	ErrStringEscape         // Invalid string escape
+	ErrUnicodeEscapeTooBig  // Unicode escape over 0x10FFFF
+	ErrConsecutiveSeparator // Number has consecutive _
+	ErrMisplacedSeparator   // Number has separator somewhere where it's not supposed to
+	ErrTrailingSeparator    // Number has misplaced _
+	ErrExpectedHex          // Expected hex digit (0-9, a-f, A-F)
+	ErrExpectedOctal        // Expected octal digit (0-7)
+	ErrExpectedBinary       // Expected binary digit (0 or 1)
+	ErrExpectedDecimal      // Expected decimal digit (0-9)
+	ErrInvalidLambdaParams  // Non-variable or variable tuple used in lambda
+	ErrInvalidVersion       // Invalid version literal syntax
+	ErrUnderscoreValue      // Use of _ as a value
 
 	// Assignment =====
 
@@ -70,7 +70,7 @@ const (
 	ErrNonNameFuncAlias     // Function alias target is not symbol or member
 	ErrInvalidOpaque        // Opaque on non-struct or interface
 	ErrInvalidPublic        // Public modifier applied to non-declaration
-	ErrPublicFirst          // Public modifier always goes first
+	ErrPublicGoesFirst      // Public modifier always goes first
 	ErrDuplicateModifier    // More than 1 of the same modifier
 	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
 
@@ -81,10 +81,10 @@ const (
 	ErrInvalidLabelShorthand        // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel                 // Function label can't be number
 	ErrReturnPipelineNotLast        // Return step in pipeline must be the last
-	ErrInvalidObjPipeStep           // Step in object pipeline must be method call or assignment
+	ErrInvalidObjectPipeStep        // Step in object pipeline must be method call or assignment
 	ErrMultipleKeysInMapRest        // Expected 1 key in map rest (comma not allowed)
 	ErrExpectedExprAfterClosedRange // Invalid: 1..<
-	ErrEllipsisForClosedRange       // ..< instead of ... in 1..<10...5
+	ErrEllipsisForClosedRangeStep   // ..< instead of ... in 1..<10...5
 	ErrMustBeFuncCall               // Expression after go or try must be a function call
 	ErrSelfExecFuncNotAllowed       // Self-executing functions are not allowed in Klar
 
@@ -93,17 +93,17 @@ const (
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
-	ErrParenRequiredFunc       // Parentheses required for params: (Int) -> Int instead of Int -> Int
-	ErrInterfaceDefaultValue   // Interface items can't have a default value
+	ErrParenAroundParams       // Parentheses required for params: (Int) -> Int instead of Int -> Int
+	ErrIntfDefaultValue        // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
 
 	// When =====
 
-	ErrForInvalidCond     // Expected assignment or expression in for loop
-	ErrUnderscoreWithRest // ... instead of ..._ or _...
-	ErrNotAllowedInWhen   // When expression not allowed in when case guard
-	ErrBraceAroundStmt    // Required braces around statement in when case
+	ErrForInvalidCondition // Expected assignment or expression in for loop
+	ErrUnderscoreWithRest  // ... instead of ..._ or _...
+	ErrNotAllowedInWhen    // When expression not allowed in when case guard
+	ErrRequiredBraces      // Required braces around statement in when case
 
 	// Misc =====
 	ErrTryBlock    // Klar doesn't have try-catch blocks
@@ -126,15 +126,10 @@ const (
 
 // A ParseError is a basic Klar parse error.
 type ParseError struct {
-	Position  lexer.Position
-	Range     ranges.Range
-	ErrorCode ErrorCode
-	Token     lexer.Token
-	Node      ast.Node
-	Hints     []string
-	Details   []Detail
-	File      string
-	Params    map[string]any
+	BaseError
+	Position lexer.Position
+	Token    lexer.Token
+	Node     ast.Node
 }
 
 func (e *ParseError) SetParam(key string, value any) *ParseError {
@@ -203,13 +198,13 @@ func (e *ParseError) error() string {
 			return fmt.Sprintf("Missing closing %s %s", endType, expected)
 		}
 		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
-	case ErrWildcardAndUnqImport:
+	case ErrWildcardWithUnqualified:
 		return "Can't have both '*' and unqualified import in import statement"
-	case ErrImportTooManyWildcard:
+	case ErrImportMultipleWildcard:
 		return "There can only be one '*' in module name"
 	case ErrWildcardAndAlias:
 		return "Can't use '*' with alias in unqualified import"
-	case ErrEmptyUnqImport:
+	case ErrEmptyUnqualifiedImport:
 		return "Expected at least 1 unqualified import"
 	case ErrImportExpectedModule:
 		return "I expected a module name before '.{' in unqualified import"
@@ -250,7 +245,7 @@ func (e *ParseError) error() string {
 		return "I expected an octal digit (0-7)"
 	case ErrExpectedDecimal:
 		return "I expected a decimal digit (0-9)"
-	case ErrUnicodeEscTooBig:
+	case ErrUnicodeEscapeTooBig:
 		return "This Unicode escape must be in the range 0 to 10FFFF"
 	case ErrStringEscape:
 		reason := e.Params["reason"].(lexer.EscapeError)
@@ -269,17 +264,17 @@ func (e *ParseError) error() string {
 		default:
 			return "Invalid string escape"
 		}
-	case ErrForInvalidCond:
+	case ErrForInvalidCondition:
 		return "Expected an assignment or expression in for condition"
 	case ErrEmptyGeneric:
 		return "At least 1 type is required inside < >"
 	case ErrInvalidPublic:
 		return "Expected a declaration after public modifier"
-	case ErrTrailingSep:
+	case ErrTrailingSeparator:
 		return "An underscore can't be at the end of a number"
-	case ErrConsecutiveSep:
+	case ErrConsecutiveSeparator:
 		return "A number can't contain consecutive underscores"
-	case ErrMisplacedSep:
+	case ErrMisplacedSeparator:
 		return "An underscore must separate successive digits"
 	case ErrNotAllowedInWhen:
 		return "A 'when' case can't contain 'when' expressions or lambdas"
@@ -305,7 +300,7 @@ func (e *ParseError) error() string {
 			"Method %s must be declared in the same scope as type %s",
 			e.Params["name"], e.Params["structName"],
 		)
-	case ErrInvalidVersionLit:
+	case ErrInvalidVersion:
 		return fmt.Sprintf("Invalid version literal '%s'",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
@@ -313,9 +308,9 @@ func (e *ParseError) error() string {
 		return "Self-executing functions are not allowed in Klar"
 	case ErrInvalidLambdaParams:
 		return "Expected (), a single destructure pattern, or a tuple of patterns before '->' in lambda"
-	case ErrParenRequiredFunc:
+	case ErrParenAroundParams:
 		return "Parentheses are required around function parameter types"
-	case ErrInvalidObjPipeStep:
+	case ErrInvalidObjectPipeStep:
 		return "A object pipeline step must be an assignment or method call"
 	case ErrProvenUnreachable:
 		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
@@ -334,24 +329,24 @@ func (e *ParseError) error() string {
 	case ErrGenericInFuncAlias:
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
-		return "'_' not allowed with rest expression, use '...' instead"
+		return "Can't use '_' in a rest expression; use '...' instead"
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
 	case ErrInvalidUpdate:
 		return "'++' and '--' can only be used as a postfix statement"
 	case ErrReturnPipelineNotLast:
-		return "'return' in pipeline must be the last step"
-	case ErrPublicFirst:
+		return "The 'return' in a pipeline must be the last step"
+	case ErrPublicGoesFirst:
 		return "'public' must be the first modifier"
 	case ErrEmptyDestructure:
 		return "A destructure pattern can't be empty"
 	case ErrColonEqual:
-		return "Expected '=' instead of ':='"
-	case ErrEllipsisForClosedRange:
-		return "Expected '...' instead of '..<'"
+		return "Use '=' instead of ':='"
+	case ErrEllipsisForClosedRangeStep:
+		return "Use '...' instead of '..<' to define a range step"
 	case ErrExpectedExprAfterClosedRange:
 		return "I expected an expression after '..<'"
-	case ErrBraceAroundStmt:
+	case ErrRequiredBraces:
 		return "Braces are required around this statement"
 	case ErrDestructPatAfterColon:
 		return "Only an identifier is allowed after ':' in object destructure"
@@ -363,7 +358,7 @@ func (e *ParseError) error() string {
 		return "Can't mix 'label: type' and 'type' syntax in tuple or parameters"
 	case ErrNonNameFuncAlias:
 		return "A function alias target must be a function name"
-	case ErrInterfaceDefaultValue:
+	case ErrIntfDefaultValue:
 		return "An interface field can't have a default value"
 	case ErrIntfMultiKeyMethod:
 		return "Function declarations cannot appear in comma-separated keys; split the function into its own entry"
@@ -371,9 +366,9 @@ func (e *ParseError) error() string {
 		exp, got := e.Params["left"].(int), e.Params["right"].(int)
 		s := fmt.Sprintf("left has %d, but right has %d", exp, got)
 		if got < exp {
-			return "Not enough values on right-hand side of assignment: " + s
+			return "Not enough values on the right-hand side of this assignment: " + s
 		}
-		return "Too many values on right-hand side of assignment: " + s
+		return "Too many values on the right-hand side of this assignment: " + s
 	case ErrFuncDotAfterSelf:
 		return "Expected '.' between ')' and identifier in function declaration"
 	case ErrIfStatement:

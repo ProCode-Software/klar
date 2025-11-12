@@ -176,9 +176,9 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 	case "save":
 	case "multiline":
 		if s.multiline = !s.multiline; s.multiline {
-			fmt.Fprintln(s.Stderr(), multilineEnabledMsg)
+			fmt.Fprintln(s.Stdout(), multilineEnabledMsg)
 		} else {
-			fmt.Fprintln(s.Stderr(), multilineDisabledMsg)
+			fmt.Fprintln(s.Stdout(), multilineDisabledMsg)
 			s.sendMultiline()
 		}
 	default:
@@ -266,6 +266,9 @@ func linePrompt(n uint32) string {
 
 func (s *Session) Printf(color, format string, a ...any) {
 	ansi.Fprintln(s.Stderr(), color, format, a...)
+}
+func (s *Session) Oprintf( color, format string, a ...any) {
+	ansi.Fprintln(s.Stdout(), color, format, a...)
 }
 
 func (s *Session) Finish() {

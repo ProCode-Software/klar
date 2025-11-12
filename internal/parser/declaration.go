@@ -286,7 +286,7 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 			field.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
-			p.Error(errors.Token(errors.ErrInterfaceDefaultValue, c))
+			p.Error(errors.Token(errors.ErrIntfDefaultValue, c))
 			p.ParseExpression(DefaultBindingPower) // Just to skip the expression
 		}
 		markStartEndPos(p, field, field.Keys[0].Position)
