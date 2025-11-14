@@ -52,7 +52,7 @@ type TypeError struct {
 	ExpectedType, GotType types.Type
 	Params                ErrorParams
 
-	Details []Detail
+	Details []Highlight
 	Hints   []string
 }
 

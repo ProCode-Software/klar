@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
@@ -162,6 +163,7 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 			err = errors.ExpectedToken(need[0], token)
 		} else if parseErr.Token.Kind == 0 {
 			parseErr.Token = token
+			parseErr.Range = ranges.FromToken(token)
 			err = parseErr
 		}
 		p.Error(err.(*ParseError))

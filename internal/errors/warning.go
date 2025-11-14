@@ -9,7 +9,7 @@ type Warning struct {
 	Range     ranges.Range
 	Params    ErrorParams
 	Hints     []string
-	Details   []Detail
+	Details   []Highlight
 }
 
 const (

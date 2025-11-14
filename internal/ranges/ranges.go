@@ -72,6 +72,13 @@ func Sub(p Position, line, col uint32) Position {
 	return Position{Line: p.Line - line, Col: p.Col - col}
 }
 
+func Offset(start Position, endLine, endCol uint32) Range {
+	return Range{
+		Start: start,
+		End: Position{Line: start.Line + endLine, Col: start.Col + endCol},
+	}
+}
+
 // Add returns a new Position with line and col added to p.
 func Add(p Position, line, col uint32) Position {
 	return Position{Line: p.Line + line, Col: p.Col + col}

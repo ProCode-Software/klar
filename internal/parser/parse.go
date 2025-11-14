@@ -50,7 +50,7 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 		p.Error(&errors.ParseError{
 			ErrorCode: errors.ErrUnterminatedComment,
 			Token:     tok,
-			Position:  tok.Position,
+			Range:     ranges.Offset(tok.Position, 0, 1),
 		})
 	case tok.Kind == lexer.BlockComment: // But not if unterminated
 		end -= 2

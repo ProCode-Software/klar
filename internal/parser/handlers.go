@@ -187,6 +187,7 @@ func (p *Parser) validateAssignableOrFix(node ast.Node) ast.Assignable {
 	if _, ok := node.(ast.Assignable); !ok {
 		p.Error(&errors.ParseError{
 			ErrorCode: errors.ErrInvalidAssignment,
+			Range:     node.GetRange(),
 			Node:      node,
 		})
 		return &ast.BadExpression{Value: node}

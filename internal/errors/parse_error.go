@@ -126,10 +126,17 @@ const (
 
 // A ParseError is a basic Klar parse error.
 type ParseError struct {
-	BaseError
-	Position lexer.Position
-	Token    lexer.Token
-	Node     ast.Node
+	ErrorCode  ErrorCode
+	File       string
+	Range      ranges.Range
+	Message    string      // After underline
+	Highlights []Highlight // Additional underline; same file
+	Details    []Detail    // May be in different files
+	Hints      []string
+	Params     ErrorParams
+
+	Token lexer.Token
+	Node  ast.Node
 }
 
 func (e *ParseError) SetParam(key string, value any) *ParseError {
@@ -224,9 +231,9 @@ func (e *ParseError) error() string {
 			return "I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf("The string starting at %s was left open", e.Position)
+		return fmt.Sprintf("The string starting at %s was left open", e.Range.Start)
 	case ErrUnterminatedRegex:
-		return fmt.Sprintf("The regular expression starting at %s was left open", e.Position)
+		return fmt.Sprintf("The regular expression starting at %s was left open", e.Range.Start)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.EndOfStatement {
 			return "A type must be assigned a value"
@@ -279,7 +286,7 @@ func (e *ParseError) error() string {
 	case ErrNotAllowedInWhen:
 		return "A 'when' case can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
-		return "The comment starting at " + e.Position.String() + " was left open"
+		return "The comment starting at " + e.Range.Start.String() + " was left open"
 	case ErrMisplacedShebang:
 		return "A shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrMissingFuncParamType:
@@ -422,12 +429,16 @@ func (e *ParseError) error() string {
 }
 
 func UnexpectedToken(token lexer.Token) *ParseError {
-	return &ParseError{Position: token.Position, Token: token, ErrorCode: ErrUnexpectedToken}
+	return &ParseError{
+		Range:     ranges.FromToken(token),
+		Token:     token,
+		ErrorCode: ErrUnexpectedToken,
+	}
 }
 
 func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *ParseError {
 	return &ParseError{
-		Position:  gotToken.Position,
+		Range:     ranges.FromToken(gotToken),
 		Token:     gotToken,
 		ErrorCode: ErrExpectedToken,
 		Params: ErrorParams{
@@ -438,7 +449,7 @@ func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *ParseErr
 
 func StringEscape(e lexer.StringEscape) *ParseError {
 	return &ParseError{
-		Position:  ranges.Sub(*e.ErrorPosition, 0, 1),
+		Range:     ranges.Offset(ranges.Sub(*e.ErrorPosition, 0, 1), 0, 1),
 		ErrorCode: ErrStringEscape,
 		Params: ErrorParams{
 			"reason": e.Invalid,
@@ -449,7 +460,11 @@ func StringEscape(e lexer.StringEscape) *ParseError {
 }
 
 func Token(err ErrorCode, token lexer.Token) *ParseError {
-	return &ParseError{ErrorCode: err, Position: token.Position, Token: token}
+	return &ParseError{
+		ErrorCode: err,
+		Range:     ranges.FromToken(token),
+		Token:     token,
+	}
 }
 
 func Node(err ErrorCode, node ast.Node) *ParseError {
@@ -457,16 +472,15 @@ func Node(err ErrorCode, node ast.Node) *ParseError {
 		ErrorCode: err,
 		Node:      node,
 		Range:     node.GetRange(),
-		Position:  node.GetRange().Start,
 	}
 }
 
 func Position(err ErrorCode, pos lexer.Position) *ParseError {
-	return &ParseError{ErrorCode: err, Position: pos}
+	return &ParseError{ErrorCode: err, Range: ranges.Offset(pos, 0, 1)}
 }
 
 func Range(err ErrorCode, rang ranges.Range) *ParseError {
-	return &ParseError{ErrorCode: err, Range: rang, Position: rang.Start}
+	return &ParseError{ErrorCode: err, Range: rang}
 }
 
 func Slice[T ast.Node](err ErrorCode, nodes []T) *ParseError {
@@ -477,12 +491,15 @@ func Slice[T ast.Node](err ErrorCode, nodes []T) *ParseError {
 			Start: start,
 			End:   nodes[len(nodes)-1].GetRange().End,
 		},
-		Position: start,
 	}
 }
 
 func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) *ParseError {
-	return &ParseError{ErrorCode: err, Position: pos, Token: tok}
+	return &ParseError{
+		ErrorCode: err,
+		Range:     ranges.Offset(pos, 0, 1),
+		Token:     tok,
+	}
 }
 
 func Redeclared(name, kind string, p1, p2 ranges.Range) *ParseError {
@@ -494,7 +511,6 @@ func Redeclared(name, kind string, p1, p2 ranges.Range) *ParseError {
 	}
 	return &ParseError{
 		Range:     p2,
-		Position:  p2.Start,
 		ErrorCode: code,
 		Params: ErrorParams{
 			"origPos": p1.Start,

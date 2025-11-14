@@ -30,7 +30,15 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 		e := frag.(lexer.StringEscape)
 		src := e.Value
 		if e.Invalid > 0 {
-			p.Error(errors.StringEscape(e))
+			p.Error(&ParseError{
+				Range:     ranges.Offset(ranges.Sub(*e.ErrorPosition, 0, 1), 0, 1),
+				ErrorCode: errors.ErrStringEscape,
+				Params: errors.ErrorParams{
+					"reason": e.Invalid,
+					"type":   e.Type,
+					"escape": e.Value,
+				},
+			})
 			frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
 			continue
 		}
