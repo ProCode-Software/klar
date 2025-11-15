@@ -40,11 +40,7 @@ outer:
 		}
 		fallthrough
 	default:
-		res = p.ParseExpression(TernaryBindingPower)
-		// Continue parsing logical expression
-		if kind := p.CurrKind(); kind == lexer.AndAnd || kind == lexer.OrOr {
-			res = p.ParseBinaryExpression(res, bpOf(kind))
-		}
+		res = p.ParseExpression(LambdaBindingPower)
 	}
 	return markStartEndPos(p, res, tok.Position)
 }
@@ -103,12 +99,7 @@ loop:
 	if p.CurrKind() == lexer.If {
 		p.Advance()
 		p.isWhenGuard = true
-		c.Guard = p.ParseExpression(TernaryBindingPower)
-		// Continue parsing logical expression
-		if k := p.CurrKind(); k == lexer.AndAnd || k == lexer.OrOr {
-			c.Guard = p.ParseBinaryExpression(c.Guard, bpOf(k))
-			markEndPos(p, c.Guard)
-		}
+		c.Guard = p.ParseExpression(LambdaBindingPower)
 		p.isWhenGuard = false
 	}
 	p.isWhenCase = false

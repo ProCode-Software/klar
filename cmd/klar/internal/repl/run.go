@@ -267,7 +267,8 @@ func linePrompt(n uint32) string {
 func (s *Session) Printf(color, format string, a ...any) {
 	ansi.Fprintln(s.Stderr(), color, format, a...)
 }
-func (s *Session) Oprintf( color, format string, a ...any) {
+
+func (s *Session) Oprintf(color, format string, a ...any) {
 	ansi.Fprintln(s.Stdout(), color, format, a...)
 }
 

@@ -54,7 +54,7 @@ type TypeError struct {
 	Label                 string
 	Details               []Detail
 	Hints                 []Hint
-	Highlights []Highlight
+	Highlights            []Highlight
 }
 
 func (e *TypeError) SetParam(key string, value any) *TypeError {

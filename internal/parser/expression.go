@@ -23,6 +23,9 @@ func (p *Parser) ParseBinaryExpression(left ast.Expression, bp BindingPower) *as
 
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	op := p.Advance()
+	if p.CurrKind() == lexer.EndOfStatement { // For ! operato
+		p.Advance()
+	}
 	right := p.ParseExpression(UnaryBindingPower)
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
@@ -569,15 +572,6 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 			SetParam("expr", lexer.Try),
 		)
 	}
-	return t
-}
-
-func (p *Parser) ParseTernaryExpression(left ast.Expression, bp BindingPower) ast.Expression {
-	p.Advance() // if
-	t := &ast.TernaryExpression{Value: left}
-	t.Condition = p.ParseExpression(ExpressionBindingPower)
-	p.Expect(lexer.Else)
-	t.Else = p.ParseExpression(bp)
 	return t
 }
 

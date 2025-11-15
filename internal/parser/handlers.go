@@ -28,9 +28,6 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		res = p.ParseNil()
 	// Prefix/Unary
 	case lexer.Not:
-		if p.CurrKind() == lexer.EndOfStatement {
-			p.Advance()
-		}
 		fallthrough
 	case lexer.Minus, lexer.Plus:
 		res = p.ParseUnaryExpression()
@@ -45,6 +42,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		} else {
 			res = p.ParseList()
 		}
+	// TODO: func
 	case lexer.Dot:
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
@@ -127,9 +125,6 @@ func (p *Parser) handleLED(
 	// Object pipeline
 	case lexer.StrokeDot:
 		res = p.ParseObjectPipeline(left, bp)
-	// Ternary
-	case lexer.If:
-		res = p.ParseTernaryExpression(left, bp)
 	// Assertion
 	case lexer.Not:
 		res = p.ParseAssertExpression(left)

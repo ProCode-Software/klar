@@ -19,7 +19,6 @@ const (
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
 	PipelineBindingPower       // |>
-	TernaryBindingPower        // if
 	RelationalBindingPower     // ==, !=, >, <, <=, >=, in, !in
 	DistributiveBindingPower   // and, or
 	RangeBindingPower          // ..., ..<
@@ -42,8 +41,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Arrow: LambdaBindingPower,
 
 	lexer.StrokeDot: ObjectPipelineBindingPower,
-
-	lexer.If: TernaryBindingPower,
 
 	lexer.AndAnd: LogicalBindingPower,
 	lexer.OrOr:   LogicalBindingPower,
@@ -72,7 +69,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Slash:    MultiplicativeBindingPower,
 	lexer.Percent:  MultiplicativeBindingPower,
 
-	lexer.Not:        UnaryBindingPower,
+	lexer.Not: UnaryBindingPower,
 
 	lexer.Caret: ExponentiationBindingPower,
 

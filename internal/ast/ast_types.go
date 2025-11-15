@@ -366,7 +366,7 @@ type InterfaceDeclaration struct {
 	Identifier     Identifier
 	InheritedTypes []Type
 	Tag            bool // If no fields
-	Fields         []*InterfaceItem
+	Items          []*InterfaceItem
 	BaseNode
 }
 
@@ -746,12 +746,4 @@ type TryExpression struct {
 type AssertExpression struct {
 	BaseNode
 	Expression Expression
-}
-
-// [value] when [condition] else [else]
-type TernaryExpression struct {
-	BaseNode
-	Value     Expression
-	Condition Expression
-	Else      Expression
 }

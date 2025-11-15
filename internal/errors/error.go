@@ -30,7 +30,7 @@ type (
 		File string
 		Highlight
 	}
-	Hint struct{
+	Hint struct {
 		Message string
 	}
 )

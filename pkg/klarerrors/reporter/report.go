@@ -7,8 +7,6 @@ import (
 )
 
 func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
-	var (
-		buf = &bytes.Buffer{}
-	)
+	buf := &bytes.Buffer{}
 	return buf.WriteTo(r.Output)
 }

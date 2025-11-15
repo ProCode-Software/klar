@@ -4,6 +4,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 /*
@@ -50,7 +51,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		fallthrough
 	case lexer.LeftCurlyBrace:
 		// Struct, enum, or interface
-		p.Expect(lexer.LeftCurlyBrace)
+		p.Advance()
 		if isIntf {
 			return p.ParseInterface(name, inherited)
 		}
@@ -62,10 +63,11 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 				InheritedTypes: inherited,
 			}
 		}
-		if p.CurrKind() == lexer.Dot {
-			return p.ParseEnum(name, inherited)
+		attrs := p.maybeParseAttributes()
+		if p.CurrKind() == lexer.Dot || p.Peek().Kind == lexer.LeftParenthesis {
+			return p.ParseEnum(name, inherited, attrs)
 		}
-		return p.ParseStruct(name, inherited)
+		return p.ParseStruct(name, inherited, attrs)
 	case lexer.EndOfStatement:
 		// Type tag if interface
 		if isIntf {
@@ -89,14 +91,18 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	}
 }
 
-func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.EnumDeclaration {
+func (p *Parser) ParseEnum(
+	typeName ast.Identifier, inherited []ast.Type, attrs []*ast.Attribute,
+) *ast.EnumDeclaration {
 	var (
 		items   []*ast.EnumItem
 		itemMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		attrs := p.maybeParseAttributes()
-		p.Expect(lexer.Dot)
+		if a := p.maybeParseAttributes(); len(a) > 0 {
+			attrs = a
+		}
+		p.ExpectNoAdvance(lexer.Dot)
 		id := p.ParseIdentifier()
 
 		// Check if exists
@@ -115,15 +121,21 @@ func (p *Parser) ParseEnum(typeName ast.Identifier, inherited []ast.Type) *ast.E
 			p.Advance()
 			item.Value = p.ParseExpression(ExpressionBindingPower)
 		}
-		markStartEndPos(p, item, id.Position)
-		items = append(items, item)
-		if c := p.Curr(); c.Kind == lexer.EndOfStatement {
+		items = append(items, markStartEndPos(p, item, id.Position))
+		attrs = nil
+
+		switch c := p.Curr(); c.Kind {
+		case lexer.RightCurlyBrace:
+		case lexer.EndOfStatement, lexer.Comma:
 			p.Advance()
 			continue
-		} else if c.Kind == lexer.Dot && c.Line > item.Range.End.Line {
-			continue // No EOS before '.' in next item
-		} else if c.Kind != lexer.RightCurlyBrace {
-			p.Expect(lexer.Comma)
+		case lexer.Dot:
+			if c.Line > item.Range.End.Line {
+				continue // No EOS before '.' in next item
+			}
+			fallthrough
+		default:
+			p.Expect(lexer.Comma, lexer.EndOfStatement)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
@@ -146,51 +158,52 @@ func (p *Parser) maybeParseAttributes() (attrs []*ast.Attribute) {
 	return attrs
 }
 
-func (p *Parser) ParseStruct(typeName ast.Identifier, inherited []ast.Type) *ast.StructDeclaration {
-	var (
-		fields   []*ast.StructField
-		fieldMap = make(map[string]struct{})
-	)
-	for p.WhileNot(lexer.RightCurlyBrace) {
-		field := &ast.StructField{}
-		field.Attributes = p.maybeParseAttributes()
-		parseSeries(p, &field.Names, func() ast.Identifier {
+func (p *Parser) ParseStruct(
+	typeName ast.Identifier, inherited []ast.Type, attrs []*ast.Attribute,
+) *ast.StructDeclaration {
+	fieldMap := make(map[string]struct{})
+	str := &ast.StructDeclaration{Identifier: typeName, InheritedTypes: inherited}
+
+	parseSeries(p, &str.Fields, func() *ast.StructField {
+		if a := p.maybeParseAttributes(); a != nil {
+			attrs = a
+		}
+		f := &ast.StructField{Attributes: attrs}
+		// Keys
+		parseSeries(p, &f.Names, func() ast.Identifier {
 			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
+				// TODO: original position in error
+				// maybe store index as fieldMap value
 				p.Error(err)
+				return name
 			}
 			fieldMap[name.Name] = struct{}{}
 			return name
 		}, 0, lexer.Comma, false)
 		// Type
 		if isAssignment(p.CurrKind()) {
+			// Default value without explicit type
 			p.Error(errors.Token(errors.ErrRequiredStructFieldType, p.Curr()))
 		} else {
 			p.ExpectErrorNoAdvance(
-				errors.Slice(errors.ErrRequiredStructFieldType, field.Names),
+				errors.Slice(errors.ErrRequiredStructFieldType, f.Names),
 				lexer.Colon,
 			)
-			field.Type = p.ParseType(DefaultTypeBindingPower)
+			f.Type = p.ParseType(DefaultTypeBindingPower)
 		}
 		// Default value
 		if p.isEqual() {
 			p.Advance()
-			field.Value = p.ParseExpression(ExpressionBindingPower)
+			f.Value = p.ParseExpression(ExpressionBindingPower)
 		}
-		markStartEndPos(p, field, field.Names[0].Position)
-		fields = append(fields, field)
-		if p.CurrKind() != lexer.RightCurlyBrace {
-			p.Expect(lexer.EndOfStatement, lexer.Comma)
-		}
-	}
-	p.Expect(lexer.RightCurlyBrace)
-	return &ast.StructDeclaration{
-		Identifier:     typeName,
-		InheritedTypes: inherited,
-		Fields:         fields,
-	}
+		f.Range.Start = f.Names[0].Position
+		attrs = nil
+		return f
+	}, lexer.RightCurlyBrace, lexer.EndOfStatement, true)
+	return str
 }
 
 // Similar to [*Parser.ParseTupleType]
@@ -249,14 +262,16 @@ func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
 	return params
 }
 
-func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *ast.InterfaceDeclaration {
-	var (
-		fields   []*ast.InterfaceItem
-		fieldMap = make(map[string]struct{})
-	)
-	for p.WhileNot(lexer.RightCurlyBrace) {
-		field := &ast.InterfaceItem{Attributes: p.maybeParseAttributes()}
-		parseSeries(p, &field.Keys, func() ast.Identifier {
+func (p *Parser) ParseInterface(
+	typeName ast.Identifier, inherited []ast.Type,
+) *ast.InterfaceDeclaration {
+	fieldMap := make(map[string]struct{})
+	intf := &ast.InterfaceDeclaration{Identifier: typeName, InheritedTypes: inherited}
+
+	parseSeries(p, &intf.Items, func() *ast.InterfaceItem {
+		f := &ast.InterfaceItem{Attributes: p.maybeParseAttributes()}
+		// Names
+		parseSeries(p, &f.Keys, func() ast.Identifier {
 			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
@@ -269,38 +284,34 @@ func (p *Parser) ParseInterface(typeName ast.Identifier, inherited []ast.Type) *
 		// Type
 		if p.CurrKind() == lexer.LeftParenthesis {
 			// Parse function: #{ kind() -> String }
-			if len(field.Keys) > 1 {
+			if len(f.Keys) > 1 {
 				// Invalid: x, y, z()
-				p.Error(errors.Slice(errors.ErrIntfMultiKeyMethod, field.Keys))
+				p.Error(errors.Slice(errors.ErrIntfMultiKeyMethod, f.Keys))
 			}
-			fn := &ast.MethodType{} // TODO: position data?
-			p.Advance()             // (
-			fn.Parameters = p.ParseInterfaceFuncParams()
+			fn := &ast.MethodType{
+				BaseNode: ast.BaseNode{Range: ranges.Range{
+					Start: p.Advance().Position, // (
+				}},
+				Parameters: p.ParseInterfaceFuncParams(),
+			}
 			if p.CurrKind() == lexer.Arrow {
 				p.Advance()
 				fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
 			}
-			field.Value = fn
+			fn.Range.End = p.lastTokEnd()
+			f.Value = fn
 		} else {
 			p.ExpectNoAdvance(lexer.Colon)
-			field.Value = p.ParseType(DefaultTypeBindingPower)
+			f.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
 			p.Error(errors.Token(errors.ErrIntfDefaultValue, c))
 			p.ParseExpression(DefaultBindingPower) // Just to skip the expression
 		}
-		markStartEndPos(p, field, field.Keys[0].Position)
-		fields = append(fields, field)
-		if p.CurrKind() != lexer.RightCurlyBrace {
-			p.Expect(lexer.EndOfStatement, lexer.Comma)
-		}
-	}
-	p.Expect(lexer.RightCurlyBrace)
-	return &ast.InterfaceDeclaration{
-		Identifier:     typeName,
-		InheritedTypes: inherited,
-		Fields:         fields,
-	}
+		f.Range.Start = f.Keys[0].Position
+		return f
+	}, lexer.RightCurlyBrace, lexer.EndOfStatement, true)
+	return intf
 }
 
 func (p *Parser) ParseFuncDeclaration() ast.Statement {

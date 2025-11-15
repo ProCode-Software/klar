@@ -79,9 +79,7 @@ const (
 	// Keywords
 	And
 	Await
-	Stop
 	Can
-	Else
 	For
 	Func
 	Go
@@ -95,6 +93,7 @@ const (
 	Or
 	Public
 	Return
+	Stop
 	Try
 	Type
 	When
@@ -155,9 +154,8 @@ var OperatorMap = map[string]TokenType{
 var KeywordMap = map[string]TokenType{
 	"and":    And,
 	"await":  Await,
-	"stop":  Stop,
+	"stop":   Stop,
 	"can":    Can,
-	"else":   Else,
 	"for":    For,
 	"func":   Func,
 	"go":     Go,

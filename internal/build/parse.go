@@ -26,7 +26,7 @@ type parseContext struct {
 	printerMu     sync.RWMutex
 	wg            sync.WaitGroup
 	pool          *parsePool
-	cwd string
+	cwd           string
 }
 
 func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalErr error) {

@@ -57,7 +57,7 @@ func Walk(t Node, visitor func(Node)) {
 		walkList(t.Fields, visitor)
 	case *InterfaceDeclaration:
 		walkList(t.InheritedTypes, visitor)
-		walkList(t.Fields, visitor)
+		walkList(t.Items, visitor)
 	case *StructField:
 		Walk(t.Type, visitor)
 		Walk(t.Value, visitor)

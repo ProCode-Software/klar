@@ -2,6 +2,8 @@ import mylang.ast
 import mylang.lexer
 import mylang.parser
 
-func parseString(input: String) -> Result<Command> {
+func parseString(input: String) -> Result<Command, [SyntaxError]> {
+    lexer := Lexer(input)
+    tokens := lexer.tokenize()
 
 }

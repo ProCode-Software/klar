@@ -75,7 +75,7 @@ func Sub(p Position, line, col uint32) Position {
 func Offset(start Position, endLine, endCol uint32) Range {
 	return Range{
 		Start: start,
-		End: Position{Line: start.Line + endLine, Col: start.Col + endCol},
+		End:   Position{Line: start.Line + endLine, Col: start.Col + endCol},
 	}
 }
 

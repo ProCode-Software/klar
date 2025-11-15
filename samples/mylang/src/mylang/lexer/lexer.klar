@@ -77,7 +77,7 @@ func Lexer.readIdentifier() -> Token {
             }
         }
     }
-    return self.buildToken(src -> when src {
+    return self.buildToken(func src -> when src {
         "true" -> return .boolean(value: true)
         "false" -> return .boolean(value: false)
         _ -> return .identifier(name: src)
@@ -91,7 +91,7 @@ func Lexer.readComment() -> Token = TODO()
 // Appends `char` to the builder
 func Lexer.append(char: String) = self.builder.append(char)
 
-func Lexer.buildToken(fn: (content: String) -> Token) -> Token {
+func Lexer.buildToken(fn: func(content: String) -> Token) -> Token {
     content := self.builder.join("")
     self.builder.clear()
     return fn(content)
