@@ -26,6 +26,7 @@ type parseContext struct {
 	printerMu     sync.RWMutex
 	wg            sync.WaitGroup
 	pool          *parsePool
+	cwd string
 }
 
 func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalErr error) {
@@ -41,6 +42,12 @@ func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalEr
 	}
 	pctx.ctx, pctx.cancel = context.WithCancel(context.Background())
 	defer pctx.cancel()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	pctx.cwd = cwd
 
 	// Init files
 	c.FlatFiles = make(map[string]*File, len(c.Modules))
@@ -153,7 +160,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		return
 	}
 
-	relPath, err := filepath.Rel("", filePath)
+	relPath, err := filepath.Rel(pctx.cwd, filePath)
 	if err != nil {
 		c.Errorf("Unable to get short path of %s: %v", filePath, err)
 		sendCriticalError(err)

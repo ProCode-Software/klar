@@ -68,15 +68,10 @@ func (p *Parser) unknownTokenErr() {
 }
 
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
-	expr := p.ParseFull(bp)
-	if expr, ok := expr.(ast.Expression); ok {
-		return expr
-	}
-	p.errExpectedExpr(expr)
-	return &ast.BadExpression{Value: expr}
+	return p.ParseFull(bp)
 }
 
-func (p *Parser) ParseFull(bp BindingPower) ast.Node {
+func (p *Parser) ParseFull(bp BindingPower) ast.Expression {
 	kind := p.CurrKind()
 	if kind == lexer.EOF {
 		return &ast.BadExpression{Token: kind}
@@ -172,20 +167,21 @@ func (p *Parser) ParseStatement() ast.Statement {
 
 func (p *Parser) skipUntilBoundary() {
 	brackCount := 1
-	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
-		if p.CurrKind() == lexer.Comma && brackCount <= 1 {
-			return
-		}
-		switch p.Advance().Kind {
+	for p.HasTokens() {
+		switch p.CurrKind() {
+		case lexer.Comma, lexer.EndOfStatement:
+			if brackCount <= 1 {
+				return
+			}
 		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace:
 			brackCount++
 		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
 			brackCount--
 			if brackCount <= 0 {
-				p.Backup()
 				return
 			}
 		}
+		p.Advance()
 	}
 }
 

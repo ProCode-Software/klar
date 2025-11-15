@@ -19,7 +19,7 @@ var KlarCommands = map[string]*command.Command{
 			{"build", nil, nil, "Build the current project to the default output directory"},
 			{"build", s{"./src/foo"}, s{"-t", "node"}, "Build the module at src/foo for Node with default settings"},
 			{"build", s{"-"}, s{"-o", "index.js"}, "Read a script from standard input and compile it to index.js"},
-			{"build", s{"@foo.bar.baz"}, s{"-v"}, "Compile the module foo.bar.baz with default settings"},
+			{"build", s{"@foo.bar.baz"}, s{"-v"}, "Compile the module foo.bar.baz with default settings and verbose output"},
 		},
 	},
 	"repl": {
@@ -54,8 +54,8 @@ type (
 
 // Set command names
 func init() {
-	command.Commands = KlarCommands
 	for name, cmd := range KlarCommands {
 		cmd.Name = name
 	}
+	command.Commands = KlarCommands
 }

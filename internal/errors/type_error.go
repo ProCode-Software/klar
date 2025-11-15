@@ -51,9 +51,10 @@ type TypeError struct {
 	Range                 ranges.Range
 	ExpectedType, GotType types.Type
 	Params                ErrorParams
-
-	Details []Highlight
-	Hints   []string
+	Label                 string
+	Details               []Detail
+	Hints                 []Hint
+	Highlights []Highlight
 }
 
 func (e *TypeError) SetParam(key string, value any) *TypeError {

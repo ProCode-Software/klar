@@ -9,9 +9,9 @@ import (
 	"golang.org/x/term"
 )
 
-const LongDescription = `Starts a read-eval-print-loop (REPL) for Klar, which lets you type commands and Klar code to be evaluated in real time. Useful for quickly running code snippets. Code can also be imported and run in the REPL from a Klar script, or exported to a script.
+const LongDescription = `Starts a read-eval-print-loop (REPL) for Klar, which lets you type commands and Klar code to be evaluated in real time. It is useful for quickly running code snippets. Code can also be imported and run in the REPL from a Klar script, or exported to a script.
 
-For available commands for the REPL, type 'help' in the REPL.`
+For available commands for the REPL, run 'klar repl <<< help' or type 'help' in the REPL.`
 
 type action struct {
 	name, args, description, shortcut string

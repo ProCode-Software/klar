@@ -129,10 +129,10 @@ type ParseError struct {
 	ErrorCode  ErrorCode
 	File       string
 	Range      ranges.Range
-	Message    string      // After underline
+	Label      string      // After underline
 	Highlights []Highlight // Additional underline; same file
 	Details    []Detail    // May be in different files
-	Hints      []string
+	Hints      []Hint
 	Params     ErrorParams
 
 	Token lexer.Token

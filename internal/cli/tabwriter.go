@@ -205,28 +205,44 @@ func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth int) 
 	if estSize := (cell.length/target + 1) * 3; cap(writeArray) < estSize {
 		writeArray = make([][]byte, 0, estSize)
 	}
-	writeArray = append(writeArray, noBreakWords(cell.content, 0, target))
+	cont, next := tw.noBreakWords(cell.content, 0, target)
+	writeArray = append(writeArray, cont)
 	target -= tw.WrapIndent
-	i := len(writeArray[0])
-	for i < len(cell.content) {
-		cont := noBreakWords(cell.content, i, i+target)
+	for next < len(cell.content) {
+		cont, next = tw.noBreakWords(cell.content, next, next+target)
 		writeArray = append(writeArray,
-			newline, tw.margin(), tw.fill(prevColWidth+tw.WrapIndent), cont,
+			newline, tw.margin(), tw.fill(prevColWidth+tw.WrapIndent-tw.Margin), cont,
 		)
-		i += len(cont)
 	}
 	return writeArray
 }
 
-func noBreakWords(b []byte, start, end int) (wrapped []byte) {
-	wrapped = b[start:min(end, len(b))]
-	println(string(wrapped))
-	for i := len(wrapped) - 1; i >= 0; i-- {
-		if wrapped[i] == ' ' {
-			return wrapped[:i+1]
+func (tw *TabWriter) noBreakWords(b []byte, start, targetLen int) (wrapped []byte, next int) {
+	// Calculate visible length accounting for ANSI escapes
+	visibleLen := 0
+	bytePos := start
+	lastSpace := -1
+
+	for bytePos < len(b) && visibleLen < targetLen {
+		if b[bytePos] == '\x1b' {
+			// Skip ANSI escape sequence
+			escapeLen := tw.readANSIEscape(b[bytePos:])
+			bytePos += escapeLen + 1
+			continue
 		}
+		if b[bytePos] == ' ' {
+			lastSpace = bytePos
+		}
+		visibleLen++
+		bytePos++
 	}
-	return wrapped
+
+	// If we hit the target and there's more content, try to break at last space
+	if bytePos < len(b) && lastSpace > start {
+		return b[start : lastSpace+1], lastSpace + 1
+	}
+
+	return b[start:bytePos], bytePos
 }
 
 // WriteCells writes multiple strings to tw and breaks the row. Cells are escaped to avoid

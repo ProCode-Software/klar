@@ -8,18 +8,6 @@ import (
 	"github.com/ProCode-Software/klar/pkg/printer"
 )
 
-func (p *Parser) errExpectedExpr(got ast.Node) {
-	err := &errors.ParseError{
-		ErrorCode: errors.ErrNotAnExpression,
-		Node:      got,
-		Range:     got.GetRange(),
-	}
-	if n, ok := got.(*ast.AssignmentStatement); ok && n.Operator.Kind == lexer.Equal {
-		err.Hint("Did you mean to use '==' instead?")
-	}
-	p.Error(err)
-}
-
 func newOperator(t lexer.Token) ast.Operator {
 	return ast.Operator{Kind: t.Kind, Position: t.Position}
 }

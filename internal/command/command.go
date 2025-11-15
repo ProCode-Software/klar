@@ -60,10 +60,10 @@ func Lookup(
 	if cmd, ok := commands[name]; ok {
 		return cmd
 	}
-	if aliases == nil {
-		return nil
+	if aliases != nil {
+		return commands[aliases[name]]
 	}
-	return commands[aliases[name]]
+	return nil
 }
 
 func Run(cmd *Command) {

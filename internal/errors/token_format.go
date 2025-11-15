@@ -14,7 +14,7 @@ func Quote(s string) string {
 	if strings.Contains(s, "'") {
 		return "`" + s + "`"
 	}
-	if len(s) == 1 && unicode.IsControl(rune(s[0])) {
+	if len(s) > 0 && !unicode.IsPrint(rune(s[0])) {
 		return fmt.Sprintf("%q", s)
 	}
 	return "'" + s + "'"

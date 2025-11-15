@@ -37,17 +37,22 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 			if err != nil {
 				return nil, &FilesystemError{"stat", input, err}
 			}
+			fullPath, err := filepath.Abs(input)
+			if err != nil {
+				return nil, &FilesystemError{"expand path of", input, err}
+			}
 			if !info.IsDir() { // File
 				if !IsKlarFile(input) {
 					return nil, &InterfaceError{Code: ErrNotAKlarFile, Value: input}
 				}
-				i = Input{Path: input, Kind: KindFile}
+				i = Input{Path: fullPath, Kind: KindFile}
 			} else {
 				// Directory: module or package
-				i = Input{Path: input, Name: filepath.Base(input)}
-				if isPkg, err := module.IsPackage(input); err != nil {
+				i = Input{Path: fullPath, Name: filepath.Base(fullPath)}
+				if isPkg, err := module.IsPackage(fullPath); err != nil {
 					return nil, &FilesystemError{"get", "working directory", err}
 				} else if isPkg {
+					println("pkg")
 					i.Kind = KindPackage
 				} else {
 					i.Kind = KindModule

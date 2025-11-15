@@ -1,6 +1,7 @@
 package build
 
 import (
+	"fmt"
 	"io/fs"
 	"path/filepath"
 )
@@ -12,6 +13,7 @@ func (c *Compiler) ResolveModules() (err error) {
 	for _, opt := range c.Options {
 		for i := range opt.Inputs {
 			inp := &opt.Inputs[i]
+			fmt.Println(i, inp.Path)
 			switch inp.Kind {
 			case KindPackage:
 				continue // TODO: skip for now

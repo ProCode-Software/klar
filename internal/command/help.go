@@ -17,6 +17,10 @@ import (
 
 var termWidth int
 
+func formatCmd(subCommand string) string {
+	return ansi.BoldGreen(ExecName) + " " + ansi.BoldYellow(subCommand)
+}
+
 func (c *Command) Help(f io.Writer) {
 	if c.Flags != nil {
 		c.Usage = c.Flags.Pattern
@@ -37,16 +41,27 @@ func (c *Command) ArgUsage() string {
 	return w.String()
 }
 
+func (c *Command) AliasesString() string {
+	var b strings.Builder
+	b.Grow(10 + len(c.Aliases)*4)
+	b.WriteString(ansi.Bold("Aliases"))
+	b.WriteString(ansi.BoldDim(": "))
+	for i, alias := range c.Aliases {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(formatCmd(alias))
+	}
+	return b.String()
+}
+
 func (c *Command) SeeAlsoString(indent int) string {
 	b := &strings.Builder{}
 	tw := cli.NewTabWriterOutput(b)
 	tw.ReserveCapacity(len(c.SeeAlso), 2)
 	tw.Margin = indent
 	for _, cmd := range c.SeeAlso {
-		tw.WriteCells(
-			ansi.BoldGreen(ExecName)+" "+ansi.BoldYellow(cmd),
-			getDesc(cmd),
-		)
+		tw.WriteCells(formatCmd(cmd), getDesc(cmd))
 	}
 	tryFlush(tw)
 	return b.String()
@@ -74,7 +89,8 @@ func (c *Command) FlagString(indent int) string {
 		aliases[actual] = append(aliases[actual], alias)
 	}
 	// Print each line
-	for name, flag := range defs {
+	for _, name := range sortFlags(defs) {
+		flag := c.Flags.FlagDefinitions[name]
 		al := aliases[name]
 		sortAliases(al) // Sort aliases by length
 		if len(al) > 0 && len(al[0]) == 1 {
@@ -128,6 +144,7 @@ func getDefault(flag argparse.FlagDefinition) string {
 var templFuncs = template.FuncMap{
 	"join":      strings.Join,
 	"hasPrefix": strings.HasPrefix,
+	"wrap":      wrapString,
 
 	"exec":  func() string { return ansi.BoldGreen(ExecName) },
 	"ansi":  func(color, s string) string { return ansi.Color("\x1b["+color+"m", s) },
@@ -163,4 +180,63 @@ func sortAliases(aliases []string) {
 		}
 		return 1
 	})
+}
+
+func sortFlags(flags map[string]argparse.FlagDefinition) []string {
+	keys := make([]string, len(flags))
+	i := 0
+	for k := range flags {
+		keys[i] = k
+		i++
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func wrapString(s string) string {
+	if termWidth <= 0 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s) + len(s)/termWidth)
+
+	i := 0
+	needsNewline := false
+	for i < len(s) {
+		// Check for existing newline within termWidth
+		end := min(i+termWidth, len(s))
+		if nlIdx := strings.IndexByte(s[i:end], '\n'); nlIdx >= 0 {
+			// Found newline, write up to and including it
+			if needsNewline {
+				b.WriteByte('\n')
+			}
+			b.WriteString(s[i : i+nlIdx+1])
+			i += nlIdx + 1
+			needsNewline = false
+			continue
+		}
+
+		// No newline found, calculate line length
+		lineLen := end - i
+
+		// If not at end of string, try to break at last space
+		if end < len(s) {
+			if spaceIdx := strings.LastIndexByte(s[i:end], ' '); spaceIdx > 0 {
+				lineLen = spaceIdx
+			}
+		}
+
+		if needsNewline {
+			b.WriteByte('\n')
+		}
+		b.WriteString(s[i : i+lineLen])
+		i += lineLen
+		needsNewline = true
+
+		// Skip spaces after break
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+	}
+	return b.String()
 }

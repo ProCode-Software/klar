@@ -1,18 +1,19 @@
 package command
 
 var fullHelpTemplate = `
-{{- .ArgUsage}}
+{{- .ArgUsage -}}
+{{ if .Aliases }}
+{{ .AliasesString }}
+{{- end }}
 
-{{ or .LongDescription .ShortDescription -}}
+{{ or .LongDescription .ShortDescription | wrap }}
 
-{{- if and .Flags (len .Flags.FlagDefinitions) }}
-
+{{ if and .Flags (len .Flags.FlagDefinitions) -}}
 {{ title "Flags" }}
-{{ .FlagString 2 }}
+{{ .FlagString 2 -}}
 {{- end -}}
 
 {{- if .Examples }}
-
 {{ title "Examples" -}}
 {{ range .Examples }}
   {{ printf "%s:" .Description | ansi "2" }}
@@ -20,11 +21,10 @@ var fullHelpTemplate = `
 	{{- range .Flags }} {{ if hasPrefix . "-" -}} {{ ansi "36" . }} 
 		{{- else -}} {{ ansi "34" . }} {{- end -}}
 	{{ end }}
+{{ end }}
 {{ end -}}
 
-{{- end -}}
-
-{{- if .SeeAlso }}
+{{- if .SeeAlso -}}
 {{ title "See also" }}
 {{ .SeeAlsoString 2 }}
 {{- end -}}`

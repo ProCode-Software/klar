@@ -283,7 +283,7 @@ printMsg:
 	b.WriteByte('\n')
 	os.Stderr.Write(b.Bytes())
 	for _, hint := range err.GetHints() {
-		cli.HintIndent(hint)
+		cli.HintIndent(hint.Message)
 	}
 }
 

@@ -21,13 +21,15 @@ type CycleItem struct {
 }
 
 type ReferenceError struct {
-	File      string
-	Name      string
-	ErrorCode ErrorCode
-	Range     ranges.Range
-	Details   []Highlight
-	Hints     []string
-	Params    ErrorParams
+	File       string
+	Name       string
+	ErrorCode  ErrorCode
+	Range      ranges.Range
+	Details    []Detail
+	Label      string
+	Highlights []Highlight
+	Hints      []Hint
+	Params     ErrorParams
 }
 
 func (e *ReferenceError) SetParam(key string, value any) *ReferenceError {
