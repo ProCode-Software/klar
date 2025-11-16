@@ -69,8 +69,8 @@ func GetMessage(err errors.CompileError) string {
 		titleColor = ansi.CodeBoldBrightYellow
 	}
 	var code string
-	if err.Code() != 0 {
-		code = ansi.Dim(" (" + err.Code().Format() + ")")
+	if err.GetCode() != 0 {
+		code = ansi.Dim(" (" + err.GetCode().Format() + ")")
 	}
 	return ansi.Color(titleColor, title) + ansi.BoldDim(": ") +
 		ansi.Bold(msg) + desc + code

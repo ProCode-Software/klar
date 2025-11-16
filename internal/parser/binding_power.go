@@ -15,7 +15,6 @@ const (
 
 	ExpressionBindingPower     // Minimum for expressions
 	AssignBindingPower         // For error tolerance
-	LambdaBindingPower         // ->
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
 	PipelineBindingPower       // |>
@@ -37,8 +36,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Equal:      AssignBindingPower,
 	lexer.PlusEqual:  AssignBindingPower,
 	lexer.MinusEqual: AssignBindingPower,
-
-	lexer.Arrow: LambdaBindingPower,
 
 	lexer.StrokeDot: ObjectPipelineBindingPower,
 
@@ -90,9 +87,8 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 }
 
 const (
-	_ BindingPower = (ExpressionBindingPower - 1) + iota
+	_ BindingPower = ExpressionBindingPower + iota
 	DefaultTypeBindingPower
-	FunctionTypeBindingPower  // ->
 	VariadicTypeBindingPower  // ...
 	OptionalTypeBindingPower  // ?
 	UnionTypeBindingPower     // |
@@ -102,7 +98,6 @@ const (
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{
-	lexer.Arrow:    FunctionTypeBindingPower,
 	lexer.Question: OptionalTypeBindingPower,
 	lexer.Stroke:   UnionTypeBindingPower,
 	lexer.LessThan: GenericTypeBindingPower,

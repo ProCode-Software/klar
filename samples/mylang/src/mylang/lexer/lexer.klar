@@ -81,7 +81,7 @@ func Lexer.readIdentifier() -> Token {
         "true" -> return .boolean(value: true)
         "false" -> return .boolean(value: false)
         _ -> return .identifier(name: src)
-    })+
+    })
 }
 
 func Lexer.readString() -> Token = TODO()

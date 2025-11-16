@@ -84,27 +84,42 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericTy
 	return &ast.GenericType{Name: left, Parameters: params}
 }
 
-func (p *Parser) ParseFunctionType(left ast.Type, bp BindingPower) *ast.FunctionType {
-	var tuple *ast.TupleType
-	switch left := left.(type) {
-	case *ast.TupleType:
-		tuple = left
-	case *ast.ParenType: // Only in when can case
-		tuple = &ast.TupleType{
-			BaseNode: left.BaseNode,
-			Values:   []*ast.TypePair{{BaseNode: left.BaseNode, Value: left}},
+func (p *Parser) ParseFunctionType() *ast.FunctionType {
+	p.Advance() // func
+	if p.CurrKind() == lexer.Arrow {
+		p.Advance()
+		return &ast.FunctionType{ReturnType: p.ParseType(DefaultTypeBindingPower)}
+	}
+	fn := &ast.FunctionType{}
+	if p.CurrKind() == lexer.LeftParenthesis {
+		fn.Parameters = p.ParseTupleType()
+	} else {
+		p.Error(errors.Token(errors.ErrParenFuncTypeParams, p.Curr()))
+		// Parse without parentheses
+		fn.Parameters.Values = p.parseFuncTypeWithoutParen()
+	}
+	if p.CurrKind() == lexer.Arrow {
+		p.Advance()
+		fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
+	}
+	return fn
+}
+
+func (p *Parser) parseFuncTypeWithoutParen() (values []*ast.TypePair) {
+	for {
+		pair := &ast.TypePair{}
+		if p.Peek().Kind == lexer.Colon {
+			pair.Keys = append(pair.Keys, p.ParseIdentOrDiscard())
+			p.Advance() // :
 		}
-	case *ast.FunctionType:
-		// Allow (Int) -> (Int) -> Int
-		tuple = left.Parameters
-	default:
-		p.Error(errors.Node(errors.ErrParenAroundParams, left))
+		pair.Value = p.ParseType(DefaultTypeBindingPower)
+		values = append(values, pair)
+		if p.CurrKind() != lexer.Comma {
+			break
+		}
+		p.Advance()
 	}
-	p.Expect(lexer.Arrow)
-	return &ast.FunctionType{
-		Parameters: tuple,
-		ReturnType: p.ParseType(DefaultTypeBindingPower),
-	}
+	return
 }
 
 func (p *Parser) ParseTupleType() *ast.TupleType {

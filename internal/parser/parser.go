@@ -22,7 +22,7 @@ type Parser struct {
 	isAttribute bool // Allow version parsing
 
 	// Stored token properties
-	listCastTokens, assignmentTokens, lambdaTokens map[int]struct{}
+	listCastTokens, assignmentTokens map[int]struct{}
 }
 
 // ParseError is [errors.ParseError]
@@ -185,6 +185,10 @@ func (p *Parser) Error(err *errors.ParseError) {
 		p.Options.Error(err)
 	}
 	if mx := p.Options.MaxErrors; mx > 0 && len(p.Errors) >= mx {
+		p.Errors = append(p.Errors, &errors.ParseError{
+			ErrorCode: errors.ErrTooManyErrors,
+			File:      p.Options.File,
+		})
 		panic(stopParsing{})
 	}
 }
@@ -224,5 +228,5 @@ func (p *Parser) Free() {
 
 	p.isWhenGuard, p.isWhenCase, p.isAttribute = false, false, false
 
-	p.assignmentTokens, p.listCastTokens, p.lambdaTokens = nil, nil, nil
+	p.assignmentTokens, p.listCastTokens = nil, nil
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func (err *ParseError) GetRange() ranges.Range     { return err.Range }
-func (err *ParseError) Code() ErrorCode            { return err.ErrorCode }
+func (err *ParseError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *ParseError) GetHints() []Hint           { return err.Hints }
 func (err *ParseError) GetFile() string            { return err.File }
 func (err *ParseError) GetDetails() []Detail       { return err.Details }
@@ -20,7 +20,7 @@ func (err *ParseError) Hintf(hint string, a ...any) {
 }
 
 func (err *TypeError) GetRange() ranges.Range     { return err.Range }
-func (err *TypeError) Code() ErrorCode            { return err.ErrorCode }
+func (err *TypeError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *TypeError) GetHints() []Hint           { return err.Hints }
 func (err *TypeError) GetFile() string            { return err.File }
 func (err *TypeError) GetDetails() []Detail       { return err.Details }
@@ -35,7 +35,7 @@ func (err *TypeError) Hintf(hint string, a ...any) {
 }
 
 func (err *Warning) GetRange() ranges.Range     { return err.Range }
-func (err *Warning) Code() ErrorCode            { return err.ErrorCode }
+func (err *Warning) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *Warning) GetHints() []Hint           { return err.Hints }
 func (err *Warning) GetFile() string            { return err.File }
 func (err *Warning) GetDetails() []Detail       { return err.Details }
@@ -50,7 +50,7 @@ func (err *Warning) Hintf(hint string, a ...any) {
 }
 
 func (err *ReferenceError) GetRange() ranges.Range     { return err.Range }
-func (err *ReferenceError) Code() ErrorCode            { return err.ErrorCode }
+func (err *ReferenceError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *ReferenceError) GetHints() []Hint           { return err.Hints }
 func (err *ReferenceError) GetFile() string            { return err.File }
 func (err *ReferenceError) GetDetails() []Detail       { return err.Details }

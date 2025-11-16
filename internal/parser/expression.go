@@ -60,9 +60,6 @@ func (p *Parser) ParseParamList() *ast.DestructureTuple {
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
-	if p.IsArrowFuncStart() {
-		return p.ParseParamList()
-	}
 	p.Advance() // (
 	if p.CurrKind() == lexer.RightParenthesis {
 		// Empty tuple
@@ -260,24 +257,49 @@ func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
 	return &ast.StructDotInit{Params: call.Args}
 }
 
-func (p *Parser) ParseLambda(left ast.Expression, bp BindingPower) *ast.LambdaExpression {
+func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	l := &ast.LambdaExpression{}
-	p.Expect(lexer.Arrow)
-	// TODO: destructure for [...] and #{...}
-	switch left := left.(type) {
-	case *ast.Symbol, *ast.Discard:
-		l.Params = []*ast.DestructureTypePair{
-			{Keys: []ast.Destructure{left.(ast.Destructure)}},
+	p.Advance() // func
+	if curr := p.CurrKind(); curr == lexer.LeftParenthesis {
+		p.Advance()
+		if p.CurrKind() != lexer.RightParenthesis {
+			l.Params = p.ParseDestructureTypePairs(true)
 		}
-	case *ast.DestructureTuple:
-		l.Params = left.Values
-	default:
-		p.Error(errors.Node(errors.ErrInvalidLambdaParams, left))
+		l.InParen = true
+		p.Expect(lexer.RightParenthesis)
+	} else if curr != lexer.Arrow {
+		parseSeries(p, &l.Params, func() *ast.DestructureTypePair {
+			d := &ast.DestructureTypePair{
+				Keys: []ast.Destructure{p.ParseDestructure()},
+			}
+			if p.CurrKind() == lexer.Colon {
+				// Non-parenthesized type
+				p.Error(errors.Token(errors.ErrParenAroundLambdaType, p.Advance()))
+				d.Type = p.ParseType(DefaultTypeBindingPower) // Still parse it
+			}
+			if c := p.CurrKind(); c == lexer.Equal || c == lexer.ColonEqual {
+				// Non-parenthesized default
+				p.Error(errors.Token(errors.ErrParenAroundLambdaDefault, p.Advance()))
+				d.Value = p.ParseExpression(ExpressionBindingPower) // Still parse it
+			}
+			return d
+		}, 0, lexer.Comma, false)
 	}
+	// Can omit -> if params are parenthesized and body is a block
+	if !l.InParen || p.CurrKind() != lexer.LeftParenthesis ||
+		p.Peek().Kind != lexer.LeftParenthesis {
+		p.ExpectErrorNoAdvance(
+			&errors.ParseError{ErrorCode: errors.ErrArrowAfterNonParenLambda},
+			lexer.Arrow,
+		)
+	} else if p.CurrKind() == lexer.Arrow {
+		p.Advance()
+	}
+	// Body
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		l.Body = p.ParseBlock()
+		l.Block = p.ParseBlock()
 	} else {
-		l.ExprBody = p.ParseExpression(ExpressionBindingPower)
+		l.Expr = p.ParseExpression(ExpressionBindingPower)
 	}
 	return l
 }
@@ -524,7 +546,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}
-	f.Iterator = p.ParseExpression(LambdaBindingPower)
+	f.Iterator = p.ParseExpression(ExpressionBindingPower)
 	p.isEqual() // Report error if ':='
 	switch p.CurrKind() {
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual, lexer.Arrow:

@@ -40,7 +40,7 @@ outer:
 		}
 		fallthrough
 	default:
-		res = p.ParseExpression(LambdaBindingPower)
+		res = p.ParseExpression(ExpressionBindingPower)
 	}
 	return markStartEndPos(p, res, tok.Position)
 }
@@ -99,7 +99,7 @@ loop:
 	if p.CurrKind() == lexer.If {
 		p.Advance()
 		p.isWhenGuard = true
-		c.Guard = p.ParseExpression(LambdaBindingPower)
+		c.Guard = p.ParseExpression(ExpressionBindingPower)
 		p.isWhenGuard = false
 	}
 	p.isWhenCase = false

@@ -129,6 +129,16 @@ func (p *Parser) ParseCommaStatement(first ast.Expression, bp BindingPower) ast.
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	i := &ast.ImportStatement{}
 	p.Advance() // import
+	if p.CurrKind() == lexer.EndOfStatement {
+		p.Advance()
+	}
+	if curr := p.CurrKind(); curr == lexer.Dot || curr == lexer.LeftCurlyBrace {
+		p.Error(errors.Token(errors.ErrImportExpectedModule, p.Curr()))
+		if curr == lexer.Dot {
+			p.Advance()
+		}
+		goto unqualifiedImport
+	}
 	// Parse maybe alias
 	if p.isEqual(p.Peek()) {
 		i.Alias = p.ParseIdentifier()
@@ -141,19 +151,26 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		// Wildcard import
 		if curr := p.CurrKind(); curr == lexer.Asterisk {
 			i.Wildcard = true
-			p.Advance()
+			wc := p.Advance()
+			if p.CurrKind() == lexer.Dot {
+				p.Error(errors.Token(errors.ErrImportInvalidWildcard, wc))
+				continue
+			}
+			if !i.Alias.IsZero() {
+				p.Error(errors.Token(errors.ErrWildcardAndAlias, wc))
+			}
 			break
 		} else if curr == lexer.LeftCurlyBrace {
 			break
 		}
 		i.Module = append(i.Module, p.ParseStrictIdentifier())
 	}
-
+unqualifiedImport:
 	// Unqualified import
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		p.Advance() // {
 		switch {
-		case i.Alias.Name != "":
+		case !i.Alias.IsZero():
 			// Alias and unqualified import
 			p.Error(errors.Token(errors.ErrAliasInUnqualifiedImport, p.PeekBehind()))
 		case i.Wildcard:
@@ -208,12 +225,17 @@ func (p *Parser) ParseUpdateStatement(left ast.Node) *ast.UpdateStatement {
 func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
+	if p.CurrKind() == lexer.LeftCurlyBrace {
+		p.Error(errors.Token(errors.ErrForInvalidCondition, p.Curr()))
+		goto body
+	}
 	// Peek for `in` before parsing destructure
 	if p.IsAssignmentStart() {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}
 	f.Expression = p.ParseExpression(ExpressionBindingPower)
+body:
 	f.Body = p.ParseBlock()
 	return f
 }
@@ -248,7 +270,6 @@ func (p *Parser) ParseControlStatement() ast.Statement {
 	var loopKind lexer.TokenType
 	switch p.CurrKind() {
 	case lexer.EndOfStatement:
-		loopKind = 0
 	case lexer.When, lexer.For, lexer.While:
 		p.Advance()
 	default:

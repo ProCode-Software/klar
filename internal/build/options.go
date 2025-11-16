@@ -56,7 +56,9 @@ type File struct {
 
 type Module struct {
 	Submodules []string // Submodule paths
-	Files      []string // File paths
+	Files      []string // Klar file paths. Empty string = stdin
+	Assets     []string // Non-Klar file paths
+	Manifests  []string // Package-level and project-level glas.pack files
 	// TODO: typechecked ast
 }
 
@@ -71,7 +73,7 @@ type Compiler struct {
 
 	ModuleMap map[*Input]*Module
 	Modules   map[string]*Module // Module paths to modules
-	FlatFiles map[string]*File
+	FlatFiles map[string]*File   // File paths to parsed ASTs and tokens
 
 	ErrorPrinter *printer.Printer
 
@@ -113,19 +115,19 @@ func (c *Compiler) Log(v ...any) {
 	}
 }
 
-func (c *Compiler) Printf(s string, v ...any) {
+func (c *Compiler) Logf(s string, v ...any) {
 	if c.Verbose {
 		c.Logger.Printf(s, v...)
 	}
 }
 
-func (c *Compiler) Errorf(s string, v ...any) {
+func (c *Compiler) LogErrorf(s string, v ...any) {
 	if c.Verbose {
-		c.Printf(ansi.Red("[error] ")+s, v...)
+		c.Logf(ansi.Red("[error] ")+s, v...)
 	}
 }
 
-func (c *Compiler) Errorln(v ...any) {
+func (c *Compiler) LogError(v ...any) {
 	if c.Verbose {
 		v = append([]any{ansi.Red("[error]")}, v...)
 		c.Println(v...)

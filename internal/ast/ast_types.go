@@ -593,9 +593,10 @@ type WhenCanCase struct {
 
 type LambdaExpression struct {
 	BaseNode
-	Params   []*DestructureTypePair
-	Body     *Block
-	ExprBody Expression
+	Params  []*DestructureTypePair
+	InParen bool
+	Block   *Block
+	Expr    Expression
 }
 
 type Attribute struct {

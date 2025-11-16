@@ -40,7 +40,6 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	}
 	// Setup cached tokens
 	p.assignmentTokens = make(map[int]struct{})
-	p.lambdaTokens = make(map[int]struct{})
 	p.listCastTokens = make(map[int]struct{})
 
 	for i := 0; i < len(p.Tokens); i++ {
@@ -114,7 +113,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			switch next.Kind {
 			// Check for '->' (arrow function)
 			case lexer.Arrow:
-				p.lambdaTokens[brackets[lastBrackI]] = struct{}{} // Cache it
+				// TODO: remove
 				// Don't reparse the arrow
 				new = append(new, next)
 				i = newI

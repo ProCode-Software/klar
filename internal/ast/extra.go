@@ -29,6 +29,10 @@ type Identifier struct {
 	_range   ranges.Range
 }
 
+func (i *Identifier) IsZero() bool {
+	return i.Name == "" && i.Position.Line == 0
+}
+
 func (i Identifier) End() lexer.Position {
 	return i._range.End
 }

@@ -8,9 +8,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
-func IsKlarFile(file string) bool {
-	return strings.HasSuffix(file, ".klar") || !strings.Contains(file, ".")
-}
+// Step 1: Determine the kind of each input and resolve its klar.build file
+// =====
 
 func ResolveInputs(inputs []string) ([]Input, error) {
 	if len(inputs) == 0 {
@@ -52,7 +51,6 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 				if isPkg, err := module.IsPackage(fullPath); err != nil {
 					return nil, &FilesystemError{"get", "working directory", err}
 				} else if isPkg {
-					println("pkg")
 					i.Kind = KindPackage
 				} else {
 					i.Kind = KindModule
@@ -66,7 +64,13 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 	return res, nil
 }
 
-// Does nothing if not found.
+// IsKlarFile returns true if file's extension is '.klar' or it doesn't have an extension.
+func IsKlarFile(file string) bool {
+	return strings.HasSuffix(file, ".klar") || !strings.Contains(file, ".")
+}
+
+// ResolveKlarBuild sets i's [Input.KlarBuild] to the closest 'klar.build' file
+// to its [Input.Path], if it is found. Otherwise, ResolveKlarBuild does nothing.
 func ResolveKlarBuild(i *Input) {
 	const sep = string(filepath.Separator)
 	if i.Kind&KindDir != 0 {
@@ -92,4 +96,146 @@ func ResolveKlarBuild(i *Input) {
 			dir = newDir
 		}
 	}
+}
+
+// Step 2: Create the map of inputs to modules. During this step, all packages,
+// modules, assets, and files are resolved.
+// =====
+
+// Per Project Structure Spec: No more than 4 parts of a module
+const MaxModuleDepth = 4
+
+// ResolveModules groups all inputs from all [Compiler.Options] into modules.
+// An error is returned when ResolveModules encounters an error while walking
+// a module's directories, or if [MaxModuleDepth] is exceeded.
+func (c *Compiler) ResolveModules() (err error) {
+	c.ModuleMap = make(map[*Input]*Module, len(c.Options))
+	c.Modules = make(map[string]*Module, len(c.Options))
+	for _, opt := range c.Options {
+		for i := range opt.Inputs {
+			inp := &opt.Inputs[i]
+			// TODO: resolve glas.pack for module/package
+			switch inp.Kind {
+			case KindPackage:
+				c.Log("Resolving package", inp.Path)
+				klarFiles, err := c.resolvePackage(inp.Path, false)
+				if ; err != nil {
+					return err
+				}
+			case KindFile:
+				c.ModuleMap[inp] = &Module{Files: []string{inp.Path}}
+				c.Log("Resolved file", inp.Path)
+			case KindStdin:
+				// Empty paths are stdin
+				c.ModuleMap[inp] = &Module{Files: []string{""}}
+				c.Log("Resolved file from stdin")
+			case KindModule:
+				c.Log("Resolving module", inp.Path)
+				klarFiles, err := c.moduleFromDir(inp.Path, 0)
+				if err != nil {
+					return err
+				}
+				// Link the input to its root module
+				c.ModuleMap[inp] = c.Modules[inp.Path]
+				continue
+			}
+			c.Modules[inp.Path] = c.ModuleMap[inp]
+		}
+	}
+	return nil
+}
+
+// moduleFromDir reads the contents of dir, assigning dir to a [*File] with
+// dir's contents groupd by submodules (directories), Klar files, and assets
+// (non-Klar files). moduleFromDir reports an error if it encounters a
+// submodule when depth is [MaxModuleDepth], per the Klar Project Structure spec.
+func (c *Compiler) moduleFromDir(dir string, depth int) (klarFiles int, err error) {
+	m := &Module{}
+	c.Modules[dir] = m
+
+	items, err := os.ReadDir(dir)
+	if err != nil {
+		return klarFiles, &FilesystemError{"read", dir, err}
+	}
+	for _, d := range items {
+		path := dir + string(filepath.Separator) + d.Name()
+		switch {
+		case d.IsDir():
+			// Create a new module for this subdirectory
+			if depth >= MaxModuleDepth {
+				err = &InterfaceError{Value: path, Code: ErrMaxModuleDepth}
+				return
+			}
+			m.Submodules = append(m.Submodules, path)
+			c.Log("Resolving submodule:", path)
+			moreFound, err := c.moduleFromDir(path, depth+1)
+			return klarFiles + moreFound, err
+		case IsKlarFile(path):
+			m.Files = append(m.Files, path)
+			klarFiles++
+		default:
+			m.Assets = append(m.Assets, path)
+		}
+	}
+	return
+}
+
+func (c *Compiler) resolvePackage(path string, nesting bool) (klarFiles int, err error) {
+	items, err := os.ReadDir(path)
+	if err != nil {
+		return klarFiles, &FilesystemError{"read", path, err}
+	}
+	for _, d := range items {
+		name := d.Name()
+		fullPath := path + string(filepath.Separator) + name
+		if !d.IsDir() {
+			// Report an error if there's a Klar file directly in a package
+			if IsKlarFile(name) {
+				c.LogErrorf("Found a Klar file in package root", fullPath)
+				err = &InterfaceError{Value: fullPath, Code: ErrFileInPackage}
+				return
+			}
+			continue
+		}
+		if nesting {
+			switch name {
+			case module.PackageFolder, "shared", ".klar":
+				c.LogError("Found invalid nested project folder", fullPath)
+				err = &InterfaceError{Value: fullPath, Code: ErrNestedKlarFolder}
+				return
+			}
+		}
+		switch name {
+		case module.PackageFolder: // pkg
+			pkgs, err := os.ReadDir(fullPath)
+			if err != nil {
+				c.LogError("Read directory", fullPath, "failed:", err)
+				return klarFiles, &FilesystemError{"read", fullPath, err}
+			}
+			for _, pkg := range pkgs {
+				fullPkg := fullPath + string(filepath.Separator) + pkg.Name()
+				if !pkg.IsDir() {
+					c.LogError("Found file", fullPkg, "in the 'pkg' directory")
+					return klarFiles, &InterfaceError{Code: ErrFileInPkgDir, Value: fullPkg}
+				}
+				moreFound, err := c.resolvePackage(fullPkg, true)
+				klarFiles += moreFound
+				if err != nil {
+					c.LogError("Resolving subpackage", fullPkg, "failed:", err)
+					return klarFiles, err
+				}
+			}
+		case "src", "cmd", "shared", "generated":
+			// The only Klar project directories that contain buildable modules
+			c.Log("Resolving modules in", fullPath)
+			if err = c.moduleFromDir(fullPath, 0); err != nil {
+				return err
+			}
+		default:
+			// Other directory: ignore
+			c.Log("Ignorng directory", fullPath)
+			continue
+		}
+	}
+	return nil
 }

@@ -16,10 +16,10 @@ type Person {
 
 type DBRequest {
     amount: Int
-    filter: (Person) -> Bool
+    filter: func(Person) -> Bool
 }
 
-server.handle(path: '/get', with: (r, w) -> {
+server.handle(path: '/get', with: func(r, w) -> {
     params: DBRequest? := nil
     r.params.decode(object: params)
     when params {

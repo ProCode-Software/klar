@@ -78,7 +78,7 @@ func (e *TypeError) Error() string {
 	)
 	switch e.ErrorCode {
 	default:
-		return "TypeError: " + e.Code().String()
+		return "TypeError: " + e.GetCode().String()
 	case ErrTypeMismatch:
 		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T",
 			expType, gotType,

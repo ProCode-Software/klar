@@ -29,9 +29,12 @@ type parseContext struct {
 	cwd           string
 }
 
+// Step 3: Parse each file into an untyped AST
+// =====
+
 func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalErr error) {
 	// Initialize parse context
-	c.Printf("Begin parsing modules (%d modules)", len(c.Modules))
+	c.Logf("Begin parsing modules (%d modules)", len(c.Modules))
 	pctx := &parseContext{
 		syntaxErrCh:   make(chan []*errors.ParseError),
 		criticalErrCh: make(chan error, 1),
@@ -43,6 +46,7 @@ func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalEr
 	pctx.ctx, pctx.cancel = context.WithCancel(context.Background())
 	defer pctx.cancel()
 
+	// Get working directory to shorten file paths to relative paths
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -58,7 +62,12 @@ func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalEr
 	// Parse all module files
 	for _, module := range c.Modules {
 		for _, filePath := range module.Files {
-			c.Log("Processing file: " + filePath)
+			// Skip if already parsed
+			if _, ok := c.FlatFiles[filePath]; ok {
+				c.Log("Skipping already parsed file:", filePath)
+				continue
+			}
+			c.Log("Processing file:", filePath)
 			pctx.wg.Go(func() { c.parseFile(pctx, filePath) })
 		}
 	}
@@ -89,13 +98,18 @@ func (pctx *parseContext) collectErrs(syntaxErrors *[]*errors.ParseError, critic
 				}
 				return
 			}
+			// Too many errors (single file)
+			if l := len(errs); l > 0 &&
+				errs[l-1].GetCode() == errors.ErrTooManyErrors {
+				errs = errs[:l-1]
+			}
 			*syntaxErrors = append(*syntaxErrors, errs...)
 			// Too many errors (global)
 			if len(*syntaxErrors) >= maxErrors {
 				if *criticalErr == nil {
 					*criticalErr = &InterfaceError{Code: ErrTooManyErrors}
-					pctx.cancel()
 				}
+				pctx.cancel()
 				return
 			}
 		case err := <-pctx.criticalErrCh:
@@ -133,11 +147,11 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	} else {
 		fr, err = os.Open(filePath)
 		if err != nil {
-			c.Errorf("Error while opening file %s: %v", filePath, err)
+			c.LogErrorf("Error while opening file %s: %v", filePath, err)
 			sendCriticalError(err)
 			return
 		}
-		c.Printf("Opened %s", filePath)
+		c.Logf("Opened %s", filePath)
 		defer fr.Close()
 	}
 
@@ -151,18 +165,18 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	}
 	lex := pctx.pool.GetLexer(fr)
 	defer pctx.pool.PutLexer(lex)
-	c.Log("Tokenizing file: " + filePath)
+	c.Log("Tokenizing file:", filePath)
 
 	toks, err := parser.TokenizeLexer(lex, stat.Size()/10)
 	if err != nil {
-		c.Errorf("Error while tokenizing %s: %v", filePath, err)
+		c.LogErrorf("Error while tokenizing %s: %v", filePath, err)
 		sendCriticalError(err)
 		return
 	}
 
 	relPath, err := filepath.Rel(pctx.cwd, filePath)
 	if err != nil {
-		c.Errorf("Unable to get short path of %s: %v", filePath, err)
+		c.LogErrorf("Unable to get short path of %s: %v", filePath, err)
 		sendCriticalError(err)
 		return
 	}
@@ -174,13 +188,13 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	pa := pctx.pool.GetParser(toks, filePath)
 	defer pctx.pool.PutParser(pa)
 
-	c.Log("Parsing file: " + filePath)
+	c.Log("Parsing file:", filePath)
 	ast := pa.Parse()
 	errs := pa.Errors
 
 	// Send syntax errors
 	if len(errs) > 0 {
-		c.Errorf("%d errors found while parsing %s", len(errs), filePath)
+		c.LogErrorf("%d errors found while parsing %s", len(errs), filePath)
 		select {
 		case pctx.syntaxErrCh <- errs:
 		case <-pctx.ctx.Done():

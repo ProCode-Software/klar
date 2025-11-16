@@ -42,7 +42,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		} else {
 			res = p.ParseList()
 		}
-	// TODO: func
+	case lexer.Func:
+		res = p.ParseLambda()
 	case lexer.Dot:
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
@@ -109,12 +110,8 @@ func (p *Parser) handleLED(
 	// Call
 	case lexer.LeftParenthesis:
 		res = p.ParseCallExpression(left, bp)
-	// Arrow function
-	case lexer.Arrow:
-		res = p.ParseLambda(left, bp)
-		if p.isWhenGuard || p.isWhenCase {
+		if p.isWhenCase {
 			p.Error(errors.Node(errors.ErrNotAllowedInWhen, res))
-			return &ast.BadExpression{Value: res}, true
 		}
 	// Spread or range
 	case lexer.Ellipsis, lexer.DotDotLessThan:
@@ -278,6 +275,8 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 			(p.isWhenCase || p.CurrKind() != lexer.Arrow) {
 			res = &ast.ParenType{BaseNode: tuple.BaseNode, Type: tuple.Values[0].Value}
 		}
+	case lexer.Func:
+		res = p.ParseFunctionType()
 	case lexer.Ellipsis:
 		res = p.ParseRestType()
 	case lexer.Stroke:
@@ -301,8 +300,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 		res = p.ParseOptionalType(left, bp)
 	case lexer.LessThan:
 		res = p.ParseGenericType(left, bp)
-	case lexer.Arrow:
-		res = p.ParseFunctionType(left, bp)
 	case lexer.Dot:
 		if left, ok := left.(*ast.TypeAlias); !ok {
 			return nil, false
@@ -314,11 +311,6 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
-}
-
-func (p *Parser) IsArrowFuncStart() bool {
-	_, ok := p.lambdaTokens[p.Index]
-	return ok
 }
 
 func (p *Parser) IsListCastStart() bool {

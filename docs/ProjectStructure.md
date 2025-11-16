@@ -20,7 +20,7 @@ For full Klar projects with a glas.pack, these folders inside the same folder as
 |    `src`    | Entry files for a package. Most files and modules should be here.    |          Yes           |    Yes     |
 |   `.klar`   | Project-specific folder for project data, cache, and dependencies. This should be included in `.gitignore`. |           No           |     No     |
 
-## Project-less Scripts
+## Projectless Scripts
 
 Klar scripts placed outside a project with a glas.pack file are allowed.
 
@@ -42,7 +42,7 @@ The module identifier is the name of the directory. A module identifier:
 -   cannot begin with a digit
 -   cannot be only a single underscore (`_`)
 
-**Allowed:** a, b6, core, HOLA  
+**Allowed:** a, b6, core, HOLA, café
 **Not allowed:** import, go, public, 67, 1char, \_  
 Important: Validation of directory names is not required. It is recommended that users avoid module names that are OS-reserved, such as `con` on Windows.
 

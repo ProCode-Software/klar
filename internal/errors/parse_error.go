@@ -20,7 +20,6 @@ const (
 	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
 	ErrImportExpectedModule     // Unqualified import without module name
 	ErrImportInvalidWildcard    // Wildcard must be last part of module
-	ErrImportMultipleWildcard   // More than 1 wildcard
 	ErrWildcardWithUnqualified  // Using unqualified import with wildcard
 	ErrWildcardAndAlias         // Using alias with wildcard
 	ErrEmptyUnqualifiedImport   // Empty unqualified import
@@ -45,7 +44,6 @@ const (
 	ErrExpectedOctal        // Expected octal digit (0-7)
 	ErrExpectedBinary       // Expected binary digit (0 or 1)
 	ErrExpectedDecimal      // Expected decimal digit (0-9)
-	ErrInvalidLambdaParams  // Non-variable or variable tuple used in lambda
 	ErrInvalidVersion       // Invalid version literal syntax
 	ErrUnderscoreValue      // Use of _ as a value
 
@@ -87,13 +85,16 @@ const (
 	ErrEllipsisForClosedRangeStep   // ..< instead of ... in 1..<10...5
 	ErrMustBeFuncCall               // Expression after go or try must be a function call
 	ErrSelfExecFuncNotAllowed       // Self-executing functions are not allowed in Klar
+	ErrParenAroundLambdaType        // Type for param is not in parentheses
+	ErrParenAroundLambdaDefault     // Default value for param is not in parentheses
+	ErrArrowAfterNonParenLambda     // -> required if lambda parameters aren't parenthesized
 
 	// Type =====
 
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
 	ErrEmptyGeneric            // At least one parameter requried in generic
-	ErrParenAroundParams       // Parentheses required for params: (Int) -> Int instead of Int -> Int
+	ErrParenFuncTypeParams     // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrIntfDefaultValue        // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
@@ -108,7 +109,7 @@ const (
 	// Misc =====
 	ErrTryBlock    // Klar doesn't have try-catch blocks
 	ErrIfStatement // Klar doesn't have if statements
-	ErrTripleEqual // JavaScript == or === used in Klar
+	ErrTripleEqual // JavaScript !== or === used in Klar
 	ErrInvalidLoop // Invalid loop kind in 'next' or 'stop' statement
 
 	// Analysis-time syntax errors =====
@@ -207,8 +208,6 @@ func (e *ParseError) error() string {
 		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
 	case ErrWildcardWithUnqualified:
 		return "Can't have both '*' and unqualified import in import statement"
-	case ErrImportMultipleWildcard:
-		return "There can only be one '*' in module name"
 	case ErrWildcardAndAlias:
 		return "Can't use '*' with alias in unqualified import"
 	case ErrEmptyUnqualifiedImport:
@@ -272,11 +271,11 @@ func (e *ParseError) error() string {
 			return "Invalid string escape"
 		}
 	case ErrForInvalidCondition:
-		return "Expected an assignment or expression in for condition"
+		return "A 'for' loop must have an assignment or a loop expression"
 	case ErrEmptyGeneric:
-		return "At least 1 type is required inside < >"
+		return "At least 1 type is required inside '<...>'"
 	case ErrInvalidPublic:
-		return "Expected a declaration after public modifier"
+		return "Expected a declaration after 'public' modifier"
 	case ErrTrailingSeparator:
 		return "An underscore can't be at the end of a number"
 	case ErrConsecutiveSeparator:
@@ -292,9 +291,9 @@ func (e *ParseError) error() string {
 	case ErrMissingFuncParamType:
 		return "A function parameter must have an explicit type"
 	case ErrInvalidOpaque:
-		return "'opaque' modifier can only be applied to a struct or interface"
+		return "The 'opaque' modifier can only be applied to a struct or interface"
 	case ErrImportsGoFirst:
-		return "Imports must go before other declarations"
+		return "'import' statements must go before other declarations"
 	case ErrInvalidLabel:
 		return "A number can't be used as a parameter label"
 	case ErrInvalidLabelShorthand:
@@ -313,9 +312,7 @@ func (e *ParseError) error() string {
 		)
 	case ErrSelfExecFuncNotAllowed:
 		return "Self-executing functions are not allowed in Klar"
-	case ErrInvalidLambdaParams:
-		return "Expected (), a single destructure pattern, or a tuple of patterns before '->' in lambda"
-	case ErrParenAroundParams:
+	case ErrParenFuncTypeParams:
 		return "Parentheses are required around function parameter types"
 	case ErrInvalidObjectPipeStep:
 		return "A object pipeline step must be an assignment or method call"
@@ -348,7 +345,7 @@ func (e *ParseError) error() string {
 	case ErrEmptyDestructure:
 		return "A destructure pattern can't be empty"
 	case ErrColonEqual:
-		return "Use '=' instead of ':='"
+		return "Use '=' instead of ':=' to set a default"
 	case ErrEllipsisForClosedRangeStep:
 		return "Use '...' instead of '..<' to define a range step"
 	case ErrExpectedExprAfterClosedRange:
@@ -393,6 +390,12 @@ func (e *ParseError) error() string {
 			loop = "stop"
 		}
 		return "You can only " + loop + " a for, when, or while loop"
+	case ErrParenAroundLambdaDefault:
+		return "Parameters must be in parentheses in order to set default values"
+	case ErrParenAroundLambdaType:
+		return "Parameters must be in parentheses in order to annotate types"
+	case ErrArrowAfterNonParenLambda:
+		return "'->' is required after parameters if they aren't in parentheses"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

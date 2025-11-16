@@ -35,7 +35,7 @@ func Build(r *command.Runner) {
 		if err != nil {
 			cli.ErrNoManifest(pkgPath)
 		}
-		b.Log("Compiling current package: " + pkgPath)
+		b.Log("Compiling current package:", pkgPath)
 		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
 	if err != nil {

@@ -16,6 +16,7 @@ var KlarProjectDirs = map[string]struct{}{
 
 const sep = string(filepath.Separator)
 
+// Per Klar Project Structure Spec
 const (
 	ManifestName  = "glas.pack"
 	PackageFolder = "pkg"
@@ -59,19 +60,28 @@ func ProjectRoot(from string) (string, error) {
 	if _, err = os.Stat(from + sep + ManifestName); err == nil {
 		return from, nil
 	}
-	parts := split(from)
-	for i := len(parts) - 1; i >= 0; i-- {
-		part := parts[i]
-		if _, ok := KlarProjectDirs[part]; ok {
-			// TODO: use filepath.Dir()
-			return filepath.Join(parts[:i]...), nil
+	current := from
+	// Walk up the directory tree
+	for {
+		name := filepath.Base(current)
+		parent := filepath.Dir(current)
+		// Stop if we've reached the root
+		if current == parent {
+			break
 		}
+		if _, ok := KlarProjectDirs[name]; ok {
+			return parent, nil
+		}
+		current = parent
 	}
-	// Return the current directory if a project wasn't found
+	// Not found
 	return from, nil
 }
 
-// PackageRoot returns the folder where
+// PackageRoot returns the package root and project root for a given path.
+// If from is inside a pkg folder, the package root is the folder inside pkg,
+// and the project root is the parent of pkg. For other Klar project directories,
+// the parent is the project root and also the package root.
 func PackageRoot(from string) (pkg, project string, err error) {
 	from, err = filepath.Abs(from)
 	if err != nil {
@@ -87,27 +97,36 @@ func PackageRoot(from string) (pkg, project string, err error) {
 	if _, err = os.Stat(from + sep + ManifestName); err == nil {
 		return from, from, nil
 	}
-	pkg, project = projectRootFast(from)
-	return
-}
-
-// [PackageRoot] without calling [os.Stat]
-func projectRootFast(from string) (pkg, project string) {
-	parts := split(from)
-	// Loop backwards for closest package
-	for i := len(parts) - 1; i >= 0; i-- {
-		part := parts[i]
-		if part == "pkg" {
-			project = filepath.Join(parts[:i]...)
-			subPackage := strings.Join([]string{project, part, parts[i+1]}, sep)
-			return subPackage, project
-		} else if _, ok := KlarProjectDirs[part]; ok {
-			project = filepath.Join(parts[:i]...)
-			return project, project
+	// Walk up the directory tree
+	curr := from
+	var pkgDir string
+	for {
+		name := filepath.Base(curr)
+		parent := filepath.Dir(curr)
+		// Stop if we've reached the root
+		if curr == parent {
+			break
 		}
+		if _, ok := KlarProjectDirs[name]; ok {
+			if name == PackageFolder {
+				// For pkg folder: the folder inside pkg is the package root
+				// and the parent of pkg is the project root
+				if pkgDir != "" {
+					return pkgDir, parent, nil
+				}
+				// Directly in pkg folder
+				return "", parent, nil
+			} else {
+				// For other Klar project dirs: parent is both project and package root
+				return parent, parent, nil
+			}
+		}
+		// Track the last directory we saw (potential package inside pkg)
+		pkgDir = curr
+		curr = parent
 	}
-	// Return the current directory if a project wasn't found
-	return from, from
+	// Not found
+	return from, from, nil
 }
 
 // IsPackage reports whether path is a path to a package, as defined in the Klar
@@ -118,30 +137,22 @@ func IsPackage(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	parts := split(path)
-	for i := len(parts) - 1; i >= 0; i-- {
-		dir := parts[i]
-		if dir == PackageFolder && i == len(parts)-2 {
+	current := path
+	parent := filepath.Dir(current)
+	depth := 0
+	// Walk up the directory tree
+	for current != parent {
+		name := filepath.Base(current)
+		if name == PackageFolder && depth == 1 {
+			// We're one level inside pkg folder - this is a package
 			return true, nil
-		} else if _, ok := KlarProjectDirs[dir]; ok {
+		} else if _, ok := KlarProjectDirs[name]; ok {
+			// Found a Klar project directory - not a package
 			return false, nil
 		}
+		current = parent
+		parent = filepath.Dir(current)
+		depth++
 	}
 	return true, nil
-}
-
-// Implement a cache system to avoid resplitting paths.
-var segmentCache = map[string][]string{}
-
-func split(path string) []string {
-	if cached, ok := segmentCache[path]; ok {
-		return cached
-	}
-	segments := strings.Split(path, sep)
-	segmentCache[path] = segments
-	return segments
-}
-
-func SplitSegments(path string) []string {
-	return split(path)
 }

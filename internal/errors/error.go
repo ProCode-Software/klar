@@ -9,7 +9,7 @@ import (
 type CompileError interface {
 	error
 	GetRange() ranges.Range
-	Code() ErrorCode
+	GetCode() ErrorCode
 	GetHints() []Hint
 	GetFile() string
 	GetDetails() []Detail
@@ -43,7 +43,7 @@ const (
 	ImplementationErrorPrefix
 )
 
-const ErrMaxErrors = -1 // Too many errors
+const ErrTooManyErrors ErrorCode = -1 // Too many errors
 
 type BaseError struct {
 	ErrorCode  ErrorCode

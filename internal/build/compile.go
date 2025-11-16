@@ -17,7 +17,7 @@ func (c *Compiler) Compile() (
 	}
 	parseErrs, err = c.ParseModules()
 	if err != nil || len(parseErrs) > 0 {
-		c.Errorln("Build failed due to errors")
+		c.LogError("Build failed due to errors")
 		return
 	}
 	return
