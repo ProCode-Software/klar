@@ -37,6 +37,7 @@ const (
 	ErrNestedKlarFolder // Klar project directory nested in a pkg folder
 	ErrFileInPackage    // File directly in package root
 	ErrFileInPkgDir     // File in 'pkg' directory
+	ErrNoKlarFiles      // No Klar files to compile in input
 )
 
 type InterfaceError struct {

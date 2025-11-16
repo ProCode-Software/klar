@@ -111,6 +111,11 @@ const MaxModuleDepth = 4
 func (c *Compiler) ResolveModules() (err error) {
 	c.ModuleMap = make(map[*Input]*Module, len(c.Options))
 	c.Modules = make(map[string]*Module, len(c.Options))
+	checkFileCount := func(klarFiles int, path string, err *error) {
+		if klarFiles == 0 && *err == nil {
+			*err = &InterfaceError{Code: ErrNoKlarFiles, Value: path}
+		}
+	}
 	for _, opt := range c.Options {
 		for i := range opt.Inputs {
 			inp := &opt.Inputs[i]
@@ -119,7 +124,8 @@ func (c *Compiler) ResolveModules() (err error) {
 			case KindPackage:
 				c.Log("Resolving package", inp.Path)
 				klarFiles, err := c.resolvePackage(inp.Path, false)
-				if ; err != nil {
+				checkFileCount(klarFiles, inp.Path, &err)
+				if err != nil {
 					return err
 				}
 			case KindFile:
@@ -132,6 +138,7 @@ func (c *Compiler) ResolveModules() (err error) {
 			case KindModule:
 				c.Log("Resolving module", inp.Path)
 				klarFiles, err := c.moduleFromDir(inp.Path, 0)
+				checkFileCount(klarFiles, inp.Path, &err)
 				if err != nil {
 					return err
 				}
@@ -228,8 +235,10 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (klarFiles int, err
 		case "src", "cmd", "shared", "generated":
 			// The only Klar project directories that contain buildable modules
 			c.Log("Resolving modules in", fullPath)
-			if err = c.moduleFromDir(fullPath, 0); err != nil {
-				return err
+			moreFiles, err := c.moduleFromDir(fullPath, 0)
+			klarFiles += moreFiles
+			if err != nil {
+				return klarFiles, err
 			}
 		default:
 			// Other directory: ignore
@@ -237,5 +246,5 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (klarFiles int, err
 			continue
 		}
 	}
-	return nil
+	return klarFiles, nil
 }
