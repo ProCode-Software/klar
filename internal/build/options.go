@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -62,16 +63,21 @@ type Module struct {
 	// TODO: typechecked ast
 }
 
+type InputOptions struct {
+	Modules []*Module
+	Project *module.ProjectInfo
+}
+
 type Compiler struct {
 	Mode                BuildMode
 	Verbose             bool
+	StartTime           time.Time
 	Errors              []errors.CompileError
 	Options             []*Options
-	Project             *module.ProjectInfo
 	PreBuild, PostBuild []any // TODO
 	OpenFiles           []*os.File
 
-	ModuleMap map[*Input]*Module
+	Inputs    map[*Input]*InputOptions
 	Modules   map[string]*Module // Module paths to modules
 	FlatFiles map[string]*File   // File paths to parsed ASTs and tokens
 

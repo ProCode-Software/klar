@@ -4,6 +4,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
+func (err *ParseError) GetName() string            { return "SyntaxError" }
 func (err *ParseError) GetRange() ranges.Range     { return err.Range }
 func (err *ParseError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *ParseError) GetHints() []Hint           { return err.Hints }
@@ -19,6 +20,7 @@ func (err *ParseError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
 
+func (err *TypeError) GetName() string            { return "TypeError" }
 func (err *TypeError) GetRange() ranges.Range     { return err.Range }
 func (err *TypeError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *TypeError) GetHints() []Hint           { return err.Hints }
@@ -34,6 +36,7 @@ func (err *TypeError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
 
+func (err *Warning) GetName() string            { return "Warning" }
 func (err *Warning) GetRange() ranges.Range     { return err.Range }
 func (err *Warning) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *Warning) GetHints() []Hint           { return err.Hints }
@@ -49,6 +52,7 @@ func (err *Warning) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
 
+func (err *ReferenceError) GetName() string            { return "ReferenceError" }
 func (err *ReferenceError) GetRange() ranges.Range     { return err.Range }
 func (err *ReferenceError) GetCode() ErrorCode         { return err.ErrorCode }
 func (err *ReferenceError) GetHints() []Hint           { return err.Hints }

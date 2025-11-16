@@ -5,6 +5,7 @@
 package reporter
 
 import (
+	"bytes"
 	"io"
 	"os"
 
@@ -19,6 +20,7 @@ type Reporter struct {
 	// Alternative error titles to display instead of the type name. Keys are error prefixes.
 	ErrorNames map[int]string
 	files      map[string]file
+	buf        *bytes.Buffer
 }
 
 type file struct {

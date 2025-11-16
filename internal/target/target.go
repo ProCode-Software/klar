@@ -6,6 +6,7 @@ const (
 	Unknown    Target = iota
 	JavaScript        // Any JavaScript environment
 	KlarVM
+	// Specifc JavaScript runtimes
 	Browser
 	Node
 	Deno

@@ -1,4 +1,4 @@
-package runtime
+package runtime // TODO: move contexts to analysis and delete package
 
 import (
 	"github.com/ProCode-Software/klar/internal/ranges"

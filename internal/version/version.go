@@ -7,23 +7,23 @@ import (
 
 var KlarVersion = "0.0.1"
 
-type Suffix int
+type Build int
 
 // Higher is newer
 const (
-	Release Suffix = iota
+	Release Build = iota
 	RC
 	Beta
 	Alpha
 	Dev
 )
 
-var suffixString = map[Suffix]string{
+var suffixString = map[Build]string{
 	Release: "", RC: "rc", Beta: "beta",
 	Alpha: "alpha", Dev: "dev",
 }
 
-var SuffixMap = map[string]Suffix{
+var BuildMap = map[string]Build{
 	"":      Release,
 	"rc":    RC,
 	"beta":  Beta,
@@ -32,10 +32,10 @@ var SuffixMap = map[string]Suffix{
 }
 
 type Version struct {
-	Parts     []int
-	Suffix    Suffix
-	SuffixNum int
-	Commit    string
+	Parts    []int
+	Build    Build
+	BuildNum int
+	Commit   string
 }
 
 func (v Version) Major() int { return v.Parts[0] }
@@ -54,14 +54,16 @@ func (v Version) String() string {
 	for _, part := range v.Parts {
 		b.WriteString("." + strconv.Itoa(part))
 	}
-	if v.Suffix != Release {
-		b.WriteString("-" + suffixString[v.Suffix])
+	if v.Build != Release {
+		b.WriteString("-" + suffixString[v.Build])
 	}
-	if v.SuffixNum > 0 {
-		b.WriteString("-" + strconv.Itoa(v.SuffixNum))
+	if v.BuildNum > 0 {
+		b.WriteString("-" + strconv.Itoa(v.BuildNum))
 	}
 	if v.Commit != "" {
 		b.WriteString("+" + v.Commit)
 	}
 	return "v" + b.String()[1:]
 }
+
+var Regex = `(\d+)(?:\.(?P<minor>\d+)){,3}`

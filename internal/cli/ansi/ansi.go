@@ -64,10 +64,6 @@ func Partial(color string) string {
 	return color
 }
 
-type Colors struct {
-	NoColor bool
-}
-
 func Reset() string               { return Color(CodeReset, "") }
 func Red(s string) string         { return Color(CodeRed, s) }
 func Yellow(s string) string      { return Color(CodeYellow, s) }

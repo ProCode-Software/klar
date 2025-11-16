@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/build/js"
@@ -13,29 +14,32 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/command"
-	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func Build(r *command.Runner) {
 	inputArgs := r.Parser.VarArgByName("inputs")
-	b := &build.Compiler{Mode: build.ModeBuild}
-	if r.BoolFlag("verbose") {
-		b.Verbose = true
-		delete(r.AllFlags(), "verbose")
+	b := &build.Compiler{
+		Mode:    build.ModeBuild,
+		Verbose: r.BoolFlag("verbose"),
 	}
+	delete(r.AllFlags(), "verbose") // Don't reparse it
+	b.StartTime = time.Now()
 	b.InitLogger()
 	defer b.CloseAll()
-
-	inps, err := build.ResolveInputs(inputArgs) // Resolve all inputs
+	// Resolve all inputs
+	if len(inputArgs) > 0 {
+		b.Logf("Resolving inputs: %v\n", inputArgs)
+	}
+	inps, err := build.ResolveInputs(inputArgs)
 	// Build the nearest *package* if no path provided
 	if err == nil && len(inps) == 0 {
 		pkgPath, _, err := module.PackageRoot(".")
 		if err != nil {
 			cli.ErrNoManifest(pkgPath)
 		}
-		b.Log("Compiling current package:", pkgPath)
+		b.Log("Resolving inputs at current package:", pkgPath)
 		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
 	if err != nil {
@@ -66,19 +70,22 @@ func Build(r *command.Runner) {
 		b.Options = append(b.Options, opt)
 	}
 	// TODO: error if --output is file and there are multiple inputs
-	parseErrs, err := b.Compile()
+	res, err := b.Compile()
+	// For InterfaceErrors: print a prettier error
 	intfErr, isIntfErr := err.(*build.InterfaceError)
+	// For a TooManyErrors InterfaceError, still print the other error messages
 	isMaxErrors := isIntfErr && intfErr.Code == build.ErrTooManyErrors
 	switch {
-	case isMaxErrors, len(parseErrs) > 0:
-		printErrors(parseErrs, isMaxErrors, b)
+	case isMaxErrors, len(res.Errors) > 0:
+		printErrors(res, isMaxErrors, b)
 	case isIntfErr:
 		printInterfaceErr(intfErr)
 	case err != nil:
 		cli.Failure("", err) // TODO: categorize errors (struct)
 	default:
 		fmt.Fprintln(os.Stderr, ansi.BoldGreen(string(icons.Check)),
-			ansi.Bold("Build"), ansi.BoldBrightGreen("succeeded")+ansi.Bold("!"),
+			ansi.Bold("Build"), ansi.BoldBrightGreen("succeeded"),
+			"in", ansi.Cyan(cli.FormatDuration(res.Elapsed))+"!",
 		)
 	}
 }
@@ -91,7 +98,9 @@ func printInterfaceErr(err *build.InterfaceError) {
 	)
 }
 
-func printErrors[T errors.CompileError](errs []T, isMaxErrors bool, b *build.Compiler) {
+func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
+	errs := res.Errors
+	// Format error count
 	var count strings.Builder
 	count.WriteString(strconv.Itoa(len(errs)))
 	if isMaxErrors {
@@ -101,10 +110,13 @@ func printErrors[T errors.CompileError](errs []T, isMaxErrors bool, b *build.Com
 	if len(errs) != 1 {
 		count.WriteByte('s')
 	}
+	// Show "build failed" message
 	fmt.Fprintln(os.Stderr, ansi.BoldRed(string(icons.ThinXLarge)),
 		ansi.Bold("Build"), ansi.BoldBrightRed("failed"), ansi.Bold("with"),
-		ansi.BoldBrightRed(count.String())+ansi.BoldDim(":"),
+		ansi.BoldBrightRed(count.String()),
+		"in", ansi.Cyan(cli.FormatDuration(res.Elapsed))+ansi.BoldDim(":"),
 	)
+	// Report the errors
 	for _, err := range errs {
 		b.ErrorPrinter.PrintError(err)
 	}

@@ -8,6 +8,7 @@ import (
 
 type CompileError interface {
 	error
+	GetName() string
 	GetRange() ranges.Range
 	GetCode() ErrorCode
 	GetHints() []Hint

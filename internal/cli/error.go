@@ -8,8 +8,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
-var Colors ansi.Colors
-
 func IsREPL() bool {
 	return os.Getenv("KLAR_REPL") == "1"
 }

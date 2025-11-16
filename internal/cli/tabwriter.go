@@ -47,9 +47,6 @@ type TabWriter struct {
 
 	rem        []byte // Bytes after last terminated cell
 	remExclude int
-
-	padBytes    []byte
-	marginBytes []byte
 }
 
 type cell struct {
@@ -112,23 +109,8 @@ func (tw *TabWriter) ReserveCapacity(lines, cols int) {
 	tw.cellWidths = slices.Grow(tw.cellWidths, cols)
 }
 
-func (tw *TabWriter) fill(n int) []byte {
-	if n > len(tw.padBytes) || (len(tw.padBytes) > 0 && tw.padBytes[0] != tw.PadChar) {
-		tw.padBytes = char.Repeat(tw.PadChar, n)
-	}
-	return tw.padBytes[:n]
-}
-
-func (tw *TabWriter) margin() []byte {
-	if tw.MarginChar == tw.PadChar {
-		return tw.fill(tw.Margin)
-	}
-	if tw.Margin > len(tw.marginBytes) ||
-		(len(tw.marginBytes) > 0 && tw.marginBytes[0] != tw.MarginChar) {
-		tw.marginBytes = char.Repeat(tw.MarginChar, tw.Margin)
-	}
-	return tw.marginBytes[:tw.Margin]
-}
+func (tw *TabWriter) fill(n int) []byte { return char.Repeat(tw.PadChar, n) }
+func (tw *TabWriter) margin() []byte    { return char.Repeat(tw.MarginChar, tw.Margin) }
 
 // Flush writes the calculated cells to tw.Output, returning the number of bytes written,
 // and any error that occured while writing.

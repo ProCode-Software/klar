@@ -388,6 +388,7 @@ type StructField struct {
 
 type EnumDeclaration struct {
 	Identifier Identifier
+	Generics   []Identifier
 	Inherited  []Type
 	Values     []*EnumItem
 	BaseNode

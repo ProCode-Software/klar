@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/module"
 )
 
 type FilesystemError struct {
@@ -68,15 +69,15 @@ func (err *InterfaceError) PrettyError() (main []string, det string) {
 		return []string{"Only 4 submodules are allowed: "},
 			fmt.Sprintf("%s has %d", ansi.Cyan(err.Value), MaxModuleDepth+1)
 	case ErrFileInPackage:
-		return []string{"A file isn't allowed in the package/project root: "},
-			"I found" + ansi.Cyan(err.Value)
+		return []string{"A file isn't allowed in the package or project root: "},
+			"I found " + ansi.Cyan(err.Value)
 	case ErrFileInPkgDir:
 		return []string{"A file isn't allowed in the ", ansi.Cyan("pkg"), " directory, "},
 			"but I found " + ansi.Cyan(err.Value)
 	case ErrNestedKlarFolder:
 		dir, base := filepath.Split(err.Value)
 		dir = strings.TrimSuffix(dir, "/")
-		if base == "pkg" {
+		if base == module.PackageFolder {
 			return []string{"Can't nest the ", ansi.Cyan(base), " directory: "},
 				"I found it nested in " + ansi.Cyan(dir)
 		}
@@ -84,6 +85,9 @@ func (err *InterfaceError) PrettyError() (main []string, det string) {
 			"The ", ansi.Cyan(base),
 			" directory is only allowed in the project root, ",
 		}, "but I found it in " + ansi.Cyan(dir)
+	case ErrNoKlarFiles:
+		return []string{"I didn't find any Klar files to compile in "},
+			ansi.Cyan(err.Value)
 	}
 	return nil, ""
 }

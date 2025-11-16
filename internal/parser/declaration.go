@@ -22,11 +22,8 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	if isIntf {
 		p.Advance()
 	}
-	var (
-		name      = p.ParseIdentOrDiscard()
-		inherited []ast.Type
-	)
-
+	name := p.ParseIdentOrDiscard()
+	var inherited []ast.Type
 	switch p.CurrKind() {
 	case lexer.Equal:
 		if isIntf {
@@ -40,14 +37,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		}
 	case lexer.Colon:
 		// Inherited struct, interface, or enum
-		p.Advance()
-		for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
-			// Alias or generic
-			inherited = append(inherited, p.ParseType(PrimaryTypeBindingPower))
-			if p.CurrKind() != lexer.LeftCurlyBrace {
-				p.Expect(lexer.Comma)
-			}
-		}
+		inherited = p.parseInheritedTypes()
 		fallthrough
 	case lexer.LeftCurlyBrace:
 		// Struct, enum, or interface
@@ -65,9 +55,33 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		}
 		attrs := p.maybeParseAttributes()
 		if p.CurrKind() == lexer.Dot || p.Peek().Kind == lexer.LeftParenthesis {
-			return p.ParseEnum(name, inherited, attrs)
+			return p.ParseEnum(name, nil, inherited, attrs)
 		}
 		return p.ParseStruct(name, inherited, attrs)
+	case lexer.LessThan:
+		var (
+			lt       = p.Advance().Position
+			generics []ast.Identifier
+			res      ast.TypeDeclaration
+		)
+		parseSeries(p, &generics, p.ParseIdentifier, lexer.GreaterThan, lexer.Comma, false)
+		gt := p.lastTokEnd()
+		if p.CurrKind() == lexer.Colon {
+			inherited = p.parseInheritedTypes()
+		}
+		p.Expect(lexer.LeftCurlyBrace)
+		if isIntf {
+			res = p.ParseInterface(name, inherited)
+		} else {
+			attrs := p.maybeParseAttributes()
+			if p.CurrKind() == lexer.Dot || p.Peek().Kind == lexer.LeftParenthesis {
+				return p.ParseEnum(name, generics, inherited, attrs)
+			}
+			res = p.ParseStruct(name, inherited, attrs)
+		}
+		// Enum already returned
+		p.Error(errors.Range(errors.ErrInvalidGenericType, ranges.Range{lt, gt}))
+		return res
 	case lexer.EndOfStatement:
 		// Type tag if interface
 		if isIntf {
@@ -91,8 +105,21 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	}
 }
 
+func (p *Parser) parseInheritedTypes() (inherited []ast.Type) {
+	p.Advance()
+	for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
+		// Valid: Alias or generic (others still parsed)
+		inherited = append(inherited, p.ParseType(DefaultTypeBindingPower))
+		if p.CurrKind() != lexer.LeftCurlyBrace {
+			p.Expect(lexer.Comma)
+		}
+	}
+	return
+}
+
 func (p *Parser) ParseEnum(
-	typeName ast.Identifier, inherited []ast.Type, attrs []*ast.Attribute,
+	typeName ast.Identifier, generics []ast.Identifier,
+	inherited []ast.Type, attrs []*ast.Attribute,
 ) *ast.EnumDeclaration {
 	var (
 		items   []*ast.EnumItem
@@ -119,11 +146,20 @@ func (p *Parser) ParseEnum(
 		}
 		if p.isEqual() {
 			p.Advance()
-			item.Value = p.ParseExpression(ExpressionBindingPower)
+			item.Value = p.ParseExpression(MemberBindingPower)
+			switch c := p.Curr(); c.Kind {
+			case lexer.Dot:
+				if c.Line != item.Value.GetRange().End.Line {
+					break
+				}
+				fallthrough
+			default:
+				item.Value, _ = p.handleLED(c.Kind, item.Value, ExpressionBindingPower)
+			case lexer.RightCurlyBrace, lexer.EndOfStatement, lexer.At, lexer.Comma:
+			}
 		}
 		items = append(items, markStartEndPos(p, item, id.Position))
 		attrs = nil
-
 		switch c := p.Curr(); c.Kind {
 		case lexer.RightCurlyBrace:
 		case lexer.EndOfStatement, lexer.Comma:
@@ -141,8 +177,9 @@ func (p *Parser) ParseEnum(
 	p.Expect(lexer.RightCurlyBrace)
 	return &ast.EnumDeclaration{
 		Identifier: typeName,
-		Values:     items,
+		Generics:   generics,
 		Inherited:  inherited,
+		Values:     items,
 	}
 }
 

@@ -16,9 +16,12 @@ import (
 var (
 	commands = klarcmd.KlarCommands
 	aliases  = klarcmd.KlarCommandAliases
+	profiler prof
 )
 
 func main() {
+	// startProf()
+	// defer stopProf()
 	args := os.Args
 	if len(args) < 2 {
 		tryPipe()
@@ -68,7 +71,7 @@ func main() {
 		cmd := command.Lookup(cmdName, commands, aliases)
 		if cmd != nil {
 			command.Run(cmd)
-			os.Exit(0)
+			break
 		}
 		// Equivalent to `klar run [file]`
 		os.Args = append([]string{"klar", "run"}, os.Args[1:]...)
@@ -86,6 +89,3 @@ func tryPipe() {
 	os.Exit(0)
 }
 
-func runString(s string) {
-	run.RunInput(strings.NewReader(s), "string")
-}

@@ -15,6 +15,7 @@ import (
 )
 
 const maxErrors = 10
+const stdinName = "standardInput"
 
 type parseContext struct {
 	ctx           context.Context
@@ -32,9 +33,11 @@ type parseContext struct {
 // Step 3: Parse each file into an untyped AST
 // =====
 
-func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalErr error) {
+func (c *Compiler) ParseModules(numFiles int) (
+	syntaxErrors []*errors.ParseError, criticalErr error,
+) {
 	// Initialize parse context
-	c.Logf("Begin parsing modules (%d modules)", len(c.Modules))
+	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.Modules), numFiles)
 	pctx := &parseContext{
 		syntaxErrCh:   make(chan []*errors.ParseError),
 		criticalErrCh: make(chan error, 1),
@@ -54,7 +57,7 @@ func (c *Compiler) ParseModules() (syntaxErrors []*errors.ParseError, criticalEr
 	pctx.cwd = cwd
 
 	// Init files
-	c.FlatFiles = make(map[string]*File, len(c.Modules))
+	c.FlatFiles = make(map[string]*File, numFiles)
 
 	// Start error collector
 	go pctx.collectErrs(&syntaxErrors, &criticalErr)
@@ -142,7 +145,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	var err error
 	if filePath == "" {
 		fr = os.Stdin
-		filePath = "standardInput"
+		filePath = stdinName
 		c.Log("Reading file from stdin")
 	} else {
 		fr, err = os.Open(filePath)
@@ -174,11 +177,16 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		return
 	}
 
-	relPath, err := filepath.Rel(pctx.cwd, filePath)
-	if err != nil {
-		c.LogErrorf("Unable to get short path of %s: %v", filePath, err)
-		sendCriticalError(err)
-		return
+	var relPath string
+	if filePath != stdinName {
+		relPath, err = filepath.Rel(pctx.cwd, filePath)
+		if err != nil {
+			c.LogErrorf("Unable to get short path of %s: %v", filePath, err)
+			sendCriticalError(err)
+			return
+		}
+	} else {
+		relPath = stdinName
 	}
 	pctx.printerMu.Lock()
 	c.ErrorPrinter.LoadTokens(filePath, relPath, toks)

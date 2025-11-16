@@ -98,6 +98,7 @@ const (
 	ErrIntfDefaultValue        // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
+	ErrInvalidGenericType      // Only enums can be generic (for now)
 
 	// When =====
 
@@ -316,6 +317,8 @@ func (e *ParseError) error() string {
 		return "Parentheses are required around function parameter types"
 	case ErrInvalidObjectPipeStep:
 		return "A object pipeline step must be an assignment or method call"
+	case ErrInvalidGenericType:
+		return "Only enums can have generic parameters"
 	case ErrProvenUnreachable:
 		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
 	case ErrReservedKeyword:

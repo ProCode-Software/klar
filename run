@@ -9,7 +9,11 @@ LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/version.KlarVersion=$VERS
 go generate ./{cmd,internal,pkg}/...
 
 # Clear console
-clear
+if [[ "$1" = "-keep" ]]; then
+    shift
+else
+    clear
+fi
 
 # Build binary if '-build' passed
 case "$1" in

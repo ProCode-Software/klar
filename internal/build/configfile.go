@@ -47,8 +47,10 @@ type FileConfiguration struct {
 	Paths map[string]string
 	// Options when building JavaScript files
 	JS *FileJSOptions
+	// Options for the type checker
+	Checker *FileCheckerOptions
 	// Whether all files in output folders should be deleted before build. Disabled
-	// if an output folder is the project root. Compiled files overwrite existing
+	// if the output folder is the project root. Compiled files overwrite existing
 	// files regardless.
 	CleanOutputDir bool
 	// Options for building assets
@@ -65,7 +67,7 @@ type FileAssetOptions struct {
 	// Directory that assets should be copied to. Relative to the build output directory.
 	AssetDir string
 	// Whether .klarml files should be transformed to .json files.
-	KlarmlToJSON string
+	KlarmlToJSON bool
 }
 
 type FileJSOptions struct {
@@ -123,3 +125,29 @@ type FileJSServerOptions struct {
 	Port     int
 	Host     string
 }
+
+type FileCheckerOptions struct {
+	// Whether errors should be reported for 'when' statements that don't
+	// cover all options. If set to 'enumsOnly', exhaustiveness is only
+	// validated for 'when' statements that match enums.
+	ValidateExhaustiveness ExhaustivenessOption
+	// Whether all function declarations (not lambdas) should be required
+	// to have explicit return types. TODO: This is always enabled for now.
+	ExplicitReturnTypes bool
+	// Whether the `Int` and `Float` should be treated as the same type.
+	// Useful when compiling for JavaScript, where all numbers are floats.
+	CoerceNumbers bool
+	// Whether JavaScript externals should be checked that the export exists.
+	// This is accomplished by importing the external JS file using the
+	// project's default runtime and indexing the export name.
+	ValidateExternals bool
+}
+
+// TODO: move to different package
+type ExhaustivenessOption int
+
+const (
+	NoExhaustiveness ExhaustivenessOption = iota
+	AllExhaustiveness
+	EnumExhaustiveness
+)
