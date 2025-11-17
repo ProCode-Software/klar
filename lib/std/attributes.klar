@@ -38,7 +38,8 @@ public func deprecated(
 // Mark this as externally implemented in another language. You must make
 // sure the implementation exists and the types labelled here are correct.
 public func external(
-    // Path to the JavaScript file implementing this.
+    // Path to the JavaScript file implementing this. `{target}` may be
+    // interpolated into the string to insert the target into the path.
     js _: String?,
     // Path to the JavaScript file implementing this on Bun.
     browser _: String?,

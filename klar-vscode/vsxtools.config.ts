@@ -9,5 +9,5 @@ export default {
         }
     },
     watch: true,
-    jsonIndent: 0,
+    jsonIndent: 2,
 } satisfies ExtensionConfig

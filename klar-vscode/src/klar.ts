@@ -1,4 +1,5 @@
-import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
+import type { Pattern, Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
+// @ts-ignore
 import { include, match, merge } from 'vsxtools/tmLanguage'
 
 RegExp.prototype.toString = function () {
@@ -18,6 +19,7 @@ const Punctuation = {
     generic: 'punctuation.definition.generic.klar',
     equalSign: 'keyword.operator.assignment.klar',
     brace: {
+        mapBegin: 'punctuation.definition.map.begin.klar',
         begin: 'punctuation.definition.block.begin.klar',
         end: 'punctuation.definition.block.end.klar',
     },
@@ -32,7 +34,9 @@ const Identifier = /[\p{L}_][\p{L}\w_]*/u,
     Type = /([-\s\p{L}\w._,?|<>\[\]\-()]+)/u
 
 const IncludeType = { name: 'entity.name.type.klar', patterns: [include('types')] },
-    BASE = [{ include: '$base' }]
+    BASE = [{ include: '$base' }],
+    EXPR = [{ include: 'expressions' }],
+    COMMENTS = [{ include: 'comments' }]
 
 const repository: Repository = {
     comments: {
@@ -200,11 +204,11 @@ const repository: Repository = {
         patterns: [include('labels'), ...BASE],
     },
     builtinFunctions: match(
-        /\b(print|panic|assert|TODO)\b/,
+        /\b(print|crashout|assert|clone|TODO)\b/,
         'support.function.builtin.klar'
     ),
     castFunctions: {
-        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map)\b\??)|\[\g<1>\])(\()/,
+        begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map|RegEx|Any)\b\??)|\[\g<1>\])(\()/,
         end: /\)/,
         beginCaptures: [
             {
@@ -254,13 +258,14 @@ const repository: Repository = {
                     { name: Punctuation.equalSign },
                     { patterns: BASE },
                 ],
-                patterns: BASE,
+                patterns: [BASE],
             },
             Punctuation.comma,
         ],
     },
     types: {
         patterns: [
+            match(/\bfunc\b/, 'storage.type.function.klar'),
             {
                 match: merge(Identifier, '(?=\\.)'),
                 name: 'entity.name.namespace.klar',
@@ -486,18 +491,57 @@ const repository: Repository = {
         patterns: [include('labels'), include('types')],
     },
     variableAssignments: {
-        begin: merge(IdCapture, String.raw`(?:\s*(:)\s*${Type})?`, /\s*(:=)/),
+        begin: merge(
+            `(?:(?:${IdCapture}|_|(\\[.*\\]|\\(.*\\)|#\\{.*\\}))(,)?)+`,
+            String.raw`(?:\s*(:)\s*${Type})?`,
+            /\s*(:=)/
+        ),
         beginCaptures: [
             {
                 name: 'variable.other.assignment.klar',
                 patterns: [include('variables')],
             },
+            {
+                patterns: [include('destructuring')],
+            },
+            Punctuation.comma,
             Punctuation.colonType,
             IncludeType,
             { name: 'keyword.operator.assignment.klar' },
         ],
         patterns: BASE,
         end: /$/,
+    },
+    destructuring: {
+        patterns: [
+            ...[
+                [/\[/, /\]/, Punctuation.brace.begin, Punctuation.brace.end],
+                [
+                    /\(/,
+                    /\)/,
+                    Punctuation.parenthesis.begin.name,
+                    Punctuation.parenthesis.end.name,
+                ],
+                [/\#\{/, /\}/, Punctuation.brace.mapBegin, Punctuation.brace.end],
+            ].map(
+                ([begin, end, beginName, endName]): Pattern => ({
+                    begin,
+                    end: merge(end, /\s*(?=[-:+]=|:)/),
+                    beginCaptures: [{ name: beginName as string }],
+                    endCaptures: [{ name: endName as string }],
+                    patterns: [
+                        {
+                            begin: /=/,
+                            end: /(?=,|\}|\)|\])/,
+                            beginCaptures: [{ name: 'keyword.operator.assignment.klar' }],
+                            patterns: [include('expressions')],
+                        },
+                        match(/:/, Punctuation.colonType.name),
+                        include('$self'),
+                    ],
+                })
+            ),
+        ],
     },
     whenExpression: {
         begin: /(?<=\bwhen\b)(.+)({)/,
@@ -542,6 +586,21 @@ const repository: Repository = {
         ],
         name: 'string.regexp.klar',
         patterns: [{ include: 'source.js.regexp' }],
+    },
+    expressions: {
+        patterns: [
+            'comments',
+            'regex',
+            'strings',
+            'booleans',
+            'operators',
+            'numbers',
+            'castFunctions',
+            'whenExpression',
+            'functions',
+            'variables',
+            'punctuation',
+        ].map(include),
     },
 } satisfies Repository
 
