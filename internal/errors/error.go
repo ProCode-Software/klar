@@ -41,6 +41,7 @@ const (
 	WarningPrefix
 	TypeErrorPrefix
 	ReferenceErrorPrefix
+	ModuleErrorPrefix
 	ImplementationErrorPrefix
 )
 

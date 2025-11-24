@@ -96,4 +96,3 @@ func Lexer.buildToken(fn: func(ct: String) -> Token) -> Token {
     self.builder.clear()
     return fn(content)
 }
-

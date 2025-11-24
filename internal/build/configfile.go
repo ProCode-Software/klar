@@ -128,8 +128,9 @@ type FileJSServerOptions struct {
 
 type FileCheckerOptions struct {
 	// Whether errors should be reported for 'when' statements that don't
-	// cover all options. If set to 'enumsOnly', exhaustiveness is only
-	// validated for 'when' statements that match enums.
+	// cover all options for a type. If set to 'enumsOnly', exhaustiveness
+	// is only validated for 'when' statements that match enums.
+	// Exhaustiveness is always required in 'when' expressions.
 	ValidateExhaustiveness ExhaustivenessOption
 	// Whether all function declarations (not lambdas) should be required
 	// to have explicit return types. TODO: This is always enabled for now.
@@ -141,8 +142,14 @@ type FileCheckerOptions struct {
 	// This is accomplished by importing the external JS file using the
 	// project's default runtime and indexing the export name.
 	ValidateExternals bool
-	// Require checking that type casts won't fail using. Not required for conversions that are guaranteed to succeed.
+	// Require checking that type casts won't fail using. Not required for
+	// conversions that are guaranteed to succeed, such as `String(Int)`.
 	CheckTypeCasts bool
+	// Whether assertions (using the `!` operator after an expression to crash
+	// if the value is `nil` or an error) should be allowed. Avoiding assertions
+	// prevents obscure crashes in programs, requiring programs to
+	// explicitly check values and crashout.
+	AllowAssertions CheckedAssertionOption
 }
 
 // TODO: move to different package
@@ -159,8 +166,11 @@ type CheckedAssertionOption int
 const (
 	// Allow all assertions in code.
 	AllowAssertions CheckedAssertionOption = iota
-	// Prevent programs that use the assertion syntax from being compiled. Programs must crashout explicitly. This prevents hidden crashes in production code.
+	// Prevent programs that use the assertion syntax from being compiled.
+	// Programs must crashout explicitly. This prevents hidden crashes
+	// in production code.
 	DisallowAssertions
-	// Require comments on all lines containing assertions stating that you know what you're doing.
+	// Require comments on all lines containing assertions
+	// stating that you know what you're doing.
 	AllowAssertionsWithComments
 )
