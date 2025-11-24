@@ -182,11 +182,6 @@ unqualifiedImport:
 		}
 		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.UnqualifiedImport) {
 			u = &ast.UnqualifiedImport{}
-			if p.CurrKind() == lexer.Asterisk {
-				p.Advance()
-				u.Wildcard = true
-				return
-			}
 			if p.Peek().Kind == lexer.Colon {
 				u.Alias = p.ParseIdentOrDiscard()
 				p.Advance() // :

@@ -116,14 +116,7 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 }
 
 func (p *Parser) ParseBoolean() *ast.BooleanLiteral {
-	switch src := p.Advance().Source; src {
-	case "true":
-		return &ast.BooleanLiteral{Value: true}
-	case "false":
-		return &ast.BooleanLiteral{Value: false}
-	default:
-		panic("invalid boolean literal: '" + src + "'")
-	}
+	return &ast.BooleanLiteral{Value: p.Advance().Attributes["value"].(bool)}
 }
 
 func (p *Parser) ParseNil() *ast.NilLiteral {

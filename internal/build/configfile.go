@@ -141,6 +141,8 @@ type FileCheckerOptions struct {
 	// This is accomplished by importing the external JS file using the
 	// project's default runtime and indexing the export name.
 	ValidateExternals bool
+	// Require checking that type casts won't fail using. Not required for conversions that are guaranteed to succeed.
+	CheckTypeCasts bool
 }
 
 // TODO: move to different package
@@ -150,4 +152,15 @@ const (
 	NoExhaustiveness ExhaustivenessOption = iota
 	AllExhaustiveness
 	EnumExhaustiveness
+)
+
+type CheckedAssertionOption int
+
+const (
+	// Allow all assertions in code.
+	AllowAssertions CheckedAssertionOption = iota
+	// Prevent programs that use the assertion syntax from being compiled. Programs must crashout explicitly. This prevents hidden crashes in production code.
+	DisallowAssertions
+	// Require comments on all lines containing assertions stating that you know what you're doing.
+	AllowAssertionsWithComments
 )

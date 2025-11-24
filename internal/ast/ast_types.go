@@ -347,7 +347,6 @@ type ImportStatement struct {
 
 type UnqualifiedImport struct {
 	BaseNode
-	Wildcard          bool
 	Identifier, Alias Identifier
 }
 
