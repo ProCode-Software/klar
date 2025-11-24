@@ -99,7 +99,7 @@ func BoldBrightYellow(s string) string { return Color(CodeBoldBrightYellow, s) }
 
 var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
 
-func Sprintf(color, format string, a ...any) string {
+func ColorSprintf(color, format string, a ...any) string {
 	if DisableColor {
 		return fmt.Sprintf(format, a...)
 	}
@@ -107,10 +107,10 @@ func Sprintf(color, format string, a ...any) string {
 	return fmt.Sprintf(color+new, a...) + CodeReset
 }
 
-func Println(color, format string, a ...any) {
-	fmt.Println(Sprintf(color, format, a...))
+func ColorPrintln(color, format string, a ...any) {
+	fmt.Println(ColorSprintf(color, format, a...))
 }
 
-func Fprintln(file io.Writer, color, format string, a ...any) {
-	fmt.Fprintln(file, Sprintf(color, format, a...))
+func ColorFprintln(file io.Writer, color, format string, a ...any) {
+	fmt.Fprintln(file, ColorSprintf(color, format, a...))
 }

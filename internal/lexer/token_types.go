@@ -63,6 +63,8 @@ const (
 	AndAnd         // &&
 	OrOr           // ||
 	Not            // !
+	NotCan         // !can
+	NotIn          // !in
 
 	// Types
 	Stroke   // |
@@ -87,8 +89,6 @@ const (
 	Import
 	In
 	Next
-	NotCan // !can
-	NotIn  // !in
 	Opaque
 	Or
 	Public

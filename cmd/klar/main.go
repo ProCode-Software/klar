@@ -48,7 +48,7 @@ func main() {
 		fmt.Printf("Klar %s\n", version.KlarVersion)
 	case "test", "glas", "upgrade", "new", "format", "check",
 		"docs", "lint", "clean", "generate":
-		cli.CustomFailure("Not implemented", ansi.Sprintf(ansi.CodeBold,
+		cli.CustomFailure("Not implemented", ansi.ColorSprintf(ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "help":
@@ -88,4 +88,3 @@ func tryPipe() {
 	run.RunInput(os.Stdin, "standardInput")
 	os.Exit(0)
 }
-

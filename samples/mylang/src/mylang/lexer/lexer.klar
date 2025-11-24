@@ -91,7 +91,7 @@ func Lexer.readComment() -> Token = TODO()
 // Appends `char` to the builder
 func Lexer.append(char: String) = self.builder.append(char)
 
-func Lexer.buildToken(fn: func(ct: String)-> Token) -> Token {
+func Lexer.buildToken(fn: func(ct: String) -> Token) -> Token {
     content := self.builder.join("")
     self.builder.clear()
     return fn(content)

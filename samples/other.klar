@@ -16,7 +16,7 @@ type Person {
 
 type DBRequest {
     amount: Int
-    filter: func(Person) -> Bool
+    filter: func(x: Person) -> Bool
 }
 
 server.handle(path: '/get', with: func(r, w) -> {

@@ -58,13 +58,13 @@ func (s *Session) PrintHelp() {
 	s.Oprintf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)
 }
 
-var ctrlCMessage = ansi.Sprintf(ansi.CodeYellow,
+var ctrlCMessage = ansi.ColorSprintf(ansi.CodeYellow,
 	"To exit, type %s, press %s, or press %s again.",
 	ansi.Cyan("exit"), ansi.Cyan("Ctrl+D"), ansi.Cyan("Ctrl+C"),
 )
 
-var multilineEnabledMsg = ansi.Sprintf(ansi.CodeBrightGreen,
+var multilineEnabledMsg = ansi.ColorSprintf(ansi.CodeBrightGreen,
 	"Multiline mode enabled. Press %s to disable. End a line with %s to send",
 	ansi.Cyan("Ctrl+M"), ansi.Cyan("."),
 )
-var multilineDisabledMsg = ansi.Sprintf(ansi.CodeBrightGreen, "Multiline mode disabled.")
+var multilineDisabledMsg = ansi.ColorSprintf(ansi.CodeBrightGreen, "Multiline mode disabled.")

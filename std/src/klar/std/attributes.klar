@@ -36,12 +36,12 @@ public func deprecated(
 ) {}
 
 // Mark this as externally implemented in another language. You must make
-// sure the implementation exists and the types labelled here are correct.
+// sure the implementation exists and the types labelled here are accurate.
 public func external(
     // Path to the JavaScript file implementing this. `{target}` may be
     // interpolated into the string to insert the target into the path.
     js _: String?,
-    // Path to the JavaScript file implementing this on Bun.
+    // Path to the JavaScript file implementing this in the browser.
     browser _: String?,
     // Path to the JavaScript file implementing this on Node.js.
     node _: String?,
@@ -50,7 +50,8 @@ public func external(
     // Path to the JavaScript file implementing this on Bun.
     bun _: String?,
 
-    klarvm _: String? = TODO("KlarVM is not implemented yet"),
+    // KlarVM is not implemented yet.
+    klarvm _: String?,
 
     // The name of the exported object implementing this. If omitted
     // (or set to 'default'), the default export will be used.

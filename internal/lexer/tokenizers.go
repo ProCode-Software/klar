@@ -17,7 +17,7 @@ func handleReadError(err error) bool {
 	return false
 }
 
-func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
+func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
 	n, ok := opPrefixes[r]
 	singleStr := string(r)
 	if !ok {
@@ -44,6 +44,7 @@ func (l *Lexer) ParseOperator(r rune) (TokenType, string) {
 
 func (l *Lexer) checkIfIdentNext(n int) bool {
 	if next, isEOF := l.PeekN(n + 1); !isEOF {
+		// TODO: make unicode friendly (decodeRune)
 		first := rune(next[n])
 		if IsIdent(first) || unicode.IsDigit(first) {
 			return true
@@ -52,14 +53,14 @@ func (l *Lexer) checkIfIdentNext(n int) bool {
 	return false
 }
 
-func (l *Lexer) ParseShebang(pos Position) *Token {
-	tok := l.ParseLineComment(pos)
+func (l *Lexer) ReadShebang(pos Position) *Token {
+	tok := l.ReadLineComment(pos)
 	tok.Kind = Hashbang
 	tok.Source = "#!" + tok.Source[2:]
 	return tok
 }
 
-func (l *Lexer) ParseLineComment(pos Position) *Token {
+func (l *Lexer) ReadLineComment(pos Position) *Token {
 	var leng uint32
 	cmt := l.TokenizeFunc(func(r rune, b *Builder) bool {
 		// Beginning // is already parsed
@@ -73,7 +74,7 @@ func (l *Lexer) ParseLineComment(pos Position) *Token {
 	return NewToken(pos, LineComment, "//"+cmt).withAttrs(attrs{"length": leng})
 }
 
-func (l *Lexer) ParseBlockComment(pos Position) *Token {
+func (l *Lexer) ReadBlockComment(pos Position) *Token {
 	var (
 		endPos   Position
 		cmtLevel = 1
@@ -123,7 +124,7 @@ const (
 	ErrStrUnterminated
 )
 
-func (l *Lexer) ParseNumber(pos Position) *Token {
+func (l *Lexer) ReadNumber(pos Position) *Token {
 	var (
 		format                              IntegerFormat
 		errorType, errPos                   int
@@ -261,7 +262,7 @@ type NumberAttrs struct {
 	HasExponent bool
 }
 
-func (l *Lexer) ParseIdentifier() (TokenType, string, uint32) {
+func (l *Lexer) ReadIdentifier(start Position) *Token {
 	var len uint32
 	id := l.BackupTokenizeFunc(func(r rune, b *Builder) bool {
 		// Use unicode.IsDigit to allow digit in any language
@@ -273,9 +274,13 @@ func (l *Lexer) ParseIdentifier() (TokenType, string, uint32) {
 		return false
 	})
 	if keyword, is := KeywordMap[id]; is {
-		return keyword, id, len
+		tok := NewToken(start, keyword, id)
+		if keyword == Boolean {
+			tok.setAttr("value", id == "true")
+		}
+		return tok
 	}
-	return Identifier, id, len
+	return NewToken(start, Identifier, id).withAttrs(attrs{"length": len})
 }
 
 type RegexAttrs struct {
@@ -286,7 +291,7 @@ type RegexAttrs struct {
 	SlashCount   int
 }
 
-func (l *Lexer) ParseRegex(startPos Position, slashN int) *Token {
+func (l *Lexer) ReadRegex(startPos Position, slashN int) *Token {
 	var (
 		unterm                bool
 		slashCt               int

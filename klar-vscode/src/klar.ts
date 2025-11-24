@@ -2,13 +2,11 @@ import type { Pattern, Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
 // @ts-ignore
 import { include, match, merge } from 'vsxtools/tmLanguage'
 
+// TODO: lambdas in both expressions and types
+
 RegExp.prototype.toString = function () {
     return this.source
 }
-
-// keywords:
-// import  func  type  return  next  for  when
-// public  in  and  or
 
 const Punctuation = {
     period: match(/\./, 'punctuation.separator.period.klar'),
@@ -31,7 +29,7 @@ const Punctuation = {
 
 const Identifier = /[\p{L}_][\p{L}\w_]*/u,
     IdCapture = /([\p{L}_][\p{L}\w_]*)/u,
-    Type = /([-\s\p{L}\w._,?|<>\[\]\-()]+)/u
+    Type = /([-\s\p{L}\w._,?|<>\[\]\-():]+)/u
 
 const IncludeType = { name: 'entity.name.type.klar', patterns: [include('types')] },
     BASE = [{ include: '$base' }],
@@ -136,13 +134,15 @@ const repository: Repository = {
         captures: [{ name: 'punctuation.definition.string-interpolation.klar' }],
     },
     keywords: {
+        // List of keywords: https://github.com/ProCode-Software/klar/blob/main/internal/lexer/token_types.go#L81
+        // Some that are part of declarations aren't present here
         patterns: [
-            match(/\b(public)\b/, 'storage.modifier.klar'),
+            match(/\b(public|opaque)\b/, 'storage.modifier.klar'),
             match(/\b(type)\b/, 'storage.type.type.klar'),
             match(/\b(func)\b/, 'storage.type.function.klar'),
-            match(/\b(for|next)\b/, 'keyword.control.loop.klar'),
-            match(/\b(return)\b/, 'keyword.control.flow.klar'),
-            match(/\b(when|import)\b/, 'keyword.control.$1.klar'),
+            match(/\b(for|while|next|stop)\b/, 'keyword.control.loop.klar'),
+            match(/\b(return|go|await|try)\b/, 'keyword.control.flow.klar'),
+            match(/\b(when|import|if)\b/, 'keyword.control.$1.klar'),
         ],
     },
     booleans: {
@@ -177,6 +177,7 @@ const repository: Repository = {
             match(/\|\./, 'keyword.operator.pipe.object.klar'),
             match(/->/, 'keyword.operator.arrow.klar'),
             match(/\.{3}/, 'keyword.operator.spread.klar'),
+            match(/\.\.</, 'keyword.operator.range.klar'),
             match(/&&|\|{2}|!/, 'keyword.operator.logical.klar'),
             match(/[><=!]=|[<>]/, 'keyword.operator.comparison.klar'),
             match(/=~|!~/, 'keyword.operator.comparison.regex.klar'),
@@ -203,10 +204,15 @@ const repository: Repository = {
         endCaptures: [Punctuation.parenthesis.end],
         patterns: [include('labels'), ...BASE],
     },
-    builtinFunctions: match(
-        /\b(print|crashout|assert|clone|TODO)\b/,
-        'support.function.builtin.klar'
-    ),
+    builtinFunctions: {
+        patterns: [
+            match(
+                /\b(print|crashout|assert|clone|TODO)\b/,
+                'support.function.builtin.klar'
+            ),
+            match(/\b\p{Lu}[_\p{L}\w]*\b/u, 'entity.name.type.init.klar'),
+        ],
+    },
     castFunctions: {
         begin: /(?:(\b(?:String|Int|Float|Bool|Error|List|Map|RegEx|Any)\b\??)|\[\g<1>\])(\()/,
         end: /\)/,
@@ -246,6 +252,7 @@ const repository: Repository = {
             IncludeType,
         ],
         patterns: [
+            include('comments'),
             {
                 match: /(?<=^|[(,])\s*(\bident\b\s*)?(\bident)\s*(?:(:)\s*type(?:\s*(=)(.*?))?)?\s*(?=\)|,)/.source
                     .replaceAll('ident', Identifier.source)
@@ -258,7 +265,7 @@ const repository: Repository = {
                     { name: Punctuation.equalSign },
                     { patterns: BASE },
                 ],
-                patterns: [BASE],
+                patterns: BASE,
             },
             Punctuation.comma,
         ],
@@ -274,6 +281,14 @@ const repository: Repository = {
                 /\b(String|Int|Float|Bool|Result|List|Map|Any|Nothing|Error)(?!\.)\b/,
                 'support.type.builtin.klar support.type.primitive.klar'
             ),
+            {
+                match: `(?:\\s*${IdCapture}(,)?\\s*)+\\s*(:)`,
+                captures: [
+                    { name: 'variable.parameter.klar' },
+                    { name: Punctuation.comma.name },
+                    Punctuation.colonType,
+                ],
+            },
             match(/[+|?]/, 'keyword.operator.type.klar'),
             match(/\.{3}/, 'keyword.operator.spread.klar'),
             match(/->/, 'keyword.operator.arrow.klar'),
@@ -400,12 +415,14 @@ const repository: Repository = {
             { name: Punctuation.brace.begin },
         ],
     },
-    structs: {
+    typeDeclarations: {
         name: 'meta.type.klar',
         begin: merge(
             /(?<=\btype\b)\s*(#)?/,
             IdCapture,
-            String.raw`\s*(<[\p{L}\w_,\s]+>)?\s*(?:(:)\s*${Type})?`,
+            /\s*(<[\p{L}\w_,\s]+>)?\s*/u,
+            `(?:(:)\\s*${Type})?`,
+            `(?:\\s*(->)\\s*${Type})?`,
             /\s*({)/
         ),
         end: /}/,
@@ -419,6 +436,11 @@ const repository: Repository = {
             Punctuation.colonType,
             {
                 name: 'entity.name.type.struct entity.other.inherited-type.klar',
+                patterns: [include('types')],
+            },
+            { name: 'keyword.operator.arrow.klar' },
+            {
+                name: 'entity.name.type.klar entity.other.value-type.klar',
                 patterns: [include('types')],
             },
             { name: Punctuation.brace.begin },
@@ -437,6 +459,7 @@ const repository: Repository = {
                     { patterns: BASE },
                 ],
             },
+            include('comments'),
             include('interfaces'),
             include('enums'),
             match(/,/, 'invalid.comma.klar'),
@@ -446,7 +469,7 @@ const repository: Repository = {
         patterns: [
             {
                 begin: merge(/(\.)\s*/, IdCapture, /\s*(\()/),
-                end: /(\))(?=,|})/,
+                end: /(\))/,
                 beginCaptures: [
                     { name: 'punctuation.definition.enum.klar' },
                     { name: 'variable.other.enummember.klar' },
@@ -466,6 +489,12 @@ const repository: Repository = {
                 ],
             },
             Punctuation.comma,
+            {
+                begin: /=/,
+                end: /$|(?=[,}])/,
+                beginCaptures: [{ name: 'keyword.operator.assignment.klar' }],
+                patterns: BASE,
+            }
         ],
     },
     typeLabels: {
@@ -611,11 +640,12 @@ const klar: TextMateLanguage = {
         include('regex'),
         include('strings'),
         include('booleans'),
+        include('lambdas'),
         include('keywords'),
         include('operators'),
         include('numbers'),
 
-        include('structs'),
+        include('typeDeclarations'),
         include('interfaceTag'),
         include('castFunctions'),
         include('functionDeclarations'),

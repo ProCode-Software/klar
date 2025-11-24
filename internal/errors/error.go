@@ -46,17 +46,6 @@ const (
 
 const ErrTooManyErrors ErrorCode = -1 // Too many errors
 
-type BaseError struct {
-	ErrorCode  ErrorCode
-	File       string
-	Range      ranges.Range
-	Message    string      // After underline
-	Highlights []Highlight // Additional underline; same file
-	Details    []Detail    // May be in different files
-	Hints      []string
-	Params     ErrorParams
-}
-
 func hintf(hints []Hint, f string, a []any) []Hint {
 	if len(a) == 0 {
 		hints = append(hints, Hint{Message: f})

@@ -14,8 +14,10 @@ import (
 	"github.com/ProCode-Software/klar/pkg/parser"
 )
 
-const maxErrors = 10
-const stdinName = "standardInput"
+const (
+	maxErrors = 10
+	stdinName = "standardInput"
+)
 
 type parseContext struct {
 	ctx           context.Context

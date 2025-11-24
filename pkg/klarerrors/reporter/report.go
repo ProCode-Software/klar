@@ -9,7 +9,7 @@ import (
 
 func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	r.buf = &bytes.Buffer{}
-	
+
 	return r.buf.WriteTo(r.Output)
 }
 
@@ -23,9 +23,7 @@ func (r *Reporter) init() {
 	if r.CharacterSet == nil {
 		r.CharacterSet = DefaultCharacterSet()
 	}
-	
 }
 
 func (r *Reporter) printHeader(e errors.CompileError) {
-	
 }

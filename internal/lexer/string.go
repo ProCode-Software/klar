@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"unicode"
 )
 
@@ -56,10 +55,10 @@ func (TextFragment) ASTFrag() {}
 func (StringEscape) frag()    {}
 
 func isHex(r rune) bool {
-	return unicode.Is(unicode.ASCII_Hex_Digit, r)
+	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
 }
 
-func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
+func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 	var (
 		err    EscapeError
 		errPos Position
@@ -70,7 +69,6 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	}
 	esc := l.TokenizeEOFFunc(func(r rune, b *Builder) bool {
 		l := b.Len()
-		fmt.Println(string(r))
 		switch {
 		case l > 0 && last == '}':
 			return false
@@ -105,7 +103,7 @@ func (l *Lexer) parseUnicodeEsc(delim rune) StringEscape {
 	}
 }
 
-func (l *Lexer) parseHexEsc(delim rune) StringEscape {
+func (l *Lexer) readHexEsc(delim rune) StringEscape {
 	var (
 		err     EscapeError
 		errPos  Position
@@ -142,7 +140,7 @@ func (l *Lexer) parseHexEsc(delim rune) StringEscape {
 }
 
 // '{' already parsed
-func (l *Lexer) parseStrInterp() StringEscape {
+func (l *Lexer) readStrInterp() StringEscape {
 	var (
 		err     EscapeError
 		errPos  Position
@@ -192,7 +190,7 @@ There are three types of strings in Klar:
 	Single-quote '': Raw, no escapes
 	Backtick ``: Interpolation, escapes, multiline
 */
-func (l *Lexer) ParseString(pos Position, delim rune, quoteN int) *Token {
+func (l *Lexer) ReadString(pos Position, delim rune, quoteN int) *Token {
 	var (
 		currQuoteN, fragStart       int
 		leng                        uint32
@@ -239,9 +237,9 @@ loop:
 			case '\\', '{', 'b', 'e', 'f', 'n', 'r', 't', delim:
 				newEscape(charEscape(r, 0))
 			case 'x':
-				newEscape(l.parseHexEsc(delim))
+				newEscape(l.readHexEsc(delim))
 			case 'u':
-				newEscape(l.parseUnicodeEsc(delim))
+				newEscape(l.readUnicodeEsc(delim))
 			default:
 				newEscape(charEscape(r, ErrEscapeUnknown))
 			}
@@ -268,7 +266,7 @@ loop:
 		case '{':
 			if delim != '\'' { // " or `
 				escStart = l.prevCol()
-				newEscape(l.parseStrInterp())
+				newEscape(l.readStrInterp())
 				continue loop
 			}
 		case '\n':

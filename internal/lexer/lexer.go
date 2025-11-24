@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
 )
@@ -49,20 +50,20 @@ func (l *Lexer) Tokenize() *Token {
 			l.ResetPosition()
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
-			return l.ParseString(pos, r, 0)
+			return l.ReadString(pos, r, 0)
 		case '.':
 			next, isEOF := l.BackupPeek()
 			if isEOF {
 				return NewToken(pos, Dot, ".")
 			}
 			if IsDigit(rune(next)) {
-				return l.ParseNumber(pos)
+				return l.ReadNumber(pos)
 			}
 			fallthrough
 		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
 			var (
-				typ, val = l.ParseOperator(r)
+				typ, val = l.ReadOperator(r)
 				tok      *Token
 			)
 			switch typ {
@@ -70,11 +71,11 @@ func (l *Lexer) Tokenize() *Token {
 				return NewToken(pos, typ, val)
 			// Just change position
 			case LineComment:
-				tok = l.ParseLineComment(pos)
+				tok = l.ReadLineComment(pos)
 			case BlockComment:
-				tok = l.ParseBlockComment(pos)
+				tok = l.ReadBlockComment(pos)
 			case Hashbang:
-				tok = l.ParseShebang(pos)
+				tok = l.ReadShebang(pos)
 			}
 			if l.Flags&IncludeComments == 0 {
 				continue
@@ -89,10 +90,10 @@ func (l *Lexer) Tokenize() *Token {
 				switch next {
 				case '"', '`', '\'':
 					next := rune(next)
-					return l.ParseString(pos, next, l.ReadAll(next))
+					return l.ReadString(pos, next, l.ReadAll(next))
 				case '/':
 					next := rune(next)
-					return l.ParseRegex(pos, l.ReadAll(next))
+					return l.ReadRegex(pos, l.ReadAll(next))
 				}
 			}
 			return NewToken(pos, At, "@")
@@ -123,13 +124,13 @@ func (l *Lexer) Tokenize() *Token {
 		case unicode.IsSpace(r):
 			continue
 		case IsDigit(r):
-			return l.ParseNumber(pos)
+			return l.ReadNumber(pos)
 		case unicode.IsLetter(r), r == '_':
-			tt, val, leng := l.ParseIdentifier()
-			return NewToken(pos, tt, val).withAttrs(attrs{"length": leng})
+			return l.ReadIdentifier(pos)
 		default:
-			return NewToken(pos, Illegal, string(r)).
-				withAttrs(attrs{"length": uint32(1)})
+			return NewToken(pos, Illegal, string(r)).withAttrs(attrs{
+				"length": uint32(utf8.RuneLen(r)),
+			})
 		}
 	}
 }

@@ -60,7 +60,7 @@ func NewSession() (*Session, error) {
 
 func Run(*command.Runner) {
 	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+version.KlarVersion))
-	ansi.Println(ansi.CodeGray,
+	ansi.ColorPrintln(ansi.CodeGray,
 		"Type %s for more information. Press %s or type %s to exit.",
 		ansi.Cyan("help"), ansi.Cyan("Ctrl+D"), ansi.Cyan("exit"),
 	)
@@ -265,11 +265,11 @@ func linePrompt(n uint32) string {
 }
 
 func (s *Session) Printf(color, format string, a ...any) {
-	ansi.Fprintln(s.Stderr(), color, format, a...)
+	ansi.ColorFprintln(s.Stderr(), color, format, a...)
 }
 
 func (s *Session) Oprintf(color, format string, a ...any) {
-	ansi.Fprintln(s.Stdout(), color, format, a...)
+	ansi.ColorFprintln(s.Stdout(), color, format, a...)
 }
 
 func (s *Session) Finish() {
