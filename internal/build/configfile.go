@@ -150,6 +150,8 @@ type FileCheckerOptions struct {
 	// prevents obscure crashes in programs, requiring programs to
 	// explicitly check values and crashout.
 	AllowAssertions CheckedAssertionOption
+	// Whether all `Result`s must be used or checked. If enabled, an error will be reported if a `Result` value is unused or discarded, such as via `_ = fn()` or calling `fn()` as a function.
+	CheckResults bool
 }
 
 // TODO: move to different package
