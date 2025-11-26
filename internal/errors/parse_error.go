@@ -93,7 +93,7 @@ const (
 
 	ErrExpectedTypeAssignment  // Need = or { after type (maybe got EOS)
 	ErrRequiredStructFieldType // Struct fields need an explicit type
-	ErrEmptyGeneric            // At least one parameter requried in generic
+	ErrEmptyGeneric            // At least one parameter required in generic
 	ErrParenFuncTypeParams     // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrIntfDefaultValue        // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple

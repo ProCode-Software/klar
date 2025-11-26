@@ -76,7 +76,7 @@ func TestUnusedErrorCodes(t *testing.T) {
 			return nil
 		}
 
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) //nolint
 		if err != nil || isGenerated(path, content) {
 			return nil
 		}

@@ -84,7 +84,7 @@ func (d *Decoder) Advance() (byte, error) {
 func (d *Decoder) ExpectOne(exp ...byte) error {
 	got := d.Curr()
 	if !slices.Contains(exp, got) {
-		return &errors.ExpectedToken{Expected: exp[0], Got: got}
+		return &errors.ExpectedTokenError{Expected: exp[0], Got: got}
 	}
 	_, err := d.Advance()
 	return err
@@ -96,7 +96,7 @@ func (d *Decoder) Expect(exp byte, e ...error) error {
 		if len(e) > 0 {
 			return e[0]
 		}
-		return &errors.ExpectedToken{Expected: exp, Got: got}
+		return &errors.ExpectedTokenError{Expected: exp, Got: got}
 	}
 	_, err := d.Advance()
 	return err
@@ -105,7 +105,7 @@ func (d *Decoder) Expect(exp byte, e ...error) error {
 func (d *Decoder) ExpectSpacesThen(exp byte) error {
 	switch err := d.SkipSpace(); err {
 	case EOF:
-		return &errors.UnexpectedEOF{Expected: exp}
+		return &errors.UnexpectedEOFError{Expected: exp}
 	case nil:
 		return d.Expect(exp)
 	default:

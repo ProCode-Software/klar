@@ -174,7 +174,7 @@ unqualifiedImport:
 			// Alias and unqualified import
 			p.Error(errors.Token(errors.ErrAliasInUnqualifiedImport, p.PeekBehind()))
 		case i.Wildcard:
-			// Wildcard and unqualified import
+			// Wildcard and unqualified import //nolint:dupword
 			// import module.*.{...}
 			p.Error(errors.Token(errors.ErrWildcardWithUnqualified, p.PeekBehind()))
 		case p.CurrKind() == lexer.RightCurlyBrace:

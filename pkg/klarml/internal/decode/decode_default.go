@@ -82,7 +82,7 @@ func decodeInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error)
 		asInt := int64(val.Value)
 		if float64(asInt) != val.Value {
 			// Truncated
-			return val, &errors.NumberRange{
+			return val, &errors.NumberRangeError{
 				Value:     val.Value,
 				Truncated: true,
 				Expected:  rv.Type(),
@@ -104,7 +104,7 @@ func decodeUInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error
 	switch val := val.(type) {
 	case *ast.Number:
 		if val.Value < 0 {
-			return val, &errors.NumberRange{
+			return val, &errors.NumberRangeError{
 				Value:     val.Value,
 				Truncated: false,
 				Expected:  rv.Type(),
@@ -138,7 +138,7 @@ func decodeInvalid(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, er
 	if err != nil {
 		return v, err
 	}
-	return v, &errors.UnsupportedType{rv.Type()}
+	return v, &errors.UnsupportedTypeError{rv.Type()}
 }
 
 // TODO

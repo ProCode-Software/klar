@@ -19,11 +19,11 @@ func TestMain(t *testing.T) {
 	testCase(t, "BasicBool", ` true `, true)
 	testCase(t, "BasicArray", `[4, 1, 6, 7]`, [...]uint{4, 1, 6, 7})
 	// testCase(t, "Invalid", `3`, make(chan int))
-	/* testCase(t, "anomynous struct", `options:
+	/* testCase(t, "anonymous struct", `options:
 		- value: 2
 		- obj2:
 			-- value: 5`, struct0{struct0_inner{2, valStruct{5}}})
-	testCase(t, "anomynous struct but in braces", `options: {
+	testCase(t, "anonymous struct but in braces", `options: {
 			value: 5, obj2:
 				- value: 42
 		}`, struct0{struct0_inner{5, valStruct{42}}}) */

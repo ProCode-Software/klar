@@ -18,86 +18,80 @@ func TestColorize(t *testing.T) {
 		},
 		{
 			name:  "simple color",
-			input: "<red>hello</red>",
+			input: "<r>hello</r>",
 			want:  "\x1b[31mhello\x1b[0m",
 		},
 		{
 			name:  "multiple colors space separated",
-			input: "<red bold>hello</>",
+			input: "<r bold>hello</>",
 			want:  "\x1b[31;1mhello\x1b[0m",
 		},
 		{
 			name:  "nested colors",
-			input: "<red>hello <blue>world</blue>!</red>",
+			input: "<r>hello <b>world</b>!</r>",
 			want:  "\x1b[31mhello \x1b[34mworld\x1b[0m\x1b[31m!\x1b[0m",
 		},
 		{
 			name:  "escaping open",
-			input: "\\<red>hello",
-			want:  "<red>hello",
+			input: "\\<r>hello",
+			want:  "<r>hello",
 		},
 		{
 			name:  "escaping close",
-			input: "<red>hello\\</red>",
-			want:  "\x1b[31mhello</red>\x1b[0m",
+			input: "<r>hello\\</r>",
+			want:  "\x1b[31mhello</r>",
 		},
 		{
 			name:  "escaped backslash",
-			input: "\\\\<red>hello",
-			want:  "\\\x1b[31mhello\x1b[0m",
-		},
-		{
-			name:  "invalid tag treated as literal",
-			input: "<unknown>hello",
-			want:  "<unknown>hello",
+			input: "\\\\<r>hello",
+			want:  "\\\x1b[31mhello",
 		},
 		{
 			name:  "generic close",
-			input: "<red>hello</>",
+			input: "<r>hello</>",
 			want:  "\x1b[31mhello\x1b[0m",
 		},
 		{
 			name:  "named close",
-			input: "<red>hello</red>",
+			input: "<r>hello</r>",
 			want:  "\x1b[31mhello\x1b[0m",
 		},
 		{
 			name:  "mismatched close ignored",
-			input: "<red>hello</blue>",
-			want:  "\x1b[31mhello\x1b[0m", // Should pop red? Or ignore?
+			input: "<r>hello</b>",
+			want:  "\x1b[31mhello", // Should pop r? Or ignore?
 			// Plan said: "Closing: </...> (can be named </red> or generic </>)."
 			// "Closing a tag restores the previous state."
 			// If we have strict matching, </blue> should be ignored if top is red.
-			// Let's assume strict matching for named tags.
 		},
 		{
 			name:  "strict closing match",
-			input: "<red bold>hello</red bold>",
+			input: "<r bold>hello</r bold>",
 			want:  "\x1b[31;1mhello\x1b[0m",
 		},
 		{
 			name:  "loose closing match subset",
-			input: "<red bold>hello</red>",
-			want:  "\x1b[31;1mhello\x1b[0m", // Should close because red is in {red, bold}
+			input: "<r bold>hello</r>",
+			want:  "\x1b[31;1mhello\x1b[0m", // Should close because r is in {r, bold}
 		},
 		{
 			name:  "loose closing match order",
-			input: "<red bold>hello</bold red>",
+			input: "<r bold>hello</bold r>",
 			want:  "\x1b[31;1mhello\x1b[0m", // Should close because sets match
 		},
 		{
 			name:  "loose closing mismatch",
-			input: "<red bold>hello</blue>",
-			want:  "\x1b[31;1mhello\x1b[0m", // Should NOT close because blue is not in {red, bold}
+			input: "<r bold>hello</b>",
+			want:  "\x1b[31;1mhello", // Should NOT close because b is not in {r, bold}
 		},
 		{
 			name:  "generic close works for multi",
-			input: "<red bold>hello</>",
+			input: "<r bold>hello</>",
 			want:  "\x1b[31;1mhello\x1b[0m",
 		},
 		{
 			name:  "complex nesting",
-			input: "<red>A<green>B<blue>C</blue>D</green>E</red>",
+			input: "<r>A<g>B<b>C</b>D</g>E</r>",
 			want:  "\x1b[31mA\x1b[32mB\x1b[34mC\x1b[0m\x1b[31m\x1b[32mD\x1b[0m\x1b[31mE\x1b[0m",
 			// Note: When popping blue, we restore red+green.
 			// When popping green, we restore red.
@@ -112,11 +106,42 @@ func TestColorize(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("DisableColor", func(t *testing.T) {
+		old := DisableColor
+		DisableColor = true
+		defer func() { DisableColor = old }()
+
+		input := "<r>hello <b>world</b>!</r>"
+		want := "hello world!"
+		got := Colorize(input)
+		if got != want {
+			t.Errorf("Colorize(%q) with DisableColor=true = %q, want %q", input, got, want)
+		}
+	})
+
+	t.Run("Panic on invalid code", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("The code did not panic")
+			}
+		}()
+		Colorize("<unknown>hello")
+	})
+
+	t.Run("Panic on invalid closing code", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("The code did not panic")
+			}
+		}()
+		Colorize("<r>hello</unknown>")
+	})
 }
 
 func TestFprintf(t *testing.T) {
 	var buf bytes.Buffer
-	n, err := Fprintf(&buf, "Hello <red bold>%s</>", "world")
+	n, err := Fprintf(&buf, "Hello <r bold>%s</>", "world")
 	if err != nil {
 		t.Fatalf("Fprintf failed: %v", err)
 	}

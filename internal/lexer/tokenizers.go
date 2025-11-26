@@ -4,6 +4,7 @@ import (
 	"io"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Returns true if the error is EOF, otherwise panics
@@ -28,7 +29,7 @@ func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
 		if isEOF {
 			continue
 		}
-		total := string(r) + string(next)
+		total := singleStr + string(next)
 		if opTok, ok := OperatorMap[total]; ok {
 			// Check if next byte is an indentifier if operator ends in ident
 			if IsIdent(rune(total[n])) && l.checkIfIdentNext(n) {
@@ -42,11 +43,12 @@ func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
 	return OperatorMap[singleStr], singleStr
 }
 
+// checkIfIdentNext returns true if the byte after peeking n bytes
+// is non-ASCII, an identifier, or digit.
 func (l *Lexer) checkIfIdentNext(n int) bool {
-	if next, isEOF := l.PeekN(n + 1); !isEOF {
-		// TODO: make unicode friendly (decodeRune)
+	if next, eof := l.PeekN(n + 1); !eof {
 		first := rune(next[n])
-		if IsIdent(first) || unicode.IsDigit(first) {
+		if first > utf8.RuneSelf || IsIdent(first) || IsDigit(first) {
 			return true
 		}
 	}
@@ -343,7 +345,7 @@ loop:
 		}
 		return false
 	})
-	str := string(prefix) + b.String()
+	str := prefix + b.String()
 	return NewToken(startPos, Regex, str).withAttrs(attrs{
 		"end":    end,
 		"length": leng,

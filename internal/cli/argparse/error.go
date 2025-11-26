@@ -6,55 +6,55 @@ import (
 )
 
 type (
-	ErrUnknownFlag    struct{ Flag string }
-	ErrMissingArgs    struct{ Missing []string }
-	ErrExtraneousArgs struct{ Extra []string }
-	ErrInvalidBool    struct{ Flag string }
-	ErrInvalidNumber  struct{ Flag, Input string }
-	ErrHelp           struct{}
-	ErrMissingValue   struct {
+	UnknownFlagError    struct{ Flag string }
+	MissingArgsError    struct{ Missing []string }
+	ExtraneousArgsError struct{ Extra []string }
+	InvalidBoolError    struct{ Flag string }
+	InvalidNumberError  struct{ Flag, Input string }
+	HelpError           struct{}
+	MissingValueError   struct {
 		Flag string
 		Type FlagType
 	}
-	ErrInvalidOption struct {
+	InvalidOptionError struct {
 		Flag       string
 		ExpOptions []string
 	}
 )
 
-func (err *ErrUnknownFlag) Error() string {
+func (err *UnknownFlagError) Error() string {
 	return "unknown flag: " + FormatFlag(err.Flag)
 }
 
-func (err *ErrMissingArgs) Error() string {
+func (err *MissingArgsError) Error() string {
 	return "missing arguments: " + strings.Join(err.Missing, ", ")
 }
 
-func (err *ErrExtraneousArgs) Error() string {
+func (err *ExtraneousArgsError) Error() string {
 	return "too many arguments: " + strings.Join(err.Extra, ", ")
 }
 
-func (err *ErrInvalidNumber) Error() string {
+func (err *InvalidNumberError) Error() string {
 	return fmt.Sprintf("invalid number for flag %s: %s", err.Flag, err.Input)
 }
 
-func (err *ErrInvalidBool) Error() string {
+func (err *InvalidBoolError) Error() string {
 	return "flag " + err.Flag + "is not a boolean flag"
 }
 
-func (err *ErrInvalidOption) Error() string {
+func (err *InvalidOptionError) Error() string {
 	return fmt.Sprintf("invalid option for flag %s: expected one of: %s",
 		err.Flag, strings.Join(err.ExpOptions, ", "),
 	)
 }
 
-func (err *ErrMissingValue) Error() string {
+func (err *MissingValueError) Error() string {
 	return fmt.Sprintf(
 		"missing value for flag %s: expected %s", err.Flag, TypeNames[err.Type],
 	)
 }
 
-func (*ErrHelp) Error() string { return "help requested" }
+func (*HelpError) Error() string { return "help requested" }
 
 var TypeNames = []string{
 	TypeStringFlag: "string",

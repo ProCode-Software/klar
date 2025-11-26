@@ -40,6 +40,7 @@ func Build(r *command.Runner) {
 			cli.ErrNoManifest(pkgPath)
 		}
 		b.Log("Resolving inputs at current package:", pkgPath)
+		//nolint:ineffassign // False positive
 		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
 	if err != nil {
@@ -83,15 +84,16 @@ func Build(r *command.Runner) {
 	case err != nil:
 		cli.Failure("", err) // TODO: categorize errors (struct)
 	default:
-		fmt.Fprintln(os.Stderr, ansi.BoldGreen(string(icons.Check)),
-			ansi.Bold("Build"), ansi.BoldBrightGreen("succeeded"),
-			"in", ansi.Cyan(cli.FormatDuration(res.Elapsed))+"!",
+		ansi.Fprintfln(os.Stderr,
+			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
+			icons.Check, cli.FormatDuration(res.Elapsed),
 		)
 	}
 }
 
 func printInterfaceErr(err *build.InterfaceError) {
 	main, detail := err.PrettyError()
+	cli.Failure(ansi.Sprintf("<**>"))
 	cli.Failure(
 		ansi.Bold(strings.Join(main, ansi.Partial(ansi.CodeBold))),
 		detail,
@@ -111,10 +113,9 @@ func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
 		count.WriteByte('s')
 	}
 	// Show "build failed" message
-	fmt.Fprintln(os.Stderr, ansi.BoldRed(string(icons.ThinXLarge)),
-		ansi.Bold("Build"), ansi.BoldBrightRed("failed"), ansi.Bold("with"),
-		ansi.BoldBrightRed(count.String()),
-		"in", ansi.Cyan(cli.FormatDuration(res.Elapsed))+ansi.BoldDim(":"),
+	ansi.Fprintfln(os.Stderr,
+		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>!",
+		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
 	for _, err := range errs {

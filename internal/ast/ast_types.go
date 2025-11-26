@@ -121,7 +121,7 @@ type UnaryExpression struct {
 	BaseNode
 }
 
-// Multi comparisions using ==, !=, >=, <=, >, or <
+// Multi comparisons using ==, !=, >=, <=, >, or <
 type RelationalExpression struct {
 	BaseNode
 	Expressions []Expression

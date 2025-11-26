@@ -131,7 +131,7 @@ func errVariadicLast(f string, i int) {
 //   - Missing arguments or flag values return an error.
 //   - If '--' (as a whole flag) is passed, it is skipped and remaining items are
 //     parsed as arguments, even if they start with '-'.
-//   - If '--help' or '-h' is passed as a flag, Parse immediately returns [ErrHelp].
+//   - If '--help' or '-h' is passed as a flag, Parse immediately returns [HelpError].
 //   - If [Parser.AllowUnknownFlags] is false, Parse reports an error when an
 //     unknown argument is encountered.
 func (p *Parser) Parse() (err error) {
@@ -151,7 +151,7 @@ func (p *Parser) Parse() (err error) {
 			p.Args = append(p.Args, p.InputArgs[i+1:]...)
 			return
 		case item == "--help", item == "-h":
-			return &ErrHelp{}
+			return &HelpError{}
 		case item == "-":
 			fallthrough
 		default:
@@ -161,7 +161,7 @@ func (p *Parser) Parse() (err error) {
 			name := p.resolve(item[2:])
 			if _, ok := p.FlagDefinitions[name]; !ok {
 				if !p.AllowUnknownFlags {
-					return &ErrUnknownFlag{name}
+					return &UnknownFlagError{name}
 				}
 				continue
 			}
@@ -179,7 +179,7 @@ func (p *Parser) Parse() (err error) {
 			case def.Type == TypeBoolFlag:
 				flag = newBoolFlag(i, true)
 			default:
-				return &ErrMissingValue{name, def.Type}
+				return &MissingValueError{name, def.Type}
 			}
 			switch kind := def.Type; kind {
 			case TypeBoolFlag:
@@ -258,9 +258,9 @@ func (p *Parser) Parse() (err error) {
 				def, ok := p.FlagDefinitions[name]
 				switch {
 				case !ok && !p.AllowUnknownFlags:
-					return &ErrUnknownFlag{name}
+					return &UnknownFlagError{name}
 				case def.Type != TypeBoolFlag:
-					return &ErrInvalidBool{name}
+					return &InvalidBoolError{name}
 				default:
 					p.Flags[name] = newBoolFlag(i, val)
 				}
@@ -280,9 +280,9 @@ func (p *Parser) Parse() (err error) {
 		for i := range missingNames {
 			missingNames[i] = p.ArgDefinitions[argc-missingLn+i].Name
 		}
-		return &ErrMissingArgs{Missing: missingNames}
+		return &MissingArgsError{Missing: missingNames}
 	case argc > len(p.ArgDefinitions) && !p.ArgDefinitions[lastArgI].Variadic:
-		return &ErrExtraneousArgs{p.Args[len(p.ArgDefinitions):]}
+		return &ExtraneousArgsError{p.Args[len(p.ArgDefinitions):]}
 	}
 	/* // Set defaults
 	for name, def := range p.FlagDefinitions {
@@ -304,7 +304,7 @@ func (p *Parser) checkEnum(flag, input string) (any, error) {
 	val, ok := p.enumOpts[flag][input]
 	if !ok {
 		// TODO: ExpOptions in A-Z order
-		return nil, &ErrInvalidOption{Flag: flag, ExpOptions: nil}
+		return nil, &InvalidOptionError{Flag: flag, ExpOptions: nil}
 	}
 	return val, nil
 }
@@ -312,7 +312,7 @@ func (p *Parser) checkEnum(flag, input string) (any, error) {
 func (p *Parser) checkNumber(flag, input string) (val float64, err error) {
 	val, err = strconv.ParseFloat(input, 64)
 	if err != nil {
-		return 0, &ErrInvalidNumber{flag, input}
+		return 0, &InvalidNumberError{flag, input}
 	}
 	return
 }

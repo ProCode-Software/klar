@@ -11,17 +11,17 @@ import (
 )
 
 type (
-	ExpectedEOFError       = errors.ExpectedEOF
-	ExpectedTokenError     = errors.ExpectedToken
-	InvalidUnmarshallError = errors.InvalidUnmarshall
-	NumberRangeError       = errors.NumberRange
+	ExpectedEOFError       = errors.ExpectedEOFError
+	ExpectedTokenError     = errors.ExpectedTokenError
+	InvalidUnmarshallError = errors.InvalidUnmarshallError
+	NumberRangeError       = errors.NumberRangeError
 	TypeError              = errors.TypeError
 )
 
 var (
-	UnexpectedBracketError  = decode.ErrUnexpectedBracket
-	UnterminatedArrayError  = decode.ErrUnterminatedArray
-	UnterminatedStringError = decode.ErrUnterminatedString
+	ErrUnexpectedBracket  = decode.ErrUnexpectedBracket
+	ErrUnterminatedArray  = decode.ErrUnterminatedArray
+	ErrUnterminatedString = decode.ErrUnterminatedString
 )
 
 func Unmarshall(b []byte, v any, f ...flags.Flags) error {

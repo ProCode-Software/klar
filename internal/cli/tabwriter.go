@@ -113,7 +113,7 @@ func (tw *TabWriter) fill(n int) []byte { return char.Repeat(tw.PadChar, n) }
 func (tw *TabWriter) margin() []byte    { return char.Repeat(tw.MarginChar, tw.Margin) }
 
 // Flush writes the calculated cells to tw.Output, returning the number of bytes written,
-// and any error that occured while writing.
+// and any error that occurred while writing.
 func (tw *TabWriter) Flush() (n int, err error) {
 	var writeArray [][]byte
 	tw.init()

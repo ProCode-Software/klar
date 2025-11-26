@@ -45,7 +45,7 @@ func (d *Decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 		checkEOF(&err)
 		i += 1
 		if i != length && !d.Flags.Has(flags.IgnoreArrayLength) {
-			err = &errors.InvalidArrayLength{Need: length, Got: i}
+			err = &errors.InvalidArrayLengthError{Need: length, Got: i}
 		}
 		v.Index(i)
 		return

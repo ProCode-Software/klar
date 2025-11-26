@@ -9,23 +9,23 @@ import (
 
 var colorMap = map[string]string{
 	// Foreground
-	"red": "31", "green": "32", "yellow": "33", "blue": "34",
-	"magenta": "35", "cyan": "36", "white": "37",
+	"r": "31", "g": "32", "y": "33", "b": "34",
+	"m": "35", "c": "36", "w": "37",
 	// Background
-	"Red": "41", "Green": "42", "Yellow": "43", "Blue": "44",
-	"Magenta": "45", "Cyan": "46", "White": "47",
+	"R": "41", "G": "42", "Y": "43", "B": "44",
+	"M": "45", "C": "46", "W": "47",
 	// Bright foreground
-	"gray": "90", "brightRed": "91", "brightGreen": "92", "brightYellow": "93",
-	"brightBlue": "94", "brightMagenta": "95", "brightCyan": "96", "brightWhite": "97",
+	"gr!": "90", "r!": "91", "g!": "92", "y!": "93",
+	"b!": "94", "m!": "95", "c!": "96", "w!": "97",
 	// Bright background
-	"Gray": "100", "BrightRed": "101", "BrightGreen": "102", "BrightYellow": "103",
-	"BrightBlue": "104", "BrightMagenta": "105", "BrightCyan": "106", "BrightWhite": "107",
+	"Gr!": "100", "R!": "101", "G!": "102", "Y!": "103",
+	"B!": "104", "M!": "105", "C!": "106", "W!": "107",
 	// Effects
-	"bold": "1", "dim": "2", "italic": "3", "underline": "4", "reset": "0",
+	"bold": "1", "dim": "2", "ital": "3", "under": "4", "res": "0", "**": "1", "-": "0",
 }
 
 func makeCode(colors []string) string {
-	if len(colors) == 0 {
+	if DisableColor || len(colors) == 0 {
 		return ""
 	}
 	var b strings.Builder
@@ -53,6 +53,9 @@ func Colorize(s string) string {
 	var stack []layer
 
 	reapply := func() {
+		if DisableColor {
+			return
+		}
 		b.WriteString("\x1b[0m")
 		for _, l := range stack {
 			b.WriteString(makeCode(l.codes))
@@ -128,7 +131,7 @@ func Colorize(s string) string {
 			}
 
 			if !validClose {
-				continue
+				panic(fmt.Sprintf("ansi: unknown color %q", tagName))
 			}
 
 			top := stack[len(stack)-1]
@@ -172,16 +175,11 @@ func Colorize(s string) string {
 			b.WriteString(makeCode(codes))
 			i = end
 		} else {
-			// Not a valid color tag, treat as literal
-			b.WriteByte(c)
+			// Not a valid color tag, panic
+			panic(fmt.Sprintf("ansi: unknown color %q", tagContent))
 		}
 	}
-
-	// If stack is not empty at the end, reset
-	if len(stack) > 0 {
-		b.WriteString("\x1b[0m")
-	}
-
+	// Don't autoreset
 	return b.String()
 }
 
@@ -189,10 +187,22 @@ func Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
 	return fmt.Fprintf(w, Colorize(format), a...)
 }
 
+func Fprintfln(w io.Writer, format string, a ...any) (n int, err error) {
+	return fmt.Fprintf(w, Colorize(format)+"\n", a...)
+}
+
 func Sprintf(format string, a ...any) string {
 	return fmt.Sprintf(Colorize(format), a...)
 }
 
+//sprint
+
 func Println(v string) (n int, err error) {
 	return fmt.Println(Colorize(v))
+}
+
+// color is an color code. v is the raw ANSI string. every time v has an ansi reset,
+// code is reapplied.
+func Wrap(code string, v string) string {
+	return code + v + CodeReset
 }

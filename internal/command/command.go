@@ -89,15 +89,15 @@ func (c *Command) handleFlagError(err error) {
 	stdout, stderr := os.Stdout, os.Stderr
 	_ = stderr
 	switch err.(type) {
-	case *argparse.ErrHelp:
+	case *argparse.HelpError:
 		c.Help(stdout)
 		os.Exit(0)
-	case *argparse.ErrInvalidBool:
-	case *argparse.ErrExtraneousArgs:
-	case *argparse.ErrInvalidNumber:
-	case *argparse.ErrInvalidOption:
-	case *argparse.ErrMissingArgs:
-	case *argparse.ErrMissingValue:
-	case *argparse.ErrUnknownFlag:
+	case *argparse.InvalidBoolError:
+	case *argparse.ExtraneousArgsError:
+	case *argparse.InvalidNumberError:
+	case *argparse.InvalidOptionError:
+	case *argparse.MissingArgsError:
+	case *argparse.MissingValueError:
+	case *argparse.UnknownFlagError:
 	}
 }

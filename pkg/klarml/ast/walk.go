@@ -1,6 +1,8 @@
 package ast
 
-import "errors"
+import (
+	"errors"
+)
 
 type VisitFunc func(n Node, depth int) error
 

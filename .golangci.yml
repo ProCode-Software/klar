@@ -1,0 +1,31 @@
+version: '2'
+formatters:
+  enable:
+    - gofumpt
+
+linters:
+  enable: [
+    misspell, dupword, asasalint, bidichk, copyloopvar, exptostd,
+    gosec, unconvert
+    # errname
+  ]
+  disable:
+    - errcheck
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        [fmt.Println, fmt.Fprintf, fmt.Printf, fmt.Fprintln, fmt.Fprint, os.File.Close]
+    govet:
+      disable:
+        - composites
+    gosec:
+      severity: low
+      confidence: low
+      excludes:
+        - G115
+        - G104
+        - G304
+    staticcheck:
+      checks:
+        - '-ST1005'

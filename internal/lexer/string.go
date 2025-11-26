@@ -182,6 +182,7 @@ loop:
 }
 
 /*
+TODO: wrap strings (multiline src, joined to single line); trim newline around `
 Beginning is already parsed
 
 There are three types of strings in Klar:
@@ -203,7 +204,7 @@ func (l *Lexer) ReadString(pos Position, delim rune, quoteN int) *Token {
 	)
 	newEscape := func(e StringEscape) {
 		if escapes == nil {
-			escapes = make(map[Position]StringEscape)
+			escapes = map[Position]StringEscape{}
 		}
 		b.WriteString(e.Value[1:]) // Character after \
 		if e.Invalid > 0 {
@@ -296,7 +297,7 @@ loop:
 	} else {
 		prefix = string(delim)
 	}
-	return NewToken(pos, String, string(prefix)+b.String()).withAttrs(attrs{
+	return NewToken(pos, String, prefix+b.String()).withAttrs(attrs{
 		"end":    end,
 		"length": leng,
 		"params": StringAttrs{

@@ -76,7 +76,7 @@ func (d *Decoder) lookupDecodeFunc(rt reflect.Type) decodeFunc {
 func (d *Decoder) Decode(v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return &errors.InvalidUnmarshall{Type: reflect.TypeOf(v)}
+		return &errors.InvalidUnmarshallError{Type: reflect.TypeOf(v)}
 	}
 	rv = rv.Elem() // Known pointer
 	rt := rv.Type()
@@ -101,7 +101,7 @@ func (d *Decoder) Decode(v any) error {
 	case EOF:
 		return nil
 	case nil:
-		return &errors.ExpectedEOF{Got: d.Curr()}
+		return &errors.ExpectedEOFError{Got: d.Curr()}
 	default:
 		return err
 	}

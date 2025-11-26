@@ -10,6 +10,7 @@ import (
 )
 
 func parseHex(str string) int32 {
+	//nolint:gosec // There is a length limit in the lexer
 	return int32(unwrap(strconv.ParseInt(str, 16, 32)))
 }
 
@@ -52,7 +53,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 			if hex > 0x10FFFF {
 				p.Error(errors.Range(errors.ErrUnicodeEscapeTooBig, ranges.Range{
 					ranges.Add(e.Pos, 0, 3),
-					ranges.Add(e.Pos, 0, uint32(len(src)-1)),
+					ranges.Add(e.Pos, 0, uint32(len(src)-1)), //nolint:gosec
 				}))
 				frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
 				continue

@@ -12,7 +12,8 @@ func _() {
 	_ = x[WarningPrefix-100]
 	_ = x[TypeErrorPrefix-200]
 	_ = x[ReferenceErrorPrefix-300]
-	_ = x[ImplementationErrorPrefix-400]
+	_ = x[ModuleErrorPrefix-400]
+	_ = x[ImplementationErrorPrefix-500]
 	_ = x[ErrTooManyErrors - -1]
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
@@ -137,7 +138,8 @@ const (
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
-	_ErrorCode_name_4 = "ImplementationErrorPrefix"
+	_ErrorCode_name_4 = "ModuleErrorPrefix"
+	_ErrorCode_name_5 = "ImplementationErrorPrefix"
 )
 
 var (
@@ -163,6 +165,8 @@ func (i ErrorCode) String() string {
 		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
 	case i == 400:
 		return _ErrorCode_name_4
+	case i == 500:
+		return _ErrorCode_name_5
 	default:
 		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
