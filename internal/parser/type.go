@@ -106,9 +106,9 @@ func (p *Parser) ParseFunctionType() *ast.FunctionType {
 }
 
 func (p *Parser) parseFuncTypeWithoutParen() (values []*ast.TypePair) {
-	for {
+	for p.HasTokens() {
 		pair := &ast.TypePair{}
-		if p.Peek().Kind == lexer.Colon {
+		if p.PeekKind() == lexer.Colon {
 			pair.Keys = append(pair.Keys, p.ParseIdentOrDiscard())
 			p.Advance() // :
 		}
@@ -135,7 +135,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		// (a, [b], c) = 3 types
 		// (a, b: Int, c), ([a], b, c: Int) = invalid (mismatch)
 		if k := p.CurrKind(); !isType &&
-			isValidIdentOrDiscard(k) && p.Peek().Kind != lexer.Dot { // Dot for member type
+			isValidIdentOrDiscard(k) && p.PeekKind() != lexer.Dot { // Dot for member type
 			names = append(names, p.ParseValidIdent())
 			if p.CurrKind() == lexer.Colon {
 				if isType {

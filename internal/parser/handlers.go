@@ -193,7 +193,7 @@ func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statemen
 	default:
 		return nil, false
 	case lexer.Import:
-		if p.Peek().Kind != lexer.Identifier {
+		if p.PeekKind() == lexer.LeftParenthesis {
 			return nil, false
 		}
 		res = p.ParseImportStatement()
@@ -235,7 +235,7 @@ func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, h
 	startPos := p.Curr().Position
 	switch kind {
 	case lexer.Underscore:
-		switch p.Peek().Kind {
+		switch p.PeekKind() {
 		default:
 			return nil, false
 		case lexer.Comma, lexer.Colon, lexer.Equal, lexer.ColonEqual,

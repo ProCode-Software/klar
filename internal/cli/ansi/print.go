@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var colorMap = map[string]string{
+var ColorMap = map[string]string{
 	// Foreground
 	"r": "31", "g": "32", "y": "33", "b": "34",
 	"m": "35", "c": "36", "w": "37",
@@ -40,8 +40,11 @@ func makeCode(colors []string) string {
 	return b.String()
 }
 
-// Colorize parses the string for color tags (e.g. <red bold>text</>) and returns
+// Colorize parses the string for color tags and returns
 // the string with ANSI color codes. It supports nested tags and escaping.
+//
+// Example: '<r **>text</>' returns text in a bold red foreground.
+// See [ColorMap] for the list of available tag names/codes.
 func Colorize(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -61,10 +64,8 @@ func Colorize(s string) string {
 			b.WriteString(makeCode(l.codes))
 		}
 	}
-
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-
 		// Handle escaping
 		if c == '\\' {
 			if i+1 < len(s) {
@@ -78,7 +79,6 @@ func Colorize(s string) string {
 			b.WriteByte(c)
 			continue
 		}
-
 		if c != '<' {
 			b.WriteByte(c)
 			continue
@@ -100,7 +100,6 @@ func Colorize(s string) string {
 			if len(stack) == 0 {
 				continue
 			}
-
 			tagName := strings.TrimSpace(after)
 			if tagName == "" {
 				// Generic close </>, pop top
@@ -108,7 +107,6 @@ func Colorize(s string) string {
 				reapply()
 				continue
 			}
-
 			// Named close </name>
 			parts := strings.Fields(tagName)
 			if len(parts) == 0 {
@@ -117,23 +115,15 @@ func Colorize(s string) string {
 				reapply()
 				continue
 			}
-
 			// Parse colors
 			var closingCodes []string
-			validClose := true
 			for _, part := range parts {
-				code, ok := colorMap[part]
+				code, ok := ColorMap[part]
 				if !ok {
-					validClose = false
-					break
+					panic(fmt.Sprintf("ansi: unknown color %q", tagName))
 				}
 				closingCodes = append(closingCodes, code)
 			}
-
-			if !validClose {
-				panic(fmt.Sprintf("ansi: unknown color %q", tagName))
-			}
-
 			top := stack[len(stack)-1]
 			allFound := true
 			for _, closeCode := range closingCodes {
@@ -142,14 +132,12 @@ func Colorize(s string) string {
 					break
 				}
 			}
-
 			if allFound {
 				stack = stack[:len(stack)-1]
 				reapply()
 			}
 			continue
 		}
-
 		// Opening tag
 		parts := strings.Fields(tagContent) // Split by whitespace
 		if len(parts) == 0 {
@@ -157,30 +145,29 @@ func Colorize(s string) string {
 			b.WriteByte(c)
 			continue
 		}
-
 		var codes []string
-		valid := true
 		for _, part := range parts {
-			code, ok := colorMap[part]
+			code, ok := ColorMap[part]
 			if !ok {
-				valid = false
-				break
+				panic(fmt.Sprintf("ansi: unknown color %q", tagContent))
 			}
 			codes = append(codes, code)
 		}
-
-		if valid {
-			l := layer{tagName: tagContent, codes: codes}
-			stack = append(stack, l)
-			b.WriteString(makeCode(codes))
-			i = end
-		} else {
-			// Not a valid color tag, panic
-			panic(fmt.Sprintf("ansi: unknown color %q", tagContent))
-		}
+		l := layer{tagName: tagContent, codes: codes}
+		stack = append(stack, l)
+		b.WriteString(makeCode(codes))
+		i = end
 	}
-	// Don't autoreset
 	return b.String()
+}
+
+// Decolorize strips tags from v, returning an uncolorized string without tags.
+func Decolorize(v string) string {
+	currDisableColor := DisableColor
+	DisableColor = true
+	s := Colorize(v)
+	DisableColor = currDisableColor
+	return s
 }
 
 func Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
@@ -195,7 +182,9 @@ func Sprintf(format string, a ...any) string {
 	return fmt.Sprintf(Colorize(format), a...)
 }
 
-//sprint
+func Sprint(v string) string {
+	return Colorize(v)
+}
 
 func Println(v string) (n int, err error) {
 	return fmt.Println(Colorize(v))

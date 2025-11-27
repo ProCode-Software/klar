@@ -70,6 +70,10 @@ func (p *Parser) Peek() lexer.Token {
 	return p.Tokens[p.Index+1]
 }
 
+func (p *Parser) PeekKind() lexer.TokenType {
+	return p.Peek().Kind
+}
+
 // CurrKind return the Kind of the [lexer.Token] at the current parser index.
 func (p *Parser) CurrKind() lexer.TokenType {
 	return p.Curr().Kind

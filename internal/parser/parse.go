@@ -86,10 +86,14 @@ func (p *Parser) ParseFull(bp BindingPower) ast.Expression {
 
 func (p *Parser) nudError() {
 	switch curr := p.Curr(); curr.Kind {
+	case lexer.Illegal:
+		if p.checkCurlyQuote(curr) {
+			break
+		}
+		fallthrough
 	default:
 		p.unknownTokenErr()
 		return
-	case lexer.Illegal:
 	case lexer.If:
 		p.Error(errors.Token(errors.ErrIfStatement, curr))
 	case lexer.PlusPlus, lexer.MinusMinus:
@@ -116,8 +120,12 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	kind := p.CurrKind()
 	res, handled := p.handleTopLevelStatement(kind)
 	if handled {
-		if p.PeekBehind().Kind != lexer.Asterisk {
+		if pb := p.PeekBehind(); pb.Kind != lexer.Asterisk {
 			p.Expect(lexer.EndOfStatement)
+		} else if c := p.Curr(); c.Position.Line == pb.Position.Line &&
+			c.Kind != lexer.EndOfStatement && c.Kind != lexer.EOF {
+			// No newline after import
+			p.Error(errors.ExpectedToken(lexer.EndOfStatement, c))
 		}
 		return res
 	}

@@ -27,11 +27,13 @@ const (
 
 	// Punctuation =====
 
-	ErrUnterminatedString  // A string that was left open
-	ErrUnterminatedComment // Block comment was left open
-	ErrUnterminatedRegex   // Missing / in regex literal
-	ErrMisplacedShebang    // Shebang not on first line
-	ErrInvalidComma        // Comma statement
+	ErrUnterminatedString    // A string that was left open
+	ErrMultilineQuotedString // String quoted with " or ' contains newline
+	ErrUnterminatedComment   // Block comment was left open
+	ErrUnterminatedRegex     // Missing / in regex literal
+	ErrMisplacedShebang      // Shebang not on first line
+	ErrInvalidComma          // Comma statement
+	ErrCurlyQuote            // Unicode curly quote used instead of ASCII straight quote
 
 	// Literal =====
 
@@ -88,6 +90,9 @@ const (
 	ErrParenAroundLambdaType        // Type for param is not in parentheses
 	ErrParenAroundLambdaDefault     // Default value for param is not in parentheses
 	ErrArrowAfterNonParenLambda     // -> required if lambda parameters aren't parenthesized
+	ErrChainedNotEqual              // Can't use '!=' operator in chained comparison
+	ErrMultiDirectionCompareChain   // Inconsistent direction of operators in chain: e.g. < and >
+	ErrInequalityWithEqualChain     // Use of ==/!= with >/< in comparison chain
 
 	// Type =====
 
@@ -99,6 +104,7 @@ const (
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
 	ErrInvalidGenericType      // Only enums can be generic (for now)
+	ErrInvalidArrow            // -> can only be used with enum
 
 	// When =====
 
@@ -232,6 +238,8 @@ func (e *ParseError) error() string {
 		}
 	case ErrUnterminatedString:
 		return fmt.Sprintf("The string starting at %s was left open", e.Range.Start)
+	case ErrMultilineQuotedString:
+		return "Only strings quoted with backticks '`' can contain line breaks"
 	case ErrUnterminatedRegex:
 		return fmt.Sprintf("The regular expression starting at %s was left open", e.Range.Start)
 	case ErrExpectedTypeAssignment:
@@ -271,6 +279,9 @@ func (e *ParseError) error() string {
 		default:
 			return "Invalid string escape"
 		}
+	case ErrCurlyQuote:
+		alt := e.Params["alt"].(string)
+		return "Use the straight quotation mark " + Quote(alt) + " instead of a curly quotation mark"
 	case ErrForInvalidCondition:
 		return "A 'for' loop must have an assignment or a loop expression"
 	case ErrEmptyGeneric:
@@ -308,7 +319,7 @@ func (e *ParseError) error() string {
 			e.Params["name"], e.Params["structName"],
 		)
 	case ErrInvalidVersion:
-		return fmt.Sprintf("Invalid version literal '%s'",
+		return fmt.Sprintf("'%s' isn't a valid version",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
 	case ErrSelfExecFuncNotAllowed:
@@ -330,13 +341,13 @@ func (e *ParseError) error() string {
 		return "A default value can only be provided in a map destructure pattern"
 	case ErrDuplicateModifier:
 		modif := param[lexer.TokenType](e.Params, "modifier")
-		return fmt.Sprintf("Modifer %s was already specified in this declaration",
+		return fmt.Sprintf("The modifer %s was already specified in this declaration",
 			FormatTokenType(modif),
 		)
 	case ErrGenericInFuncAlias:
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
-		return "Can't use '_' in a rest expression; use '...' instead"
+		return "Don't use '_' with a rest; use just '...' instead"
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
 	case ErrInvalidUpdate:
@@ -378,12 +389,19 @@ func (e *ParseError) error() string {
 		return "Too many values on the right-hand side of this assignment: " + s
 	case ErrFuncDotAfterSelf:
 		return "Expected '.' between ')' and identifier in function declaration"
+	case ErrMultiDirectionCompareChain:
+		return "The operators in a comparison chain must follow a single direction"
+	case ErrChainedNotEqual:
+		return "The '!=' operator isn't allowed to be chained in a comparison chain"
+	case ErrInequalityWithEqualChain:
+		return "Can't use an equality operator when inequality operators are used in a comparison chain"
 	case ErrIfStatement:
 		return "Klar doesn't have if statements; use 'when' instead"
 	case ErrTryBlock:
 		return "Klar doesn't have try-catch statements"
 	case ErrTripleEqual:
-		return "In Klar, comparisons are always strict; use '==' or '!=' instead"
+		op := FormatTokenType(e.Params["op"].(lexer.TokenType))
+		return "In Klar, comparisons are always strict; use " + op + " instead"
 	case ErrInvalidLoop:
 		kind := e.Params["stmt"].(lexer.TokenType)
 		var loop string
@@ -399,6 +417,8 @@ func (e *ParseError) error() string {
 		return "Parameters must be in parentheses in order to annotate types"
 	case ErrArrowAfterNonParenLambda:
 		return "'->' is required after parameters if they aren't in parentheses"
+	case ErrInvalidArrow:
+		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrRedeclaredField:

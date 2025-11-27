@@ -128,7 +128,7 @@ func (p *parser) ParseObject(elev int) ast.Value {
 		if p.CurrentKind() == Newline {
 			continue
 		}
-		if !isObj && p.Peek().Kind == Colon {
+		if !isObj && p.PeekKind() == Colon {
 			isObj = true
 			if isArray {
 				p.InvalidMix(true)

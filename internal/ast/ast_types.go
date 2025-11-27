@@ -121,7 +121,8 @@ type UnaryExpression struct {
 	BaseNode
 }
 
-// Multi comparisons using ==, !=, >=, <=, >, or <
+// A RelationalExpression is a [BinaryExpression] with a relational operator
+// or a comparison chain.
 type RelationalExpression struct {
 	BaseNode
 	Expressions []Expression
@@ -389,6 +390,7 @@ type EnumDeclaration struct {
 	Identifier Identifier
 	Generics   []Identifier
 	Inherited  []Type
+	ValueType  Type // after '->'
 	Values     []*EnumItem
 	BaseNode
 }

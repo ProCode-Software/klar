@@ -82,7 +82,8 @@ func Build(r *command.Runner) {
 	case isIntfErr:
 		printInterfaceErr(intfErr)
 	case err != nil:
-		cli.Failure("", err) // TODO: categorize errors (struct)
+		// Errors should be a struct
+		cli.Failure(fmt.Sprintf("%T", err), err)
 	default:
 		ansi.Fprintfln(os.Stderr,
 			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
@@ -93,11 +94,7 @@ func Build(r *command.Runner) {
 
 func printInterfaceErr(err *build.InterfaceError) {
 	main, detail := err.PrettyError()
-	cli.Failure(ansi.Sprintf("<**>"))
-	cli.Failure(
-		ansi.Bold(strings.Join(main, ansi.Partial(ansi.CodeBold))),
-		detail,
-	)
+	cli.Failure(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
 
 func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {

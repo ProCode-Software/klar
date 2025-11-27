@@ -21,6 +21,10 @@ func (o Operator) End() lexer.Position {
 	return pos
 }
 
+func (o Operator) String() string {
+	return o.Kind.String()
+}
+
 // Identifier
 type Identifier struct {
 	Name     string

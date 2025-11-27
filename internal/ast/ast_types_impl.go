@@ -106,22 +106,24 @@ func (d StructDeclaration) Name() string    { return d.Identifier.Name }
 func (d EnumDeclaration) Name() string      { return d.Identifier.Name }
 func (d InterfaceDeclaration) Name() string { return d.Identifier.Name }
 
-// Can be used on left side of =
-func (Symbol) assignable()          {}
-func (IndexExpression) assignable() {}
-func (SliceExpression) assignable() {}
-func (DestructureVars) assignable() {}
-func (BadExpression) assignable()   {}
-func (Discard) assignable()         {}
-
-// Destructuring
-func (ListDestructure) destruct()     {}
-func (ObjectDestructure) destruct()   {}
-func (BadExpression) destruct()       {}
-func (Symbol) destruct()              {}
-func (Discard) destruct()             {}
+// Can be used on left side of = or in a destructure
+func (Symbol) assignable()            {}
+func (IndexExpression) assignable()   {}
+func (SliceExpression) assignable()   {}
+func (DestructureVars) assignable()   {}
+func (BadExpression) assignable()     {}
+func (Discard) assignable()           {}
+func (RestExpression) assignable()    {}
 func (ListDestructure) assignable()   {}
 func (ObjectDestructure) assignable() {}
+
+// Destructuring
+func (ListDestructure) destruct()   {}
+func (ObjectDestructure) destruct() {}
+func (BadExpression) destruct()     {}
+func (Symbol) destruct()            {}
+func (Discard) destruct()           {}
+func (RestExpression) destruct()    {}
 
 // Modifiers
 func (PublicDeclaration) modif() {}

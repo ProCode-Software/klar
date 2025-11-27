@@ -32,9 +32,24 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 func (p *Parser) ParseDestructureInner() ast.Destructure {
 	switch kind := p.CurrKind(); kind {
 	case lexer.Identifier:
-		return p.ParseValidIdent().Symbol()
+		id := p.ParseValidIdent().Symbol()
+		if p.CurrKind() == lexer.Ellipsis {
+			p.Advance()
+			rest := &ast.RestExpression{Expression: id}
+			return markStartEndPos(p, rest, id.Range.Start)
+		}
+		return id
 	case lexer.Underscore:
-		return rangeFromToken(&ast.Discard{}, p.Advance())
+		us := rangeFromToken(&ast.Discard{}, p.Advance())
+		if p.CurrKind() == lexer.Ellipsis {
+			p.Advance()
+			rest := &ast.RestExpression{Expression: us}
+			markStartEndPos(p, rest, us.Range.Start)
+			// No '_' with '...'
+			p.Error(errors.Node(errors.ErrUnderscoreWithRest, rest))
+			return rest
+		}
+		return us
 	case lexer.LeftCurlyBrace:
 		start := p.Advance().Position
 		return markStartEndPos(p, p.ParseObjectDestructure(), start)
@@ -44,6 +59,8 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 	case lexer.LeftParenthesis:
 		start := p.Advance().Position
 		return p.ParseListDestructure(lexer.RightParenthesis, start)
+	case lexer.Ellipsis:
+		return rangeFromToken(&ast.RestExpression{}, p.Advance())
 	default:
 		if isValidIdentifier(kind) {
 			return p.ParseValidIdent().Symbol()
@@ -120,7 +137,7 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 func (p *Parser) errorIfEmptyDestruct(endKind lexer.TokenType) bool {
 	if p.CurrKind() == endKind {
 		start := p.Tokens[p.Index-1].Position
-		end := ranges.FromToken(p.Curr()).End
+		end := ranges.TokenEnd(p.Curr())
 		p.Error(errors.Range(errors.ErrEmptyDestructure, ranges.FromPosition(start, end)))
 		p.Advance()
 		return true

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
@@ -24,6 +25,7 @@ func (err *FilesystemError) IsNotExist() bool {
 	return err.op == "stat" && errors.Is(err.base, fs.ErrNotExist)
 }
 
+// InterfaceErrorCode represents the error type of an [InterfaceError].
 type InterfaceErrorCode int
 
 const (
@@ -49,7 +51,7 @@ type InterfaceError struct {
 
 func (err *InterfaceError) Error() string {
 	main, detail := err.PrettyError()
-	return main + detail
+	return ansi.Decolorize(main + detail)
 }
 
 func (err *InterfaceError) PrettyError() (main, detail string) {
@@ -82,7 +84,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 				"I found it nested in " + "<c>" + dir + "</c>"
 		}
 		return "The " + "<c>" + base + "</c>" +
-			" directory is only allowed in the project root, ",
+				" directory is only allowed in the project root, ",
 			"but I found it in " + "<c>" + dir + "</c>"
 	case ErrNoKlarFiles:
 		return "I didn't find any Klar files to compile in " + "<c>" + err.Value + "</c>", ""

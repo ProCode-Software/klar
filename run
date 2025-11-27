@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION="0.0.2" # TODO: replace
+VERSION="0.0.1" # TODO: replace
 LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/version.KlarVersion=$VERSION'"
 # ldflags: separate with another -X ...
 
@@ -14,6 +14,8 @@ if [[ "$1" = "-keep" ]]; then
 else
     clear
 fi
+
+export GOEXPERIMENT=jsonv2 # Enable JSON v2
 
 # Build binary if '-build' passed
 case "$1" in

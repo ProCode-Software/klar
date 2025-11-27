@@ -85,7 +85,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 	expLen := len(values)
 	rhs := make([]ast.Expression, 0, expLen)
-	for {
+	for p.HasTokens() {
 		rhs = append(rhs, p.ParseExpression(bp))
 		if p.CurrKind() != lexer.Comma {
 			break
@@ -132,9 +132,9 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	if p.CurrKind() == lexer.EndOfStatement {
 		p.Advance()
 	}
-	if curr := p.CurrKind(); curr == lexer.Dot || curr == lexer.LeftCurlyBrace {
+	if c := p.CurrKind(); c == lexer.Dot || c == lexer.LeftCurlyBrace {
 		p.Error(errors.Token(errors.ErrImportExpectedModule, p.Curr()))
-		if curr == lexer.Dot {
+		if c == lexer.Dot {
 			p.Advance()
 		}
 		goto unqualifiedImport
@@ -182,7 +182,7 @@ unqualifiedImport:
 		}
 		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.UnqualifiedImport) {
 			u = &ast.UnqualifiedImport{}
-			if p.Peek().Kind == lexer.Colon {
+			if p.PeekKind() == lexer.Colon {
 				u.Alias = p.ParseIdentOrDiscard()
 				p.Advance() // :
 			}

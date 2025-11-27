@@ -31,7 +31,7 @@ func (p *Parser) isEqual(token ...lexer.Token) bool {
 
 func (p *Parser) lastTokEnd() lexer.Position {
 	last := p.Tokens[p.Index-1]
-	return ranges.FromToken(last).End
+	return ranges.TokenEnd(last)
 }
 
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
@@ -94,15 +94,6 @@ func isAssignment(kind lexer.TokenType) bool {
 	return false
 }
 
-func isRelational(kind lexer.TokenType) bool {
-	switch kind {
-	case lexer.EqualEqual, lexer.NotEqual, lexer.GreaterThan, lexer.LessThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo:
-		return true
-	}
-	return false
-}
-
 func printTokens(tok []lexer.Token) []byte {
 	return printer.PrintTokens(tok, printer.PrettyPrint|printer.SingleLine)
 }
@@ -113,4 +104,22 @@ func isComment(t lexer.TokenType) bool {
 		return true
 	}
 	return false
+}
+
+// Reports [errors.ErrCurlyQuote] if tok is a Unicode curly quote (single or double)
+func (p *Parser) checkCurlyQuote(tok lexer.Token) bool {
+	var alt string
+	switch tok.Source {
+	case  "“", "”":
+		alt = `"`
+	case "‘", "’":
+		alt = "'"
+	default:
+		return false
+	}
+	err := errors.Token(errors.ErrCurlyQuote, tok)
+	err.SetParam("alt", alt)
+	err.Hint("This may have been caused by smart quoting by a mobile keyboard or word processor, which automatically types curly quotation marks instead of straight ones. In Klar, strings are delimited by straight quotes.")
+	p.Error(err)
+	return true
 }

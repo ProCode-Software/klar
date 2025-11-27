@@ -30,23 +30,83 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
 
-// TODO: fix funcs such as ParseRange for checking if left is ast.Expression
-func (p *Parser) ParseRelationalExpression(left ast.Expression, bp BindingPower) *ast.RelationalExpression {
+func (p *Parser) ParseRelationalExpression(
+	left ast.Expression, bp BindingPower,
+) *ast.RelationalExpression {
 	rel := &ast.RelationalExpression{}
 	rel.Expressions = append(rel.Expressions, left) // First expression
-	for isRelational(p.CurrKind()) {
-		op := newOperator(p.Advance())
-		rel.Operators = append(rel.Operators, op)
-		// Add hint for invalid !== or ===
-		if (op.Kind == lexer.EqualEqual || op.Kind == lexer.NotEqual) &&
-			p.CurrKind() == lexer.Equal {
-			p.Error(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
-				op.Position, ranges.Add(p.Advance().Position, 0, 1),
-			)))
+	var gtLtDir uint8                               // 0: none; 1: < or <=; 2: > or >=
+loop:
+	for {
+		switch p.CurrKind() {
+		case lexer.NotEqual:
+			if len(rel.Operators) >= 1 { // Allow 'a != b' but not 'a != b != c'
+				err := errors.Token(errors.ErrChainedNotEqual, p.Curr())
+				err.Hint(
+					"In 'a != b != c', 'a' could still be equal to 'c'. Since this " +
+						"is confusing, chaining the '!=' operator isn't allowed in Klar. " +
+						"To check if all values are different from each other, use " +
+						"'a != b && b != c && a != c'. Otherwise, split the chain into " +
+						"multiple comparisons with '&&': 'a != b && b != c'",
+				)
+				p.Error(err)
+			}
+			fallthrough
+		case lexer.EqualEqual:
+			if gtLtDir != 0 {
+				p.Error(errors.Token(errors.ErrInequalityWithEqualChain, p.Curr()))
+			}
+			// Hint for use of JavaScript === or !==
+			if p.PeekKind() == lexer.Equal {
+				p.Error(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
+					p.Curr().Position,
+					ranges.Add(p.Advance().Position, 0, 3),
+				)).SetParam("op", p.CurrKind()))
+			}
+		// Check for multidirectional comparisons (</<= with >/>=)
+		case lexer.GreaterThan, lexer.GreaterEqualTo:
+			if gtLtDir == 1 {
+				p.multidirCompareErr(rel.Operators, p.CurrKind())
+			}
+			gtLtDir = 2
+		case lexer.LessThan, lexer.LessEqualTo:
+			if gtLtDir == 2 {
+				p.multidirCompareErr(rel.Operators, p.CurrKind())
+			}
+			gtLtDir = 1
+		default:
+			break loop // Non-relational operator
 		}
+		rel.Operators = append(rel.Operators, newOperator(p.Advance()))
 		rel.Expressions = append(rel.Expressions, p.ParseExpression(bp))
 	}
 	return rel
+}
+
+func (p *Parser) multidirCompareErr(ops []ast.Operator, curr lexer.TokenType) {
+	err := errors.Token(errors.ErrMultiDirectionCompareChain, p.Curr())
+	if len(ops) == 1 { // 3 operands
+		var next lexer.TokenType
+		switch curr {
+		case lexer.GreaterThan:
+			next = lexer.LessThan
+		case lexer.GreaterEqualTo:
+			next = lexer.LessEqualTo
+		case lexer.LessThan:
+			next = lexer.GreaterThan
+		case lexer.LessEqualTo:
+			next = lexer.GreaterEqualTo
+		}
+		err.Hintf("Reorder the comparison: a %s c %s b\n"+
+			"Or, split it into multiple chains with '&&': a %[1]s b && b %[3]s c",
+			ops[0], next, curr,
+		)
+	} else {
+		err.Hint("Reorder the comparison, or split it into multiple chains with '&&'" +
+			" (e.g. 'a < b > c' to 'a < b && b > c')",
+		)
+	}
+	p.Error(err)
 }
 
 func (p *Parser) ParseParamList() *ast.DestructureTuple {
@@ -225,7 +285,7 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			p.Advance()
 			key, val := p.expectShorthand()
 			arg.Label, arg.Value = symbolToIdentifier(key), val
-		case p.Peek().Kind == lexer.Colon:
+		case p.PeekKind() == lexer.Colon:
 			// Label (allow keywords)
 			arg.Label = p.ParseMapIdentifier(isLabel)
 			p.Advance() // :
@@ -287,7 +347,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	}
 	// Can omit -> if params are parenthesized and body is a block
 	if !l.InParen || p.CurrKind() != lexer.LeftParenthesis ||
-		p.Peek().Kind != lexer.LeftParenthesis {
+		p.PeekKind() != lexer.LeftParenthesis {
 		p.ExpectErrorNoAdvance(
 			&errors.ParseError{ErrorCode: errors.ErrArrowAfterNonParenLambda},
 			lexer.Arrow,
@@ -417,7 +477,7 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 			r.Multiline = tok.Line != lastPos.Line
 		}
 		b.WriteString(tok.Source)
-		lastPos = ranges.FromToken(tok).End
+		lastPos = ranges.TokenEnd(tok)
 	}
 	r.Source = b.String()
 	err := errors.Position(errors.ErrUnterminatedRegex, p.Curr().Position)

@@ -22,8 +22,26 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	if isIntf {
 		p.Advance()
 	}
-	name := p.ParseIdentOrDiscard()
-	var inherited []ast.Type
+	var (
+		name      = p.ParseIdentOrDiscard()
+		inherited []ast.Type
+		valType   ast.Type
+		arrow     lexer.Token
+		isEnum    bool
+	)
+	// Check if '->' was used on non-enum
+	defer func() {
+		if valType != nil && !isEnum {
+			p.Error(errors.Token(errors.ErrInvalidArrow, arrow))
+		}
+	}()
+	// Enum value type
+	maybeParseArrow := func() {
+		if p.CurrKind() == lexer.Arrow {
+			arrow = p.Advance()
+			valType = p.ParseType(DefaultTypeBindingPower)
+		}
+	}
 	switch p.CurrKind() {
 	case lexer.Equal:
 		if isIntf {
@@ -35,13 +53,16 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			Identifier: name,
 			Type:       p.ParseType(DefaultTypeBindingPower),
 		}
-	case lexer.Colon:
-		// Inherited struct, interface, or enum
-		inherited = p.parseInheritedTypes()
+	case lexer.Colon, lexer.Arrow:
+		if p.CurrKind() == lexer.Colon {
+			// Inherited struct, interface, or enum
+			inherited = p.parseInheritedTypes()
+		}
+		maybeParseArrow()
 		fallthrough
 	case lexer.LeftCurlyBrace:
 		// Struct, enum, or interface
-		p.Advance()
+		p.Expect(lexer.LeftCurlyBrace)
 		if isIntf {
 			return p.ParseInterface(name, inherited)
 		}
@@ -54,8 +75,9 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			}
 		}
 		attrs := p.maybeParseAttributes()
-		if p.CurrKind() == lexer.Dot || p.Peek().Kind == lexer.LeftParenthesis {
-			return p.ParseEnum(name, nil, inherited, attrs)
+		if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
+			isEnum = true
+			return p.ParseEnum(name, nil, inherited, valType, attrs)
 		}
 		return p.ParseStruct(name, inherited, attrs)
 	case lexer.LessThan:
@@ -69,13 +91,15 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		if p.CurrKind() == lexer.Colon {
 			inherited = p.parseInheritedTypes()
 		}
+		maybeParseArrow()
 		p.Expect(lexer.LeftCurlyBrace)
 		if isIntf {
 			res = p.ParseInterface(name, inherited)
 		} else {
 			attrs := p.maybeParseAttributes()
-			if p.CurrKind() == lexer.Dot || p.Peek().Kind == lexer.LeftParenthesis {
-				return p.ParseEnum(name, generics, inherited, attrs)
+			if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
+				isEnum = true
+				return p.ParseEnum(name, generics, inherited, valType, attrs)
 			}
 			res = p.ParseStruct(name, inherited, attrs)
 		}
@@ -106,20 +130,21 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 }
 
 func (p *Parser) parseInheritedTypes() (inherited []ast.Type) {
-	p.Advance()
-	for p.WhileNotEndOr(lexer.LeftCurlyBrace) {
+	p.Advance() // :
+	for p.HasTokens() {
 		// Valid: Alias or generic (others still parsed)
 		inherited = append(inherited, p.ParseType(DefaultTypeBindingPower))
-		if p.CurrKind() != lexer.LeftCurlyBrace {
-			p.Expect(lexer.Comma)
+		if p.CurrKind() != lexer.Comma {
+			break
 		}
+		p.Expect(lexer.Comma)
 	}
 	return
 }
 
 func (p *Parser) ParseEnum(
 	typeName ast.Identifier, generics []ast.Identifier,
-	inherited []ast.Type, attrs []*ast.Attribute,
+	inherited []ast.Type, valType ast.Type, attrs []*ast.Attribute,
 ) *ast.EnumDeclaration {
 	var (
 		items   []*ast.EnumItem
@@ -179,6 +204,7 @@ func (p *Parser) ParseEnum(
 		Identifier: typeName,
 		Generics:   generics,
 		Inherited:  inherited,
+		ValueType:  valType,
 		Values:     items,
 	}
 }
@@ -249,9 +275,9 @@ func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
 	var isType, hasColon, hasLabel bool
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		if k := p.CurrKind(); !isType && (hasLabel || isValidIdentOrDiscard(k) ||
-			isValidIdentOrDiscard(p.Peek().Kind)) && p.Peek().Kind != lexer.Dot {
+			isValidIdentOrDiscard(p.PeekKind())) && p.PeekKind() != lexer.Dot {
 			var name [2]ast.Identifier
-			if hasLabel || isValidIdentifier(p.Peek().Kind) {
+			if hasLabel || isValidIdentifier(p.PeekKind()) {
 				name[0] = p.ParseMapIdentifier(isLabel)
 			}
 			name[1] = p.ParseValidIdent()
@@ -426,7 +452,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		// Trailing type params
 		parseSeries(p, &param.Names, func() *ast.FunctionParamName {
 			key := &ast.FunctionParamName{}
-			switch peek := p.Peek().Kind; peek {
+			switch peek := p.PeekKind(); peek {
 			case lexer.Colon, lexer.Equal, lexer.ColonEqual,
 				lexer.Comma, lexer.RightParenthesis:
 			default:

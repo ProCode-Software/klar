@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
 )
@@ -129,7 +128,7 @@ func (l *Lexer) Tokenize() *Token {
 			return l.ReadIdentifier(pos)
 		default:
 			return NewToken(pos, Illegal, string(r)).withAttrs(attrs{
-				"length": uint32(utf8.RuneLen(r)),
+				"length": uint32(1),
 			})
 		}
 	}

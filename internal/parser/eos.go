@@ -26,9 +26,8 @@ import (
 // An EOS token is always added after a [lexer.RightCurlyBrace] '}' token.
 func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	var (
-		new       = make([]lexer.Token, 0, len(p.Tokens))
-		brackets  = make([]int, 0, len(p.Tokens)/8)
-		assignMap = make(map[int]struct{}, len(p.Tokens)/15)
+		new      = make([]lexer.Token, 0, len(p.Tokens))
+		brackets = make([]int, 0, len(p.Tokens)/8)
 	)
 	readComments := func(i int) (nextNonComment int) {
 		i++
@@ -65,7 +64,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			switch prev {
 			// '/' if last statement ends in regex, or '*' for import. 0 = first token
 			case 0, lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
-				assignMap[len(new)] = struct{}{}
+				p.assignmentTokens[len(new)] = struct{}{}
 			}
 		case lexer.EOF:
 			// Add before EOF
@@ -111,20 +110,13 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			new = append(new, tok)
 			next := p.Tokens[newI]
 			switch next.Kind {
-			// Check for '->' (arrow function)
-			case lexer.Arrow:
-				// TODO: remove
-				// Don't reparse the arrow
-				new = append(new, next)
-				i = newI
 			// Followed by assignment
 			case lexer.Colon, lexer.In, lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
 				lexer.MinusEqual, lexer.Comma:
-				startBrackI := brackets[lastBrackI]
-				if _, ok := assignMap[startBrackI]; ok {
-					p.assignmentTokens[startBrackI] = struct{}{}
+				startBrackI := brackets[lastBrackI] // The matching bracket
+				if _, ok := p.assignmentTokens[startBrackI]; !ok {
+					delete(p.assignmentTokens, startBrackI)
 				}
-				delete(assignMap, startBrackI)
 			default:
 				if firstNewline > 0 && !CanGoOnNewline(next.Kind) {
 					// Still add the EOS
@@ -174,13 +166,13 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	if len(new) > 0 && new[len(new)-1].Kind != lexer.EOF {
 		new = append(new, lexer.Token{
 			Kind:     lexer.EOF,
-			Position: ranges.FromToken(new[len(new)-1]).End,
+			Position: ranges.TokenEnd(new[len(new)-1]),
 		})
 	}
 	// Free resources
 	p.Tokens = new[:len(new):len(new)]
-	assignMap, brackets = nil, nil
-	return
+	brackets = nil
+	return comments
 }
 
 // Never add EOS after these tokens. All of the handled tokens are NUDs, otherwise
@@ -195,7 +187,7 @@ func CanAddEOSAfter(t lexer.TokenType) bool {
 		// Keywords
 		lexer.Func, lexer.For, lexer.When, lexer.Type,
 		lexer.Go, lexer.Await, lexer.While, lexer.Can, lexer.NotCan,
-		lexer.Try, lexer.Opaque, lexer.Public, lexer.If:
+		lexer.Try, lexer.Opaque, lexer.Public:
 		return false
 	case lexer.RightParenthesis, lexer.RightBracket:
 		return true
@@ -226,7 +218,7 @@ func CanGoOnNewline(t lexer.TokenType) bool {
 		// Distributive
 		lexer.And, lexer.Or,
 		// Punctuation
-		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis, lexer.LeftCurlyBrace,
+		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis,
 		lexer.Comma,
 		// Operators
 		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot, lexer.Ellipsis,
@@ -234,7 +226,7 @@ func CanGoOnNewline(t lexer.TokenType) bool {
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.AndAnd,
-		lexer.OrOr, lexer.In, lexer.NotIn,
+		lexer.OrOr, lexer.In, lexer.NotIn, lexer.If,
 		// Whitespace
 		lexer.Newline:
 		return true

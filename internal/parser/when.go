@@ -27,7 +27,7 @@ outer:
 	case lexer.NotCan:
 		res = p.ParseWhenCan()
 	case lexer.Can:
-		switch peek := p.Peek().Kind; peek {
+		switch peek := p.PeekKind(); peek {
 		default:
 			if !isValidIdentifier(peek) {
 				break

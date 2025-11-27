@@ -102,8 +102,13 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		strLen = len(src) - 2*a.QuoteCount - 1
 	}
 	if a.Unterminated {
-		p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 		full = src[start:]
+		if a.QuoteStyle != '`' && full[len(full)-1] == '\n' {
+			// Use a better error for quoted strings with newline
+			p.Error(errors.Position(errors.ErrMultilineQuotedString, token.Position))
+		} else {
+			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
+		}
 	} else {
 		full = src[start : start+strLen] // Remove quotes
 	}
@@ -116,7 +121,9 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 }
 
 func (p *Parser) ParseBoolean() *ast.BooleanLiteral {
-	return &ast.BooleanLiteral{Value: p.Advance().Attributes["value"].(bool)}
+	return &ast.BooleanLiteral{
+		Value: p.Advance().Attributes["value"].(bool),
+	}
 }
 
 func (p *Parser) ParseNil() *ast.NilLiteral {
