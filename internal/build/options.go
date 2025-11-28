@@ -9,6 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -38,7 +39,7 @@ const (
 
 type Options struct {
 	Inputs []Input
-	BuildFile
+	klarbuild.File
 	// ProjectDir   string
 }
 

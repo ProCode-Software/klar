@@ -14,6 +14,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 )
@@ -140,7 +141,7 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		default:
 			// The rest are all JS flags
 			if o.JS == nil {
-				o.JS = &build.FileJSOptions{}
+				o.JS = &klarbuild.JSOptions{}
 			}
 			switch flag {
 			case "declaration":

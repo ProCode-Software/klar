@@ -1,4 +1,4 @@
-package build
+package klarbuild
 
 import (
 	"github.com/ProCode-Software/klar/internal/build/js"
@@ -9,7 +9,7 @@ import (
 // TODO: transform features in klarml unmarshaller, such as mapping strings
 // to enums
 
-type BuildFile struct {
+type File struct {
 	// The environment to build for.
 	Target target.Target
 	// Enable verbose logging during build. Useful for bug reporting.
@@ -25,11 +25,11 @@ type BuildFile struct {
 	WarningsAsErrors []string
 
 	// Additional build configurations to override the top-level. All configurations are run.
-	Configurations []*FileConfiguration
-	FileConfiguration
+	Configurations []*Configuration
+	Configuration
 }
 
-type FileConfiguration struct {
+type Configuration struct {
 	// Klar source files and directories that should be compiled. Glob patterns are
 	// allowed. If omitted, the entire package is compiled.
 	Input []string
@@ -46,22 +46,22 @@ type FileConfiguration struct {
 	// Mapping of source paths to output paths. Glob patterns may be used
 	Paths map[string]string
 	// Options when building JavaScript files
-	JS *FileJSOptions
+	JS *JSOptions
 	// Options for the type checker
-	Checker *FileCheckerOptions
+	Checker *CheckerOptions
 	// Whether all files in output folders should be deleted before build. Disabled
 	// if the output folder is the project root. Compiled files overwrite existing
 	// files regardless.
 	CleanOutputDir bool
 	// Options for building assets
-	Assets *FileAssetOptions
+	Assets *AssetOptions
 	// Output symbolic link to files that are being copied, such as assets and
 	// `node_modules`. These save space by avoiding duplicating files, but output
 	// files are not safe to modify. On Windows, junction links are used instead.
 	UseSymlinks bool
 }
 
-type FileAssetOptions struct {
+type AssetOptions struct {
 	// File extensions that should be copied to the output directory.
 	Extensions []string
 	// Directory that assets should be copied to. Relative to the build output directory.
@@ -70,7 +70,7 @@ type FileAssetOptions struct {
 	KlarmlToJSON bool
 }
 
-type FileJSOptions struct {
+type JSOptions struct {
 	// Whether TypeScript declarations (.d.ts files) should be generated.
 	// Recommended for all JavaScript libraries so users can get code
 	// completion for your library in supporting IDEs.
@@ -109,7 +109,7 @@ type FileJSOptions struct {
 	// Whether a `node_modules` directory should be created in the output directory.
 	CopyNodeModules bool
 	// Options for the dev server.
-	Server *FileJSServerOptions
+	Server *JSServerOptions
 	// Global objects that should be made available to use in source files.
 	Globals map[string]js.GlobalType
 	// Path to a .d.ts file containing type definitions for items defined in `globals`.
@@ -117,7 +117,7 @@ type FileJSOptions struct {
 }
 
 // In the dev server, links to compiled modules are made available.
-type FileJSServerOptions struct {
+type JSServerOptions struct {
 	// Enable the dev server.
 	Enabled bool
 	// The HTML file to serve. This may also be a directory.
@@ -126,7 +126,7 @@ type FileJSServerOptions struct {
 	Host     string
 }
 
-type FileCheckerOptions struct {
+type CheckerOptions struct {
 	// Whether errors should be reported for 'when' statements that don't
 	// cover all options for a type. If set to 'enumsOnly', exhaustiveness
 	// is only validated for 'when' statements that match enums.
@@ -150,7 +150,9 @@ type FileCheckerOptions struct {
 	// prevents obscure crashes in programs, requiring programs to
 	// explicitly check values and crashout.
 	AllowAssertions CheckedAssertionOption
-	// Whether all `Result`s must be used or checked. If enabled, an error will be reported if a `Result` value is unused or discarded, such as via `_ = fn()` or calling `fn()` as a function.
+	// Whether all `Result`s must be used or checked. If enabled, an error will
+	// be reported if a `Result` value is unused or discarded, such as
+	// via `_ = fn()` or calling `fn()` as a function.
 	CheckResults bool
 }
 
