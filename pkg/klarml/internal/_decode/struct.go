@@ -104,7 +104,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			return nil, err
 		}
 		obj := &ast.Object{
-			Props: make([]*ast.Prop, 0, len(fields.Fields)),
+			Fields: make([]*ast.Field, 0, len(fields.Fields)),
 		}
 		// Keeping separate maps because keypath slice can't be stored as a key,
 		// and we don't want to convert it to a string because the existing field
@@ -137,7 +137,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			obj.Inline = true
 		}
 		for {
-			prop := &ast.Prop{}
+			prop := &ast.Field{}
 			if obj.Inline && d.Curr() == '}' {
 				if _, err := d.Advance(); err != nil {
 					checkEOF(&err)
@@ -186,8 +186,8 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 			if err = d.SkipSpace(); err != nil {
 				if err == EOF {
 					// Null
-					prop.Value = &ast.Nil{}
-					obj.Props = append(obj.Props, prop)
+					prop.Value = &ast.None{}
+					obj.Fields = append(obj.Fields, prop)
 					return obj, nil
 				}
 				return obj, err
@@ -199,7 +199,7 @@ func (d *Decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 				prop.Value = valNode.(ast.Value)
 			}
 			d.Depth--
-			obj.Props = append(obj.Props, prop)
+			obj.Fields = append(obj.Fields, prop)
 			// Error above
 			if err != nil {
 				fmt.Printf("%#v\n", valNode)

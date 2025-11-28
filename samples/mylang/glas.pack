@@ -1,10 +1,13 @@
-name: sampleProject
-version: v0.0.1
-description: Sample Klar project for testing
+name: mylang
+version: v1.0.0
+description: A programming language written in Klar
 
-target: js
-runtimes: browser
 klar: v0.0.1
+target: js
+
+js:
+  - runtimes: *
+  - defaultRuntime: bun
 
 dependencies:
-  - @npm/proicons/react *
+  - @npm proicons/react latest

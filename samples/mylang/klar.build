@@ -6,17 +6,12 @@ input: ./src/proj
 emitPackage: true
 output: ./dist/proj
 
-$baseJSOptions.globals:
-    - JSON: @js/Object
-    - PI: @const Float
-    - document: js/document
-
 js:
     - declaration: true
     - jsdoc: true
     - bundle: true
     - typescriptLibs: DOM
-    - $baseJSOptions
+    - <- $baseJSOptions
 
 postBuild: @print Build complete!
 

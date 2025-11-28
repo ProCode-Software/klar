@@ -57,7 +57,7 @@ func (d *Decoder) ReadValue(pf parseFlags) (lit ast.Value, err error) {
 		switch err = d.SkipSpaceNewline(); err {
 		case nil:
 		case EOF:
-			lit = &ast.Nil{} // Nil if EOF
+			lit = &ast.None{} // Nil if EOF
 		default:
 			return lit, err
 		}
@@ -115,7 +115,7 @@ func (d *Decoder) readString() (*ast.String, error) {
 	return ret(err)
 }
 
-func (d *Decoder) readArray(pf parseFlags) (*ast.Array, error) {
+func (d *Decoder) readArray(pf parseFlags) (*ast.List, error) {
 	_, err := d.Advance() // [
 	if err != nil {
 		if err == EOF {
@@ -123,7 +123,7 @@ func (d *Decoder) readArray(pf parseFlags) (*ast.Array, error) {
 		}
 		return nil, err
 	}
-	a := &ast.Array{}
+	a := &ast.List{}
 	for d.Curr() != ']' {
 		val, err := d.ReadValue(pf | comma)
 		if err != nil {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
 )
@@ -80,6 +81,8 @@ func (l *Lexer) Tokenize() *Token {
 				continue
 			}
 			return tok
+		case ' ':
+			continue
 		// Single-character tokens and operators
 		case '\\':
 			return NewToken(pos, Backslash, `\`)
@@ -126,10 +129,17 @@ func (l *Lexer) Tokenize() *Token {
 			return l.ReadNumber(pos)
 		case unicode.IsLetter(r), r == '_':
 			return l.ReadIdentifier(pos)
+		case r == 0xfeff:
+			if l.Pos.Line == 1 && l.Pos.Col == 1 {
+				continue
+			}
+			fallthrough
 		default:
-			return NewToken(pos, Illegal, string(r)).withAttrs(attrs{
-				"length": uint32(1),
-			})
+			attrs := attrs{"length": uint32(1)}
+			if r == utf8.RuneError {
+				attrs["invalidCharacter"] = struct{}{}
+			}
+			return NewToken(pos, Illegal, string(r)).withAttrs(attrs)
 		}
 	}
 }

@@ -87,7 +87,7 @@ func (p *Parser) ParseFull(bp BindingPower) ast.Expression {
 func (p *Parser) nudError() {
 	switch curr := p.Curr(); curr.Kind {
 	case lexer.Illegal:
-		if p.checkCurlyQuote(curr) {
+		if p.checkIllegal(curr) {
 			break
 		}
 		fallthrough

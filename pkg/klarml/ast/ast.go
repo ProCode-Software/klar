@@ -1,5 +1,10 @@
 package ast
 
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
+
 const (
 	Unquoted = iota
 	DoubleQuote
@@ -10,8 +15,9 @@ const (
 )
 
 type Node interface {
-	Range() (start, end int)
-	SetRange(start, end int)
+	_node()
+	Pos() ranges.Range
+	SetPos(start, end lexer.Position)
 }
 
 type Value interface {
@@ -20,12 +26,12 @@ type Value interface {
 }
 
 type baseNode struct {
-	Start, End int
+	Range ranges.Range
 }
 
 type Document struct {
 	baseNode
-	Variables []*VarDecl
+	Variables map[string]Value
 	Body      Value
 	Comments  []*Comment
 }
@@ -35,7 +41,7 @@ type Bool struct {
 	Value bool
 }
 
-type StringSeq struct {
+type StringGroup struct {
 	baseNode
 	Values []Value
 }
@@ -43,7 +49,7 @@ type StringSeq struct {
 type String struct {
 	baseNode
 	Value string
-	Quote byte // 0 if unquoted or " or ' byte
+	Quote rune // 0 if unquoted or " or ' rune
 }
 
 type Number struct {
@@ -52,34 +58,33 @@ type Number struct {
 	Value  float64
 }
 
-type Array struct {
+type List struct {
 	baseNode
-	Inline bool
+	Inline bool // Uses brackets
 	Items  []Value
 }
 
 type Object struct {
 	baseNode
-	Props  []*Prop
-	Inline bool
+	Fields []*Field
+	Inline bool // Uses braces
 }
 
-type Prop struct {
+type Field struct {
 	baseNode
 	Key   string
-	Path  []string
 	Value Value
 }
 
-type VarDecl struct {
+type VarRef struct {
 	baseNode
-	Name  string
-	Value Value
+	Name   string
+	Braces bool // Name wrapped in braces
 }
 
 type Comment struct {
 	baseNode
-	Type   int
+	Block  bool
 	Source string
 }
 
@@ -88,4 +93,9 @@ type Class struct {
 	Name string
 }
 
-type Nil struct{ baseNode }
+type ArrowRef struct {
+	baseNode
+	Var *VarRef
+}
+
+type None struct{ baseNode }

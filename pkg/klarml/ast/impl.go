@@ -1,14 +1,22 @@
 package ast
 
-func (b *baseNode) Range() (int, int)       { return b.Start, b.End }
-func (b *baseNode) SetRange(start, end int) { b.Start, b.End = start, end }
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
+
+func (*baseNode) _node()              {}
+func (b *baseNode) Pos() ranges.Range { return b.Range }
+func (b *baseNode) SetPos(start, end lexer.Position) {
+	b.Range = ranges.Range{Start: start, End: end}
+}
 
 // Values
-func (*Bool) value()      {}
-func (*StringSeq) value() {}
-func (*String) value()    {}
-func (*Number) value()    {}
-func (*Array) value()     {}
-func (*Object) value()    {}
-func (*Class) value()     {}
-func (*Nil) value()       {}
+func (*Bool) value()        {}
+func (*StringGroup) value() {}
+func (*String) value()      {}
+func (*Number) value()      {}
+func (*List) value()        {}
+func (*Object) value()      {}
+func (*Class) value()       {}
+func (*None) value()        {}

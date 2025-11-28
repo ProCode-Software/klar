@@ -110,7 +110,7 @@ func isComment(t lexer.TokenType) bool {
 func (p *Parser) checkCurlyQuote(tok lexer.Token) bool {
 	var alt string
 	switch tok.Source {
-	case  "“", "”":
+	case "“", "”":
 		alt = `"`
 	case "‘", "’":
 		alt = "'"
@@ -122,4 +122,17 @@ func (p *Parser) checkCurlyQuote(tok lexer.Token) bool {
 	err.Hint("This may have been caused by smart quoting by a mobile keyboard or word processor, which automatically types curly quotation marks instead of straight ones. In Klar, strings are delimited by straight quotes.")
 	p.Error(err)
 	return true
+}
+
+func (p *Parser) checkIllegal(tok lexer.Token) bool {
+	if p.checkCurlyQuote(tok) {
+		return true
+	}
+	if tok.Attributes != nil {
+		if _, ok := tok.Attributes["invalidCharacter"]; ok {
+			p.Error(errors.Token(errors.ErrInvalidCharacter, tok))
+			return true
+		}
+	}
+	return false
 }

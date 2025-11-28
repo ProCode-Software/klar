@@ -34,6 +34,7 @@ const (
 	ErrMisplacedShebang      // Shebang not on first line
 	ErrInvalidComma          // Comma statement
 	ErrCurlyQuote            // Unicode curly quote used instead of ASCII straight quote
+	ErrInvalidCharacter      // Invalid Unicode character
 
 	// Literal =====
 
@@ -421,6 +422,8 @@ func (e *ParseError) error() string {
 		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
+	case ErrInvalidCharacter:
+		return "This isn't a valid Unicode character"
 	case ErrRedeclaredField:
 		kind := "Field"
 		if e.Params["kind"] == "enum" {

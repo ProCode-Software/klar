@@ -50,7 +50,7 @@ func decodeString(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, err
 		rv.SetString(strconv.FormatBool(v.Value))
 	case *ast.Number:
 		rv.SetString(v.Source)
-	case *ast.Nil:
+	case *ast.None:
 	default:
 		return v, d.TypeError(rv, v)
 	}
@@ -65,7 +65,7 @@ func decodeBool(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error
 	switch val := val.(type) {
 	case *ast.Bool:
 		rv.SetBool(val.Value)
-	case *ast.Nil:
+	case *ast.None:
 	default:
 		return val, d.TypeError(rv, val)
 	}
@@ -89,7 +89,7 @@ func decodeInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error)
 			}
 		}
 		rv.SetInt(asInt)
-	case *ast.Nil:
+	case *ast.None:
 	default:
 		return val, d.TypeError(rv, val)
 	}
@@ -112,7 +112,7 @@ func decodeUInt(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error
 		}
 		rv.SetUint(uint64(val.Value))
 		return val, nil
-	case *ast.Nil:
+	case *ast.None:
 	}
 	return val, d.TypeError(rv, val)
 }
@@ -125,7 +125,7 @@ func decodeFloat(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, erro
 	switch val := val.(type) {
 	case *ast.Number:
 		rv.SetFloat(val.Value)
-	case *ast.Nil:
+	case *ast.None:
 	default:
 		return val, d.TypeError(rv, val)
 	}
