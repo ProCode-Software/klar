@@ -506,8 +506,9 @@ type IndexExpression struct {
 //	array[:high]
 //	array[:] -- copy
 type SliceExpression struct {
-	Object      Node
-	Start, High Expression
+	Object   Node
+	From, To Expression
+	Operator Operator
 	BaseNode
 }
 

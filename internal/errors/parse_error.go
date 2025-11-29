@@ -94,6 +94,7 @@ const (
 	ErrChainedNotEqual              // Can't use '!=' operator in chained comparison
 	ErrMultiDirectionCompareChain   // Inconsistent direction of operators in chain: e.g. < and >
 	ErrInequalityWithEqualChain     // Use of ==/!= with >/< in comparison chain
+	ErrStepInListSlice              // Step not allowed in list slice
 
 	// Type =====
 

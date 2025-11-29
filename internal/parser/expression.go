@@ -219,35 +219,33 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 	}
 	// Slice [:3]
 	if k := p.CurrKind(); k == lexer.Ellipsis || k == lexer.DotDotLessThan {
-		p.ParseRange()
-		p.Advance()
-		if p.CurrKind() == lexer.RightBracket {
-			// Slice all [:]
-			p.Advance()
-			return &ast.SliceExpression{Object: leftExpr}
+		r := &ast.RangeExpression{Operator: newOperator(p.Advance())}
+		if p.CurrKind() != lexer.RightBracket {
+			r.To = p.ParseExpression(RangeBindingPower)
+		} else if k == lexer.DotDotLessThan {
+			// '..<' must have end
+			p.Error(errors.Token(errors.ErrExpectedExprAfterClosedRange, p.PeekBehind()))
 		}
+		if p.CurrKind() == lexer.Ellipsis {
+			p.Error(errors.Token(errors.ErrStepInListSlice, p.Advance()))
+			r.Step = p.ParseExpression(RangeBindingPower)
+		}
+		p.Expect(lexer.RightBracket)
+		return r
 	}
 	// Expression
 	item = p.ParseExpression(ExpressionBindingPower)
-
-	if isSlice {
-		rightExpr = item
-	} else if p.CurrKind() == lexer.Colon {
-		isSlice = true
-		leftExpr = item
-		p.Advance()
-		// Slice [1:]
-		if p.CurrKind() != lexer.RightBracket {
-			rightExpr = p.ParseExpression(ExpressionBindingPower)
-		}
-	}
 	p.Expect(lexer.RightBracket)
 
-	if isSlice {
+	if rang, ok := item.(*ast.RangeExpression); ok {
+		if rang.Step != nil {
+			p.Error(errors.Node(errors.ErrStepInListSlice, rang.Step))
+		}
 		return &ast.SliceExpression{
-			Object: left,
-			Start:  leftExpr,
-			High:   rightExpr,
+			Object:   left,
+			From:     rang.From,
+			To:       rang.To,
+			Operator: rang.Operator,
 		}
 	}
 	return &ast.IndexExpression{
@@ -360,24 +358,10 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	return l
 }
 
+// When case only: [...]
 func (p *Parser) ParseLeftRest() *ast.RestExpression {
 	p.Expect(lexer.Ellipsis)
-	// Allow [...] in when case
-	// But not ..._
-	if p.CurrKind() == lexer.Underscore {
-		p.Error(errors.Token(errors.ErrUnderscoreWithRest, p.Curr()))
-	}
-	if p.isWhenCase {
-		switch p.CurrKind() {
-		case lexer.Comma, lexer.RightBracket,
-			lexer.RightParenthesis, lexer.RightCurlyBrace:
-			return &ast.RestExpression{Left: true}
-		}
-	}
-	return &ast.RestExpression{
-		Left:       true,
-		Expression: p.ParseExpression(UnaryBindingPower),
-	}
+	return &ast.RestExpression{Expression: p.ParseExpression(UnaryBindingPower)}
 }
 
 func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression {
@@ -410,7 +394,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		// _... not allowed
 		p.Error(errors.Node(errors.ErrUnderscoreWithRest, left))
 	}
-	return &ast.RestExpression{Left: false, Expression: left}
+	return &ast.RestExpression{Expression: left}
 }
 
 func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.PipelineExpression {
