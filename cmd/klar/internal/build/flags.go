@@ -1,8 +1,8 @@
 package build
 
 import (
-	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
@@ -16,14 +16,14 @@ var (
 		"bun":     target.Bun,
 	}
 	bundleModes = map[string]any{
-		"off":    js.BundleOff,
-		"on":     js.BundleSource,
-		"module": js.BundlePerModule,
-		"std":    js.BundleStd,
+		"off":    klarbuild.BundleOff,
+		"on":     klarbuild.BundleSource,
+		"module": klarbuild.BundlePerModule,
+		"std":    klarbuild.BundleStd,
 	}
 	moduleFormats = map[string]any{
-		"esm": js.ModuleESM,
-		"umd": js.ModuleUMD,
+		"esm": klarbuild.ModuleESM,
+		"umd": klarbuild.ModuleUMD,
 	}
 )
 

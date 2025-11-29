@@ -1,41 +1,50 @@
 package klarml
 
 import (
+	"reflect"
 	"testing"
 )
 
 type (
-	struct0       struct{ Options struct0_inner }
-	struct0_inner struct {
-		Value int
-		Obj2  struct{ Value int }
+	optionsObjValue struct {
+		Options objValue
 	}
-	valStruct struct{ Value int }
+	objValue struct {
+		Obj value
+	}
+	value struct{ Value int }
 )
 
 func TestMain(t *testing.T) {
-	testCase(t, "BasicString", `"Hello, World!"`+"\n", "Hello, World!")
-	testCase(t, "BasicInt", `1`, 1)
-	testCase(t, "BasicBool", ` true `, true)
-	testCase(t, "BasicArray", `[4, 1, 6, 7]`, [...]uint{4, 1, 6, 7})
-	// testCase(t, "Invalid", `3`, make(chan int))
-	/* testCase(t, "anonymous struct", `options:
+	testCase(t, "BasicString", "'Hello, World!'\n", "Hello, World!", false)
+	testCase(t, "BasicInt", `1`, 1, false)
+	testCase(t, "BasicBool", ` true `, true, false)
+	testCase(t, "InlineList", `[4, 1, 6, 7]`, [4]uint{4, 1, 6, 7}, false)
+	testCase(t, "Invalid", `3`, make(chan int), true)
+	testCase(t, "anonymous struct", `options:
 		- value: 2
 		- obj2:
-			-- value: 5`, struct0{struct0_inner{2, valStruct{5}}})
-	testCase(t, "anonymous struct but in braces", `options: {
-			value: 5, obj2:
+			-- value: 5`, optionsObjValue{objValue{value{5}}}, false)
+	testCase(t, "anonymous struct but in braces", `
+		options: {
+			value: 5,
+			obj2:
 				- value: 42
-		}`, struct0{struct0_inner{5, valStruct{42}}}) */
+		}`, optionsObjValue{objValue{value{42}}}, false)
 }
 
-func testCase[T comparable](t *testing.T, name, document string, expected T) {
+func testCase[T any](t *testing.T,
+	name, document string, expected T, wantErr bool,
+) {
 	t.Run(name, func(t *testing.T) {
 		var v T
 		err := Unmarshall([]byte(document), &v)
-		if err != nil && any(expected) != "error" {
+		switch {
+		case err == nil && wantErr:
+			t.Error("expected error, but got nil")
+		case err != nil && !wantErr:
 			t.Errorf("expected %#v, but got unmarshall error:\n\t%v", expected, err)
-		} else if v != expected {
+		case !reflect.DeepEqual(expected, v) && !wantErr:
 			t.Errorf("expected %v, but got %v", expected, v)
 		}
 	})

@@ -21,10 +21,6 @@ const (
 	object
 )
 
-type decodeFunc func(reflect.Value, *Decoder, parseFlags) (ast.Node, error)
-
-var DecodeCache = MakeCache[reflect.Type, decodeFunc]()
-
 const (
 	BufferSize = 64
 	MaxDepth   = 10000

@@ -25,77 +25,84 @@ type Value interface {
 	value()
 }
 
-type baseNode struct {
+type BaseNode struct {
 	Range ranges.Range
 }
 
 type Document struct {
-	baseNode
+	BaseNode
 	Variables map[string]Value
 	Body      Value
 	Comments  []*Comment
 }
 
-type Bool struct {
-	baseNode
+type Boolean struct {
+	BaseNode
 	Value bool
 }
 
 type StringGroup struct {
-	baseNode
+	BaseNode
 	Values []Value
 }
 
 type String struct {
-	baseNode
-	Value string
-	Quote rune // 0 if unquoted or " or ' rune
+	BaseNode
+	Raw   string   // Input string
+	Value []string // Escapes evaluated, variables as segments
+	Wrap  bool     // If '>' was before quote
+	Quote rune     // 0 if unquoted or " or ' rune
 }
 
 type Number struct {
-	baseNode
+	BaseNode
 	Source string
 	Value  float64
 }
 
 type List struct {
-	baseNode
+	BaseNode
 	Inline bool // Uses brackets
 	Items  []Value
 }
 
 type Object struct {
-	baseNode
+	BaseNode
 	Fields []*Field
 	Inline bool // Uses braces
 }
 
 type Field struct {
-	baseNode
+	BaseNode
 	Key   string
 	Value Value
 }
 
 type VarRef struct {
-	baseNode
+	BaseNode
 	Name   string
 	Braces bool // Name wrapped in braces
 }
 
 type Comment struct {
-	baseNode
+	BaseNode
 	Block  bool
 	Source string
 }
 
 type Class struct {
-	baseNode
+	BaseNode
 	Name string
 }
 
 type ArrowRef struct {
-	baseNode
+	BaseNode
 	Var *VarRef
 }
 
-type None struct{ baseNode }
+type Bad struct {
+	BaseNode
+	Value any
+}
+
+type None struct{ BaseNode }

@@ -1,22 +1,19 @@
-package reader
+package klarml
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
-	"github.com/ProCode-Software/klar/pkg/klarml/context"
-	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
 const BufferSize = 64
 
-type ReadError struct {
-	Error error
-}
+type bailout struct{}
 
-type Reader struct {
+type reader struct {
 	buffer []byte
 	reader io.Reader
 	pos    int // Buffer position
@@ -27,42 +24,44 @@ type Reader struct {
 
 	depth int
 	vars  map[string]ast.Value
-	ctx   *context.Context
-	flags flags.Flags
+	ctx   *Context
+	flags Flags
 	errs  []error
 }
 
-func NewBufferReader(buf []byte, f ...flags.Flags) *Reader {
-	return &Reader{
+func newBufferReader(buf []byte, f ...Flags) *reader {
+	return &reader{
 		buffer: buf,
-		flags:  flags.Parse(f...),
+		offset: lexer.Position{1, 1},
+		flags:  parseFlags(f...),
 	}
 }
 
-func NewStreamReader(r io.Reader, f ...flags.Flags) *Reader {
+func newStreamReader(r io.Reader, f ...Flags) *reader {
 	var buf []byte
 	if _, ok := r.(*bytes.Buffer); !ok {
 		buf = make([]byte, BufferSize)
 	}
-	return &Reader{
+	return &reader{
 		buffer: buf,
 		reader: r,
-		flags:  flags.Parse(f...),
+		offset: lexer.Position{1, 1},
+		flags:  parseFlags(f...),
 	}
 }
 
 // Rune reader
 // ===============
 
-func (rd *Reader) needsMore() bool {
+func (rd *reader) needsMore() bool {
 	return rd.pos >= len(rd.buffer)-1
 }
 
 // Refill fills the buffer to full capacity if needed. Refill returns an error
 // if another byte cannot be read.
-func (rd *Reader) refill() error {
+func (rd *reader) refill() error {
 	if rd.reader == nil {
-		if rd.needsMore() {
+		if rd.pos >= len(rd.buffer) {
 			return io.EOF
 		}
 		return nil
@@ -93,7 +92,7 @@ func (rd *Reader) refill() error {
 
 // tryRefill refills the buffer if needed. If the buffer can't be refilled,
 // tryRefil returns eof if err == io.EOF, otherwise it panics.
-func (rd *Reader) tryRefill() (eof error) {
+func (rd *reader) tryRefill() (eof error) {
 	if rd.needsMore() {
 		if err := rd.refill(); err != nil {
 			if err == io.EOF {
@@ -108,8 +107,12 @@ func (rd *Reader) tryRefill() (eof error) {
 // Token reader
 // ===============
 
+func (rd *reader) hasTokens() bool {
+	return rd.currTok().Kind != EOF
+}
+
 // currTok returns the current token.
-func (rd *Reader) currTok() Token {
+func (rd *reader) currTok() Token {
 	if rd.curr != nil {
 		return *rd.curr
 	}
@@ -119,18 +122,22 @@ func (rd *Reader) currTok() Token {
 }
 
 // peekTok returns the token after the current token without advancing r.
-func (rd *Reader) peekTok() Token {
+func (rd *reader) peekTok() Token {
 	if rd.peek != nil {
 		return *rd.peek
 	}
-	_ = rd.currTok()
+	oldComma := rd.comma
+	if rd.currTok().Kind == LeftBracket {
+		rd.comma = true
+	}
 	next := rd.readToken()
 	rd.peek = &next
+	rd.comma = oldComma
 	return next
 }
 
 // advanceTok returns the current token and advances r.
-func (rd *Reader) advanceTok() Token {
+func (rd *reader) advanceTok() Token {
 	if rd.peek != nil {
 		t := *rd.curr
 		rd.curr = rd.peek
@@ -142,4 +149,61 @@ func (rd *Reader) advanceTok() Token {
 	rd.curr = &new
 	rd.peek = nil
 	return curr
+}
+
+func (rd *reader) skipLines() {
+	for rd.currTok().Kind == Newline {
+		rd.advanceTok()
+	}
+}
+
+func (rd *reader) tokenError(code ErrorCode, tok Token, msg string, v ...any) {
+	var text string
+	if len(v) == 0 {
+		text = msg
+	} else {
+		text = fmt.Sprintf(msg, v...)
+	}
+	rd.errs = append(rd.errs, &ParseError{
+		Code:  code,
+		Range: tokenRange(tok),
+		Token: tok,
+		Text:  text,
+	})
+}
+
+func (rd *reader) expectError(
+	exp TokenType, code ErrorCode, msg string, v ...any,
+) Token {
+	if curr := rd.currTok(); curr.Kind != exp {
+		rd.tokenError(code, curr, msg, v...)
+		return curr
+	}
+	return rd.advanceTok()
+}
+
+func (rd *reader) depthUp() {
+	if rd.depth++; rd.depth > MaxDepth {
+		rd.tokenError(ErrMaxDepth, rd.currTok(), "Too much nesting")
+		panic(bailout{})
+	}
+}
+
+func (rd *reader) depthDown() {
+	if rd.depth--; rd.depth < 0 {
+		panic("negative depth")
+	}
+}
+
+func handlePanic(e *error) {
+	switch err := recover().(type) {
+	case nil:
+		return
+	case bailout:
+		return
+	case ReadError:
+		*e = err
+	default:
+		panic(err)
+	}
 }

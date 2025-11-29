@@ -1,7 +1,6 @@
 package klarbuild
 
 import (
-	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
@@ -91,9 +90,9 @@ type JSOptions struct {
 	// The module format to compile JavaScript files in. The file extension does not
 	// change unless you modify your outputs. ESM is the standard JavaScript format, and
 	// is the default and recommended option. CommonJS (`require()`) is not supported.
-	Format js.ModuleFormat
+	Format ModuleFormat
 	// How built JavaScript files should be bundled.
-	Bundle js.BundleMode
+	Bundle BundleMode
 	// Whether source map files should be created. If set to `true`, *.js.map files are
 	// created alongside built JavaScript files. If set to `'inline'`, source maps are
 	// stored as data URIs at the end of JavaScript files.
@@ -111,7 +110,7 @@ type JSOptions struct {
 	// Options for the dev server.
 	Server *JSServerOptions
 	// Global objects that should be made available to use in source files.
-	Globals map[string]js.GlobalType
+	Globals map[string]GlobalType
 	// Path to a .d.ts file containing type definitions for items defined in `globals`.
 	GlobalTypeDefs string
 }
@@ -152,19 +151,25 @@ type CheckerOptions struct {
 	AllowAssertions CheckedAssertionOption
 	// Whether all `Result`s must be used or checked. If enabled, an error will
 	// be reported if a `Result` value is unused or discarded, such as
-	// via `_ = fn()` or calling `fn()` as a function.
+	// via `_ = fn()` or calling `fn()` as a statement.
 	CheckResults bool
 }
 
-// TODO: move to different package
+// Determines the level of exhaustiveness checking for 'when' expressions.
 type ExhaustivenessOption int
 
 const (
+	// Don't check for exhaustiveness, except in 'when' expressions (not statements).
 	NoExhaustiveness ExhaustivenessOption = iota
+	// Always check for exhaustiveness for all types.
 	AllExhaustiveness
+	// Require exhaustiveness for all types except 'Result'.
+	AllExhaustivenessExceptResult
+	// Require exhaustiveness only for enum types.
 	EnumExhaustiveness
 )
 
+// Determines whether and when assertions are allowed in code.
 type CheckedAssertionOption int
 
 const (
@@ -177,4 +182,45 @@ const (
 	// Require comments on all lines containing assertions
 	// stating that you know what you're doing.
 	AllowAssertionsWithComments
+)
+
+// The level of bundling to apply to source files when compiling to JavaScript.
+type BundleMode int
+
+const (
+	// Preserve the file structure and don't bundle files.
+	BundleOff BundleMode = iota
+	// Bundle all source files into one file, and bundle the standard
+	// library separately. Default behaviour
+	BundleSource
+	// Each module and std get their own files
+	BundlePerModule
+	// Bundle everything including the standard library into one file
+	BundleStd
+)
+
+// The module format to emit when compiling to JavaScript. CommonJS is not
+// supported by Klar in order to promote the use of more modern module formats.
+type ModuleFormat int
+
+const (
+	// Standard JavaScript format. Recommended.
+	ModuleESM ModuleFormat = iota
+	// Keep all exports under a single global namespace. Intended for use in browsers.
+	ModuleUMD
+)
+
+// The JavaScript type for global objects.
+type GlobalType uint16
+
+const (
+	GlobalObject   GlobalType = 1 << iota // Object
+	GlobalString                          // String
+	GlobalNumber                          // Number
+	GlobalFunction                        // Function
+	GlobalArray                           // Array. Can be used with another type.
+	GlobalBoolean                         // Boolean
+	GlobalError                           // Error
+	GlobalNull                            // null
+	GlobalConst                           // Constant value. Can be used with another type.
 )

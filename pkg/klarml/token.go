@@ -1,4 +1,4 @@
-package reader
+package klarml
 
 import (
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -22,7 +22,7 @@ const (
 	Dash  // -
 	Arrow // <-
 	Comment
-	Dollar
+	Variable
 	LeftBracket
 	RightBracket
 	LeftCurly
@@ -38,11 +38,11 @@ type Token struct {
 	Attrs map[string]any
 }
 
-func TokenRange(tok Token) ranges.Range {
-	return ranges.Range{Start: tok.Pos, End: TokenEnd(tok)}
+func tokenRange(tok Token) ranges.Range {
+	return ranges.Range{Start: tok.Pos, End: tokenEnd(tok)}
 }
 
-func TokenEnd(tok Token) lexer.Position {
+func tokenEnd(tok Token) lexer.Position {
 	if tok.Attrs != nil {
 		if end, ok := tok.Attrs["end"]; ok {
 			return end.(lexer.Position)

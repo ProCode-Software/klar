@@ -2,8 +2,8 @@ package klarbuild
 
 import "github.com/ProCode-Software/klar/pkg/klarml"
 
-var klarBuildContext = klarml.NewContext()
+var Context = klarml.NewContext()
 
-func ParseKlarBuild(path string) (config *File, err error) {
+func Parse(path string) (config *File, err error) {
 	return
 }

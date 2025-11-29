@@ -1,10 +1,8 @@
-package decode
+package klarml
 
 import (
 	"reflect"
 	"testing"
-
-	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
 type Embedded struct {
@@ -23,14 +21,14 @@ type testStruct struct {
 func Test_makeStructFields(t *testing.T) {
 	type testCase struct {
 		name   string
-		flags  flags.Flags
+		flags  Flags
 		expect int
 	}
 	var (
 		rt    = reflect.TypeFor[testStruct]()
 		cases = []testCase{
 			{"default", 0, 4},
-			{"with KeyedEmbeddedFields", flags.KeyedEmbeddedFields, 5},
+			{"with KeyedEmbeddedFields", KeyedEmbeddedFields, 5},
 		}
 	)
 	for _, test := range cases {

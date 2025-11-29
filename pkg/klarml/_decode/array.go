@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/pkg/klarml/ast"
-	"github.com/ProCode-Software/klar/pkg/klarml/internal/errors"
-	"github.com/ProCode-Software/klar/pkg/klarml/internal/flags"
 )
 
 func (d *Decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {

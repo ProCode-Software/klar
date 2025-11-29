@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
-	"github.com/ProCode-Software/klar/internal/build/js"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
@@ -157,11 +156,11 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 			case "banner":
 				o.JS.Banner = v.Value().(string)
 			case "bundle":
-				o.JS.Bundle = v.Value().(js.BundleMode)
+				o.JS.Bundle = v.Value().(klarbuild.BundleMode)
 			case "declaration-path":
 				o.JS.DeclarationPath = v.Value().(string)
 			case "format":
-				o.JS.Format = v.Value().(js.ModuleFormat)
+				o.JS.Format = v.Value().(klarbuild.ModuleFormat)
 			default:
 				panic("unhandled flag: " + flag)
 			}

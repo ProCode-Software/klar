@@ -1,4 +1,4 @@
-package flags
+package klarml
 
 type Flags uint32
 
@@ -19,18 +19,20 @@ const (
 	NoSingleItemToArray // Don't put single values into arrays
 	KeyedEmbeddedFields // If a struct has an embedded field, it may be keyed in the source or not
 	IgnoreArrayLength   // Don't validate array lengths; skip remaining items
+	NoMissingFields     // Error on missing field when unmarshalling
 
 	// Unmarshalling to any
 
 	UseFloat64         // All numbers are decoded as float64
 	UseInt64           // Integers are decoded as int64
-	UseByteArray       // Strings are decoded as []byte
-	UseRuneArray       // Same as UseByteArray but []rune
+	UseByteSlice       // Strings are decoded as []byte
+	UseRuneSlice       // Same as [UseByteSlice] but decodes as []rune
 	BoolIsString       // true and false literals are strings
 	NumberIsString     // Numeric literals are strings
-	EmptyValueIsString // Empty markup values are decoded as ""
+	EmptyValueIsString // Empty markup values are decoded as "
 
-	StrictFields          = NoUnknownFields | CaseSensitiveFields | NoSingleItemToArray
+	StrictFields = NoUnknownFields | CaseSensitiveFields |
+		NoSingleItemToArray | NoMissingFields
 	AllLiteralsAreStrings = BoolIsString | NumberIsString | EmptyValueIsString
 )
 
@@ -38,7 +40,7 @@ func (f Flags) Has(flag Flags) bool {
 	return (f & flag) != 0
 }
 
-func Parse(flags ...Flags) Flags {
+func parseFlags(flags ...Flags) Flags {
 	var f Flags
 	for _, flag := range flags {
 		f |= flag

@@ -210,7 +210,7 @@ func (d *Decoder) readUnquotedString(flags parseFlags) (ast.Value, error) {
 	value := func() ast.Value {
 		str := strings.TrimSpace(s.String())
 		if flags&continuedString == 0 && (str == "true" || str == "false") {
-			return &ast.Bool{Value: str == "true"}
+			return &ast.Boolean{Value: str == "true"}
 		}
 		return &ast.String{Value: str, Quote: 0}
 	}

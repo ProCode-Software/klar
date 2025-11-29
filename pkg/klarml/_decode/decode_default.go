@@ -46,7 +46,7 @@ func decodeString(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, err
 	switch v := v.(type) {
 	case *ast.String:
 		rv.SetString(v.Value)
-	case *ast.Bool:
+	case *ast.Boolean:
 		rv.SetString(strconv.FormatBool(v.Value))
 	case *ast.Number:
 		rv.SetString(v.Source)
@@ -63,7 +63,7 @@ func decodeBool(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, error
 		return val, err
 	}
 	switch val := val.(type) {
-	case *ast.Bool:
+	case *ast.Boolean:
 		rv.SetBool(val.Value)
 	case *ast.None:
 	default:
