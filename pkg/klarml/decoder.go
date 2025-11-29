@@ -51,7 +51,27 @@ func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
 	}
 	marsh := d.makeDefaultDecoder(rt)
 	DecodeCache.Set(rt, marsh)
-	return marsh
+	return preprocessValue(marsh)
+}
+
+// preprocessValue wraps a new [decodeFunc] that resolves variables
+// and decodes using decode.
+func preprocessValue(decode decodeFunc) decodeFunc {
+	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		switch node := val.(type) {
+		case *ast.VarRef:
+			if v, ok := d.vars[node.Name]; ok {
+				val = v
+				break
+			}
+			return decodeError(ErrVariableNotDefined, rv, node,
+				"Can't find variable '%s'", node.Name,
+			)
+		case *ast.StringGroup:
+			// TODO: resolve classes
+		}
+		return decode(rv, val, d)
+	}
 }
 
 func typeError(rv reflect.Value, val ast.Value) *TypeError {

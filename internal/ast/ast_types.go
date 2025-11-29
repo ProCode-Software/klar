@@ -609,8 +609,7 @@ type Attribute struct {
 
 type RestExpression struct {
 	BaseNode
-	Left       bool
-	Expression Expression
+	Expression Expression // Can be nil in when cases
 }
 
 type RangeExpression struct {

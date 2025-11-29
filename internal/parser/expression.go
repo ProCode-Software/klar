@@ -217,13 +217,9 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			Computed: false,
 		}
 	}
-	var (
-		leftExpr, rightExpr ast.Expression
-		isSlice             bool
-	)
 	// Slice [:3]
-	if p.CurrKind() == lexer.Colon {
-		isSlice = true
+	if k := p.CurrKind(); k == lexer.Ellipsis || k == lexer.DotDotLessThan {
+		p.ParseRange()
 		p.Advance()
 		if p.CurrKind() == lexer.RightBracket {
 			// Slice all [:]

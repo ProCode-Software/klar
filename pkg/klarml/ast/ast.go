@@ -20,13 +20,16 @@ type Node interface {
 	SetPos(start, end lexer.Position)
 }
 
-type Value interface {
-	Node
-	value()
-}
+type Value = Node
 
 type BaseNode struct {
 	Range ranges.Range
+}
+
+func (*BaseNode) _node()              {}
+func (b *BaseNode) Pos() ranges.Range { return b.Range }
+func (b *BaseNode) SetPos(start, end lexer.Position) {
+	b.Range = ranges.Range{Start: start, End: end}
 }
 
 type Document struct {

@@ -60,6 +60,7 @@ const (
 	ErrUnmatchedBracket
 	ErrExpectedValue
 	ErrIllegalCharacter
+	ErrVariableNotDefined
 )
 
 type ParseError struct {
