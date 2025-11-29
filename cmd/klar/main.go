@@ -20,13 +20,14 @@ var (
 )
 
 func main() {
+	defer recoverExit()
 	// startProf()
 	// defer stopProf()
 	args := os.Args
 	if len(args) < 2 {
 		tryPipe()
 		ShowHelp(false)
-		os.Exit(2)
+		cli.Exit(2)
 	}
 	cmdName := args[1]
 	switch cmdName {
@@ -39,7 +40,7 @@ func main() {
 				ansi.BoldGreen("klar ")+ansi.Cyan("-c ")+ansi.Blue("<program>\n\n"),
 				"Use "+ansi.Cyan("'klar --help'")+" for more information.",
 			)
-			os.Exit(2)
+			cli.Exit(2)
 		}
 		run.RunInput(strings.NewReader(args[2]), "string")
 	case "--help", "-h":
@@ -54,7 +55,7 @@ func main() {
 	case "help":
 		if len(args) < 3 || args[2] == "" {
 			ShowHelp(true)
-			os.Exit(0)
+			cli.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help
 		cmd := args[2]
@@ -66,7 +67,7 @@ func main() {
 	default:
 		if args[1][0] == '-' {
 			// Invalid usage
-			os.Exit(2)
+			cli.Exit(2)
 		}
 		cmd := command.Lookup(cmdName, commands, aliases)
 		if cmd != nil {
@@ -86,5 +87,16 @@ func tryPipe() {
 	}
 	// Pipe
 	run.RunInput(os.Stdin, "standardInput")
-	os.Exit(0)
+	cli.Exit(0)
+}
+
+func recoverExit() {
+	switch r := recover().(type) {
+	case cli.SignalExit:
+		os.Exit(r.Code)
+	case nil:
+		return
+	default:
+		panic(r)
+	}
 }

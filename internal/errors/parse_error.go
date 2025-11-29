@@ -78,7 +78,6 @@ const (
 	// Expression =====
 
 	ErrReservedKeyword              // Reserved keyword used as an identifier
-	ErrNotAnExpression              // Required expression but got a statement
 	ErrInvalidLabelShorthand        // Function label shorthand must be an identifier or string member
 	ErrInvalidLabel                 // Function label can't be number
 	ErrReturnPipelineNotLast        // Return step in pipeline must be the last
@@ -95,6 +94,7 @@ const (
 	ErrMultiDirectionCompareChain   // Inconsistent direction of operators in chain: e.g. < and >
 	ErrInequalityWithEqualChain     // Use of ==/!= with >/< in comparison chain
 	ErrStepInListSlice              // Step not allowed in list slice
+	ErrExpectedInterpolationEnd     // Expected end of string interpolation
 
 	// Type =====
 
@@ -178,14 +178,6 @@ func (e *ParseError) error() string {
 		return fmt.Sprintf("%s: %s %s",
 			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
 		)
-	case ErrNotAnExpression:
-		switch e.Node.(type) {
-		case *ast.UpdateStatement:
-			return "'++' and '--' can only be used as postfix statements"
-		case *ast.AssignmentStatement, *ast.VariableDeclaration:
-			return "An assignment can't be used as an expression in Klar"
-		}
-		return "This isn't an expression"
 	case ErrAssignmentAsExpr:
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
@@ -353,7 +345,7 @@ func (e *ParseError) error() string {
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
 	case ErrInvalidUpdate:
-		return "'++' and '--' can only be used as a postfix statement"
+		return "'++' and '--' can only be used as postfix statements"
 	case ErrReturnPipelineNotLast:
 		return "The 'return' in a pipeline must be the last step"
 	case ErrPublicGoesFirst:
@@ -395,8 +387,13 @@ func (e *ParseError) error() string {
 		return "The operators in a comparison chain must follow a single direction"
 	case ErrChainedNotEqual:
 		return "The '!=' operator isn't allowed to be chained in a comparison chain"
+	case ErrStepInListSlice:
+		e.Hint("A step requires the entire list to be iterated over and copied, defeating the purpose of slicing. Instead, manually iterate over the list.")
+		return "A step is not allowed in the range of a list slice"
 	case ErrInequalityWithEqualChain:
 		return "Can't use an equality operator when inequality operators are used in a comparison chain"
+	case ErrExpectedInterpolationEnd:
+		return "I expected '}' here to end string interpolation"
 	case ErrIfStatement:
 		return "Klar doesn't have if statements; use 'when' instead"
 	case ErrTryBlock:

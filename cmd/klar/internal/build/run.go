@@ -1,6 +1,7 @@
 package build
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"strconv"
@@ -21,17 +22,22 @@ import (
 func Build(r *command.Runner) {
 	inputArgs := r.Parser.VarArgByName("inputs")
 	b := &build.Compiler{
-		Mode:    build.ModeBuild,
-		Verbose: r.BoolFlag("verbose"),
+		Mode: build.ModeBuild,
+	}
+	if err := cmp.Or(
+		b.UseStdOpener(),
+		b.SetLogger(r.BoolFlag("verbose")),
+	); err != nil {
+		cli.Failure(err.Error())
 	}
 	delete(r.AllFlags(), "verbose") // Don't reparse it
-	b.StartTime = time.Now()
-	b.InitLogger()
+
 	defer b.CloseAll()
 	// Resolve all inputs
 	if len(inputArgs) > 0 {
 		b.Logf("Resolving inputs: %v\n", inputArgs)
 	}
+	b.StartTime = time.Now()
 	inps, err := build.ResolveInputs(inputArgs)
 	// Build the nearest *package* if no path provided
 	if err == nil && len(inps) == 0 {
@@ -111,12 +117,12 @@ func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
 	}
 	// Show "build failed" message
 	ansi.Fprintfln(os.Stderr,
-		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>!",
+		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>",
 		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
 	for _, err := range errs {
-		b.ErrorPrinter.PrintError(err)
+		b.PrintError(err)
 	}
 	if isMaxErrors {
 		cli.Error("There are too many errors")

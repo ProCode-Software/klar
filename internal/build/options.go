@@ -4,10 +4,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -26,12 +27,12 @@ const (
 	ModRun                       // Build to cache only
 	ModeAnalyze                  // Typed AST only: test, typecheck, LSP
 	ModeParse                    // Untyped + resolved AST: format
+	ModeTest                     // Resolve test files
 )
 
 const (
 	KindDir InputKind = 1 << iota
 	KindFile
-
 	KindPackage = KindDir | (1 << iota)
 	KindModule  = KindDir | (1 << iota)
 	KindStdin   = KindFile | (1 << iota)
@@ -40,7 +41,6 @@ const (
 type Options struct {
 	Inputs []Input
 	klarbuild.File
-	// ProjectDir   string
 }
 
 type Input struct {
@@ -71,78 +71,102 @@ type InputOptions struct {
 
 type Compiler struct {
 	Mode                BuildMode
-	Verbose             bool
+	verbose             bool
 	StartTime           time.Time
 	Errors              []errors.CompileError
 	Options             []*Options
 	PreBuild, PostBuild []any // TODO
-	OpenFiles           []*os.File
+	Opener              Opener
+	openFiles           []*os.File
 
-	Inputs    map[*Input]*InputOptions
-	Modules   map[string]*Module // Module paths to modules
-	FlatFiles map[string]*File   // File paths to parsed ASTs and tokens
+	inputs    map[*Input]*InputOptions
+	modules   map[string]*Module // Module paths to modules
+	flatFiles map[string]*File   // File paths to parsed ASTs and tokens
 
-	ErrorPrinter *printer.Printer
+	errorPrinter *printer.Printer
 
-	SuppressWarnings, WarningsAsErrors []string // TODO: better type
+	// From all configurations. TODO: better type
+	SuppressWarnings, WarningsAsErrors []string
 	*log.Logger
+}
+
+// File opening
+// ============
+
+type OpenFile struct {
+	Size      int64
+	ShortPath string
+	io.ReadCloser
+}
+
+// Opener opens files for reading. The size parameter is the size of
+// the file in bytes. [io.NopCloser] can be used to wrap a [io.Reader]
+// if nothing needs to be done when closing.
+type Opener interface {
+	Open(name string) (*OpenFile, error)
+}
+
+// StdOpener implements [Opener] and is the standard implementation that reads
+// Klar files on the system.
+type StdOpener struct{ cwd string }
+
+// Open implements [Opener]. Open returns the [*os.File], the size of the file in
+// bytes when calling [os.File.Stat], and any error that occurred while opening.
+func (o StdOpener) Open(name string) (f *OpenFile, err error) {
+	fr, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := fr.Stat()
+	if err != nil {
+		return nil, err
+	}
+	relPath := name
+	if !filepath.IsAbs(name) {
+		relPath, err = filepath.Rel(o.cwd, name)
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			// fallback to absolute path
+			relPath = name
+		}
+	}
+	return &OpenFile{
+		Size:       stat.Size(),
+		ShortPath:  relPath,
+		ReadCloser: fr,
+	}, nil
 }
 
 // Logging
 // ==========
 
-// InitLogger sets c.Logger. If the $KLAR_LOG_FILE envionment variable is set,
-// c.Logger is set to write to that file (regardless of the value of c.Verbose).
-// If c.Verbose is false, c.Logger is set to [io.Discard]. Otherwise, c.Logger
-// is set to [os.Stderr].
-func (c *Compiler) InitLogger() {
-	logFile := os.Getenv("KLAR_LOG_FILE")
-	var out io.Writer
-	switch {
-	case logFile != "":
-		file, err := os.Create(logFile)
-		if err != nil {
-			cli.Failure("Unable to open KLAR_LOG_FILE '"+logFile+"': ", err)
-		}
-		c.OpenFiles = append(c.OpenFiles, file)
-		out = file
-		c.Verbose = true
-	case c.Verbose:
-		out = os.Stderr
-	default:
-		out = io.Discard
-	}
-	c.Logger = log.New(out, "[compiler] ", log.Ltime)
-}
-
 // Equivalent to c.Logger.Println
 func (c *Compiler) Log(v ...any) {
-	if c.Verbose {
+	if c.verbose {
 		c.Println(v...)
 	}
 }
 
 func (c *Compiler) Logf(s string, v ...any) {
-	if c.Verbose {
+	if c.verbose {
 		c.Logger.Printf(s, v...)
 	}
 }
 
 func (c *Compiler) LogErrorf(s string, v ...any) {
-	if c.Verbose {
+	if c.verbose {
 		c.Logf(ansi.Red("[error] ")+s, v...)
 	}
 }
 
 func (c *Compiler) LogError(v ...any) {
-	if c.Verbose {
+	if c.verbose {
 		v = append([]any{ansi.Red("[error]")}, v...)
 		c.Println(v...)
 	}
 }
 
 func (c *Compiler) CloseAll() {
-	for _, file := range c.OpenFiles {
+	for _, file := range c.openFiles {
 		file.Close()
 	}
 }

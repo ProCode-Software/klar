@@ -51,10 +51,6 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.Slash:
 		res = p.ParseRegexLiteral()
 	case lexer.When:
-		if p.isWhenGuard || p.isWhenCase {
-			p.Error(errors.Token(errors.ErrNotAllowedInWhen, p.Curr()))
-			return &ast.BadExpression{Token: kind}, true
-		}
 		res = p.ParseWhenBlock()
 	case lexer.For:
 		res = p.ParseForExpression()
@@ -65,7 +61,8 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.Try:
 		res = p.ParseTryExpression()
 	case lexer.Underscore:
-		if u := p.Advance(); !p.isWhenCase && p.CurrKind() != lexer.Arrow {
+		u := p.Advance()
+		if !p.isWhenCase() {
 			p.Error(errors.Token(errors.ErrUnderscoreValue, u))
 		}
 		res = &ast.Discard{}
@@ -83,8 +80,8 @@ func (p *Parser) handleLED(
 
 	// Version (v1-dev)
 	case lexer.Minus:
-		if left, ok := left.(*ast.Symbol); ok &&
-			p.isAttribute && left.Identifier[0] == 'v' {
+		if left, ok := left.(*ast.Symbol); ok && p.isAttribute() &&
+			left.Identifier[0] == 'v' {
 			res = p.ParseVersion(left, bp)
 			break
 		}
@@ -110,9 +107,6 @@ func (p *Parser) handleLED(
 	// Call
 	case lexer.LeftParenthesis:
 		res = p.ParseCallExpression(left, bp)
-		if p.isWhenCase {
-			p.Error(errors.Node(errors.ErrNotAllowedInWhen, res))
-		}
 	// Spread or range
 	case lexer.Ellipsis, lexer.DotDotLessThan:
 		res = p.ParseRange(left, bp)
@@ -127,7 +121,7 @@ func (p *Parser) handleLED(
 		res = p.ParseAssertExpression(left)
 	// Version
 	case lexer.Numeric:
-		if !p.isAttribute {
+		if !p.isAttribute() {
 			return left, false
 		}
 		if l, ok := left.(*ast.Symbol); !ok || l.Identifier[0] != 'v' {
@@ -135,7 +129,6 @@ func (p *Parser) handleLED(
 		} else {
 			res = p.ParseVersion(l, bp)
 		}
-
 	// Invalid assignment
 	case lexer.PlusEqual, lexer.ColonEqual, lexer.MinusEqual, lexer.Equal:
 		err := errors.Token(errors.ErrAssignmentAsExpr, p.Advance())
@@ -269,12 +262,6 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 		res = p.ParseTypeAlias()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
-		// Convert single item tuple to paren type, unless function type
-		// to avoid recreating tuple.
-		if tuple := res.(*ast.TupleType); tuple.Single &&
-			(p.isWhenCase || p.CurrKind() != lexer.Arrow) {
-			res = &ast.ParenType{BaseNode: tuple.BaseNode, Type: tuple.Values[0].Value}
-		}
 	case lexer.Func:
 		res = p.ParseFunctionType()
 	case lexer.Ellipsis:

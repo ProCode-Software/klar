@@ -3,6 +3,7 @@ package command
 import (
 	"os"
 
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
 )
 
@@ -91,7 +92,7 @@ func (c *Command) handleFlagError(err error) {
 	switch err.(type) {
 	case *argparse.HelpError:
 		c.Help(stdout)
-		os.Exit(0)
+		cli.Exit(0)
 	case *argparse.InvalidBoolError:
 	case *argparse.ExtraneousArgsError:
 	case *argparse.InvalidNumberError:

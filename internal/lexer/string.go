@@ -148,6 +148,7 @@ func (l *Lexer) readStrInterp() StringEscape {
 		braceCt = 1
 		b       Builder
 	)
+	b.WriteRune('{')
 loop:
 	for {
 		t := l.Tokenize()
@@ -175,7 +176,7 @@ loop:
 	return StringEscape{
 		Type:          EscInterpolation,
 		Interpolated:  &tokens,
-		Value:         "{" + b.String(),
+		Value:         b.String(),
 		Invalid:       err,
 		ErrorPosition: &errPos,
 	}
@@ -206,7 +207,11 @@ func (l *Lexer) ReadString(pos Position, delim rune, quoteN int) *Token {
 		if escapes == nil {
 			escapes = map[Position]StringEscape{}
 		}
-		b.WriteString(e.Value[1:]) // Character after \
+		if e.Type == EscInterpolation {
+			b.WriteString(e.Value)
+		} else {
+			b.WriteString(e.Value[1:]) // Character after \
+		}
 		if e.Invalid > 0 {
 			p := l.Pos
 			e.ErrorPosition = &p

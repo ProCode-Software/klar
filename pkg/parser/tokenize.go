@@ -29,7 +29,11 @@ func TokenizeFile(file *os.File, flags LexerFlags) ([]lexer.Token, error) {
 }
 
 func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) {
-	tokens = make([]lexer.Token, 0, cap)
+	if cap > 0 {
+		tokens = make([]lexer.Token, 0, cap)
+	} else {
+		tokens = make([]lexer.Token, 0)
+	}
 	// Recover if the lexer panics (read error)
 	defer func() {
 		if r := recover(); r != nil {

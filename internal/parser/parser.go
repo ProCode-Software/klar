@@ -9,17 +9,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
+const (
+	isAttribute = 1 << iota // Allow version parsing
+	isWhenCase              // Allow '_'
+)
+
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
 	Options ParseOptions
 	Tokens  []lexer.Token
 	Index   int
 	Errors  []*ParseError
-
-	// Conditional flags
-	isWhenGuard bool // Disable some types of expressions
-	isWhenCase  bool // Allow '_'
-	isAttribute bool // Allow version parsing
+	flags   uint8 // Conditional flags
 
 	// Stored token properties
 	listCastTokens, assignmentTokens map[int]struct{}
@@ -220,8 +221,11 @@ func (p *Parser) handlePanic() {
 	}
 }
 
-// Free resets all properties to defaults, freeing resources.
-func (p *Parser) Free() {
+func (p *Parser) isWhenCase() bool  { return (p.flags & isWhenCase) != 0 }
+func (p *Parser) isAttribute() bool { return (p.flags & isAttribute) != 0 }
+
+// Reset resets all properties to defaults, freeing resources.
+func (p *Parser) Reset() {
 	p.Options.Error = nil
 	p.Options.File = ""
 	p.Options.MaxErrors = 0
@@ -229,8 +233,7 @@ func (p *Parser) Free() {
 	p.Tokens = nil
 	p.Index = 0
 	p.Errors = nil
-
-	p.isWhenGuard, p.isWhenCase, p.isAttribute = false, false, false
+	p.flags = 0
 
 	p.assignmentTokens, p.listCastTokens = nil, nil
 }

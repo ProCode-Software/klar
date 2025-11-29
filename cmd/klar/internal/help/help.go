@@ -2,8 +2,6 @@
 package help
 
 import (
-	"os"
-
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/argparse"
@@ -29,7 +27,7 @@ func Run(c *command.Runner) {
 		cli.HintIndent(
 			"To search online documentation, use the " + ansi.Cyan("-d") + " flag.",
 		)
-		os.Exit(1)
+		cli.Exit(1)
 	}
 	_ = topic
 }

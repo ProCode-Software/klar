@@ -228,7 +228,7 @@ func (l *Lexer) ReadAll(char rune) (n int) {
 	return
 }
 
-func (l *Lexer) Free() {
+func (l *Lexer) Reset() {
 	l.Reader.Reset(nil)
 	l.Pos.Line = 1
 	l.Pos.Col = 1

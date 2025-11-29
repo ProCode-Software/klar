@@ -34,7 +34,7 @@ func CustomError(errorType string, msg string, detail ...any) {
 // [os.Exit](1).
 func CustomFailure(errorType string, msg string, detail ...any) {
 	Custom(errorType, msg, detail...)
-	os.Exit(1)
+	Exit(1)
 }
 
 // Error prints an error to [os.Stderr].
@@ -45,7 +45,7 @@ func Error(msg string, detail ...any) {
 // Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
 func Failure(msg string, detail ...any) {
 	Print(msg, detail...)
-	os.Exit(1)
+	Exit(1)
 }
 
 func Failuref(msg, detail string, v ...any) {
@@ -62,12 +62,12 @@ func InvalidUsage(title, passed, usage string) {
 		ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
 		"Use "+ansi.Cyan("'--help'")+" for more information.",
 	)
-	os.Exit(2)
+	Exit(2)
 }
 
 func FileNotFound(path string) {
 	Error("File not found: ", path)
-	os.Exit(2)
+	Exit(2)
 }
 
 func HintIndent(hint string) {
@@ -110,4 +110,15 @@ func ErrNotFound(path, typ string) {
 		Failure("Can't find " + typ + " " + ansi.Cyan(path))
 	}
 	Failure("Can't find " + ansi.Cyan(path))
+}
+
+type SignalExit struct {
+	Code int
+}
+
+// Exit panics with a [SignalExit]. This should be used instead of [os.Exit]
+// to ensure deferred functions are run before exiting. This is caught by the
+// main function and calls [os.Exit] with the provided code.
+func Exit(code int) {
+	panic(SignalExit{code})
 }

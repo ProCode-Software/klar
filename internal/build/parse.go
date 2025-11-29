@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -29,7 +28,6 @@ type parseContext struct {
 	printerMu     sync.RWMutex
 	wg            sync.WaitGroup
 	pool          *parsePool
-	cwd           string
 }
 
 // Step 3: Parse each file into an untyped AST
@@ -39,7 +37,7 @@ func (c *Compiler) ParseModules(numFiles int) (
 	syntaxErrors []*errors.ParseError, criticalErr error,
 ) {
 	// Initialize parse context
-	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.Modules), numFiles)
+	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
 	pctx := &parseContext{
 		syntaxErrCh:   make(chan []*errors.ParseError),
 		criticalErrCh: make(chan error, 1),
@@ -51,24 +49,17 @@ func (c *Compiler) ParseModules(numFiles int) (
 	pctx.ctx, pctx.cancel = context.WithCancel(context.Background())
 	defer pctx.cancel()
 
-	// Get working directory to shorten file paths to relative paths
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	pctx.cwd = cwd
-
 	// Init files
-	c.FlatFiles = make(map[string]*File, numFiles)
+	c.flatFiles = make(map[string]*File, numFiles)
 
 	// Start error collector
 	go pctx.collectErrs(&syntaxErrors, &criticalErr)
 
 	// Parse all module files
-	for _, module := range c.Modules {
+	for _, module := range c.modules {
 		for _, filePath := range module.Files {
 			// Skip if already parsed
-			if _, ok := c.FlatFiles[filePath]; ok {
+			if _, ok := c.flatFiles[filePath]; ok {
 				c.Log("Skipping already parsed file:", filePath)
 				continue
 			}
@@ -82,12 +73,13 @@ func (c *Compiler) ParseModules(numFiles int) (
 	close(pctx.syntaxErrCh)
 	close(pctx.criticalErrCh)
 	<-pctx.collectorDone
-
 	return syntaxErrors, criticalErr
 }
 
 // collectErrs runs in a separate goroutine to aggregate errors from channels
-func (pctx *parseContext) collectErrs(syntaxErrors *[]*errors.ParseError, criticalErr *error) {
+func (pctx *parseContext) collectErrs(
+	syntaxErrors *[]*errors.ParseError, criticalErr *error,
+) {
 	defer close(pctx.collectorDone)
 	for {
 		select {
@@ -134,67 +126,57 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		return
 	default:
 	}
-
 	sendCriticalError := func(err error) {
 		select {
 		case pctx.criticalErrCh <- err:
 		case <-pctx.ctx.Done():
 		}
 	}
-
-	// Open file
-	var fr *os.File
-	var err error
+	// === Open file ===
+	var (
+		fr        io.ReadCloser
+		fileSize  int64
+		shortPath string
+	)
 	if filePath == "" {
 		fr = os.Stdin
-		filePath = stdinName
+		filePath, shortPath = stdinName, stdinName
 		c.Log("Reading file from stdin")
 	} else {
-		fr, err = os.Open(filePath)
+		f, err := c.Opener.Open(filePath)
 		if err != nil {
 			c.LogErrorf("Error while opening file %s: %v", filePath, err)
-			sendCriticalError(err)
+			sendCriticalError(&FilesystemError{"open", filePath, err})
 			return
 		}
+		fr, fileSize, shortPath = f.ReadCloser, f.Size, f.ShortPath
 		c.Logf("Opened %s", filePath)
-		defer fr.Close()
+		defer f.Close()
 	}
 
 	// === Tokenize ===
 
 	// Estimate file size
-	stat, err := fr.Stat()
-	if err != nil {
-		sendCriticalError(err)
-		return
-	}
 	lex := pctx.pool.GetLexer(fr)
 	defer pctx.pool.PutLexer(lex)
 	c.Log("Tokenizing file:", filePath)
 
-	toks, err := parser.TokenizeLexer(lex, stat.Size()/10)
+	var sizeEstimate int64
+	if fileSize > 0 {
+		sizeEstimate = fileSize / 10
+	}
+	toks, err := parser.TokenizeLexer(lex, sizeEstimate)
 	if err != nil {
 		c.LogErrorf("Error while tokenizing %s: %v", filePath, err)
-		sendCriticalError(err)
+		sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
 		return
 	}
-
-	var relPath string
-	if filePath != stdinName {
-		relPath, err = filepath.Rel(pctx.cwd, filePath)
-		if err != nil {
-			c.LogErrorf("Unable to get short path of %s: %v", filePath, err)
-			sendCriticalError(err)
-			return
-		}
-	} else {
-		relPath = stdinName
-	}
 	pctx.printerMu.Lock()
-	c.ErrorPrinter.LoadTokens(filePath, relPath, toks)
+	c.errorPrinter.LoadTokens(filePath, shortPath, toks)
 	pctx.printerMu.Unlock()
 
 	// === Parse ===
+
 	pa := pctx.pool.GetParser(toks, filePath)
 	defer pctx.pool.PutParser(pa)
 
@@ -214,7 +196,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 
 	// Store result
 	pctx.fileMu.Lock()
-	c.FlatFiles[filePath] = &File{
+	c.flatFiles[filePath] = &File{
 		Path:   filePath,
 		AST:    ast,
 		Tokens: toks,
@@ -245,7 +227,7 @@ func (p *parsePool) GetLexer(r io.Reader) *lexer.Lexer {
 }
 
 func (p *parsePool) PutLexer(l *lexer.Lexer) {
-	l.Free()
+	l.Reset()
 	p.lexer.Put(l)
 }
 
@@ -257,6 +239,6 @@ func (p *parsePool) GetParser(tokens []lexer.Token, file string) *parse.Parser {
 }
 
 func (p *parsePool) PutParser(pa *parse.Parser) {
-	pa.Free()
+	pa.Reset()
 	p.parser.Put(pa)
 }

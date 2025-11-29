@@ -68,7 +68,9 @@ func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 		orOpts    [][]ast.Expression
 		braceLine uint32
 	)
-	p.isWhenCase = true
+	// Back up isWhenCase flag
+	oldIsWhenCase := p.flags & isWhenCase
+	p.flags |= isWhenCase
 	// ',' binds tighter than '|' in case
 loop:
 	for p.HasTokens() {
@@ -98,11 +100,9 @@ loop:
 	// 	}
 	if p.CurrKind() == lexer.If {
 		p.Advance()
-		p.isWhenGuard = true
 		c.Guard = p.ParseExpression(ExpressionBindingPower)
-		p.isWhenGuard = false
 	}
-	p.isWhenCase = false
+	p.flags = (p.flags &^ isWhenCase) | oldIsWhenCase // Restore old isWhenCase flag
 	p.Expect(lexer.Arrow)
 	switch p.CurrKind() {
 	case lexer.LeftCurlyBrace:

@@ -501,10 +501,12 @@ type IndexExpression struct {
 
 // A list slice expression
 //
-//	array[low:high]
-//	array[low:]
-//	array[:high]
-//	array[:] -- copy
+//	array[low..<high]
+//	array[low...high]
+//	array[low...]
+//	array[..<high]
+//	array[...high]
+//	array[...] // copy
 type SliceExpression struct {
 	Object   Node
 	From, To Expression
@@ -742,11 +744,14 @@ type TryExpression struct {
 	Expression Expression // Is a *CallExpression if valid
 }
 
-// NOT IMPLEMENTED YET
-// ===================
-
 // [expr]!
 type AssertExpression struct {
 	BaseNode
 	Expression Expression
+}
+
+type StringTypeMatch struct {
+	BaseNode
+	Name Identifier
+	Type Type
 }

@@ -59,6 +59,7 @@ func (AwaitExpression) expr()      {}
 func (RelationalExpression) expr() {}
 func (TryExpression) expr()        {}
 func (AssertExpression) expr()     {}
+func (StringTypeMatch) expr()      {}
 
 // Statements
 func (BadExpression) stmt()        {}

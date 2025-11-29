@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+KLAR_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 VERSION="0.0.1" # TODO: replace
 LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/version.KlarVersion=$VERSION'"
 # ldflags: separate with another -X ...
 
 # Generate files
-go generate ./{cmd,internal,pkg}/...
+go generate "$KLAR_DIR/"{cmd,internal,pkg}/...
 
 # Clear console
 if [[ "$1" = "-keep" ]]; then
@@ -20,14 +21,14 @@ export GOEXPERIMENT=jsonv2 # Enable JSON v2
 # Build binary if '-build' passed
 case "$1" in
 "-build")
-    go build -ldflags="$LDFLAGS" -o klar ./cmd/klar
+    go build -ldflags="$LDFLAGS" -o klar "$KLAR_DIR/cmd/klar"
     ;;
 "-time")
     shift
-    time go run -ldflags="$LDFLAGS" ./cmd/klar $@
+    time go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" $@
     ;;
 *)
-    go run -ldflags="$LDFLAGS" ./cmd/klar $@
+    go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" $@
     ;;
 esac
 exit $?

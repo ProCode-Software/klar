@@ -507,12 +507,12 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 func (p *Parser) ParseAttribute() *ast.Attribute {
 	p.Expect(lexer.At)
 	d := &ast.Attribute{}
-	p.isAttribute = true
+	p.flags |= isAttribute
 	d.Decorator = p.ParseIdentifier()
 	if p.CurrKind() == lexer.LeftParenthesis {
 		call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 		d.Args = call.Args
 	}
-	p.isAttribute = false
+	p.flags &^= isAttribute
 	return d
 }

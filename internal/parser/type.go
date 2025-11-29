@@ -165,6 +165,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 			p.Expect(lexer.Comma)
 		}
 	}
+	trailingComma := p.PeekBehind().Kind == lexer.Comma
 	p.Expect(lexer.RightParenthesis)
 	if len(names) > 0 {
 		if hasColon {
@@ -179,7 +180,7 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 			})
 		}
 	}
-	tuple.Single = len(tuple.Values) == 1 && len(tuple.Values[0].Keys) == 0
+	tuple.Single = len(tuple.Values) == 1 && trailingComma
 	return tuple
 }
 

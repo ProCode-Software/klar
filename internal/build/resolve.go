@@ -116,8 +116,8 @@ const MaxModuleDepth = 4
 // a module's directories, if [MaxModuleDepth] is exceeded, or if no Klar files
 // were found for an input.
 func (c *Compiler) ResolveModules() (totalFiles int, err error) {
-	c.Inputs = make(map[*Input]*InputOptions, len(c.Options))
-	c.Modules = make(map[string]*Module, len(c.Options))
+	c.inputs = make(map[*Input]*InputOptions, len(c.Options))
+	c.modules = make(map[string]*Module, len(c.Options))
 	// Show an error if no Klar files to compile were found
 	checkFileCount := func(klarFiles int, path string, err *error) {
 		totalFiles += klarFiles
@@ -140,13 +140,13 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				}
 			case KindFile:
 				info.Modules = []*Module{{Files: []string{inp.Path}}}
-				c.Modules[inp.Path] = info.Modules[0]
+				c.modules[inp.Path] = info.Modules[0]
 				totalFiles++
 				c.Log("Resolved file", inp.Path)
 			case KindStdin:
 				// Empty paths are stdin
 				info.Modules = []*Module{{Files: []string{""}}}
-				c.Modules[os.Stdin.Name()] = info.Modules[0]
+				c.modules[os.Stdin.Name()] = info.Modules[0]
 				totalFiles++
 				c.Log("Resolved file from stdin")
 			case KindModule:
@@ -157,7 +157,7 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 					return totalFiles, err
 				}
 			}
-			c.Inputs[inp] = info
+			c.inputs[inp] = info
 		}
 	}
 	return totalFiles, nil
@@ -171,7 +171,7 @@ func (c *Compiler) moduleFromDir(dir string, modules *[]*Module, depth int) (
 	klarFiles int, err error,
 ) {
 	m := &Module{}
-	c.Modules[dir], *modules = m, append(*modules, m)
+	c.modules[dir], *modules = m, append(*modules, m)
 
 	items, err := os.ReadDir(dir)
 	if err != nil {

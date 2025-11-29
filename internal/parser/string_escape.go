@@ -60,30 +60,44 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 			}
 			val.Value = ast.HexadecimalEscape{Hex: hex}
 		case lexer.EscInterpolation:
-			p2, bp := p.newInterpParser(*e.Interpolated)
-			val.Value = ast.StringInterpolation{
-				Expression: p2.ParseExpression(bp),
-			}
+			ct := p.parseStringInterpolation(*e.Interpolated)
+			val.Value = ast.StringInterpolation{Expression: ct}
 		}
 		frags[i] = val
 	}
 	return frags
 }
 
-func (p *Parser) newInterpParser(tokens []lexer.Token) (*Parser, BindingPower) {
-	// Add the EOF
-	tokens = append(tokens, lexer.Token{
-		Kind: lexer.EOF,
-		// Position: tokens[len(tokens)-1].Attributes["end"].(lexer.Position),
+func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Node) {
+	content = append(content, lexer.Token{
+		Kind:     lexer.EOF,
+		Position: ranges.TokenEnd(content[len(content)-1]),
 	})
-	ep := New(tokens, &p.Options)
-	ep.InsertEOS()
+	p := New(content, &pBase.Options)
+	defer p.Reset()
+	p.Errors = pBase.Errors // Copy errors
+	p.InsertEOS()
 	// Allow type pattern matching in when cases
 	// when str {
-	// 	 "{x: Int} cats" -> ...
+	//	"Hello {_}" -> ...
+	//	"{x: Int} cats" -> ...
 	// }
-	if p.isWhenCase {
-		return ep, DefaultBindingPower
+	if pBase.isWhenCase() && p.PeekKind() == lexer.Colon {
+		name := p.ParseIdentOrDiscard()
+		p.Expect(lexer.Colon)
+		typ := p.ParseType(DefaultTypeBindingPower)
+		res = &ast.StringTypeMatch{
+			BaseNode: newBaseNode(name.Position, p.lastTokEnd()),
+			Name:     name,
+			Type:     typ,
+		}
+	} else {
+		res = p.ParseExpression(ExpressionBindingPower)
 	}
-	return ep, ExpressionBindingPower
+	pBase.Errors = p.Errors // Copy errors back
+	// Check that there is nothing else
+	if c := p.CurrKind(); c != lexer.EndOfStatement && c != lexer.EOF {
+		pBase.Error(errors.ExpectedToken(lexer.RightCurlyBrace, p.Curr()))
+	}
+	return res
 }
