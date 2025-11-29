@@ -141,8 +141,8 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 					"Expected %d items, but found %d", arrLength, len(val.Items),
 				)
 			}
-			for i, item := range val.Items {
-				if err := decodeItem(rv.Index(i), item, d); err != nil {
+			for i := range min(len(val.Items), arrLength) {
+				if err := decodeItem(rv.Index(i), val.Items[i], d); err != nil {
 					return err
 				}
 			}
