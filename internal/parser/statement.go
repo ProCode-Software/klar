@@ -225,7 +225,8 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 		goto body
 	}
 	// Peek for `in` before parsing destructure
-	if p.IsAssignmentStart() {
+	if k := p.PeekKind(); p.IsAssignmentStart() || k == lexer.Comma ||
+		k == lexer.Colon || k == lexer.In {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}

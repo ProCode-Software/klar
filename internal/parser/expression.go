@@ -398,7 +398,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 }
 
 func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.PipelineExpression {
-	var returnIndex int
+	returnIndex := -1
 	steps := make([]ast.Node, 1, 2)
 	steps[0] = left // First step
 
@@ -415,7 +415,7 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 	}
 	// Return must be the last step. The type checker will also make sure this
 	// pipeline is not used as an expression.
-	if returnIndex != len(steps)-1 {
+	if returnIndex >= 0 && returnIndex != len(steps)-1 {
 		p.Error(errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]))
 	}
 	return &ast.PipelineExpression{Steps: steps}

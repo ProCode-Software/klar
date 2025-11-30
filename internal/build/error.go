@@ -91,5 +91,4 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
-	return "", ""
 }

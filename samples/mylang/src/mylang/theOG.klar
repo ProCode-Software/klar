@@ -1,0 +1,58 @@
+/**
+The original Klar example, but reflecting modern changes
+to the design of the language.
+
+The changes are:
+- The language is called Klar instead of Pura. Standard library imports
+are in lowercase. The import has been updated to `klar.cli` from `Pura.CLI`.
+The reference to `CLI.args` has been updated to `cli.args`.
+- `while i, arg : args` has been changed to `for i, arg in args`.
+- The map syntax where `data` is being assigned has been changed to add `#`
+before the curly braces.
+- In the `User.logIn` method, the return type has been updated to use `Nothing`
+instead of `Void`.
+- Inheritance for the `Player` struct uses `: User` rather than `(User)`.
+- Interface `type Reader = {...}` has been changed to `type #Reader {...}`.
+
+Everything else was unchanged! The original was written around April/May
+(most likely May) 2025.
+**/
+
+import klar.cli
+
+func main() {
+    args := cli.args
+    for i, arg in args {
+        print("Argument {i + 1}: {arg}")
+    }
+    args: Any := nil
+    isEnabled: Bool := true
+    data: Data? := #{
+        value: "John"
+    }
+}
+
+type User {
+    name: String
+    age: Int
+    password: String
+}
+
+func User.logIn(pwd: String) -> Result<Nothing> {
+    when pwd {
+        self.password -> return
+        _ -> return Error("Incorrect")
+    }
+}
+
+// Inheritance
+type Player: User {
+    game: String
+}
+
+// Interface
+type #Reader {
+    Read() -> String
+}
+
+fn1(p) |> doThis |> .name // Pipe

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 )
 
 type BuildResult struct {
@@ -18,6 +19,7 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	if totalFiles, err = c.ResolveModules(); err != nil {
 		return
 	}
+	c.errorPrinter = &printer.Printer{MaxLines: 3, Color: true} // TODO: remove
 	var parseErrs []*errors.ParseError
 	parseErrs, err = c.ParseModules(totalFiles)
 	if err != nil || len(parseErrs) > 0 {

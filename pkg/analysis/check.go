@@ -3,7 +3,7 @@ package analysis
 import (
 	// "github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/ast/typed"
+	"github.com/ProCode-Software/klar/internal/ast/typedast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/target"
 )
