@@ -4,12 +4,14 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/errors/printer"
 )
 
 type BuildResult struct {
-	Errors  []errors.CompileError
-	Elapsed time.Duration
+	Errors    []errors.CompileError
+	// Time from [Compiler.StartTime] to finish time.
+	Elapsed   time.Duration
+	// Whether the build stopped early due to too many errors
+	EarlyExit bool
 }
 
 func (c *Compiler) Compile() (res *BuildResult, err error) {
@@ -19,7 +21,6 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	if totalFiles, err = c.ResolveModules(); err != nil {
 		return
 	}
-	c.errorPrinter = &printer.Printer{MaxLines: 3, Color: true} // TODO: remove
 	var parseErrs []*errors.ParseError
 	parseErrs, err = c.ParseModules(totalFiles)
 	if err != nil || len(parseErrs) > 0 {

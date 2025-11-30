@@ -19,11 +19,10 @@ import (
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
+// Build executes the "klar build" command.
 func Build(r *command.Runner) {
 	inputArgs := r.Parser.VarArgByName("inputs")
-	b := &build.Compiler{
-		Mode: build.ModeBuild,
-	}
+	b := build.NewCompiler(build.ModeBuild)
 	if err := cmp.Or(
 		b.UseStdOpener(),
 		b.SetLogger(r.BoolFlag("verbose")),
@@ -51,11 +50,10 @@ func Build(r *command.Runner) {
 	}
 	if err != nil {
 		// Show a better error for file not found
-		if err, ok := err.(*build.FilesystemError); ok && err.IsNotExist() {
-			cli.ErrNotFound(err.Path, "")
-		}
-		if err, ok := err.(*build.InterfaceError); ok {
-			printInterfaceErr(err)
+		if fsErr, ok := err.(*build.FilesystemError); ok && fsErr.IsNotExist() {
+			cli.ErrNotFound(fsErr.Path, "")
+		} else if ierr, ok := err.(*build.InterfaceError); ok {
+			build.PrintInterfaceErr(ierr)
 		}
 		cli.Failure(err.Error())
 	}
@@ -79,17 +77,15 @@ func Build(r *command.Runner) {
 	// TODO: error if --output is file and there are multiple inputs
 	res, err := b.Compile()
 	// For InterfaceErrors: print a prettier error
-	intfErr, isIntfErr := err.(*build.InterfaceError)
-	// For a TooManyErrors InterfaceError, still print the other error messages
-	isMaxErrors := isIntfErr && intfErr.Code == build.ErrTooManyErrors
+	ierr, isInterfaceErr := err.(*build.InterfaceError)
 	switch {
-	case isMaxErrors, len(res.Errors) > 0:
-		printErrors(res, isMaxErrors, b)
-	case isIntfErr:
-		printInterfaceErr(intfErr)
+	case res.EarlyExit, len(res.Errors) > 0:
+		printErrors(res, res.EarlyExit, b)
+	case isInterfaceErr:
+		build.PrintInterfaceErr(ierr)
 	case err != nil:
-		// Errors should be a struct
-		cli.Failure(fmt.Sprintf("%T", err), err)
+		// Errors should be a struct such as InterfaceError or FilesystemError
+		panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
 	default:
 		ansi.Fprintfln(os.Stderr,
 			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
@@ -98,11 +94,9 @@ func Build(r *command.Runner) {
 	}
 }
 
-func printInterfaceErr(err *build.InterfaceError) {
-	main, detail := err.PrettyError()
-	cli.Failure(ansi.Sprintf("<**>%s</**>%s", main, detail))
-}
-
+// printErrors prints the "Build failed" message to standard error with the
+// compile errors from res. isMaxErrors is whether compilation stopped early
+// due to too many errors. Errors are printed using b's errorPrinter.
 func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
 	errs := res.Errors
 	// Format error count
@@ -129,14 +123,15 @@ func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
 	}
 }
 
+// ParseFlags parses flags from r into o.
 func ParseFlags(r *command.Runner, o *build.Options) {
 	for flag, v := range r.AllFlags() {
 		if v == nil {
 			continue
 		}
 		switch flag {
-		case "config":
-			continue // TODO
+		case "config", "verbose":
+			continue // Already handled
 		case "watch":
 			o.Watch = v.Value().(bool)
 		case "output":
@@ -147,6 +142,14 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 			// The rest are all JS flags
 			if o.JS == nil {
 				o.JS = &klarbuild.JSOptions{}
+			}
+			// Check if a JavaScript flag was used when not targeting JavaScript
+			// TODO: wait until all flags are parsed. Flags aren't in order.
+			if o.Target != target.JavaScript {
+				cli.Failure(fmt.Sprintf(
+					"Can't use JavaScript flag '%s' with target '%s'",
+					argparse.FormatFlag(flag), o.Target,
+				))
 			}
 			switch flag {
 			case "declaration":
@@ -169,14 +172,6 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 				o.JS.Format = v.Value().(klarbuild.ModuleFormat)
 			default:
 				panic("unhandled flag: " + flag)
-			}
-			// Check if a JavaScript flag was used when not targeting JavaScript
-			// TODO: wait until all flags are parsed
-			if o.Target != target.JavaScript {
-				cli.Failure(fmt.Sprintf(
-					"Can't use JavaScript flag '%s' with target '%s'",
-					argparse.FormatFlag(flag), o.Target,
-				))
 			}
 		}
 	}

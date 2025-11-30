@@ -6,11 +6,13 @@ import (
 	"os"
 
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/errors/printer"
 )
 
 func NewCompiler(mode BuildMode) *Compiler {
 	return &Compiler{
 		Mode: mode,
+		errorPrinter: &printer.Printer{MaxLines: 3, Color: true},
 	}
 }
 

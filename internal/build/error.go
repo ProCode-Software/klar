@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
 )
@@ -91,4 +92,9 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
+}
+
+func PrintInterfaceErr(err *InterfaceError) {
+	main, detail := err.PrettyError()
+	cli.Failure(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
