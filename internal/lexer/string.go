@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"unicode"
+	"unicode/utf8"
 )
 
 type EscapeType int
@@ -151,6 +152,11 @@ func (l *Lexer) readStrInterp() StringEscape {
 	b.WriteRune('{')
 loop:
 	for {
+		if next, eof := l.PeekN(2); !eof {
+			if r, _ := utf8.DecodeRune(next); unicode.IsSpace(r) {
+				b.WriteByte(next[0])
+			}
+		}
 		t := l.Tokenize()
 		switch t.Kind {
 		case EOF:

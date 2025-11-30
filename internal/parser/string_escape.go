@@ -75,7 +75,6 @@ func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.No
 	})
 	p := New(content, &pBase.Options)
 	defer p.Reset()
-	p.Errors = pBase.Errors // Copy errors
 	p.InsertEOS()
 	// Allow type pattern matching in when cases
 	// when str {
@@ -94,10 +93,11 @@ func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.No
 	} else {
 		res = p.ParseExpression(ExpressionBindingPower)
 	}
-	pBase.Errors = p.Errors // Copy errors back
+	// Copy errors back
+	pBase.Errors = append(pBase.Errors, p.Errors...)
 	// Check that there is nothing else
 	if c := p.CurrKind(); c != lexer.EndOfStatement && c != lexer.EOF {
-		pBase.Error(errors.ExpectedToken(lexer.RightCurlyBrace, p.Curr()))
+		pBase.Error(errors.Token(errors.ErrExpectedInterpolationEnd, p.Curr()))
 	}
 	return res
 }
