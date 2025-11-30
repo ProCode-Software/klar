@@ -25,6 +25,7 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 		for i, err := range parseErrs {
 			res.Errors[i] = err
 		}
+		parseErrs = nil
 		c.LogError("Build failed due to errors")
 		return
 	}

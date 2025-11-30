@@ -59,7 +59,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	// Return strings with ANSI tags, not colorized yet.
 	switch err.Code {
 	case ErrModuleDescriptor:
-		return "Expected a module name after " + "<c>'@'</c>", ""
+		return "Expected a module name after <c>'@'</c>", ""
 	case ErrNotAKlarFile:
 		ext := filepath.Ext(err.Value)[1:]
 		base := err.Value[:len(err.Value)-len(ext)]
@@ -73,22 +73,23 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 			fmt.Sprintf("<c>%s</c> has %d", err.Value, MaxModuleDepth+1)
 	case ErrFileInPackage:
 		return "A file isn't allowed in the package or project root: ",
-			"I found " + "<c>" + err.Value + "</c>"
+			"I found <c>" + err.Value + "</c>"
 	case ErrFileInPkgDir:
-		return "A file isn't allowed in the " + "<c>pkg</c>" + " directory, ",
-			"but I found " + "<c>" + err.Value + "</c>"
+		return "A file isn't allowed in the <c>pkg</c> directory, ",
+			"but I found <c>" + err.Value + "</c>"
 	case ErrNestedKlarFolder:
 		dir, base := filepath.Split(err.Value)
 		dir = strings.TrimSuffix(dir, "/")
 		if base == module.PackageFolder {
-			return "Can't nest the " + "<c>" + base + "</c> directory: ",
-				"I found it nested in " + "<c>" + dir + "</c>"
+			return "Can't nest the <c>" + base + "</c> directory: ",
+				"I found it nested in <c>" + dir + "</c>"
 		}
-		return "The " + "<c>" + base + "</c>" +
-				" directory is only allowed in the project root, ",
-			"but I found it in " + "<c>" + dir + "</c>"
+		return "The <c>" + base + "</c> directory is only allowed in the project root, ",
+			"but I found it in <c>" + dir + "</c>"
 	case ErrNoKlarFiles:
-		return "I didn't find any Klar files to compile in " + "<c>" + err.Value + "</c>", ""
+		return "I didn't find any Klar files to compile in <c>" + err.Value + "</c>", ""
+	default:
+		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
 	return "", ""
 }

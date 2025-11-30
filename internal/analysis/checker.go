@@ -5,17 +5,11 @@ import (
 	"github.com/ProCode-Software/klar/internal/errors"
 )
 
-type File struct {
-	Path    string
-	Program *ast.Program
-}
-
-type ModuleChecker struct {
-	Contexts map[ContextID]*Context
-	Files    []File
-	Errors   []errors.CompileError
-}
+type FileID int
 
 type Checker struct {
-	Program *ast.Program
+	Contexts  map[ContextID]*Context
+	filePaths map[FileID]string
+	Programs  []*ast.Program
+	Errors    []errors.CompileError
 }
