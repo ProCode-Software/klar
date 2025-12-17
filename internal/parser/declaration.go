@@ -383,8 +383,11 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	var rec ast.Identifier
 	// func (p: Parser)
 	if p.CurrKind() == lexer.LeftParenthesis {
-		p.Advance()                 // (
-		self := p.ParseIdentifier() // self name
+		p.Advance() // (
+		if p.CurrKind() == lexer.Underscore {
+			p.Error(errors.Token(errors.ErrSelfNameDiscard, p.Curr()))
+		}
+		self := p.ParseIdentOrDiscard() // self name
 		f.SelfName = &self
 		if p.CurrKind() != lexer.Colon { // :
 			p.Expect(lexer.Colon) // Report error

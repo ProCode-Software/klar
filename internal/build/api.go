@@ -11,7 +11,7 @@ import (
 
 func NewCompiler(mode BuildMode) *Compiler {
 	return &Compiler{
-		Mode: mode,
+		Mode:         mode,
 		errorPrinter: &printer.Printer{MaxLines: 3, Color: true},
 	}
 }

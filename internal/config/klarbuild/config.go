@@ -5,7 +5,7 @@ import (
 )
 
 // TODO: add documentation which will also be added to schema
-// TODO: transform features in klarml unmarshaller, such as mapping strings
+// TODO: transform features in klon unmarshaller, such as mapping strings
 // to enums
 
 type File struct {
@@ -65,8 +65,8 @@ type AssetOptions struct {
 	Extensions []string
 	// Directory that assets should be copied to. Relative to the build output directory.
 	AssetDir string
-	// Whether .klarml files should be transformed to .json files.
-	KlarmlToJSON bool
+	// Whether .klon files should be transformed to .json files.
+	KlonToJSON bool
 }
 
 type JSOptions struct {

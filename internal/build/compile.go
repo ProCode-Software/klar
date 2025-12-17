@@ -7,9 +7,9 @@ import (
 )
 
 type BuildResult struct {
-	Errors    []errors.CompileError
+	Errors []errors.CompileError
 	// Time from [Compiler.StartTime] to finish time.
-	Elapsed   time.Duration
+	Elapsed time.Duration
 	// Whether the build stopped early due to too many errors
 	EarlyExit bool
 }

@@ -96,10 +96,17 @@ func (p *Parser) nudError() {
 		return
 	case lexer.If:
 		p.Error(errors.Token(errors.ErrIfStatement, curr))
-	case lexer.PlusPlus, lexer.MinusMinus:
-		p.Error(errors.Token(errors.ErrInvalidUpdate, curr))
 	}
 	p.skipUntilBoundary()
+}
+
+func (p *Parser) TryParseLED(left ast.Expression, bp BindingPower) (ast.Expression, bool) {
+	kind := p.CurrKind()
+	left, handled := p.handleLED(kind, left, BindingPowerMap[kind])
+	if !handled {
+		return left, false
+	}
+	return p.ParseLED(left, bp), true
 }
 
 func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {

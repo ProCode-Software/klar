@@ -17,13 +17,11 @@ const (
 
 	// Import =====
 
-	ErrAliasInUnqualifiedImport // Alias is not allowed before unqualified import
-	ErrImportExpectedModule     // Unqualified import without module name
-	ErrImportInvalidWildcard    // Wildcard must be last part of module
-	ErrWildcardWithUnqualified  // Using unqualified import with wildcard
-	ErrWildcardAndAlias         // Using alias with wildcard
-	ErrEmptyUnqualifiedImport   // Empty unqualified import
-	ErrImportsGoFirst           // Imports always go before other declarations
+	ErrImportExpectedModule    // Unqualified import without module name
+	ErrImportInvalidWildcard   // Wildcard must be last part of module
+	ErrWildcardWithUnqualified // Using unqualified import with wildcard
+	ErrEmptyUnqualifiedImport  // Empty unqualified import
+	ErrImportsGoFirst          // Imports always go before other declarations
 
 	// Punctuation =====
 
@@ -38,17 +36,18 @@ const (
 
 	// Literal =====
 
-	ErrStringEscape         // Invalid string escape
-	ErrUnicodeEscapeTooBig  // Unicode escape over 0x10FFFF
-	ErrConsecutiveSeparator // Number has consecutive _
-	ErrMisplacedSeparator   // Number has separator somewhere where it's not supposed to
-	ErrTrailingSeparator    // Number has misplaced _
-	ErrExpectedHex          // Expected hex digit (0-9, a-f, A-F)
-	ErrExpectedOctal        // Expected octal digit (0-7)
-	ErrExpectedBinary       // Expected binary digit (0 or 1)
-	ErrExpectedDecimal      // Expected decimal digit (0-9)
-	ErrInvalidVersion       // Invalid version literal syntax
-	ErrUnderscoreValue      // Use of _ as a value
+	ErrStringEscape            // Invalid string escape
+	ErrUnicodeEscapeTooBig     // Unicode escape over 0x10FFFF
+	ErrConsecutiveSeparator    // Number has consecutive _
+	ErrMisplacedSeparator      // Number has separator somewhere where it's not supposed to
+	ErrTrailingSeparator       // Number has misplaced _
+	ErrExpectedHex             // Expected hex digit (0-9, a-f, A-F)
+	ErrExpectedOctal           // Expected octal digit (0-7)
+	ErrExpectedBinary          // Expected binary digit (0 or 1)
+	ErrExpectedDecimal         // Expected decimal digit (0-9)
+	ErrInvalidVersion          // Invalid version literal syntax
+	ErrUnderscoreValue         // Use of _ as a value
+	ErrEmptyRegexInterpolation // Empty regex interpolation
 
 	// Assignment =====
 
@@ -74,27 +73,27 @@ const (
 	ErrPublicGoesFirst      // Public modifier always goes first
 	ErrDuplicateModifier    // More than 1 of the same modifier
 	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
+	ErrSelfNameDiscard      // Can't discard self name in method declaration
 
 	// Expression =====
 
-	ErrReservedKeyword              // Reserved keyword used as an identifier
-	ErrInvalidLabelShorthand        // Function label shorthand must be an identifier or string member
-	ErrInvalidLabel                 // Function label can't be number
-	ErrReturnPipelineNotLast        // Return step in pipeline must be the last
-	ErrInvalidObjectPipeStep        // Step in object pipeline must be method call or assignment
-	ErrMultipleKeysInMapRest        // Expected 1 key in map rest (comma not allowed)
-	ErrExpectedExprAfterClosedRange // Invalid: 1..<
-	ErrEllipsisForClosedRangeStep   // ..< instead of ... in 1..<10...5
-	ErrMustBeFuncCall               // Expression after go or try must be a function call
-	ErrSelfExecFuncNotAllowed       // Self-executing functions are not allowed in Klar
-	ErrParenAroundLambdaType        // Type for param is not in parentheses
-	ErrParenAroundLambdaDefault     // Default value for param is not in parentheses
-	ErrArrowAfterNonParenLambda     // -> required if lambda parameters aren't parenthesized
-	ErrChainedNotEqual              // Can't use '!=' operator in chained comparison
-	ErrMultiDirectionCompareChain   // Inconsistent direction of operators in chain: e.g. < and >
-	ErrInequalityWithEqualChain     // Use of ==/!= with >/< in comparison chain
-	ErrStepInListSlice              // Step not allowed in list slice
-	ErrExpectedInterpolationEnd     // Expected end of string interpolation
+	ErrReservedKeyword            // Reserved keyword used as an identifier
+	ErrInvalidLabelShorthand      // Function label shorthand must be an identifier or string member
+	ErrInvalidLabel               // Function label can't be number
+	ErrReturnPipelineNotLast      // Return step in pipeline must be the last
+	ErrInvalidObjectPipeStep      // Step in object pipeline must be method call or assignment
+	ErrMultipleKeysInMapRest      // Expected 1 key in map rest (comma not allowed)
+	ErrExpectedExprAfterOpenRange // Invalid: 1..<
+	ErrEllipsisForOpenRangeStep   // ..< instead of ... in 1..<10...5
+	ErrMustBeFuncCall             // Expression after go or try must be a function call
+	ErrSelfExecFuncNotAllowed     // Self-executing functions are not allowed in Klar
+	ErrParenAroundLambdaType      // Type for param is not in parentheses
+	ErrParenAroundLambdaDefault   // Default value for param is not in parentheses
+	ErrChainedNotEqual            // Can't use '!=' operator in chained comparison
+	ErrMultiDirectionCompareChain // Inconsistent direction of operators in chain: e.g. < and >
+	ErrInequalityWithEqualChain   // Use of ==/!= with >/< in comparison chain
+	ErrStepInListSlice            // Step not allowed in list slice
+	ErrExpectedInterpolationEnd   // Expected end of string/regex interpolation
 
 	// Type =====
 
@@ -169,15 +168,11 @@ func (e *ParseError) error() string {
 	)
 	switch e.ErrorCode {
 	default:
+		title := "error code " + e.ErrorCode.String() + " doesn't have a message: "
 		if e.Node != nil {
-			kind := reflect.TypeOf(e.Node).Name()
-			return fmt.Sprintf(
-				"%s: in %s", e.ErrorCode.String(), kind,
-			)
+			panic(title + "node = " + reflect.TypeOf(e.Node).Name())
 		}
-		return fmt.Sprintf("%s: %s %s",
-			e.ErrorCode.String(), kind.String(), QuoteToken(tok),
-		)
+		panic(title + "token = {" + tok.String() + "}")
 	case ErrAssignmentAsExpr:
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
@@ -192,7 +187,7 @@ func (e *ParseError) error() string {
 	case ErrInvalidTypeAnnotation:
 		return "A type annotation is only allowed on a new variable"
 	case ErrExpectedToken:
-		expToken := e.Params["expected"].(lexer.TokenType)
+		expToken := e.tokenTypeParam("expected")
 		expected := FormatTokenType(expToken)
 		if src == ";" {
 			return "A line break must be used to terminate a statement in Klar"
@@ -209,16 +204,12 @@ func (e *ParseError) error() string {
 		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
 	case ErrWildcardWithUnqualified:
 		return "Can't have both '*' and unqualified import in import statement"
-	case ErrWildcardAndAlias:
-		return "Can't use '*' with alias in unqualified import"
 	case ErrEmptyUnqualifiedImport:
 		return "Expected at least 1 unqualified import"
 	case ErrImportExpectedModule:
 		return "I expected a module name before '.{' in unqualified import"
 	case ErrImportInvalidWildcard:
 		return "'*' should be at the end of the module name"
-	case ErrAliasInUnqualifiedImport:
-		return "Can't use an alias with an unqualified import"
 	case ErrUnexpectedToken:
 		switch {
 		case src == ";":
@@ -244,7 +235,7 @@ func (e *ParseError) error() string {
 	case ErrRequiredStructFieldType:
 		return "A struct field must have an explicit type"
 	case ErrMustBeFuncCall:
-		return "The expression after '" + e.Params["expr"].(lexer.TokenType).String() +
+		return "The expression after '" + e.tokenTypeParam("expr").String() +
 			"' must be a function call"
 	case ErrExpectedHex:
 		return "I expected 2 hexadecimal digits (0-9, a-f or A-F) after"
@@ -263,9 +254,14 @@ func (e *ParseError) error() string {
 		case lexer.ErrEscapeExpHex:
 			return `I expected 2 hexadecimal digits (0-9, a-f or A-F) after '\x'`
 		case lexer.ErrEscapeUnknown:
-			esc := e.Params["escape"].(string)
+			esc := e.stringParam("escape")
 			return "Unknown character escape " + Quote(esc)
-		case lexer.ErrEscapeTooLong, lexer.ErrEscapeTooShort:
+		case lexer.ErrEscapeTooShort:
+			if kind == lexer.EscInterpolation {
+				return "A string interpolation can't be empty"
+			}
+			fallthrough
+		case lexer.ErrEscapeTooLong:
 			if kind == lexer.EscUnicode {
 				return "I expected 1-6 hex digits between { } in Unicode escape"
 			}
@@ -274,7 +270,7 @@ func (e *ParseError) error() string {
 			return "Invalid string escape"
 		}
 	case ErrCurlyQuote:
-		alt := e.Params["alt"].(string)
+		alt := e.stringParam("alt")
 		return "Use the straight quotation mark " + Quote(alt) + " instead of a curly quotation mark"
 	case ErrForInvalidCondition:
 		return "A 'for' loop must have an assignment or a loop expression"
@@ -354,9 +350,9 @@ func (e *ParseError) error() string {
 		return "A destructure pattern can't be empty"
 	case ErrColonEqual:
 		return "Use '=' instead of ':=' to set a default"
-	case ErrEllipsisForClosedRangeStep:
+	case ErrEllipsisForOpenRangeStep:
 		return "Use '...' instead of '..<' to define a range step"
-	case ErrExpectedExprAfterClosedRange:
+	case ErrExpectedExprAfterOpenRange:
 		return "I expected an expression after '..<'"
 	case ErrRequiredBraces:
 		return "Braces are required around this statement"
@@ -393,16 +389,22 @@ func (e *ParseError) error() string {
 	case ErrInequalityWithEqualChain:
 		return "Can't use an equality operator when inequality operators are used in a comparison chain"
 	case ErrExpectedInterpolationEnd:
-		return "I expected '}' here to end string interpolation"
+		kind := "string"
+		if e.optionalBoolParam("regex") {
+			kind = "regex"
+		}
+		return "I expected '}' here to end " + kind + " interpolation"
 	case ErrIfStatement:
 		return "Klar doesn't have if statements; use 'when' instead"
 	case ErrTryBlock:
 		return "Klar doesn't have try-catch statements"
 	case ErrTripleEqual:
-		op := FormatTokenType(e.Params["op"].(lexer.TokenType))
+		op := FormatTokenType(e.tokenTypeParam("op"))
 		return "In Klar, comparisons are always strict; use " + op + " instead"
+	case ErrSelfNameDiscard:
+		return "Can't use '_' as name of self in method declaration"
 	case ErrInvalidLoop:
-		kind := e.Params["stmt"].(lexer.TokenType)
+		kind := e.tokenTypeParam("stmt")
 		var loop string
 		if kind == lexer.Next {
 			loop = "continue"
@@ -414,14 +416,14 @@ func (e *ParseError) error() string {
 		return "Parameters must be in parentheses in order to set default values"
 	case ErrParenAroundLambdaType:
 		return "Parameters must be in parentheses in order to annotate types"
-	case ErrArrowAfterNonParenLambda:
-		return "'->' is required after parameters if they aren't in parentheses"
 	case ErrInvalidArrow:
 		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
 	case ErrInvalidCharacter:
 		return "This isn't a valid Unicode character"
+	case ErrEmptyRegexInterpolation:
+		return "A regex interpolation can't be empty"
 	case ErrRedeclaredField:
 		kind := "Field"
 		if e.Params["kind"] == "enum" {
@@ -434,9 +436,9 @@ func (e *ParseError) error() string {
 		var (
 			code      = e.ErrorCode
 			origPos   = e.Params["origPos"]
-			name      = e.Params["name"].(string)
-			origType  = e.Params["origType"].(string)
-			newType   = e.Params["newType"].(string)
+			name      = e.stringParam("name")
+			origType  = e.stringParam("origType")
+			newType   = e.stringParam("newType")
 			first, as string
 		)
 		switch code {
@@ -453,6 +455,19 @@ func (e *ParseError) error() string {
 			Quote(name), as, origPos,
 		)
 	}
+}
+
+func (e *ParseError) stringParam(name string) string { return e.Params[name].(string) }
+func (e *ParseError) boolParam(name string) bool     { return e.Params[name].(bool) }
+func (e *ParseError) tokenTypeParam(name string) lexer.TokenType {
+	return e.Params[name].(lexer.TokenType)
+}
+func (e *ParseError) tokenParam(name string) lexer.Token { return e.Params[name].(lexer.Token) }
+func (e *ParseError) optionalBoolParam(name string) bool {
+	if v, ok := e.Params[name]; ok {
+		return v.(bool)
+	}
+	return false
 }
 
 func UnexpectedToken(token lexer.Token) *ParseError {

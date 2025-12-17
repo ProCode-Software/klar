@@ -14,5 +14,13 @@
 				"--extensionDevelopmentPath=${workspaceFolder}/klar-vscode"
 			]
 		},
+		{
+			"name": "Run Klar",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}/cmd/klar/",
+			"args": []
+		},
 	]
 }

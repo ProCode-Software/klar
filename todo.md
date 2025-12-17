@@ -32,9 +32,9 @@
 - Similar: `klar.build` for build constants so `when build.isJavaScript` or `build.target`
 File extensions to include in compilation:
 - Code: .klar, .js, .ts,
-- Data: .json, .klarml, .html, .xml, .txt, .csv, .tsv, .y(a)ml
+- Data: .json, .klon, .html, .xml, .txt, .csv, .tsv, .y(a)ml
 - Media: .css, .scss, .less, .png, .jp(e)g, .svg
-option to convert klarml to json
+option to convert klon to json
 
 # Proposals
 - `shadow` keyword:

@@ -154,7 +154,7 @@ loop:
 	for {
 		if next, eof := l.PeekN(2); !eof {
 			if r, _ := utf8.DecodeRune(next); unicode.IsSpace(r) {
-				b.WriteByte(next[0])
+				b.WriteRune(r)
 			}
 		}
 		t := l.Tokenize()

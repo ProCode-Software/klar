@@ -224,7 +224,7 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			r.To = p.ParseExpression(RangeBindingPower)
 		} else if k == lexer.DotDotLessThan {
 			// '..<' must have end
-			p.Error(errors.Token(errors.ErrExpectedExprAfterClosedRange, p.PeekBehind()))
+			p.Error(errors.Token(errors.ErrExpectedExprAfterOpenRange, p.PeekBehind()))
 		}
 		if p.CurrKind() == lexer.Ellipsis {
 			p.Error(errors.Token(errors.ErrStepInListSlice, p.Advance()))
@@ -314,14 +314,17 @@ func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
 func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	l := &ast.LambdaExpression{}
 	p.Advance() // func
-	if curr := p.CurrKind(); curr == lexer.LeftParenthesis {
+	switch p.CurrKind() {
+	case lexer.LeftParenthesis:
+		// Params and optional type/default in parens
 		p.Advance()
 		if p.CurrKind() != lexer.RightParenthesis {
 			l.Params = p.ParseDestructureTypePairs(true)
 		}
 		l.InParen = true
 		p.Expect(lexer.RightParenthesis)
-	} else if curr != lexer.Arrow {
+	case lexer.Arrow, lexer.LeftCurlyBrace:
+	default:
 		parseSeries(p, &l.Params, func() *ast.DestructureTypePair {
 			d := &ast.DestructureTypePair{
 				Keys: []ast.Destructure{p.ParseDestructure()},
@@ -339,21 +342,14 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 			return d
 		}, 0, lexer.Comma, false)
 	}
-	// Can omit -> if params are parenthesized and body is a block
-	if !l.InParen || p.CurrKind() != lexer.LeftParenthesis ||
-		p.PeekKind() != lexer.LeftParenthesis {
-		p.ExpectErrorNoAdvance(
-			&errors.ParseError{ErrorCode: errors.ErrArrowAfterNonParenLambda},
-			lexer.Arrow,
-		)
-	} else if p.CurrKind() == lexer.Arrow {
+	switch p.CurrKind() {
+	case lexer.Arrow:
 		p.Advance()
-	}
-	// Body
-	if p.CurrKind() == lexer.LeftCurlyBrace {
-		l.Block = p.ParseBlock()
-	} else {
 		l.Expr = p.ParseExpression(ExpressionBindingPower)
+	case lexer.LeftCurlyBrace:
+		l.Block = p.ParseBlock()
+	default:
+		p.Error(errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
 	}
 	return l
 }
@@ -375,7 +371,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		}
 		curr := p.CurrKind()
 		if curr == lexer.DotDotLessThan {
-			p.Error(errors.Token(errors.ErrEllipsisForClosedRangeStep, p.Curr()))
+			p.Error(errors.Token(errors.ErrEllipsisForOpenRangeStep, p.Curr()))
 			curr = lexer.Ellipsis
 		}
 		if curr == lexer.Ellipsis {
@@ -387,7 +383,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 	}
 	if op.Kind == lexer.DotDotLessThan {
 		// Expression required
-		p.Error(errors.Token(errors.ErrExpectedExprAfterClosedRange, op))
+		p.Error(errors.Token(errors.ErrExpectedExprAfterOpenRange, op))
 	}
 	// Rest if no expression on the right: [items...]
 	if _, ok := left.(*ast.Discard); ok {
@@ -586,7 +582,10 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		f.Variables = p.ParseDestructureTypePairs(false)
 		p.Expect(lexer.In)
 	}
-	f.Iterator = p.ParseExpression(ExpressionBindingPower)
+	f.Iterator = p.ParseExpression(RangeBindingPower)
+	if c := p.CurrKind(); c != lexer.Ellipsis {
+		f.Iterator, _ = p.TryParseLED(f.Iterator, bpOf(c))
+	}
 	p.isEqual() // Report error if ':='
 	switch p.CurrKind() {
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual, lexer.Arrow:

@@ -34,11 +34,11 @@
                 "aliases": [
                     "Klar Markup",
                     "klar-markup",
-                    "klarml",
+                    "klon",
                     "klarmarkup"
                 ],
-                "extensions": [".klarml", "glas.pack", "klar.build"],
-                "configuration": "./klarml.language-configuration.json"
+                "extensions": [".klon", "glas.pack", "klar.build"],
+                "configuration": "./klon.language-configuration.json"
             }
         ],
         "grammars": [
@@ -50,7 +50,7 @@
             {
                 "language": "klarmarkup",
                 "scopeName": "source.klarmarkup",
-                "path": "./syntaxes/klarml.tmLanguage.json"
+                "path": "./syntaxes/klon.tmLanguage.json"
             },
             {
                 "scopeName": "markdown.klar.codeblock",

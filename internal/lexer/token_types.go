@@ -50,8 +50,6 @@ const (
 	ColonEqual // :=
 	PlusEqual  // +=
 	MinusEqual // -=
-	PlusPlus   // ++
-	MinusMinus // --
 
 	// Comparison
 	EqualEqual     // ==
@@ -63,8 +61,8 @@ const (
 	AndAnd         // &&
 	OrOr           // ||
 	Not            // !
-	NotCan         // !can
 	NotIn          // !in
+	NotCan         // !can
 
 	// Types
 	Stroke   // |
@@ -101,37 +99,33 @@ const (
 )
 
 var OperatorMap = map[string]TokenType{
-	"++":   PlusPlus,
-	"--":   MinusMinus,
-	"...":  Ellipsis,
-	"..<":  DotDotLessThan,
-	":=":   ColonEqual,
-	"+=":   PlusEqual,
-	"-=":   MinusEqual,
-	"==":   EqualEqual,
-	"!=":   NotEqual,
-	">=":   GreaterEqualTo,
-	"<=":   LessEqualTo,
-	"||":   OrOr,
-	"&&":   AndAnd,
-	"->":   Arrow,
-	"=":    Equal,
-	"+":    Plus,
-	"-":    Minus,
-	"*":    Asterisk,
-	"/":    Slash,
-	"%":    Percent,
-	"^":    Caret,
-	"!":    Not,
-	"!in":  NotIn,
-	"!can": NotCan,
-	">":    GreaterThan,
-	"<":    LessThan,
-	"|":    Stroke,
-	"?":    Question,
-	"|>":   Pipeline,
-	"|.":   StrokeDot,
-	`\`:    Backslash,
+	"...": Ellipsis,
+	"..<": DotDotLessThan,
+	":=":  ColonEqual,
+	"+=":  PlusEqual,
+	"-=":  MinusEqual,
+	"==":  EqualEqual,
+	"!=":  NotEqual,
+	">=":  GreaterEqualTo,
+	"<=":  LessEqualTo,
+	"||":  OrOr,
+	"&&":  AndAnd,
+	"->":  Arrow,
+	"=":   Equal,
+	"+":   Plus,
+	"-":   Minus,
+	"*":   Asterisk,
+	"/":   Slash,
+	"%":   Percent,
+	"^":   Caret,
+	"!":   Not,
+	">":   GreaterThan,
+	"<":   LessThan,
+	"|":   Stroke,
+	"?":   Question,
+	"|>":  Pipeline,
+	"|.":  StrokeDot,
+	`\`:   Backslash,
 
 	// Punctuation
 	":":  Colon,

@@ -88,5 +88,5 @@ Files included in a downloaded module: `glas.pack`, `glas.lock`, `klardoc.json`
 **Scripts:** .klar, .js, .ts, .wasm, .php  
 **Stylesheets:** .css, .scss, .sass, .less
 **Media:** .png, .jpeg, .jpg, .svg, .webp, .gif, .mp4, .mp3, .wav, .webm, .tiff  
-**Markup:** .xml, .json, .html, .klarml, .txt, .csv, .tsv  
+**Markup:** .xml, .json, .html, .klon, .txt, .csv, .tsv  
 **Fonts:** .ttf, .otf, .woff, .woff2

@@ -15,13 +15,9 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 		return p.ParseObjectDestructure()
 	}
 	d := p.ParseDestructureInner()
-	switch p.CurrKind() {
-	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
-		lexer.Colon, lexer.In, lexer.Comma, lexer.RightParenthesis, lexer.Arrow:
-	default:
-		// Continue parsing expressions starting with identifiers (invalid)
-		if expr, ok := d.(ast.Expression); ok {
-			expr := p.ParseLED(expr, AssignBindingPower)
+	// Continue parsing invalid expressions starting with identifiers
+	if expr, ok := d.(ast.Expression); ok && p.CurrKind() != lexer.In {
+		if expr, ok = p.TryParseLED(expr, AssignBindingPower); ok {
 			p.Error(errors.Node(errors.ErrInvalidAssignment, expr))
 			return &ast.BadExpression{Value: expr}
 		}
@@ -173,7 +169,9 @@ func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
 	return vars
 }
 
-func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
+// ParseAssignLHS parses the left-hand side of an assignment. Destructures and
+// index expessions are allowed.
+func (p *Parser) ParseAssignLHS() (vars []ast.Assignable) {
 	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
 		dest := p.ParseDestructure()
 		curr := p.CurrKind()
@@ -198,7 +196,7 @@ func (p *Parser) ParseAssignLeft() (vars []ast.Assignable) {
 
 // Validate the += or -= operator at type-check time
 func (p *Parser) ParseDestructureVars() *ast.DestructureVars {
-	return &ast.DestructureVars{Values: p.ParseAssignLeft()}
+	return &ast.DestructureVars{Values: p.ParseAssignLHS()}
 }
 
 // For lambda params or 'for' loop variables. Parentheses are not parsed.

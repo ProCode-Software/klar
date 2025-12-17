@@ -5,7 +5,7 @@ export default {
     injectionSelector: 'L:text.html.markdown',
     patterns: [
         ['klar', 'klar'],
-        ['klarmarkup', 'klarmarkup|klarml'],
+        ['klarmarkup', 'klarmarkup|klon'],
     ].map(
         ([name, aliases]) =>
             ({

@@ -1,8 +1,8 @@
 package klarbuild
 
-import "github.com/ProCode-Software/klar/pkg/klarml"
+import "github.com/ProCode-Software/klar/pkg/klon"
 
-var Context = klarml.NewContext()
+var Context = klon.NewContext()
 
 func Parse(path string) (config *File, err error) {
 	return

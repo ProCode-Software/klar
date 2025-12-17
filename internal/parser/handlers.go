@@ -157,9 +157,6 @@ func (p *Parser) handleStatementLED(
 	// Assignment
 	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
 		res = p.ParseAssignment(left, bp)
-	// Increment/decrement (statements, not expressions)
-	case lexer.PlusPlus, lexer.MinusMinus:
-		res = p.ParseUpdateStatement(left)
 	// Declaration or assignment
 	case lexer.Comma:
 		res = p.ParseCommaStatement(left, bp)

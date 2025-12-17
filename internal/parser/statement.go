@@ -156,9 +156,6 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 				p.Error(errors.Token(errors.ErrImportInvalidWildcard, wc))
 				continue
 			}
-			if !i.Alias.IsZero() {
-				p.Error(errors.Token(errors.ErrWildcardAndAlias, wc))
-			}
 			break
 		} else if curr == lexer.LeftCurlyBrace {
 			break
@@ -170,9 +167,6 @@ unqualifiedImport:
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		p.Advance() // {
 		switch {
-		case !i.Alias.IsZero():
-			// Alias and unqualified import
-			p.Error(errors.Token(errors.ErrAliasInUnqualifiedImport, p.PeekBehind()))
 		case i.Wildcard:
 			// Wildcard and unqualified import //nolint:dupword
 			// import module.*.{...}
@@ -202,19 +196,6 @@ func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	return &ast.ReturnStatement{
 		Value: p.ParseExpression(DefaultBindingPower),
 	}
-}
-
-func (p *Parser) ParseUpdateStatement(left ast.Node) *ast.UpdateStatement {
-	op := p.Expect(lexer.PlusPlus, lexer.MinusMinus)
-	var l ast.Expression
-	switch left.(type) {
-	case *ast.Symbol, *ast.IndexExpression:
-		l = left.(ast.Expression)
-	default:
-		l = &ast.BadExpression{Value: left}
-		p.Error(errors.Node(errors.ErrInvalidUpdateExpr, left))
-	}
-	return &ast.UpdateStatement{Operator: newOperator(op), Left: l}
 }
 
 func (p *Parser) ParseForStatement() *ast.ForStatement {

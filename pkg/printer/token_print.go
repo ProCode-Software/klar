@@ -135,11 +135,8 @@ func init() {
 	delete(spaceAround, lexer.LineComment)
 	delete(spaceAround, lexer.BlockComment)
 	delete(spaceAround, lexer.Hashbang)
-	delete(spaceAround, lexer.NotCan)
 	delete(spaceAround, lexer.Backslash)
 	delete(spaceAround, lexer.Not)
-	delete(spaceAround, lexer.PlusPlus)
-	delete(spaceAround, lexer.MinusMinus)
 
 	delete(spaceAfter, lexer.Boolean)
 	delete(spaceAfter, lexer.Nil)

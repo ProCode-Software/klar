@@ -130,7 +130,7 @@ func (l *Lexer) Tokenize() *Token {
 		case unicode.IsLetter(r), r == '_':
 			return l.ReadIdentifier(pos)
 		case r == 0xfeff:
-			if l.Pos.Line == 1 && l.Pos.Col == 1 {
+			if pos.Line == 1 && pos.Col == 1 {
 				continue
 			}
 			fallthrough
