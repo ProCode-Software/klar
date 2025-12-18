@@ -45,21 +45,21 @@ func Lexer.tokenize() -> [Token] {
 }
 
 // Whether `char` is an ASCII digit
-func isNumber(char: String) = char in "0"..."9"
+func isNumber(char: String) = char in '0'...'9'
 // Whether `char` is an ASCII letter
-func isLetter(char: String) = char in "A"..."Z" or "a"..."z"
+func isLetter(char: String) = char in 'A'...'Z' or 'a'...'z'
 
 func Lexer.readToken() -> Token {
     while self.hasTokens() {
         char := self.read()
         when char {
-            "-" -> return .dash
-            "\\" -> return .backslash
+            '-' -> return .dash
+            '\\' -> return .backslash
             '"' | "'" -> return self.readString()
-            "0"..."9" -> return self.readString()
-            "#" -> return self.readComment()
-            "a"..."z" | "A"..."Z" -> return self.readIdentifier()
-            " " -> next while
+            '0'...'9' -> return self.readNumber()
+            '#' -> return self.readComment()
+            'a'...'z' | 'A'...'Z' -> return self.readIdentifier()
+            ' ' -> next while
             _ -> return .illegal(char)
         }
     }
@@ -78,9 +78,9 @@ func Lexer.readIdentifier() -> Token {
         }
     }
     return self.buildToken(func src -> when src {
-        "true" -> return .boolean(value: true)
-        "false" -> return .boolean(value: false)
-        _ -> return .identifier(name: src)
+        "true" -> .boolean(value: true)
+        "false" -> .boolean(value: false)
+        _ -> .identifier(name: src)
     })
 }
 
@@ -89,10 +89,12 @@ func Lexer.readNumber() -> Token = TODO()
 func Lexer.readComment() -> Token = TODO()
 
 // Appends `char` to the builder
-func Lexer.append(char: String) = self.builder.append(char)
+func Lexer.append(char: String) {
+    self.builder += [char]
+}
 
-func Lexer.buildToken(fn: func(ct: String) -> Token) -> Token {
+func Lexer.buildToken(make: func(text: String) -> Token) -> Token {
     content := self.builder.join("")
     self.builder.clear()
-    return fn(content)
+    return make(content)
 }

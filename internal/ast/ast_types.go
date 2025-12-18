@@ -341,7 +341,7 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 type ImportStatement struct {
 	BaseNode
 	Alias              Identifier // Alias is nil if no unqualified imports
-	Module             []Identifier
+	Module             []string
 	Wildcard           bool
 	UnqualifiedImports []*UnqualifiedImport
 }

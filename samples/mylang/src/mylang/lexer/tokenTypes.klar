@@ -1,10 +1,22 @@
 // A simple group of characters read by [Lexer].
 type Token {
-    .identifier(name: String),
-    .number(num: String),
-    .string(content: String, singleQuote: Bool),
-    .comment(text: String),
-    .boolean(value: Bool),
-    .illegal(char: String),
-    .dash, .backslash, .eof,
+    .identifier(name: String) = name,
+    .number(num: String) = num,
+    .string(content: String, singleQuote: Bool) = content,
+    .comment(text: String) = "#{text}",
+    .boolean(value: Bool) = String(value),
+    .illegal(char: String) = char,
+    .dash = "-", .backslash = "\\", .eof = "",
+}
+
+func String(token: Token) {
+    when token {
+        .string(content, singleQuote) if singleQuote
+            -> return `'{content}'`
+        .string(content, singleQuote) if !singleQuote
+            -> return `"{content}"`
+        .boolean(value) if value -> return "true"
+        .boolean(value) if !value -> return "false"
+        _ -> return token.value
+    }
 }

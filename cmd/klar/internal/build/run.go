@@ -156,8 +156,14 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 				o.JS.Declaration = v.Value().(bool)
 			case "minify":
 				o.JS.Minify = v.Value().(bool)
+			case "inline-sourcemap":
+				if v.Value().(bool) {
+					o.JS.Sourcemap = klarbuild.SourceMapInline
+				}
 			case "sourcemap":
-				o.JS.Sourcemap = v.Value().(bool)
+				if v.Value().(bool) {
+					o.JS.Sourcemap = klarbuild.SourceMapEnabled
+				}
 			case "jsdoc":
 				o.JS.JSDoc = v.Value().(bool)
 			case "copy-node-modules":

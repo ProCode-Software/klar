@@ -38,6 +38,7 @@ var Flags = argparse.NewParser("[inputs...]").
 	StringFlag("declaration-path", "The folder type declarations should be created in", "dir", "").
 	BoolFlag("minify", "Whether to minify JavaScript output", false).
 	BoolFlag("sourcemap", "Whether to generated sourcemaps for debugging", true).
+	BoolFlag("inline-sourcemap", "Whether to generated inline sourcemaps for debugging", false).
 	BoolFlag("jsdoc", "Whether to generate JSDoc comments in JavaScript output. Recommended if '--declaration' is disabled", false).
 	StringFlag("config", "Path to a klar.build config file", "file", "klar.build", "c").
 	BoolFlag("copy-node-modules", "Whether to copy node_modules and package.json to the output directory", true).

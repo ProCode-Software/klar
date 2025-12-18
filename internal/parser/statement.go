@@ -145,7 +145,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		p.Advance() // =
 	}
 	// First part of module
-	i.Module = append(i.Module, p.ParseStrictIdentifier())
+	i.Module = append(i.Module, p.Expect(lexer.Identifier).Source)
 	for p.CurrKind() == lexer.Dot {
 		p.Advance()
 		// Wildcard import
@@ -160,7 +160,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		} else if curr == lexer.LeftCurlyBrace {
 			break
 		}
-		i.Module = append(i.Module, p.ParseStrictIdentifier())
+		i.Module = append(i.Module, p.Expect(lexer.Identifier).Source)
 	}
 unqualifiedImport:
 	// Unqualified import
@@ -193,9 +193,7 @@ func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	if p.CurrKind() == lexer.EndOfStatement {
 		return &ast.ReturnStatement{}
 	}
-	return &ast.ReturnStatement{
-		Value: p.ParseExpression(DefaultBindingPower),
-	}
+	return &ast.ReturnStatement{Value: p.ParseExpression(DefaultBindingPower)}
 }
 
 func (p *Parser) ParseForStatement() *ast.ForStatement {

@@ -70,9 +70,9 @@ type AssetOptions struct {
 }
 
 type JSOptions struct {
-	// Whether TypeScript declarations (.d.ts files) should be generated.
-	// Recommended for all JavaScript libraries so users can get code
-	// completion for your library in supporting IDEs.
+	// Whether TypeScript declarations (.d.ts files) should be generated for
+	// all public exports. Recommended for all JavaScript libraries so users
+	// can get code completion for your library in supporting IDEs.
 	Declaration bool
 	// Bundle all TypeScript declarations into one file.
 	BundleDeclaration bool
@@ -96,7 +96,7 @@ type JSOptions struct {
 	// Whether source map files should be created. If set to `true`, *.js.map files are
 	// created alongside built JavaScript files. If set to `'inline'`, source maps are
 	// stored as data URIs at the end of JavaScript files.
-	Sourcemap any
+	Sourcemap SourceMapMode
 	// The name of the global namespace for the compiled UMD module. Only supported if
 	// 'format' is set to 'umd'.
 	UMDNamespace string
@@ -131,9 +131,9 @@ type CheckerOptions struct {
 	// is only validated for 'when' statements that match enums.
 	// Exhaustiveness is always required in 'when' expressions.
 	ValidateExhaustiveness ExhaustivenessOption
-	// Whether all function declarations (not lambdas) should be required
-	// to have explicit return types. TODO: This is always enabled for now.
-	ExplicitReturnTypes bool
+	// Whether all list index expressions should return `Result` instead of
+	// crashing when out of bounds.
+	CheckedListIndexing bool
 	// Whether the `Int` and `Float` should be treated as the same type.
 	// Useful when compiling for JavaScript, where all numbers are floats.
 	CoerceNumbers bool
@@ -141,9 +141,7 @@ type CheckerOptions struct {
 	// This is accomplished by importing the external JS file using the
 	// project's default runtime and indexing the export name.
 	ValidateExternals bool
-	// Require checking that type casts won't fail using. Not required for
-	// conversions that are guaranteed to succeed, such as `String(Int)`.
-	CheckTypeCasts bool
+	
 	// Whether assertions (using the `!` operator after an expression to crash
 	// if the value is `nil` or an error) should be allowed. Avoiding assertions
 	// prevents obscure crashes in programs, requiring programs to
@@ -152,7 +150,7 @@ type CheckerOptions struct {
 	// Whether all `Result`s must be used or checked. If enabled, an error will
 	// be reported if a `Result` value is unused or discarded, such as
 	// via `_ = fn()` or calling `fn()` as a statement.
-	CheckResults bool
+	CheckAllResults bool
 }
 
 // Determines the level of exhaustiveness checking for 'when' expressions.
@@ -223,4 +221,16 @@ const (
 	GlobalError                           // Error
 	GlobalNull                            // null
 	GlobalConst                           // Constant value. Can be used with another type.
+)
+
+type SourceMapMode int
+
+const (
+	// Don't generate source maps.
+	SourceMapDisabled SourceMapMode = iota
+	// Generate separate source map files for each built JavaScript file.
+	SourceMapEnabled
+	// Append source map data to the end of each file instead of
+	// creating separate files.
+	SourceMapInline
 )
