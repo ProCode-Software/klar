@@ -190,7 +190,7 @@ unqualifiedImport:
 
 func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	p.Expect(lexer.Return)
-	if p.CurrKind() == lexer.EndOfStatement {
+	if c := p.CurrKind(); c == lexer.EndOfStatement || c == lexer.Comma {
 		return &ast.ReturnStatement{}
 	}
 	return &ast.ReturnStatement{Value: p.ParseExpression(DefaultBindingPower)}
@@ -244,7 +244,7 @@ func (p *Parser) ParseControlStatement() ast.Statement {
 	stmtKind := p.Advance().Kind // next, stop
 	var loopKind lexer.TokenType
 	switch p.CurrKind() {
-	case lexer.EndOfStatement:
+	case lexer.EndOfStatement, lexer.Comma:
 	case lexer.When, lexer.For, lexer.While:
 		p.Advance()
 	default:

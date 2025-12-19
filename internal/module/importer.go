@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	ErrModuleNotFound = errors.New("module not found")
-	ErrImportCycle = errors.New("cyclic import")
+	ErrModuleNotFound     = errors.New("module not found")
+	ErrImportCycle        = errors.New("cyclic import")
 	ErrImportModuleTooNew = errors.New("module requires a newer Klar version")
 )
 

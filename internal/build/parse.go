@@ -2,124 +2,65 @@ package build
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	parse "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/parser"
 )
 
-const (
-	maxErrors = 10
-	stdinName = "standardInput"
-)
-
 type parseContext struct {
-	ctx           context.Context
-	cancel        context.CancelFunc
-	syntaxErrCh   chan []*errors.ParseError
-	criticalErrCh chan error
-	collectorDone chan struct{}
-	fileMu        sync.Mutex
-	printerMu     sync.RWMutex
-	wg            sync.WaitGroup
-	pool          *parsePool
+	*processContext
+	fileMu, printerMu sync.Mutex
+	pool              *parsePool
 }
 
 // Step 3: Parse each file into an untyped AST
 // =====
 
-func (c *Compiler) ParseModules(numFiles int) (
-	syntaxErrors []*errors.ParseError, criticalErr error,
+func (c *Compiler) ParseModules(
+	procCtx *processContext, numFiles int, moduleCh chan *Module,
 ) {
-	// Initialize parse context
 	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
 	pctx := &parseContext{
-		syntaxErrCh:   make(chan []*errors.ParseError),
-		criticalErrCh: make(chan error, 1),
-		collectorDone: make(chan struct{}),
+		processContext: procCtx,
 		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
-			MaxErrors: maxErrors,
+			MaxErrors: MaxErrors,
 		}),
 	}
-	pctx.ctx, pctx.cancel = context.WithCancel(context.Background())
-	defer pctx.cancel()
-
-	// Init files
-	c.flatFiles = make(map[string]*File, numFiles)
-
-	// Start error collector
-	go pctx.collectErrs(&syntaxErrors, &criticalErr)
-
-	// Parse all module files
-	for _, module := range c.modules {
-		for _, filePath := range module.Files {
+	c.flatFiles = make(map[string]*ast.Program, numFiles)
+	for _, mod := range c.modules {
+		select {
+		case <-procCtx.ctx.Done():
+			return
+		default:
+		}
+		var moduleWg sync.WaitGroup
+		mod.Programs = make(map[string]*ast.Program, len(mod.Files))
+		for _, filePath := range mod.Files {
 			// Skip if already parsed
 			if _, ok := c.flatFiles[filePath]; ok {
 				c.Log("Skipping already parsed file:", filePath)
 				continue
 			}
 			c.Log("Processing file:", filePath)
-			pctx.wg.Go(func() { c.parseFile(pctx, filePath) })
+			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
 		}
+		moduleWg.Wait()
+		moduleCh <- mod
 	}
-
-	// Wait and cleanup
-	pctx.wg.Wait()
-	close(pctx.syntaxErrCh)
-	close(pctx.criticalErrCh)
-	<-pctx.collectorDone
-	return syntaxErrors, criticalErr
-}
-
-// collectErrs runs in a separate goroutine to aggregate errors from channels
-func (pctx *parseContext) collectErrs(
-	syntaxErrors *[]*errors.ParseError, criticalErr *error,
-) {
-	defer close(pctx.collectorDone)
-	for {
-		select {
-		case errs, ok := <-pctx.syntaxErrCh:
-			if !ok {
-				// Channel closed, drain criticalErrCh and exit
-				select {
-				case err := <-pctx.criticalErrCh:
-					if *criticalErr == nil {
-						*criticalErr = err
-					}
-				default:
-				}
-				return
-			}
-			// Too many errors (single file)
-			if l := len(errs); l > 0 &&
-				errs[l-1].GetCode() == errors.ErrTooManyErrors {
-				errs = errs[:l-1]
-			}
-			*syntaxErrors = append(*syntaxErrors, errs...)
-			// Too many errors (global)
-			if len(*syntaxErrors) >= maxErrors {
-				if *criticalErr == nil {
-					*criticalErr = &InterfaceError{Code: ErrTooManyErrors}
-				}
-				pctx.cancel()
-				return
-			}
-		case err := <-pctx.criticalErrCh:
-			if *criticalErr == nil {
-				*criticalErr = err
-				pctx.cancel()
-			}
-		}
-	}
+	// All modules are done parsing at this point
+	c.flatFiles = nil
+	close(moduleCh)
 }
 
 // parseFile parses a single file and sends results/errors to channels
-func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
+func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 	// Check if we should stop due to critical failure
 	select {
 	case <-pctx.ctx.Done():
@@ -128,17 +69,19 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	}
 	sendCriticalError := func(err error) {
 		select {
-		case pctx.criticalErrCh <- err:
+		case pctx.fatalErrCh <- err:
 		case <-pctx.ctx.Done():
 		}
 	}
-	// === Open file ===
+	// Open file
+	// ==========
 	var (
 		fr        io.ReadCloser
 		fileSize  int64
 		shortPath string
 	)
 	if filePath == "" {
+		const stdinName = "standardInput"
 		fr = os.Stdin
 		filePath, shortPath = stdinName, stdinName
 		c.Log("Reading file from stdin")
@@ -154,7 +97,8 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		defer f.Close()
 	}
 
-	// === Tokenize ===
+	// Tokenize
+	// =========
 
 	// Estimate file size
 	lex := pctx.pool.GetLexer(fr)
@@ -171,11 +115,13 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 		sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
 		return
 	}
+	// Load tokens into printer for diagnostics
 	pctx.printerMu.Lock()
 	c.errorPrinter.LoadTokens(filePath, shortPath, toks)
 	pctx.printerMu.Unlock()
 
-	// === Parse ===
+	// Parse
+	// ========
 
 	pa := pctx.pool.GetParser(toks, filePath)
 	defer pctx.pool.PutParser(pa)
@@ -188,26 +134,28 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string) {
 	if len(errs) > 0 {
 		c.LogErrorf("%d errors found while parsing %s", len(errs), filePath)
 		select {
-		case pctx.syntaxErrCh <- errs:
+		case pctx.errorCh <- convertParseErrors(errs):
 		case <-pctx.ctx.Done():
 			return
 		}
 	}
-
-	// Store result
+	// Store result to avoid reparsing the same file
 	pctx.fileMu.Lock()
-	c.flatFiles[filePath] = &File{
-		Path:   filePath,
-		AST:    ast,
-		Tokens: toks,
-	}
+	c.flatFiles[filePath] = ast
+	mod.Programs[filepath.Base(filePath)] = ast
 	pctx.fileMu.Unlock()
 }
 
-// Lexer/parser pool
-type parsePool struct {
-	parser, lexer sync.Pool
+func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {
+	compileErrs := make([]errors.CompileError, len(errs))
+	for i, err := range errs {
+		compileErrs[i] = err
+	}
+	return compileErrs
 }
+
+// Lexer/parser pool
+type parsePool struct{ parser, lexer sync.Pool }
 
 func newParsePool(lexFlags lexer.Flags, parseOpts *parser.Options) *parsePool {
 	return &parsePool{

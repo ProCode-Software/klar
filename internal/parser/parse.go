@@ -139,10 +139,15 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	return p.ParseStatement()
 }
 
-func (p *Parser) ParseStatement() ast.Statement {
+const withoutEOS = 1
+
+func (p *Parser) ParseStatement(flags ...int) ast.Statement {
+	noEOS := len(flags) > 0 && flags[0] == withoutEOS
 	kind := p.CurrKind()
 	if res, handled := p.handleStatement(kind); handled {
-		p.Expect(lexer.EndOfStatement)
+		if !noEOS {
+			p.Expect(lexer.EndOfStatement)
+		}
 		return res
 	}
 	var r ast.Node
@@ -164,7 +169,9 @@ func (p *Parser) ParseStatement() ast.Statement {
 	if r == nil {
 		r = res
 	}
-	p.Expect(lexer.EndOfStatement)
+	if !noEOS {
+		p.Expect(lexer.EndOfStatement)
+	}
 	switch r := r.(type) {
 	// Left-denoted statement
 	case ast.Statement:

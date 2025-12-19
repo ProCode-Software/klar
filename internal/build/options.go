@@ -57,34 +57,39 @@ type File struct {
 }
 
 type Module struct {
-	Submodules []string // Submodule paths
-	Files      []string // Klar file paths. Empty string = stdin
-	Assets     []string // Non-Klar file paths
-	Manifests  []string // Package-level and project-level glas.pack files
+	Submodules []string                // Submodule paths TODO: needed?
+	Files      []string                // Klar file paths. Empty string = stdin
+	Assets     []string                // Non-Klar file paths
+	Manifest   any                     // glas.pack configuration
+	Programs   map[string]*ast.Program // Base name of files
+	Name, Path string                  // Module name and folder/file path
 	// TODO: typechecked ast
 }
 
 type InputOptions struct {
 	Modules []*Module
 	Project *module.ProjectInfo
+	Options *Options
 }
 
 type Compiler struct {
 	Mode                BuildMode
-	verbose             bool
 	StartTime           time.Time
 	Errors              []errors.CompileError
-	Options             []*Options
-	PreBuild, PostBuild []any // TODO
-	Opener              Opener
-	openFiles           []*os.File
+	Options             []*Options // Configurations from klar.build or CLI
+	PreBuild, PostBuild []any      // TODO
+	openFiles           []*os.File // TODO: don't know if this is used
+	Opener              Opener     // Opens files for reading
+	verbose             bool
 
-	inputs    map[*Input]*InputOptions
-	modules   map[string]*Module // Module paths to modules
-	flatFiles map[string]*File   // File paths to parsed ASTs and tokens
-
+	inputs  map[*Input]*InputOptions
+	modules []*Module
+	// To avoid reparsing the same file. The same individual file and the
+	// file's whole module can be inputs to the compiler.
+	flatFiles map[string]*ast.Program
+	// Map modules back to configurations
+	moduleInputs map[*Module]*InputOptions
 	errorPrinter *printer.Printer
-
 	// From all configurations. TODO: better type
 	SuppressWarnings, WarningsAsErrors []string
 	*log.Logger

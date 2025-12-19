@@ -15,6 +15,11 @@ func _() {
 	_ = x[ModuleErrorPrefix-400]
 	_ = x[ImplementationErrorPrefix-500]
 	_ = x[ErrTooManyErrors - -1]
+	_ = x[ErrModuleNotFound-401]
+	_ = x[ErrModuleCycle-402]
+	_ = x[ErrModuleKlarTooNew-403]
+	_ = x[ErrImporterError-404]
+	_ = x[ErrImporterNotFound-405]
 	_ = x[ErrUnexpectedToken-1]
 	_ = x[ErrExpectedToken-2]
 	_ = x[ErrImportExpectedModule-3]
@@ -145,7 +150,7 @@ const (
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
-	_ErrorCode_name_4 = "ModuleErrorPrefix"
+	_ErrorCode_name_4 = "ModuleErrorPrefixErrModuleNotFoundErrModuleCycleErrModuleKlarTooNewErrImporterErrorErrImporterNotFound"
 	_ErrorCode_name_5 = "ImplementationErrorPrefix"
 )
 
@@ -154,6 +159,7 @@ var (
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
+	_ErrorCode_index_4 = [...]uint8{0, 17, 34, 48, 67, 83, 102}
 )
 
 func (i ErrorCode) String() string {
@@ -170,8 +176,9 @@ func (i ErrorCode) String() string {
 	case 300 <= i && i <= 304:
 		i -= 300
 		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
-	case i == 400:
-		return _ErrorCode_name_4
+	case 400 <= i && i <= 405:
+		i -= 400
+		return _ErrorCode_name_4[_ErrorCode_index_4[i]:_ErrorCode_index_4[i+1]]
 	case i == 500:
 		return _ErrorCode_name_5
 	default:

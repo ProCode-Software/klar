@@ -12,11 +12,11 @@ type Token {
 func String(token: Token) {
     when token {
         .string(content, singleQuote) if singleQuote
-            -> return `'{content}'`
+            -> return `'{content}'`,
         .string(content, singleQuote) if !singleQuote
-            -> return `"{content}"`
-        .boolean(value) if value -> return "true"
-        .boolean(value) if !value -> return "false"
-        _ -> return token.value
+            -> return `"{content}"`,
+        .boolean(value) if value -> return "true",
+        .boolean(value) if !value -> return "false",
+        _ -> return token.value,
     }
 }

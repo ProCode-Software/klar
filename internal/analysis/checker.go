@@ -59,6 +59,17 @@ func NewCheckerFromModule(mod *Module, opts *Options) *Checker {
 	}
 }
 
+func NewEmptyChecker() *Checker {
+	return &Checker{}
+}
+
+func (c *Checker) Init(mod *Module, opts *Options) {
+	c.rootContext = mod.Context
+	c.module = mod
+	c.Programs = mod.Programs
+	c.Options = opts
+}
+
 func (c *Checker) Reset() {
 	c.module = nil
 	c.Errors = nil

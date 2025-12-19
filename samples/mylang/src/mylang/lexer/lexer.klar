@@ -20,7 +20,7 @@ func Lexer(input: String) {
 func Lexer.read() -> String {
     char := self.input[self.index]
     self.prev = char
-    self.index++
+    self.index += 1
     return char
 }
 
@@ -28,7 +28,7 @@ func Lexer.read() -> String {
 func Lexer.backup() {
     when self.index {
         0 -> crashout("Cannot back up when index is 0")
-        _ -> self.index--
+        _ -> self.index -= 1
     }
 }
 
