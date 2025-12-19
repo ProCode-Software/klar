@@ -5,7 +5,6 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/version"
 	"golang.org/x/term"
 )
 
@@ -55,7 +54,7 @@ func (s *Session) PrintHelp() {
 	if _, err := tw.Flush(); err != nil {
 		cli.InternalError("Failed to flush output while showing help: ", err)
 	}
-	s.Oprintf(ansi.CodeGray, "\nKlar v%s", version.KlarVersion)
+	s.Oprintf(ansi.CodeGray, "\nKlar v%s", cli.KlarVersion)
 }
 
 var ctrlCMessage = ansi.ColorSprintf(ansi.CodeYellow,

@@ -112,13 +112,22 @@ func ErrNotFound(path, typ string) {
 	Failure("Can't find " + ansi.Cyan(path))
 }
 
-type SignalExit struct {
-	Code int
-}
+type SignalExit struct{ Code int }
 
 // Exit panics with a [SignalExit]. This should be used instead of [os.Exit]
 // to ensure deferred functions are run before exiting. This is caught by the
-// main function and calls [os.Exit] with the provided code.
+// [HandleSignalExit] and calls [os.Exit] with the provided code.
 func Exit(code int) {
 	panic(SignalExit{code})
+}
+
+func HandleSignalExit() {
+	switch r := recover().(type) {
+	case SignalExit:
+		os.Exit(r.Code)
+	case nil:
+		return
+	default:
+		panic(r)
+	}
 }

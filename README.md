@@ -23,3 +23,21 @@ Klar is Danish for *clear*. In Klar, if you read code, that's what it does, with
 - Enums and pattern matching from Gleam and Rust
 - Tooling from Go and JavaScript
 - Compiler from Go and Gleam
+
+## Examples
+### Factorial
+```swift
+// Calculates the factorial, the product of all positive integers up to n.
+func factorial(n: Int) -> Int {
+    when n {
+        <= 1 -> return 1
+        _ -> return n * factorial(n - 1)
+    }
+}
+
+// Print the factorial of some numbers
+numbers := [2, 3, 4, 5, 6, 7, 8]
+for num in numbers {
+    print("Factorial of {num}: {factorial(num)}")
+}
+```

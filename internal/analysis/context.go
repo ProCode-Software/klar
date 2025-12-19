@@ -1,7 +1,5 @@
 package analysis
 
-type ContextID uint16
-
 type DeclKind uint8
 
 const (
@@ -11,13 +9,25 @@ const (
 )
 
 type Context struct {
-	Id           ContextID
+	index        int
 	Declarations map[string]Declaration
-	Parent       ContextID
+	Parent       *Context
+	Children     []*Context
+	Flags        Flag
+	Attrs        map[string]any
 }
 
 type Declaration struct {
 	Kind     DeclKind
 	Value    any
 	Constant bool
+}
+
+func NewContext(parent *Context, flags Flag) *Context {
+	ctx := &Context{Parent: parent, Flags: flags}
+	if parent != nil && parent != BuiltInContext {
+		parent.Children = append(parent.Children, ctx)
+		ctx.index = len(parent.Children)
+	}
+	return ctx
 }

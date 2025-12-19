@@ -6,8 +6,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/version"
 )
 
 type HelpBuilder struct {
@@ -27,7 +27,7 @@ func ShowHelp(full bool) {
 
 	shortHead(ansi.BoldBrightWhite("Klar"))
 	print(ansi.Cyan, "A simple, modern, and clean programming language ")
-	print(ansi.Gray, "v"+version.KlarVersion+"\n\n")
+	print(ansi.Gray, "v"+cli.KlarVersion+"\n\n")
 
 	shortHead("Usage")
 	fmt.Fprint(tw, ansi.BoldGreen("klar ")+ansi.Yellow("<command> ")+ansi.Cyan("[args]"))

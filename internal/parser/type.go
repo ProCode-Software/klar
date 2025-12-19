@@ -67,20 +67,25 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 }
 
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericType {
-	params := make([]ast.Type, 0, 1)
+	params := make([]*ast.GenericParam, 0, 1)
 	p.Expect(lexer.LessThan)
 	if p.CurrKind() == lexer.GreaterThan {
 		// At least 1 parameter required
 		p.Error(errors.Token(errors.ErrEmptyGeneric, p.Curr()))
 		params = nil
 	}
-	for p.WhileNotEndOr(lexer.GreaterThan) {
-		params = append(params, p.ParseType(DefaultTypeBindingPower))
-		if p.IsNotCurrentlyEndOr(lexer.GreaterThan) {
-			p.Expect(lexer.Comma)
+	parseSeries(p, &params, func() *ast.GenericParam {
+		var label *ast.Identifier
+		if p.PeekKind() == lexer.Colon {
+			l := p.ParseIdentifier()
+			label = &l
+			p.Advance() // :
 		}
-	}
-	p.Expect(lexer.GreaterThan)
+		return &ast.GenericParam{
+			Label: label,
+			Type:  p.ParseType(DefaultTypeBindingPower),
+		}
+	}, lexer.GreaterThan, lexer.Comma, false)
 	return &ast.GenericType{Name: left, Parameters: params}
 }
 
@@ -130,6 +135,8 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 		isType, hasColon bool
 	)
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
+		// TODO: doesn't work if generic type inside (starts with ident)
+
 		// (a, b, c) = 3 types
 		// (a, b, c: Int) = 3 labels
 		// (a, [b], c) = 3 types

@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-var KlarVersion = "0.0.1"
-
 type Build int
 
 // Higher is newer
@@ -67,3 +65,7 @@ func (v Version) String() string {
 }
 
 var Regex = `(\d+)(?:\.(?P<minor>\d+)){,3}`
+
+func Compare(v1, v2 Version) int {
+	return 0
+}

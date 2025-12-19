@@ -10,7 +10,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
-	"github.com/ProCode-Software/klar/internal/version"
 )
 
 var (
@@ -20,7 +19,7 @@ var (
 )
 
 func main() {
-	defer recoverExit()
+	defer cli.HandleSignalExit()
 	// startProf()
 	// defer stopProf()
 	args := os.Args
@@ -46,7 +45,7 @@ func main() {
 	case "--help", "-h":
 		ShowHelp(true)
 	case "-v", "--version":
-		fmt.Printf("Klar %s\n", version.KlarVersion)
+		fmt.Printf("Klar %s\n", cli.KlarVersion)
 	case "test", "glas", "upgrade", "new", "format", "check",
 		"docs", "lint", "clean", "generate":
 		cli.CustomFailure("Not implemented", ansi.ColorSprintf(ansi.CodeBold,
@@ -67,6 +66,7 @@ func main() {
 	default:
 		if args[1][0] == '-' {
 			// Invalid usage
+			// TODO: show flags
 			cli.Exit(2)
 		}
 		cmd := command.Lookup(cmdName, commands, aliases)
@@ -88,15 +88,4 @@ func tryPipe() {
 	// Pipe
 	run.RunInput(os.Stdin, "standardInput")
 	cli.Exit(0)
-}
-
-func recoverExit() {
-	switch r := recover().(type) {
-	case cli.SignalExit:
-		os.Exit(r.Code)
-	case nil:
-		return
-	default:
-		panic(r)
-	}
 }

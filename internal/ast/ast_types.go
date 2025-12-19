@@ -264,10 +264,16 @@ type FunctionType struct {
 	ReturnType Type
 }
 
+type GenericParam struct {
+	BaseNode
+	Label *Identifier
+	Type  Type
+}
+
 type GenericType struct {
 	BaseNode
 	Name       Type
-	Parameters []Type
+	Parameters []*GenericParam
 }
 
 type TypePair struct {

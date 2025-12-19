@@ -13,3 +13,11 @@ require (
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 )
+
+ignore (
+    ./klar-vscode
+    ./samples
+    ./std
+    node_modules
+    ./docs
+)

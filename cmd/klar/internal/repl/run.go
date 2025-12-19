@@ -14,7 +14,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/target"
-	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/ergochat/readline"
@@ -59,7 +58,7 @@ func NewSession() (*Session, error) {
 }
 
 func Run(*command.Runner) {
-	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+version.KlarVersion))
+	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+cli.KlarVersion))
 	ansi.ColorPrintln(ansi.CodeGray,
 		"Type %s for more information. Press %s or type %s to exit.",
 		ansi.Cyan("help"), ansi.Cyan("Ctrl+D"), ansi.Cyan("exit"),
