@@ -37,6 +37,10 @@ func (i *Identifier) IsZero() bool {
 	return i.Name == "" && i.Position.Line == 0
 }
 
+func (i *Identifier) IsDiscard() bool {
+	return i.Name == "_"
+}
+
 func (i Identifier) End() lexer.Position {
 	return i._range.End
 }

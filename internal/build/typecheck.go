@@ -50,7 +50,7 @@ func (c *Compiler) typeCheckModule(
 	)
 	ch := pool.Get(mod, opts)
 	defer pool.Put(ch)
-	// ch.Check()
+	ch.Check()
 	return ch.Errors
 }
 

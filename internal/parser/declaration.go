@@ -453,8 +453,8 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		param.Range.Start = p.Curr().Position
 
 		// Trailing type params
-		parseSeries(p, &param.Names, func() *ast.FunctionParamName {
-			key := &ast.FunctionParamName{}
+		parseSeries(p, &param.Names, func() *ast.IdentifierPair {
+			key := &ast.IdentifierPair{}
 			switch peek := p.PeekKind(); peek {
 			case lexer.Colon, lexer.Equal, lexer.ColonEqual,
 				lexer.Comma, lexer.RightParenthesis:
@@ -467,7 +467,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 				}
 			}
 			// Normal identifier
-			key.Identifier = p.ParseIdentOrDiscard()
+			key.Name = p.ParseIdentOrDiscard()
 			return key
 		}, 0, lexer.Comma, true)
 

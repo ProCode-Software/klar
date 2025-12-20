@@ -1,20 +1,17 @@
 package analysis
 
-type DeclKind uint8
-
-const (
-	KindVariable DeclKind = iota
-	KindFunction
-	KindType
+type (
+	DeclKind         uint8
+	ContextAttribute uint8
 )
 
 type Context struct {
 	index        int
-	Declarations map[string]Declaration
+	Declarations map[string]Object
 	Parent       *Context
 	Children     []*Context
 	Flags        Flag
-	Attrs        map[string]any
+	Attrs        map[ContextAttribute]any
 }
 
 type Declaration struct {
@@ -30,4 +27,24 @@ func NewContext(parent *Context, flags Flag) *Context {
 		ctx.index = len(parent.Children)
 	}
 	return ctx
+}
+
+const (
+	ContextFile ContextAttribute = iota
+	firstStmtIndex
+)
+
+func (ctx *Context) setAttribute(key ContextAttribute, val any) *Context {
+	if ctx.Attrs == nil {
+		ctx.Attrs = make(map[ContextAttribute]any)
+	}
+	ctx.Attrs[key] = val
+	return ctx
+}
+
+func (ctx *Context) getAttribute(key ContextAttribute) any {
+	if ctx.Attrs == nil {
+		return nil
+	}
+	return ctx.Attrs[key]
 }

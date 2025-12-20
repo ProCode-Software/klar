@@ -190,10 +190,7 @@ func (p *Parser) Error(err *errors.ParseError) {
 		p.Options.Error(err)
 	}
 	if mx := p.Options.MaxErrors; mx > 0 && len(p.Errors) >= mx {
-		p.Errors = append(p.Errors, &errors.ParseError{
-			ErrorCode: errors.ErrTooManyErrors,
-			File:      p.Options.File,
-		})
+		p.Errors = append(p.Errors, errors.TooManyErrors())
 		panic(stopParsing{})
 	}
 }

@@ -74,12 +74,14 @@ const (
 	ErrDuplicateModifier    // More than 1 of the same modifier
 	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
 	ErrSelfNameDiscard      // Can't discard self name in method declaration
+	ErrPrivateOpaque        // Opaque on private type
 
 	// Expression =====
 
 	ErrReservedKeyword            // Reserved keyword used as an identifier
 	ErrInvalidLabelShorthand      // Function label shorthand must be an identifier or string member
-	ErrInvalidLabel               // Function label can't be number
+	ErrNumericLabel               // Function label can't be number
+	ErrUnderscoreLabel            // Can't use _ as a label
 	ErrReturnPipelineNotLast      // Return step in pipeline must be the last
 	ErrInvalidObjectPipeStep      // Step in object pipeline must be method call or assignment
 	ErrMultipleKeysInMapRest      // Expected 1 key in map rest (comma not allowed)
@@ -295,9 +297,11 @@ func (e *ParseError) error() string {
 	case ErrInvalidOpaque:
 		return "The 'opaque' modifier can only be applied to a struct or interface"
 	case ErrImportsGoFirst:
-		return "'import' statements must go before other declarations"
-	case ErrInvalidLabel:
+		return "'import' statements must go before other statements in the file"
+	case ErrNumericLabel:
 		return "A number can't be used as a parameter label"
+	case ErrUnderscoreLabel:
+		return "Can't use _ as a parameter label"
 	case ErrInvalidLabelShorthand:
 		if e.Params["computed"] == true {
 			return "A parameter label shorthand can't be a computed property"
@@ -424,6 +428,8 @@ func (e *ParseError) error() string {
 		return "This isn't a valid Unicode character"
 	case ErrEmptyRegexInterpolation:
 		return "A regex interpolation can't be empty"
+	case ErrPrivateOpaque:
+		return "'opaque' on a non-public type has no effect"
 	case ErrRedeclaredField:
 		kind := "Field"
 		if e.Params["kind"] == "enum" {

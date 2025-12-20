@@ -55,3 +55,7 @@ func hintf(hints []Hint, f string, a []any) []Hint {
 	}
 	return append(hints, Hint{Message: fmt.Sprintf(f, a...)})
 }
+
+func TooManyErrors() *ParseError {
+	return &ParseError{ErrorCode: ErrTooManyErrors}
+}

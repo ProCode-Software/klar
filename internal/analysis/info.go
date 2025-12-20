@@ -1,7 +1,10 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -36,4 +39,12 @@ func NewModule(
 		KlarVersion: klarVersion,
 		Context:     ctx,
 	}
+}
+
+func (m *Module) ImportPathString() string {
+	return module.StringImportPath(m.ImportPath)
+}
+
+func (m *Module) String() string {
+	return fmt.Sprintf("module %s (%s)", m.ImportPathString(), m.Path)
 }

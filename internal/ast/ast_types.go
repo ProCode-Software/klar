@@ -337,11 +337,16 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 	"Error":   PrimitiveError,
 }
 
+
+type IdentifierPair struct {
+	BaseNode
+	Label, Name Identifier
+}
+
 // Examples:
 //
 //	import klar.http
 //	import klar.http.*
-//	import klar.regex.{*}
 //	import klar.regex.{RegEx}
 //	import fetch = klar.http.requests.{get}
 type ImportStatement struct {
@@ -349,12 +354,7 @@ type ImportStatement struct {
 	Alias              Identifier // Alias is nil if no unqualified imports
 	Module             []string
 	Wildcard           bool
-	UnqualifiedImports []*UnqualifiedImport
-}
-
-type UnqualifiedImport struct {
-	BaseNode
-	Identifier, Alias Identifier
+	UnqualifiedImports []*IdentifierPair
 }
 
 type TypeDeclaration interface {
@@ -468,13 +468,8 @@ type FuncAliasDeclaration struct {
 	Alias      Expression
 }
 
-type FunctionParamName struct {
-	BaseNode
-	Label, Identifier Identifier
-}
-
 type FunctionParam struct {
-	Names   []*FunctionParamName
+	Names   []*IdentifierPair
 	Type    Type
 	Default Expression
 	BaseNode

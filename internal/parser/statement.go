@@ -141,7 +141,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	}
 	// Parse maybe alias
 	if p.isEqual(p.Peek()) {
-		i.Alias = p.ParseIdentifier()
+		i.Alias = p.ParseIdentOrDiscard()
 		p.Advance() // =
 	}
 	// First part of module
@@ -174,13 +174,13 @@ unqualifiedImport:
 		case p.CurrKind() == lexer.RightCurlyBrace:
 			p.Error(errors.Token(errors.ErrEmptyUnqualifiedImport, p.Curr()))
 		}
-		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.UnqualifiedImport) {
-			u = &ast.UnqualifiedImport{}
+		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.IdentifierPair) {
+			u = &ast.IdentifierPair{}
 			if p.PeekKind() == lexer.Colon {
-				u.Alias = p.ParseIdentOrDiscard()
+				u.Label = p.ParseIdentOrDiscard()
 				p.Advance() // :
 			}
-			u.Identifier = p.ParseIdentifier()
+			u.Name = p.ParseIdentifier()
 			return
 		}, lexer.RightCurlyBrace, lexer.Comma, true)
 	}

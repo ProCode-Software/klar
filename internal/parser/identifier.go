@@ -83,7 +83,7 @@ func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
 		break
 	case kind == lexer.Numeric && opts&includingNumber == 0:
 		if opts&isLabel != 0 {
-			p.Error(errors.Token(errors.ErrInvalidLabel, tok))
+			p.Error(errors.Token(errors.ErrNumericLabel, tok))
 			break
 		}
 		fallthrough
