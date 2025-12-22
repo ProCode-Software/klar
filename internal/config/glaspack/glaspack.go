@@ -101,4 +101,10 @@ type NPMSpecifier struct {
     As string // Name of root module
 }
 
+// GitSpecifier specifies that a package is on a Git repo.
+type GitSpecifier struct {
+    URL string
+    Ref string
+}
+
 // TODO: other providers and http
