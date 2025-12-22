@@ -20,23 +20,53 @@ type Manifest struct {
     // module must be implemented for all of these targets, but '@target'
     // directives can be used to exclude individual objects.
     Target []target.Target
-    // Options when targetting JavaScript
+    // Options when targetting JavaScript ('js', 'node', 'deno', 'bun')
     JS *JavaScriptOptions
+    // Permissions passed to the Deno runtime when targetting Deno or
+    // when it is set as the default runtime.
+    //
+    // See: https://docs.deno.com/runtime/fundamentals/security/#permissions
+    DenoPermissions *DenoPermissions
     // Mark this package as deprecated. Users will be warned when
     // attempting to install a deprecated package, optionally
     // displaying a message and alternative package to use instead.
     Deprecated *DeprecationOptions
-    
+    // Packages that are needed to build this package and are installed
+    // alongside this package.
     Dependencies DependencyList
-    DevelopmentDependencies DependencyList 
+    // Packages that are only needed as build tools and aren't included
+    // when this package is installed normally.
+    DevelopmentDependencies DependencyList // TODO: devDependencies instead?
+    // Additional links to display in this package's documentation.
+    Links []*Link
+    // Paths to exclude when this package is installed. Glob patterns are supported.
+    Exclude []string
 }
+
+type Link struct {	Label, URL string }
 
 type JavaScriptOptions struct {
 	// The runtime used for running compiled JavaScript files for commands
-	// such as 'klar run' and 'klar test'. This can be set to 'browser'
-	// to run on an HTML page, a relative command that can be found in
-	// PATH, or an absolute path to an executable
+	// such as 'klar run' and 'klar test'. This can be set to 'browser' to
+	// run on an HTML page, a relative command that can be found in PATH, or 
+	// an absolute path to an executable. Only supported on the general 'js' target.
 	DefaultRuntime string 
+	// Command line arguments and flags passed to the default JavaScript
+	// runtime when running 'klar run' and 'klar test' respectively.
+	RunFlags, TestFlags []string
+	// Whether the same arguments are set for both 'klar run' and
+	// 'klar build'. If enabled, only one of those options may be set.
+	SameRunAndTestFlags bool
+}
+
+type DenoPermissions struct {
+	All bool
+	Read, Write, Env, Net, Exec, Sys, FFI, Import *DenoAllowList
+}
+
+type DenoAllowList struct {
+    All bool // when set to boolean
+    Allow, Deny []string // when set to object
 }
 
 type DeprecationOptions struct {
@@ -48,19 +78,24 @@ type DeprecationOptions struct {
 }
 
 type DependencyList map[string]DependencySpecifier
-
 type DependencySpecifier interface { depSpec() }
 
+// VersionSpecifier is the default specifier, specifying a range
+// of versions of a package that can be installed.
 type VersionSpecifier struct {
     version.Specifier
 }
 
+// LocalSpecifier specifies that a dependency is a local package.
 type LocalSpecifier struct {
     Path string // Path to a package
 }
 
+// WorkspaceSpecifier specifies that a dependency is found as
+// a subpackage in the current project.
 type WorkspaceSpecifier struct {}
 
+// NPMSpecifier specifies that a dependency is from NPM.
 type NPMSpecifier struct {
     Version version.Specifier
     As string // Name of root module
