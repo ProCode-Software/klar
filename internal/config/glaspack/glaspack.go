@@ -26,6 +26,9 @@ type Manifest struct {
     // attempting to install a deprecated package, optionally
     // displaying a message and alternative package to use instead.
     Deprecated *DeprecationOptions
+    
+    Dependencies DependencyList
+    DevelopmentDependencies DependencyList 
 }
 
 type JavaScriptOptions struct {
@@ -44,4 +47,23 @@ type DeprecationOptions struct {
 	Message string
 }
 
-type DependencyList map[string]*version.Version
+type DependencyList map[string]DependencySpecifier
+
+type DependencySpecifier interface { depSpec() }
+
+type VersionSpecifier struct {
+    version.Specifier
+}
+
+type LocalSpecifier struct {
+    Path string // Path to a package
+}
+
+type WorkspaceSpecifier struct {}
+
+type NPMSpecifier struct {
+    Version version.Specifier
+    As string // Name of root module
+}
+
+// TODO: other providers and http
