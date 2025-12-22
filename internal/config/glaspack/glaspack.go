@@ -22,9 +22,26 @@ type Manifest struct {
     Target []target.Target
     // Options when targetting JavaScript
     JS *JavaScriptOptions
+    // Mark this package as deprecated. Users will be warned when
+    // attempting to install a deprecated package, optionally
+    // displaying a message and alternative package to use instead.
+    Deprecated *DeprecationOptions
 }
 
 type JavaScriptOptions struct {
-	// The runtime used to 
+	// The runtime used for running compiled JavaScript files for commands
+	// such as 'klar run' and 'klar test'. This can be set to 'browser'
+	// to run on an HTML page, a relative command that can be found in
+	// PATH, or an absolute path to an executable
 	DefaultRuntime string 
 }
+
+type DeprecationOptions struct {
+	// Names of alternative packages that the user should install instead.
+	Alternative []string
+	// Optional deprecated message that is displayed to users when
+	// they try to install this deprecated package.
+	Message string
+}
+
+type DependencyList map[string]*version.Version
