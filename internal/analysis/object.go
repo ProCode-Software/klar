@@ -14,6 +14,7 @@ type Object struct {
 	module  *Module
 	typ     Type
 	order   uint32
+	flags   Flag
 }
 
 // Name returns the name of the object as declared in its module
@@ -27,6 +28,9 @@ func (obj *Object) Range() ranges.Range { return obj.rang }
 
 // File returns the base name of the file in which the object was declared
 func (obj *Object) File() FileID { return obj.file }
+
+// Flags returns the flags applied to obj.
+func (obj *Object) Flags() Flag { return obj.flags }
 
 // Public returns whether the object is exported
 func (obj *Object) Public() bool { return obj.public }
@@ -99,3 +103,4 @@ func NewObject(
 	}
 }
 
+type TypeName struct{Type}

@@ -7,7 +7,7 @@ type (
 
 type Context struct {
 	index        int
-	Declarations map[string]Object
+	Declarations map[string]*Object
 	Parent       *Context
 	Children     []*Context
 	Flags        Flag
@@ -20,8 +20,8 @@ type Declaration struct {
 	Constant bool
 }
 
-func NewContext(parent *Context, flags Flag) *Context {
-	ctx := &Context{Parent: parent, Flags: flags}
+func NewContext(parent *Context, flags ...Flag) *Context {
+	ctx := &Context{Parent: parent, Flags: parseFlags(flags)}
 	if parent != nil && parent != BuiltInContext {
 		parent.Children = append(parent.Children, ctx)
 		ctx.index = len(parent.Children)
@@ -47,4 +47,13 @@ func (ctx *Context) getAttribute(key ContextAttribute) any {
 		return nil
 	}
 	return ctx.Attrs[key]
+}
+
+func (ctx *Context) Declare(obj *Object, flag ...Flag) (existing *Object) {
+	flags := parseFlags(flag)
+	name := obj.Name()
+}
+
+func (ctx *Context) Lookup(name string) *Object {
+	return ctx.Declarations[name]
 }

@@ -132,6 +132,8 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 
 			case *ast.FuncAliasDeclaration:
 			case ast.TypeDeclaration:
+				obj := NewObject(stmt.Name(), fid, stmt.GetRange(), c.module, TypeName{nil})
+				
 			case *ast.PublicDeclaration:
 			case *ast.OpaqueDeclaration:
 				// Opaque declarations should be inside [ast.PublicDeclaration].

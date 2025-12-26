@@ -18,10 +18,7 @@ type importQueueEntry struct {
 func (c *Checker) importModule(
 	importPath []string, importPathString string,
 	mods chan importKey, errs chan importErrorKey,
-	wg *sync.WaitGroup,
 ) {
-	defer wg.Done()
-
 	if c.Options.Importer == nil {
 		// Importer not set up
 		errs <- importErrorKey{importPathString, &errors.ModuleError{}}
@@ -75,12 +72,10 @@ func (c *Checker) performFileImports(fileContexts map[string]*Context) {
 			})
 			// Do an import if it's not already in cache
 			if _, ok := cache[impPath]; !ok {
-				wg.Add(1)
-				go c.importModule(imp.Module, impPath, mods, errs, &wg)
+				wg.Go(func() { c.importModule(imp.Module, impPath, mods, errs) })
 			}
 		}
 	}
-
 	go func() {
 		wg.Wait()
 		close(mods)

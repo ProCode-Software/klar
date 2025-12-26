@@ -33,3 +33,5 @@ node_modules
 
 *.prof
 *.pprof
+
+__debug_bin*
