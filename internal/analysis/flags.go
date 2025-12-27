@@ -12,3 +12,7 @@ func parseFlags(flags []Flag) (flag Flag) {
 	}
 	return
 }
+
+func (f Flag) Has(flag Flag) bool {
+	return (f & flag) != 0
+}

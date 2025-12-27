@@ -2,7 +2,7 @@
 Klar is Danish for *clear*. In Klar, if you read code, that's what it does, with no hidden behavior.
 
 > [!WARNING]
-> This project is a **work in progress*. The language can change at any time and is not recommended for production use yet. We would appreciate contributions!
+> This project is a **work in progress**. The language can change at any time and is not recommended for production use yet. We would appreciate contributions!
 
 ## Goals
 - 👓 **Clear.** What you read is what it does.

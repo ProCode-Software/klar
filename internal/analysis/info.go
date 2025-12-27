@@ -2,9 +2,10 @@ package analysis
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -13,7 +14,7 @@ import (
 type Module struct {
 	Name, Path  string // Base name, dir/file path
 	Programs    map[string]*ast.Program
-	ImportPath  []string
+	ImportPath  imports.ImportPath
 	Imports     []*Module
 	Target      *target.Target   // Target the module was compiled for
 	KlarVersion *version.Version // Minimum required Klar version
@@ -24,7 +25,7 @@ type Module struct {
 // NewModule returns a new Module. The module is not complete.
 func NewModule(
 	name, path string,
-	importPath []string,
+	importPath imports.ImportPath,
 	programs map[string]*ast.Program,
 	klarVersion *version.Version,
 	target *target.Target,
@@ -42,7 +43,14 @@ func NewModule(
 }
 
 func (m *Module) ImportPathString() string {
-	return module.StringImportPath(m.ImportPath)
+	return m.ImportPath.String()
+}
+func (m *Module) FullFilePath(basename string) string {
+	if m.Flags.Has(SingleFileModule) {
+		return m.Path
+	} else {
+		return filepath.Join(m.Path, basename)
+	}
 }
 
 func (m *Module) String() string {

@@ -5,8 +5,19 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/target"
 )
+
+// Importer resolves import paths to [Module]s.
+type Importer interface {
+	Import(importPath imports.ImportPath, target target.Target) (*Module, error)
+}
+
+type ImportContext interface {
+	Target() target.Target
+	ImportPath() imports.ImportPath
+}
 
 type importQueueEntry struct {
 	stmt       *ast.ImportStatement
@@ -16,7 +27,7 @@ type importQueueEntry struct {
 }
 
 func (c *Checker) importModule(
-	importPath []string, importPathString string,
+	importPath imports.ImportPath, importPathString string,
 	mods chan importKey, errs chan importErrorKey,
 ) {
 	if c.Options.Importer == nil {
@@ -29,9 +40,7 @@ func (c *Checker) importModule(
 		errs <- importErrorKey{importPathString, err}
 		return
 	}
-	// TODO: remove when Importer is implemented
-	mod = &Module{Name: "fakeModule"}
-	mods <- importKey{importPathString, mod.(*Module)}
+	mods <- importKey{importPathString, mod}
 }
 
 type importKey struct {
@@ -63,7 +72,7 @@ func (c *Checker) performFileImports(fileContexts map[string]*Context) {
 				ctx.setAttribute(firstStmtIndex, i)
 				break
 			}
-			impPath := module.StringImportPath(imp.Module)
+			impPath := imports.ImportPath.String(imp.Module)
 			queue = append(queue, &importQueueEntry{
 				stmt:       imp,
 				importPath: impPath,

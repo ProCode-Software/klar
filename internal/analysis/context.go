@@ -52,6 +52,22 @@ func (ctx *Context) getAttribute(key ContextAttribute) any {
 func (ctx *Context) Declare(obj *Object, flag ...Flag) (existing *Object) {
 	flags := parseFlags(flag)
 	name := obj.Name()
+	ctx.initDecls()
+	if existing = ctx.Declarations[name]; existing != nil {
+		return
+	}
+	ctx.Declarations[name] = obj
+	if obj.context == nil {
+		obj.context = ctx
+	}
+	_ = flags
+	return nil
+}
+
+func (ctx *Context) initDecls() {
+	if ctx.Declarations == nil {
+		ctx.Declarations = make(map[string]*Object)
+	}
 }
 
 func (ctx *Context) Lookup(name string) *Object {

@@ -18,8 +18,8 @@ func (c *Compiler) TypeCheckModules(procCtx *processContext, moduleCh chan *Modu
 		select {
 		case <-procCtx.ctx.Done():
 			return
-		case parsedMod, ok := <-moduleCh:
-			if !ok {
+		case parsedMod, more := <-moduleCh:
+			if !more {
 				procCtx.done <- struct{}{}
 				return
 			}
@@ -75,7 +75,7 @@ type checkerPool struct{ sync.Pool }
 
 func newCheckerPool() *checkerPool {
 	return &checkerPool{sync.Pool{
-		New: func() any { return analysis.NewEmptyChecker() },
+		New: func() any { return new(analysis.Checker) },
 	}}
 }
 

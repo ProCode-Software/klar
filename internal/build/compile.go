@@ -21,7 +21,7 @@ type BuildResult struct {
 
 type processContext struct {
 	ctx        context.Context // Cancellation context
-	cacel      context.CancelFunc
+	cancel     context.CancelFunc
 	done       chan struct{}              // Step complete
 	errorCh    chan []errors.CompileError // Diagnostics
 	fatalErrCh chan error                 // Critical error
@@ -49,6 +49,7 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	moduleCh := make(chan *Module)
 	procCtx := &processContext{
 		ctx:        ctx,
+		cancel:     cancel,
 		done:       make(chan struct{}),
 		errorCh:    make(chan []errors.CompileError),
 		fatalErrCh: make(chan error, 1),
@@ -64,6 +65,7 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 		return
 	}
 	res.EarlyExit = false
+	println(len(c.Errors))
 	return
 }
 
