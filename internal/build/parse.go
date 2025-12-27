@@ -24,11 +24,12 @@ type parseContext struct {
 // =====
 
 func (c *Compiler) ParseModules(
-	procCtx *processContext, numFiles int, moduleCh chan *Module,
+	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
+	defer close(moduleCh)
 	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
 	pctx := &parseContext{
-		processContext: procCtx,
+		processContext: pc,
 		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
 			MaxErrors: MaxErrors,
 		}),
@@ -36,7 +37,7 @@ func (c *Compiler) ParseModules(
 	c.flatFiles = make(map[string]*ast.Program, numFiles)
 	for _, mod := range c.modules {
 		select {
-		case <-procCtx.ctx.Done():
+		case <-pc.ctx.Done():
 			return
 		default:
 		}
@@ -56,7 +57,6 @@ func (c *Compiler) ParseModules(
 	}
 	// All modules are done parsing at this point
 	c.flatFiles = nil
-	close(moduleCh)
 }
 
 // parseFile parses a single file and sends results/errors to channels

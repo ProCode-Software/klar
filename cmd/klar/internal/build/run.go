@@ -30,11 +30,14 @@ func Build(r *command.Runner) {
 		cli.Failure(err.Error())
 	}
 	delete(r.AllFlags(), "verbose") // Don't reparse it
-
-	defer b.CloseAll()
+	defer func() {
+		if err := b.CloseLogger(); err != nil {
+			cli.Failure("Failed to write log file: ", err)
+		}
+	}()
 	// Resolve all inputs
 	if len(inputArgs) > 0 {
-		b.Logf("Resolving inputs: %v\n", inputArgs)
+		b.LogInfof("Resolving inputs: %v\n", inputArgs)
 	}
 	b.StartTime = time.Now()
 	inps, err := build.ResolveInputs(inputArgs)
@@ -44,7 +47,7 @@ func Build(r *command.Runner) {
 		if err != nil {
 			cli.ErrNoManifest(pkgPath)
 		}
-		b.Log("Resolving inputs at current package:", pkgPath)
+		b.LogInfo("Resolving inputs at current package:", pkgPath)
 		//nolint:ineffassign // False positive
 		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
@@ -76,16 +79,21 @@ func Build(r *command.Runner) {
 	}
 	// TODO: error if --output is file and there are multiple inputs
 	res, err := b.Compile()
-	// For InterfaceErrors: print a prettier error
-	ierr, isInterfaceErr := err.(*build.InterfaceError)
 	switch {
-	case res.EarlyExit, len(res.Errors) > 0:
-		printErrors(res, res.EarlyExit, b)
-	case isInterfaceErr:
-		build.PrintInterfaceErr(ierr)
+	case len(res.Errors) > 0:
+		printErrors(res, b, err)
+		cli.Exit(1)
 	case err != nil:
-		// Errors should be a struct such as InterfaceError or FilesystemError
-		panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
+		switch err := err.(type) {
+		case *build.InterfaceError:
+			// For InterfaceErrors: print a prettier error
+			build.PrintInterfaceErr(err)
+		case *build.FilesystemError:
+			cli.Failure(err.Error())
+		default:
+			// Errors should be a struct such as InterfaceError or FilesystemError
+			panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
+		}
 	default:
 		ansi.Fprintfln(os.Stderr,
 			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
@@ -97,12 +105,15 @@ func Build(r *command.Runner) {
 // printErrors prints the "Build failed" message to standard error with the
 // compile errors from res. isMaxErrors is whether compilation stopped early
 // due to too many errors. Errors are printed using b's errorPrinter.
-func printErrors(res *build.BuildResult, isMaxErrors bool, b *build.Compiler) {
+func printErrors(res *build.BuildResult, b *build.Compiler, err error) {
 	errs := res.Errors
 	// Format error count
 	var count strings.Builder
 	count.WriteString(strconv.Itoa(len(errs)))
-	if isMaxErrors {
+	// Check to see if there were too many errors
+	var isMaxErrors bool
+	if err, ok := err.(*build.InterfaceError); ok && err.Code == build.ErrTooManyErrors {
+		isMaxErrors = true
 		count.WriteByte('+')
 	}
 	count.WriteString(" error")

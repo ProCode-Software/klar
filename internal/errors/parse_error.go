@@ -124,7 +124,7 @@ const (
 
 	// Analysis-time syntax errors =====
 
-	ErrRedeclaredVar        // Can't redeclare variable or function
+	ErrRedeclared        // Can't redeclare variable or function
 	ErrRedeclaredType       // Redeclared type
 	ErrRedeclaredEnum       // Redeclared enum member
 	ErrRedeclaredField      // Struct or interface field redeclared
@@ -438,28 +438,19 @@ func (e *ParseError) error() string {
 		return fmt.Sprintf("TypeError: %s '%s' was already declared",
 			kind, e.Node.(ast.Identifier).Name,
 		)
-	case ErrRedeclaredType, ErrRedeclaredVar, ErrRedeclaredEnum:
-		var (
-			code      = e.ErrorCode
-			origPos   = e.Params["origPos"]
-			name      = e.stringParam("name")
-			origType  = e.stringParam("origType")
-			newType   = e.stringParam("newType")
-			first, as string
-		)
-		switch code {
-		case ErrRedeclaredType:
-			first = "Type "
-		case ErrRedeclaredEnum:
-			first = "Enum member "
+	case ErrRedeclared:
+		/*
+			"existing":       existing.FileRange(),
+			"name":           obj.name,
+			"existingIsType": existing.IsTypeDecl(),
+		*/
+		var asAType string
+		if e.boolParam("existingIsType") {
+			asAType = "as a type "
 		}
-		if origType != newType {
-			as = " as " + WithA(origType)
-		}
-		return fmt.Sprintf("%s%s was already declared%s at %s",
-			first,
-			Quote(name), as, origPos,
-		)
+		existingRange := e.Params["existing"].(ranges.FileRange)
+		return Quote(e.stringParam("name")) + " was already declared " + asAType +
+			"at " + existingRange.FilePos().Rel(e.File)
 	}
 }
 
@@ -547,22 +538,5 @@ func TokenPos(err ErrorCode, pos lexer.Position, tok lexer.Token) *ParseError {
 		ErrorCode: err,
 		Range:     ranges.Offset(pos, 0, 1),
 		Token:     tok,
-	}
-}
-
-func Redeclared(name, kind string, p1, p2 ranges.Range) *ParseError {
-	var code ErrorCode
-	if kind == "Type" {
-		code = ErrRedeclaredType
-	} else {
-		code = ErrRedeclaredVar
-	}
-	return &ParseError{
-		Range:     p2,
-		ErrorCode: code,
-		Params: ErrorParams{
-			"origPos": p1.Start,
-			"name":    name,
-		},
 	}
 }

@@ -22,8 +22,12 @@ func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
 	}
 	if existing := ctx.Declare(obj, flags...); existing != nil {
 		// Declared already
-		err := errors.Range(errors.ErrRedeclaredVar, obj.rang)
-		err.SetParam("existing", existing.rang)
+		err := errors.Range(errors.ErrRedeclared, obj.rang)
+		err.Params = errors.ErrorParams{
+			"existing":       existing.FileRange(),
+			"name":           obj.name,
+			"existingIsType": existing.IsTypeDecl() && !obj.IsTypeDecl(),
+		}
 		c.FileError(err, obj.file)
 	}
 }

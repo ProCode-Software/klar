@@ -133,7 +133,7 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 			// TODO: resolve glas.pack for module/package
 			switch inp.Kind {
 			case KindPackage:
-				c.Log("Resolving package", inp.Path)
+				c.LogInfo("Resolving package", inp.Path)
 				klarFiles, err := c.resolvePackage(inp.Path, &info.Modules, false, info)
 				checkFileCount(klarFiles, inp.Path, &err)
 				if err != nil {
@@ -143,21 +143,22 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				info.Modules = []*Module{{
 					Name:  inp.Name,
 					Path:  inp.Path,
+					SingleFile: true,
 					Files: []string{inp.Path},
 				}}
 				c.modules = append(c.modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
-				c.Log("Resolved file", inp.Path)
+				c.LogInfo("Resolved file", inp.Path)
 			case KindStdin:
 				// Empty paths are stdin
-				info.Modules = []*Module{{Files: []string{""}}}
+				info.Modules = []*Module{{Files: []string{""}, SingleFile: true}}
 				c.modules = append(c.modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
-				c.Log("Resolved file from stdin")
+				c.LogInfo("Resolved file from stdin")
 			case KindModule:
-				c.Log("Resolving module", inp.Path)
+				c.LogInfo("Resolving module", inp.Path)
 				klarFiles, err := c.moduleFromDir(
 					inp.Name, inp.Path, &info.Modules, 0, info,
 				)
@@ -199,7 +200,7 @@ func (c *Compiler) moduleFromDir(
 				return
 			}
 			m.Submodules = append(m.Submodules, path)
-			c.Log("Resolving submodule:", path)
+			c.LogInfo("Resolving submodule:", path)
 			more, err := c.moduleFromDir(name, path, modules, depth+1, info)
 			klarFiles += more
 			if err != nil {
@@ -278,7 +279,7 @@ func (c *Compiler) resolvePackage(
 			fallthrough
 		case "src", "cmd", "generated":
 			// The only Klar project directories that contain buildable modules
-			c.Log("Resolving modules in", fullPath)
+			c.LogInfo("Resolving modules in", fullPath)
 			more, err := c.moduleFromDir(name, fullPath, modules, 0, info)
 			klarFiles += more
 			if err != nil {
@@ -286,7 +287,7 @@ func (c *Compiler) resolvePackage(
 			}
 		default:
 			// Other directory: ignore
-			c.Log("Ignoring directory", fullPath)
+			c.LogInfo("Ignoring directory", fullPath)
 			continue
 		}
 	}

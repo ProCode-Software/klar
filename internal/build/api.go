@@ -2,7 +2,7 @@ package build
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -35,7 +35,7 @@ func (c *Compiler) PrintError(err errors.CompileError) {
 // SetLogger sets c's Logger and verbosity. If verbose is true, c.Logger is set
 // to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
 // of the value of verbose, c.Logger is set to write to that file. Otherwise,
-// c.Logger is set to [io.Discard]. SetLogger returns an error if it fails to
+// c.Logger is set to nil. SetLogger returns an error if it fails to
 // open $KLAR_LOG_FILE.
 func (c *Compiler) SetLogger(verbose bool) error {
 	logFile := os.Getenv("KLAR_LOG_FILE")
@@ -46,15 +46,12 @@ func (c *Compiler) SetLogger(verbose bool) error {
 		if err != nil {
 			return &FilesystemError{"create", "KLAR_LOG_FILE", err}
 		}
-		c.openFiles = append(c.openFiles, file)
 		out = file
-		c.verbose = true
 	case verbose:
 		out = os.Stderr
-		c.verbose = true
 	default:
-		out = io.Discard
+		out = nil
 	}
-	c.Logger = log.New(out, "[compiler] ", log.Ltime)
+	c.Logger = slog.New(NewLogHandler(out))
 	return nil
 }

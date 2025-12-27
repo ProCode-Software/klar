@@ -104,3 +104,16 @@ func NewObject(
 }
 
 type TypeName struct{Type}
+
+func (o *Object) IsTypeDecl() bool {
+	_, ok := o.typ.(*TypeName)
+	return ok
+}
+
+func (o *Object) FilePath() string {
+	return o.module.FilePathFromID(o.file)
+}
+
+func (o *Object) FileRange() ranges.FileRange {
+	return ranges.FileRange{o.rang, o.FilePath()}
+}

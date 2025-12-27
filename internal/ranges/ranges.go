@@ -156,3 +156,35 @@ func Sort(ranges ...Range) []Range {
 	})
 	return ranges
 }
+
+// A FileRange represents a range of positions in a file.
+type FileRange struct {
+	Range
+	File string
+}
+
+func (r FileRange) String() string {
+	return fmt.Sprintf("%s-%s", r.File, r.Range)
+}
+
+func (r FileRange) FilePos() FilePos {
+	return FilePos{Position: r.Start, File: r.File}
+}
+
+// A FilePos represents a position in a file.
+type FilePos struct {
+	Position
+	File string
+}
+
+func (r FilePos) String() string {
+	return fmt.Sprintf("%s:%s", r.File, r.Position)
+}
+
+// Rel returns a formatted position with the file path dropped if p.File == to.
+func (p FilePos) Rel(to string) string {
+	if p.File == to {
+		return p.Position.String()
+	}
+	return p.String()
+}

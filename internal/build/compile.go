@@ -46,46 +46,49 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// Stage 1: Parse and Type-check
 	moduleCh := make(chan *Module)
-	procCtx := &processContext{
+	collectDone := make(chan struct{}, 1)
+	pc := &processContext{
 		ctx:        ctx,
 		cancel:     cancel,
-		done:       make(chan struct{}),
+		done:       make(chan struct{}, 1),
 		errorCh:    make(chan []errors.CompileError),
 		fatalErrCh: make(chan error, 1),
 	}
 	// Global error collector
-	go c.collectErrors(procCtx)
-	// Type-check modules (after parsing them)
-	go c.TypeCheckModules(procCtx, moduleCh)
+	go c.collectErrors(pc, collectDone)
+	// Type-check modules as they are parsed into moduleCh
+	go c.TypeCheckModules(pc, moduleCh)
 	// Parse modules
-	go c.ParseModules(procCtx, totalFiles, moduleCh)
+	go c.ParseModules(pc, totalFiles, moduleCh)
 	// Wait for type checking to finish
-	if err = procCtx.wait(); err != nil {
+	if err = pc.wait(); err != nil {
 		return
 	}
+	close(pc.errorCh)
+	<-collectDone // Make sure errors are appended to c.Errors
 	res.EarlyExit = false
-	println(len(c.Errors))
 	return
 }
 
-func (procCtx *processContext) wait() error {
+func (pc *processContext) wait() error {
 	select {
-	case <-procCtx.done:
+	case <-pc.done:
 		return nil
-	case err := <-procCtx.fatalErrCh:
+	case err := <-pc.fatalErrCh:
 		return err
 	}
 }
 
-// collectErrors collects errors from procCtx.errorCh and stores
+// collectErrors collects errors from pc.errorCh and stores
 // them in c.Errors. This function runs in a separate goroutine.
-func (c *Compiler) collectErrors(procCtx *processContext) {
+func (c *Compiler) collectErrors(pc *processContext, done chan struct{}) {
+	defer close(done)
 	for {
 		select {
-		case errs, ok := <-procCtx.errorCh:
+		case errs, ok := <-pc.errorCh:
 			if !ok {
-				procCtx.done <- struct{}{}
 				return
 			}
 			// If there are too many errors, show only the first [MaxErrors]
@@ -97,13 +100,14 @@ func (c *Compiler) collectErrors(procCtx *processContext) {
 			c.Errors = append(c.Errors, errs...)
 			// Stop compilation if there are too many errors
 			if tooManyErrors {
+				pc.cancel()
 				select {
-				case procCtx.fatalErrCh <- &InterfaceError{Code: ErrTooManyErrors}:
-				case <-procCtx.ctx.Done():
+				case pc.fatalErrCh <- &InterfaceError{Code: ErrTooManyErrors}:
+				case <-pc.ctx.Done():
 				}
 				return
 			}
-		case <-procCtx.ctx.Done():
+		case <-pc.ctx.Done():
 			return
 		}
 	}

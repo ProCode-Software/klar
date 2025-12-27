@@ -1,2 +1,5 @@
+import klar.io
+import klar.doesntExist
 type #X
 type #X
+import invalidHere

@@ -14,7 +14,8 @@ import (
 type FileID int
 
 type Options struct {
-	// Imports modules. If set to nil, [StdImporter] is used. TODO
+	// The [Importer] to use for importing modules. If set to nil, an error is
+	// raised when attempting to import a module.
 	Importer Importer
 	// The target platform for which the program is being compiled.
 	// This is needed for resolving platform-specific implementations
@@ -24,6 +25,8 @@ type Options struct {
 	KlarVersion *version.Version
 	// If Error != nil, it is called when an error is reported.
 	Error func(errors.CompileError)
+	// Whether the program is being typechecked for testing purposes.
+	IsTest bool
 	// If MaxErrors > 0, the type checker will terminate when this limit is reached.
 	MaxErrors int
 	// Type checker options from klar.build
@@ -36,8 +39,8 @@ type Checker struct {
 	Options      *Options                // Options for type checking.
 	rootContext  *Context                // Context where top-level objects are defined.
 	module       *Module
+	
 	fileIds      map[FileID]string // File IDs to file base names
-	usedImports  map[*Module]struct{}
 	importMap    map[string]*Module
 	nodeContexts map[ast.Node]*Context
 	moduleDecls  map[*Object]*DeclarationInfo // Declaration info for top-level objects
@@ -66,7 +69,6 @@ func (c *Checker) Reset() {
 	c.module = nil
 	c.Errors = nil
 	c.rootContext = nil
-	c.usedImports = nil
 	c.Programs = nil
 	c.Options = nil
 	c.moduleDecls = nil

@@ -12,28 +12,20 @@ import (
 
 // TypeCheckModules type checks the modules in moduleCh, sending any critical
 // error to errCh and a signal to done when finished.
-func (c *Compiler) TypeCheckModules(procCtx *processContext, moduleCh chan *Module) {
+func (c *Compiler) TypeCheckModules(pc *processContext, moduleCh chan *Module) {
 	checkerPool := newCheckerPool()
-	for {
-		select {
-		case <-procCtx.ctx.Done():
-			return
-		case parsedMod, more := <-moduleCh:
-			if !more {
-				procCtx.done <- struct{}{}
+	for parsedMod := range moduleCh {
+		// Typecheck the module
+		errs := c.typeCheckModule(parsedMod, checkerPool)
+		if len(errs) > 0 {
+			select {
+			case pc.errorCh <- errs:
+			case <-pc.ctx.Done():
 				return
-			}
-			// Typecheck the module
-			errs := c.typeCheckModule(parsedMod, checkerPool)
-			if len(errs) > 0 {
-				select {
-				case procCtx.errorCh <- errs:
-				case <-procCtx.ctx.Done():
-					return
-				}
 			}
 		}
 	}
+	pc.done <- struct{}{}
 }
 
 // typeCheckModule type checks a single module, returning any errors.

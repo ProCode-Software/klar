@@ -14,6 +14,7 @@ import (
 type Module struct {
 	Name, Path  string // Base name, dir/file path
 	Programs    map[string]*ast.Program
+	FileIDs     map[FileID]string
 	ImportPath  imports.ImportPath
 	Imports     []*Module
 	Target      *target.Target   // Target the module was compiled for
@@ -45,12 +46,17 @@ func NewModule(
 func (m *Module) ImportPathString() string {
 	return m.ImportPath.String()
 }
+
 func (m *Module) FullFilePath(basename string) string {
 	if m.Flags.Has(SingleFileModule) {
 		return m.Path
 	} else {
 		return filepath.Join(m.Path, basename)
 	}
+}
+
+func (m *Module) FilePathFromID(id FileID) string {
+	return m.FullFilePath(m.FileIDs[id])
 }
 
 func (m *Module) String() string {

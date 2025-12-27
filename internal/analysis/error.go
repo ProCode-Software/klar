@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/errors"
 )

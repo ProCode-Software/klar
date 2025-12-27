@@ -1,21 +1,49 @@
 package build
 
 import (
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 )
+
+// A Compiler compiles Inputs into files.
+// The build process consists of the following phases:
+//  1. Module resolution: resolves [Input]s into their corresponding [Module]s.
+//  2. Input parsing: parses each file in each module into an [ast.Program].
+//  3. Type checking & analysis: Performs imports and type-checks each [Module]
+//  4. Optimization & IR generation
+//  5. Code generation
+type Compiler struct {
+	Mode                BuildMode
+	StartTime           time.Time
+	Errors              []errors.CompileError
+	Options             []*Options // Configurations from klar.build or CLI
+	PreBuild, PostBuild []any      // TODO
+	Opener              Opener     // Opens files for reading
+
+	inputs  map[*Input]*InputOptions
+	modules []*Module
+	// To avoid reparsing the same file. The same individual file and the
+	// file's whole module can be inputs to the compiler.
+	flatFiles map[string]*ast.Program
+	// Map modules back to configurations
+	moduleInputs  map[*Module]*InputOptions
+	errorPrinter  *printer.Printer
+	WarningLevels map[string]uint8 // Severity levels for warnings
+	*slog.Logger                   // TODO: use slog
+}
 
 type (
 	InputKind int
@@ -60,9 +88,10 @@ type Module struct {
 	Submodules []string                // Submodule paths TODO: needed?
 	Files      []string                // Klar file paths. Empty string = stdin
 	Assets     []string                // Non-Klar file paths
-	Manifest   any                     // glas.pack configuration
-	Programs   map[string]*ast.Program // Base name of files
 	Name, Path string                  // Module name and folder/file path
+	Programs   map[string]*ast.Program // Base name of files
+	Manifest   *glaspack.Manifest
+	SingleFile bool // Whether the input was a single file
 	// TODO: typechecked ast
 }
 
@@ -72,28 +101,11 @@ type InputOptions struct {
 	Options *Options
 }
 
-type Compiler struct {
-	Mode                BuildMode
-	StartTime           time.Time
-	Errors              []errors.CompileError
-	Options             []*Options // Configurations from klar.build or CLI
-	PreBuild, PostBuild []any      // TODO
-	openFiles           []*os.File // TODO: don't know if this is used
-	Opener              Opener     // Opens files for reading
-	verbose             bool
-
-	inputs  map[*Input]*InputOptions
-	modules []*Module
-	// To avoid reparsing the same file. The same individual file and the
-	// file's whole module can be inputs to the compiler.
-	flatFiles map[string]*ast.Program
-	// Map modules back to configurations
-	moduleInputs map[*Module]*InputOptions
-	errorPrinter *printer.Printer
-	// From all configurations. TODO: better type
-	SuppressWarnings, WarningsAsErrors []string
-	*log.Logger
-}
+const (
+	_ uint8 = iota
+	SuppressWarning
+	WarningAsError
+)
 
 // File opening
 // ============
@@ -144,34 +156,27 @@ func (o StdOpener) Open(name string) (f *OpenFile, err error) {
 // Logging
 // ==========
 
-// Equivalent to c.Logger.Println
-func (c *Compiler) Log(v ...any) {
-	if c.verbose {
-		c.Println(v...)
+// CloseLogger closes the logger if it is a [LogHandler] and the output file needs closing.
+func (c *Compiler) CloseLogger() error {
+	if h, ok := c.Logger.Handler().(*LogHandler); ok {
+		return h.Close()
+	}
+	return nil
+}
+
+func (c *Compiler) _logBase(log func(string, ...any), msg string, v ...any) {
+	if c.Logger.Handler() != nil {
+		log(msg, v...)
 	}
 }
 
-func (c *Compiler) Logf(s string, v ...any) {
-	if c.verbose {
-		c.Logger.Printf(s, v...)
+func (c *Compiler) _logfBase(log func(string, ...any), s string, v ...any) {
+	if c.Logger.Handler() != nil {
+		log(fmt.Sprintf(s, v...))
 	}
 }
 
-func (c *Compiler) LogErrorf(s string, v ...any) {
-	if c.verbose {
-		c.Logf(ansi.Red("[error] ")+s, v...)
-	}
-}
-
-func (c *Compiler) LogError(v ...any) {
-	if c.verbose {
-		v = append([]any{ansi.Red("[error]")}, v...)
-		c.Println(v...)
-	}
-}
-
-func (c *Compiler) CloseAll() {
-	for _, file := range c.openFiles {
-		file.Close()
-	}
-}
+func (c *Compiler) LogInfo(msg string, v ...any)  { c._logBase(c.Logger.Info, msg, v...) }
+func (c *Compiler) LogInfof(s string, v ...any)   { c._logfBase(c.Logger.Info, s, v...) }
+func (c *Compiler) LogErrorf(s string, v ...any)  { c._logfBase(c.Logger.Error, s, v...) }
+func (c *Compiler) LogError(msg string, v ...any) { c._logBase(c.Logger.Error, msg, v...) }

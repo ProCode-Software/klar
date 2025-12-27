@@ -12,6 +12,7 @@ type Context struct {
 	Children     []*Context
 	Flags        Flag
 	Attrs        map[ContextAttribute]any
+	Used         map[string]struct{}
 }
 
 type Declaration struct {
