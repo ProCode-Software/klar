@@ -40,6 +40,9 @@ func (c *Compiler) typeCheckModule(
 		opts.KlarVersion,
 		opts.Target,
 	)
+	if parsedMod.SingleFile {
+		mod.Flags |= analysis.SingleFileModule
+	}
 	ch := pool.Get(mod, opts)
 	defer pool.Put(ch)
 	ch.Check()

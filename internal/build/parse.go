@@ -27,7 +27,7 @@ func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
 	defer close(moduleCh)
-	c.Logf("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
+	c.LogInfof("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
 	pctx := &parseContext{
 		processContext: pc,
 		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
@@ -46,10 +46,10 @@ func (c *Compiler) ParseModules(
 		for _, filePath := range mod.Files {
 			// Skip if already parsed
 			if _, ok := c.flatFiles[filePath]; ok {
-				c.Log("Skipping already parsed file:", filePath)
+				c.LogInfo("Skipping already parsed file:", filePath)
 				continue
 			}
-			c.Log("Processing file:", filePath)
+			c.LogInfo("Processing file:", filePath)
 			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
 		}
 		moduleWg.Wait()
@@ -84,7 +84,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 		const stdinName = "standardInput"
 		fr = os.Stdin
 		filePath, shortPath = stdinName, stdinName
-		c.Log("Reading file from stdin")
+		c.LogInfo("Reading file from stdin")
 	} else {
 		f, err := c.Opener.Open(filePath)
 		if err != nil {
@@ -93,7 +93,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 			return
 		}
 		fr, fileSize, shortPath = f.ReadCloser, f.Size, f.ShortPath
-		c.Logf("Opened %s", filePath)
+		c.LogInfof("Opened %s", filePath)
 		defer f.Close()
 	}
 
@@ -103,7 +103,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 	// Estimate file size
 	lex := pctx.pool.GetLexer(fr)
 	defer pctx.pool.PutLexer(lex)
-	c.Log("Tokenizing file:", filePath)
+	c.LogInfo("Tokenizing file:", filePath)
 
 	var sizeEstimate int64
 	if fileSize > 0 {
@@ -126,7 +126,7 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 	pa := pctx.pool.GetParser(toks, filePath)
 	defer pctx.pool.PutParser(pa)
 
-	c.Log("Parsing file:", filePath)
+	c.LogInfo("Parsing file:", filePath)
 	ast := pa.Parse()
 	errs := pa.Errors
 
