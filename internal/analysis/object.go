@@ -103,17 +103,31 @@ func NewObject(
 	}
 }
 
-type TypeName struct{Type}
+type TypeName struct{ Type }
 
 func (o *Object) IsTypeDecl() bool {
 	_, ok := o.typ.(*TypeName)
 	return ok
 }
 
-func (o *Object) FilePath() string {
-	return o.module.FilePathFromID(o.file)
+// FileName returns the base name of the file o was declared in.
+func (o *Object) FileName() string {
+	return o.module.ResolveFile(o.file)
 }
 
+// FileName returns the full path of the file o was declared in.
+func (o *Object) FilePath() string {
+	return o.module.ResolveFilePath(o.file)
+}
+
+// FileRange returns a [ranges.FileRange] representing the range of o's declaration
+// and the base name of the containing file.
 func (o *Object) FileRange() ranges.FileRange {
+	return ranges.FileRange{o.rang, o.FileName()}
+}
+
+// FilePathRange returns a [ranges.FilePathRange] representing the range of o's
+// declaration and the full path of the containing file.
+func (o *Object) FilePathRange() ranges.FileRange {
 	return ranges.FileRange{o.rang, o.FilePath()}
 }

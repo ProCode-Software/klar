@@ -1,7 +1,6 @@
 package analysis
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -34,13 +33,12 @@ type Options struct {
 }
 
 type Checker struct {
-	Programs     map[string]*ast.Program // Files in the module that is being checked.
-	Errors       []errors.CompileError   // Errors reported while type checking.
-	Options      *Options                // Options for type checking.
-	rootContext  *Context                // Context where top-level objects are defined.
-	module       *Module
-	
-	fileIds      map[FileID]string // File IDs to file base names
+	Programs    map[string]*ast.Program // Files in the module that is being checked.
+	Errors      []errors.CompileError   // Errors reported while type checking.
+	Options     *Options                // Options for type checking.
+	rootContext *Context                // Context where top-level objects are defined.
+	module      *Module
+
 	importMap    map[string]*Module
 	nodeContexts map[ast.Node]*Context
 	moduleDecls  map[*Object]*DeclarationInfo // Declaration info for top-level objects
@@ -73,7 +71,6 @@ func (c *Checker) Reset() {
 	c.Options = nil
 	c.moduleDecls = nil
 	c.nodeContexts = nil
-	c.fileIds = nil
 	c.moduleDecls = nil
 }
 
@@ -95,13 +92,13 @@ func (c *Checker) Check() {
 
 func (c *Checker) initFileContexts() map[string]*Context {
 	fileContexts := make(map[string]*Context, len(c.Programs))
-	c.fileIds = make(map[FileID]string, len(c.Programs))
+	c.module.fileID = make(map[FileID]string, len(c.Programs))
 	if c.nodeContexts == nil {
 		c.nodeContexts = make(map[ast.Node]*Context, len(c.Programs))
 	}
 	var i FileID
 	for name := range c.Programs {
-		c.fileIds[i] = name
+		c.module.fileID[i] = name
 		fileContexts[name] = NewContext(c.rootContext, 0).setAttribute(ContextFile, i)
 		i++
 	}
@@ -109,6 +106,7 @@ func (c *Checker) initFileContexts() map[string]*Context {
 }
 
 func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
+	var methods []*ast.FunctionDeclaration
 	for name, program := range c.Programs {
 		fileContext := fileContexts[name]
 		fid := fileContext.getAttribute(ContextFile).(FileID)
@@ -119,29 +117,47 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
 				// Imports were already processed. Misplaced import
-				c.FileError(errors.Node(errors.ErrImportsGoFirst, stmt), fid)
+				c.fileError(errors.Node(errors.ErrImportsGoFirst, stmt), fid)
+				continue
 			case *ast.FunctionDeclaration:
-
+				_ = methods
+				continue
 			case *ast.FuncAliasDeclaration:
 			case ast.TypeDeclaration:
 				obj := NewObject(stmt.Name(), fid, stmt.GetRange(), c.module, TypeName{nil})
 				c.declareTopLevelObject(obj, &DeclarationInfo{node: stmt, file: fileContext})
+				continue
 			case *ast.PublicDeclaration:
+				continue
 			case *ast.OpaqueDeclaration:
 				// Opaque declarations should be inside [ast.PublicDeclaration].
 				// This declaration is not public
-				c.FileError(errors.Node(errors.ErrPrivateOpaque, stmt), fid)
+				c.fileError(errors.Node(errors.ErrPrivateOpaque, stmt), fid)
+				continue
+
+			case *ast.VariableDeclaration:
+				// TODO: some but not all var declarations are top level (contain function calls in
+				// values). Call a function that should also determine if the declaration is top level.
+				continue
+			case *ast.BadExpression:
+				continue // Shouldn't be here. Invalid ASTs should't be typechecked.
 			case *ast.ExpressionStatement:
 				// Only 'when' and call expressions are allowed as statements.
 				// TODO: move this to statement checking, not top-level
-				// TODO: allow 'when' and function call
 				switch stmt.Expression.(type) {
-				case *ast.WhenExpression, *ast.CallExpression:
+				case *ast.WhenExpression, *ast.CallExpression, *ast.BadExpression:
 				default:
-					c.FileError(errors.Node(errors.ErrUnusedValue, stmt), fid)
+					c.fileError(errors.Node(errors.ErrUnusedValue, stmt), fid)
+					continue
 				}
-			default:
-				panic(fmt.Sprintf("unhandled top-level statement %T", stmt))
+			}
+			// Top-level statement
+			if c.module.TopLevel != -1 && c.module.TopLevel != fid {
+				c.fileError(errors.Node(errors.ErrTopLevel, stmt).
+					SetParam("other", c.module.ResolveFile(c.module.TopLevel)), fid,
+				)
+			} else {
+				c.module.TopLevel = fid
 			}
 		}
 		_ = fileContext

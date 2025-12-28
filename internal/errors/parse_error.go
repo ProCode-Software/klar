@@ -108,6 +108,7 @@ const (
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
 	ErrInvalidGenericType      // Only enums can be generic (for now)
 	ErrInvalidArrow            // -> can only be used with enum
+	ErrRedeclaredField         // Struct or interface field redeclared
 
 	// When =====
 
@@ -124,10 +125,9 @@ const (
 
 	// Analysis-time syntax errors =====
 
-	ErrRedeclared        // Can't redeclare variable or function
-	ErrRedeclaredType       // Redeclared type
+	ErrRedeclared           // Can't redeclare variable or function
+	ErrTopLevel             // Multiple files in a module have top-level statements
 	ErrRedeclaredEnum       // Redeclared enum member
-	ErrRedeclaredField      // Struct or interface field redeclared
 	ErrMethAndFieldSameName // Field and method have the same name
 	ErrMethodInOtherScope   // Method must be in the same scope as struct definition
 	ErrProvenUnreachable    // Unreachable statement after return/break/next
@@ -429,15 +429,8 @@ func (e *ParseError) error() string {
 	case ErrEmptyRegexInterpolation:
 		return "A regex interpolation can't be empty"
 	case ErrPrivateOpaque:
-		return "'opaque' on a non-public type has no effect"
-	case ErrRedeclaredField:
-		kind := "Field"
-		if e.Params["kind"] == "enum" {
-			kind = "Enum item"
-		}
-		return fmt.Sprintf("TypeError: %s '%s' was already declared",
-			kind, e.Node.(ast.Identifier).Name,
-		)
+		e.Hint("Remember that 'opaque' allows a type to be exported without allowing external modules to create instances of it. If the type is not exported, it still can't be used by external modules, so 'opaque' has no effect.")
+		return "The 'opaque' modifier has no effect on a non-public type"
 	case ErrRedeclared:
 		/*
 			"existing":       existing.FileRange(),
@@ -451,6 +444,9 @@ func (e *ParseError) error() string {
 		existingRange := e.Params["existing"].(ranges.FileRange)
 		return Quote(e.stringParam("name")) + " was already declared " + asAType +
 			"at " + existingRange.FilePos().Rel(e.File)
+	case ErrTopLevel:
+		return "Only a single file in a module can have top-level statements. I already found them in " +
+			e.stringParam("other")
 	}
 }
 

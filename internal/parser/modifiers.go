@@ -15,7 +15,7 @@ func (p *Parser) validatePublic() {
 func (p *Parser) ParseOpaqueModifier() ast.Statement {
 	p.Advance() // opaque
 	p.validatePublic()
-	stmt := p.ParseStatement()
+	stmt := p.ParseStatement(withoutEOS)
 	switch stmt := stmt.(type) {
 	case *ast.InterfaceDeclaration, *ast.StructDeclaration:
 		return &ast.OpaqueDeclaration{Declaration: stmt.(ast.TypeDeclaration)}
@@ -28,7 +28,7 @@ func (p *Parser) ParseOpaqueModifier() ast.Statement {
 
 func (p *Parser) ParsePublicModifier() ast.Statement {
 	p.Expect(lexer.Public)
-	stmt := p.ParseStatement()
+	stmt := p.ParseStatement(withoutEOS)
 	switch stmt.(type) {
 	case *ast.PublicDeclaration:
 		err := errors.Node(errors.ErrDuplicateModifier, stmt)

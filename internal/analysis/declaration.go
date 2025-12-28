@@ -28,6 +28,6 @@ func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
 			"name":           obj.name,
 			"existingIsType": existing.IsTypeDecl() && !obj.IsTypeDecl(),
 		}
-		c.FileError(err, obj.file)
+		c.fileError(err, obj.file)
 	}
 }

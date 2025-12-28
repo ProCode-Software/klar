@@ -337,7 +337,6 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 	"Error":   PrimitiveError,
 }
 
-
 type IdentifierPair struct {
 	BaseNode
 	Label, Name Identifier

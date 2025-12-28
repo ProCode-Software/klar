@@ -18,9 +18,6 @@ outer:
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
 		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
-	case lexer.Question:
-		p.Advance()
-		res = &ast.NilLiteral{Shorthand: true}
 	case lexer.Underscore:
 		p.Advance()
 		res = &ast.Discard{}

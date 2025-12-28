@@ -23,6 +23,7 @@ type parseContext struct {
 // Step 3: Parse each file into an untyped AST
 // =====
 
+// ParseModules parses all files in all modules, storing each AST in the module.
 func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
@@ -45,17 +46,23 @@ func (c *Compiler) ParseModules(
 		mod.Programs = make(map[string]*ast.Program, len(mod.Files))
 		for _, filePath := range mod.Files {
 			// Skip if already parsed
-			if _, ok := c.flatFiles[filePath]; ok {
+			if prog, ok := c.flatFiles[filePath]; ok {
 				c.LogInfo("Skipping already parsed file:", filePath)
+				mod.Programs[filepath.Base(filePath)] = prog
 				continue
 			}
 			c.LogInfo("Processing file:", filePath)
 			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
 		}
 		moduleWg.Wait()
-		moduleCh <- mod
+		// If mod.Programs is less, a parse error occured in one of the files.
+		// In that case, avoid typechecking the entire module.
+		if len(mod.Programs) == len(mod.Files) {
+			moduleCh <- mod
+		}
 	}
 	// All modules are done parsing at this point
+	// TODO: will flatFiles be needed for other build steps?
 	c.flatFiles = nil
 }
 
@@ -99,12 +106,10 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 
 	// Tokenize
 	// =========
-
-	// Estimate file size
 	lex := pctx.pool.GetLexer(fr)
 	defer pctx.pool.PutLexer(lex)
 	c.LogInfo("Tokenizing file:", filePath)
-
+	// Estimate file size
 	var sizeEstimate int64
 	if fileSize > 0 {
 		sizeEstimate = fileSize / 10
@@ -122,7 +127,6 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 
 	// Parse
 	// ========
-
 	pa := pctx.pool.GetParser(toks, filePath)
 	defer pctx.pool.PutParser(pa)
 
@@ -136,8 +140,8 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 		select {
 		case pctx.errorCh <- convertParseErrors(errs):
 		case <-pctx.ctx.Done():
-			return
 		}
+		return
 	}
 	// Store result to avoid reparsing the same file
 	pctx.fileMu.Lock()

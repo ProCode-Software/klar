@@ -3,3 +3,9 @@ import klar.doesntExist
 type #X
 type #X
 import invalidHere
+// Supposed to be public
+opaque type X {
+    name: String
+}
+
+yeahLetsGo()

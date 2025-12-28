@@ -10,7 +10,7 @@ func unwrap<T, X>(optional: T?) -> T {
     b := x + [int, 2, 3]
     // return x + 2
     when optional {
-        ? -> panic("unwrap failed")
+        nil -> panic("unwrap failed")
         _ -> return optional
     }
 }

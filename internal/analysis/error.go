@@ -9,7 +9,7 @@ import (
 // If stopParsing is passed to panic, the checker will immediately stop parsing.
 type stopChecker struct{}
 
-func (c *Checker) Error(err errors.CompileError) errors.CompileError {
+func (c *Checker) error(err errors.CompileError) errors.CompileError {
 	c.Errors = append(c.Errors, err)
 	if c.Options.Error != nil {
 		c.Options.Error(err)
@@ -21,8 +21,8 @@ func (c *Checker) Error(err errors.CompileError) errors.CompileError {
 	return err
 }
 
-func (c *Checker) FileError(err errors.CompileError, fid FileID) {
-	file := c.module.FullFilePath(c.fileIds[fid])
+func (c *Checker) fileError(err errors.CompileError, fid FileID) {
+	file := c.module.JoinFilePath(c.module.fileID[fid])
 	switch err := err.(type) {
 	case *errors.ParseError:
 		err.File = file
@@ -37,5 +37,5 @@ func (c *Checker) FileError(err errors.CompileError, fid FileID) {
 	default:
 		panic(fmt.Sprintf("unhandled error type %T", err))
 	}
-	c.Error(err)
+	c.error(err)
 }

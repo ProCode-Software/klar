@@ -141,10 +141,10 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				}
 			case KindFile:
 				info.Modules = []*Module{{
-					Name:  inp.Name,
-					Path:  inp.Path,
+					Name:       inp.Name,
+					Path:       inp.Path,
 					SingleFile: true,
-					Files: []string{inp.Path},
+					Files:      []string{inp.Path},
 				}}
 				c.modules = append(c.modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
@@ -180,7 +180,7 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 func (c *Compiler) moduleFromDir(
 	name, dir string, modules *[]*Module, depth int, info *InputOptions,
 ) (klarFiles int, err error) {
-	m := &Module{Name: name}
+	m := &Module{Name: name, Path: dir}
 	c.modules = append(c.modules, m)
 	*modules = append(*modules, m)
 	c.moduleInputs[m] = info
