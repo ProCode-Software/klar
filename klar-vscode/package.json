@@ -4,7 +4,7 @@
     "description": "A programming language",
     "publisher": "procode-software",
     "version": "0.0.1",
-    "license": "BSD-3-Clause",
+    "license": "MIT OR Apache-2.0",
     "engines": {
         "vscode": "^1.99.0"
     },
@@ -25,8 +25,13 @@
             {
                 "firstLine": "^#!\\/usr\\/bin\\env\\s+klar",
                 "id": "klar",
-                "aliases": ["Klar", "klar"],
-                "extensions": [".klar"],
+                "aliases": [
+                    "Klar",
+                    "klar"
+                ],
+                "extensions": [
+                    ".klar"
+                ],
                 "configuration": "./language-configuration.json"
             },
             {
@@ -37,7 +42,11 @@
                     "klon",
                     "klarmarkup"
                 ],
-                "extensions": [".klon", "glas.pack", "klar.build"],
+                "extensions": [
+                    ".klon",
+                    "glas.pack",
+                    "klar.build"
+                ],
                 "configuration": "./klon.language-configuration.json"
             }
         ],
@@ -55,7 +64,9 @@
             {
                 "scopeName": "markdown.klar.codeblock",
                 "path": "./syntaxes/codeblock.tmLanguage.json",
-                "injectTo": ["text.html.markdown"],
+                "injectTo": [
+                    "text.html.markdown"
+                ],
                 "embeddedLanguages": {
                     "meta.embedded.block.klar": "klar",
                     "meta.embedded.block.klarmarkup": "klarmarkup"

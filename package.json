@@ -9,7 +9,7 @@
     "programming language"
   ],
   "author": "ProCode Software",
-  "license": "BSD-3-Clause",
+  "license": "MIT OR Apache-2.0",
   "trustedDependencies": [
     "@vscode/vsce-sign"
   ]
