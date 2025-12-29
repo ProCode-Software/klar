@@ -41,15 +41,20 @@ func Build(r *command.Runner) {
 	}
 	b.StartTime = time.Now()
 	inps, err := build.ResolveInputs(inputArgs)
+	var configPath string
 	// Build the nearest *package* if no path provided
 	if err == nil && len(inps) == 0 {
-		pkgPath, _, err := module.PackageRoot(".")
-		if err != nil {
-			cli.ErrNoManifest(pkgPath)
+		if _, err := os.Stat("klar.build"); err == nil {
+			configPath = "klar.build"
+		} else {
+			pkgPath, _, err := module.PackageRoot(".")
+			if err != nil {
+				cli.ErrNoManifest(pkgPath)
+			}
+			b.LogInfo("Resolving inputs at current package:", pkgPath)
+			//nolint:ineffassign // False positive
+			inps, err = build.ResolveInputs([]string{pkgPath})
 		}
-		b.LogInfo("Resolving inputs at current package:", pkgPath)
-		//nolint:ineffassign // False positive
-		inps, err = build.ResolveInputs([]string{pkgPath})
 	}
 	if err != nil {
 		// Show a better error for file not found
@@ -62,16 +67,27 @@ func Build(r *command.Runner) {
 		cli.Failure(err.Error())
 	}
 	// Force a config path if --config flag was passed
-	var forceConfig string
 	if conf := r.StringFlag("config"); conf != "" {
-		forceConfig = conf
+		configPath = conf
 		delete(r.AllFlags(), "config")
 	}
-	// Apply options for each input
 	b.Options = make([]*build.Options, 0, len(inps))
+	var parsedConfig *build.Options
+	if len(inps) == 0 && configPath != "" {
+		// Read options from klar.build
+		config, err := klarbuild.Parse(configPath)
+		if err != nil {
+			
+		}
+		parsedConfig = &build.Options{
+			Inputs: ,
+			File: *config,
+		}
+	}
+	// Apply options for each input
 	for _, inp := range inps {
-		if forceConfig != "" {
-			inp.KlarBuild = forceConfig
+		if configPath != "" {
+			inp.KlarBuild = configPath
 		}
 		opt := &build.Options{} // TODO: parse klar.build here
 		ParseFlags(r, opt)

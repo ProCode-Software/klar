@@ -137,7 +137,8 @@ func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
 	case lexer.Comma, lexer.EndOfStatement:
 		return false
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn, lexer.Question:
+		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn,
+		lexer.Question, lexer.Dot:
 		return t.Position.Line != prevLine
 	}
 	return false
