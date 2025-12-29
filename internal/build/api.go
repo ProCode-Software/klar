@@ -13,6 +13,7 @@ func NewCompiler(mode BuildMode) *Compiler {
 	return &Compiler{
 		Mode:         mode,
 		errorPrinter: &printer.Printer{MaxLines: 3, Color: true},
+		Logger:       slog.New(slog.DiscardHandler),
 	}
 }
 
@@ -54,4 +55,9 @@ func (c *Compiler) SetLogger(verbose bool) error {
 	}
 	c.Logger = slog.New(NewLogHandler(out))
 	return nil
+}
+
+// AddInputs adds the given inputs to a new [Options] inside c.
+func (c *Compiler) AddInputs(inputs ...Input) {
+	c.Options = append(c.Options, &Options{Inputs: inputs})
 }

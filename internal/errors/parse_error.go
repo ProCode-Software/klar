@@ -133,6 +133,7 @@ const (
 	ErrProvenUnreachable    // Unreachable statement after return/break/next
 	ErrUnusedValue          // Unused literal expression statement
 	ErrReturnOutsideFunc    // Return statement not allowed outside of function
+	ErrImportShadow         // Import shadows top-level object
 )
 
 // A ParseError is a basic Klar parse error.
@@ -334,10 +335,8 @@ func (e *ParseError) error() string {
 	case ErrDestructInvalidEqual:
 		return "A default value can only be provided in a map destructure pattern"
 	case ErrDuplicateModifier:
-		modif := param[lexer.TokenType](e.Params, "modifier")
-		return fmt.Sprintf("The modifer %s was already specified in this declaration",
-			FormatTokenType(modif),
-		)
+		return "Can't use the " + FormatTokenType(e.tokenTypeParam("modifier")) +
+			" modifier more than once in this declaration"
 	case ErrGenericInFuncAlias:
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
@@ -447,6 +446,14 @@ func (e *ParseError) error() string {
 	case ErrTopLevel:
 		return "Only a single file in a module can have top-level statements. I already found them in " +
 			e.stringParam("other")
+	case ErrImportShadow:
+		name := e.stringParam("name")
+		importPath := e.stringParam("import")
+		if importPath != "" {
+			importPath = " from " + Quote(importPath)
+		}
+		return "The import " + Quote(name) + importPath +
+			" has the same name as an existing object in this module"
 	}
 }
 

@@ -189,6 +189,8 @@ func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statemen
 		res = p.ParseImportStatement()
 	case lexer.Public:
 		res = p.ParsePublicModifier()
+	case lexer.Opaque:
+		res = p.ParseOpaqueModifier()
 	case lexer.At:
 		res = p.ParseAttribute()
 	}
@@ -214,8 +216,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = p.ParseWhileStatement()
 	case lexer.Next, lexer.Stop:
 		res = p.ParseControlStatement()
-	case lexer.Opaque:
-		res = p.ParseOpaqueModifier()
 	}
 	res.SetPos(startPos, p.lastTokEnd())
 	return res, true

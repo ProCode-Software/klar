@@ -17,6 +17,7 @@ type CompileError interface {
 	GetDetails() []Detail
 	GetLabel() string
 	GetHighlights() []Highlight
+	addDetail(d Detail)
 }
 
 //go:generate stringer -type=ErrorCode
@@ -58,4 +59,8 @@ func hintf(hints []Hint, f string, a []any) []Hint {
 
 func TooManyErrors() *ParseError {
 	return &ParseError{ErrorCode: ErrTooManyErrors}
+}
+
+func AddDetail(err CompileError, file string, rang ranges.Range, msg string) {
+	err.addDetail(Detail{file, Highlight{rang, msg}})
 }

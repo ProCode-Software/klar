@@ -51,7 +51,7 @@ func (s *Session) LoadFile(args []lexer.Token) {
 		s.handleLexerError(err)
 		return
 	}
-	s.parse(tokens)
+	s.runTokens(tokens)
 }
 
 func (s *Session) SaveFile(args []lexer.Token) {

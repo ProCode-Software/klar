@@ -4,6 +4,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"io"
+
+	"github.com/ProCode-Software/klar/internal/char"
 )
 
 func FormatDuration(dur time.Duration) string {
@@ -37,4 +40,54 @@ func formatFloat(f float64) string {
 	s = strings.TrimRight(s, "0")
 	s = strings.TrimRight(s, ".")
 	return s
+}
+
+type AllWriter interface {
+	io.Writer
+	io.StringWriter
+	io.ByteWriter
+}
+
+func Wrap(s string, w AllWriter, width, margin int) {
+	if width <= 0 {
+		return
+	}
+	var i int
+	var needsNewline bool
+	writeNewline := func() {
+		if needsNewline {
+			w.WriteByte('\n')
+			if margin > 0 {
+				w.Write(char.Repeat(' ', margin))
+			}
+		}
+	}
+	for i < len(s) {
+		// Check for existing newline within termWidth
+		end := min(i+width, len(s))
+		if nlIdx := strings.IndexByte(s[i:end], '\n'); nlIdx >= 0 {
+			// Found newline, write up to and including it
+			writeNewline()
+			w.WriteString(s[i : i+nlIdx+1])
+			i += nlIdx + 1
+			needsNewline = false
+			continue
+		}
+		// No newline found, calculate line length
+		lineLen := end - i
+		// If not at end of string, try to break at last space
+		if end < len(s) {
+			if spaceIdx := strings.LastIndexByte(s[i:end], ' '); spaceIdx > 0 {
+				lineLen = spaceIdx
+			}
+		}
+		writeNewline()
+		w.WriteString(s[i : i+lineLen])
+		i += lineLen
+		needsNewline = true
+		// Skip spaces after break
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+	}
 }

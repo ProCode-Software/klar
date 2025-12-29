@@ -43,6 +43,7 @@ const (
 	CodeBoldBrightRed    = "\033[1;91m"
 	CodeBoldBrightYellow = "\033[1;93m"
 	CodeBoldBrightGreen  = "\033[1;92m"
+	CodeBoldBrightBlue   = "\033[1;94m"
 
 	CodeDimCyan = "\033[2;36m"
 	CodeDimBlue = "\033[2;34m"
@@ -96,6 +97,7 @@ func BoldBrightWhite(s string) string  { return Color(CodeBoldBrightWhite, s) }
 func BoldBrightRed(s string) string    { return Color(CodeBoldBrightRed, s) }
 func BoldBrightGreen(s string) string  { return Color(CodeBoldBrightGreen, s) }
 func BoldBrightYellow(s string) string { return Color(CodeBoldBrightYellow, s) }
+func BoldBrightBlue(s string) string   { return Color(CodeBoldBrightBlue, s) }
 
 var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
 

@@ -281,10 +281,13 @@ func (p *Printer) PrintError(err errors.CompileError) {
 printMsg:
 	b.WriteString(GetMessage(err))
 	b.WriteByte('\n')
-	os.Stderr.Write(b.Bytes())
 	for _, hint := range err.GetHints() {
-		cli.HintIndent(hint.Message)
+		b.WriteString(ansi.BoldBrightBlue("  Hint"))
+		b.WriteString(ansi.BoldDim(": "))
+		cli.Wrap(hint.Message, &b, 80, 4)
+		b.WriteByte('\n')
 	}
+	os.Stderr.Write(b.Bytes())
 }
 
 /* Multiline errors:

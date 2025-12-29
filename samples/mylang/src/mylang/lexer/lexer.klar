@@ -55,6 +55,7 @@ func Lexer.readToken() -> Token {
         when char {
             '-' -> return .dash
             '\\' -> return .backslash
+            '\n' -> return .newline
             '"' | "'" -> return self.readString()
             '0'...'9' -> return self.readNumber()
             '#' -> return self.readComment()

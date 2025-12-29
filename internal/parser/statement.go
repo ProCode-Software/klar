@@ -229,11 +229,11 @@ func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 
 func (p *Parser) ParseBlock() *ast.Block {
 	var body []ast.Statement
-	start := p.Expect(lexer.LeftCurlyBrace).Position
+	start := p.ExpectNoAdvance(lexer.LeftCurlyBrace).Position
 	for p.WhileNot(lexer.RightCurlyBrace) {
 		body = append(body, p.ParseStatement())
 	}
-	end := p.Expect(lexer.RightCurlyBrace).Position
+	end := p.ExpectNoAdvance(lexer.RightCurlyBrace).Position
 	return &ast.Block{
 		Body:     body,
 		BaseNode: ast.BaseNode{Range: ranges.Range{start, end}},

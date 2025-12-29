@@ -57,6 +57,7 @@ func Build(r *command.Runner) {
 			cli.ErrNotFound(fsErr.Path, "")
 		} else if ierr, ok := err.(*build.InterfaceError); ok {
 			build.PrintInterfaceErr(ierr)
+			os.Exit(1)
 		}
 		cli.Failure(err.Error())
 	}
@@ -88,6 +89,7 @@ func Build(r *command.Runner) {
 		case *build.InterfaceError:
 			// For InterfaceErrors: print a prettier error
 			build.PrintInterfaceErr(err)
+			os.Exit(1)
 		case *build.FilesystemError:
 			cli.Failure(err.Error())
 		default:
@@ -126,7 +128,10 @@ func printErrors(res *build.BuildResult, b *build.Compiler, err error) {
 		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
-	for _, err := range errs {
+	for i, err := range errs {
+		if i > 0 {
+			fmt.Fprintln(os.Stderr)
+		}
 		b.PrintError(err)
 	}
 	if isMaxErrors {

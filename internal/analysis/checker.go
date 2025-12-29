@@ -19,7 +19,7 @@ type Options struct {
 	// The target platform for which the program is being compiled.
 	// This is needed for resolving platform-specific implementations
 	// and modules.
-	Target *target.Target
+	Target target.Target
 	// The minimum version of Klar required to compile the program.
 	KlarVersion *version.Version
 	// If Error != nil, it is called when an error is reported.
@@ -106,42 +106,91 @@ func (c *Checker) initFileContexts() map[string]*Context {
 }
 
 func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
-	var methods []*ast.FunctionDeclaration
+	type methodInfo struct {
+		self *ast.Identifier
+		decl *ast.FunctionDeclaration
+		obj  *Object
+	}
+	var (
+		methods   []methodInfo
+		overloads map[string][]*Object
+		topLevel  []ast.Statement
+	)
 	for name, program := range c.Programs {
-		fileContext := fileContexts[name]
-		fid := fileContext.getAttribute(ContextFile).(FileID)
-		// First statement after imports. Any import after this is misplaced.
-		// An import will never be at program.Body[firstStmt].
-		firstStmt, _ := fileContext.getAttribute(firstStmtIndex).(int)
+		var (
+			fileContext = fileContexts[name]
+			fid         = fileContext.getAttribute(ContextFile).(FileID)
+			// First statement after imports. Any import after this is misplaced.
+			// An import will never be at program.Body[firstStmt].
+			firstStmt, _ = fileContext.getAttribute(firstStmtIndex).(int)
+		)
+		handlePublicOpaque := func(obj *Object, public, opaque bool) {
+			obj.public = public
+			if opaque {
+				obj.flags |= OpaqueType
+			}
+		}
 		for _, stmt := range program.Body[firstStmt:] {
+			var public, opaque bool
+			if s, ok := stmt.(*ast.PublicDeclaration); ok {
+				public = true
+				stmt = s.Declaration
+			}
+			if o, ok := stmt.(*ast.OpaqueDeclaration); ok {
+				if !public {
+					c.fileError(errors.Node(errors.ErrPrivateOpaque, stmt), fid)
+				}
+				opaque = true
+				stmt = o.Declaration
+			}
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
 				// Imports were already processed. Misplaced import
 				c.fileError(errors.Node(errors.ErrImportsGoFirst, stmt), fid)
 				continue
 			case *ast.FunctionDeclaration:
-				_ = methods
+				name := stmt.Identifier.Name
+				fn := NewObject(name, fid, stmt.GetRange(), c.module, &Function{})
+				if stmt.Struct == nil {
+					if overloads == nil {
+						overloads = make(map[string][]*Object)
+					}
+					overloads[name] = append(overloads[name], fn)
+					// c.declare(fileContext, fn)
+				} else if !stmt.Struct.IsDiscard() {
+					// Method - ignore discarded names, though they will still be typechecked
+					methods = append(methods, methodInfo{stmt.Struct, stmt, fn})
+				}
+				info := &DeclarationInfo{file: fileContext, node: stmt}
+				c.moduleDecls[fn] = info
+				fn.order = uint32(len(c.moduleDecls))
+				handlePublicOpaque(fn, public, opaque)
 				continue
 			case *ast.FuncAliasDeclaration:
+				// Will be resolved later
+				fn := NewObject(name, fid, stmt.Range, c.module, &Function{})
+				c.declareTopLevelObject(fn, &DeclarationInfo{file: fileContext, node: stmt})
+				handlePublicOpaque(fn, public, opaque)
+				continue
 			case ast.TypeDeclaration:
-				obj := NewObject(stmt.Name(), fid, stmt.GetRange(), c.module, TypeName{nil})
+				name := stmt.Name()
+				obj := NewObject(name, fid, stmt.GetRange(), c.module, &TypeName{nil, name})
 				c.declareTopLevelObject(obj, &DeclarationInfo{node: stmt, file: fileContext})
-				continue
-			case *ast.PublicDeclaration:
-				continue
-			case *ast.OpaqueDeclaration:
-				// Opaque declarations should be inside [ast.PublicDeclaration].
-				// This declaration is not public
-				c.fileError(errors.Node(errors.ErrPrivateOpaque, stmt), fid)
+				handlePublicOpaque(obj, public, opaque)
 				continue
 
 			case *ast.VariableDeclaration:
 				// TODO: some but not all var declarations are top level (contain function calls in
 				// values). Call a function that should also determine if the declaration is top level.
+				// handlePublicOpaque(fn, public, opaque)
 				continue
 			case *ast.BadExpression:
-				continue // Shouldn't be here. Invalid ASTs should't be typechecked.
+				// Shouldn't be here. Invalid ASTs should't be typechecked.
+				panic("typechecking invalid AST")
 			case *ast.ExpressionStatement:
+				if c.module.Flags.Has(REPLModule) {
+					break // Allow unused values in REPL
+				}
 				// Only 'when' and call expressions are allowed as statements.
 				// TODO: move this to statement checking, not top-level
 				switch stmt.Expression.(type) {
@@ -153,13 +202,40 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			}
 			// Top-level statement
 			if c.module.TopLevel != -1 && c.module.TopLevel != fid {
+				// Only one file can have top-level statements
 				c.fileError(errors.Node(errors.ErrTopLevel, stmt).
 					SetParam("other", c.module.ResolveFile(c.module.TopLevel)), fid,
 				)
 			} else {
 				c.module.TopLevel = fid
+				topLevel = append(topLevel, stmt)
 			}
 		}
-		_ = fileContext
+	}
+	// Ensure no top-level objects were shadowed by imports
+	for _, fileCtx := range fileContexts {
+		for name, impObj := range fileCtx.Declarations {
+			modObj := c.module.Context.Lookup(name)
+			if modObj == nil {
+				continue
+			}
+			// Only imports are in the file scope. One of these could possibly share a name:
+			// - Namespace of normal import
+			// - Alias of import
+			// - An unqualified import object
+			var namespace string
+			if impObj.Kind() == KindModule {
+				// Provide the import path the namespace is from
+				namespace = impObj.module.ImportPathString()
+			}
+			err := errors.Range(errors.ErrImportShadow, impObj.rang)
+			err.Params = errors.ErrorParams{"name": name, "import": namespace}
+			// Provide a detail from where the module object was declared
+			err.Details = append(err.Details, errors.Detail{
+				File:      modObj.FilePath(),
+				Highlight: errors.Highlight{modObj.rang, "It was already declared here"},
+			})
+			c.fileError(err, impObj.file)
+		}
 	}
 }

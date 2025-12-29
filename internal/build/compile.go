@@ -14,9 +14,7 @@ type BuildResult struct {
 	Errors []errors.CompileError
 	// Time from [Compiler.StartTime] to finish time.
 	Elapsed time.Duration
-	// Whether the build stopped early due to too many errors
-	EarlyExit bool
-	Modules   []*Module
+	Modules []*Module
 }
 
 type processContext struct {
@@ -30,13 +28,13 @@ type processContext struct {
 // The actual compilation process.
 
 // Compile compiles c's Inputs, returing the result and any critical error
-// that occured. err == nil does not mean the build was successful; syntax
+// that occurred. err == nil does not mean the build was successful; syntax
 // and typecheck errors are stored in [*BuildResult.Errors]
 func (c *Compiler) Compile() (res *BuildResult, err error) {
-	res = &BuildResult{EarlyExit: true}
+	res = &BuildResult{}
 	defer func() {
 		res.Elapsed = time.Since(c.StartTime)
-		res.Modules = c.modules
+		res.Modules = c.Modules
 		res.Errors = c.Errors
 	}()
 	// Resolve modules
@@ -68,7 +66,7 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	}
 	close(pc.errorCh)
 	<-collectDone // Make sure errors are appended to c.Errors
-	res.EarlyExit = false
+	err = <-pc.fatalErrCh
 	return
 }
 

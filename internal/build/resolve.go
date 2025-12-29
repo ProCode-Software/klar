@@ -79,7 +79,7 @@ func ResolveKlarBuild(i *Input) {
 		dir = filepath.Dir(i.Path)
 	}
 	// Look inside directory before outside
-	klarBuild := dir + sep + module.BuildFileName
+	klarBuild := dir + sep + module.BuildFile
 	if _, err := os.Stat(klarBuild); err == nil {
 		i.KlarBuild = klarBuild
 		return
@@ -96,7 +96,7 @@ func ResolveKlarBuild(i *Input) {
 			return // At root
 		}
 		dir = parent
-		klarBuild := dir + sep + module.BuildFileName
+		klarBuild := dir + sep + module.BuildFile
 		if _, err := os.Stat(klarBuild); err == nil {
 			i.KlarBuild = klarBuild
 			return
@@ -118,13 +118,13 @@ const MaxModuleDepth = 4
 func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 	c.inputs = make(map[*Input]*InputOptions, len(c.Options))
 	c.moduleInputs = make(map[*Module]*InputOptions, len(c.Options))
-	c.modules = make([]*Module, 0, len(c.Options))
+	c.Modules = make([]*Module, 0, len(c.Options))
 	// Show an error if no Klar files to compile were found
 	checkFileCount := func(klarFiles int, path string, err *error) {
-		totalFiles += klarFiles
 		if klarFiles == 0 && *err == nil {
 			*err = &InterfaceError{Code: ErrNoKlarFiles, Value: path}
 		}
+		totalFiles += klarFiles
 	}
 	for _, opt := range c.Options {
 		for i := range opt.Inputs {
@@ -146,14 +146,14 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 					SingleFile: true,
 					Files:      []string{inp.Path},
 				}}
-				c.modules = append(c.modules, info.Modules[0])
+				c.Modules = append(c.Modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
 				c.LogInfo("Resolved file", inp.Path)
 			case KindStdin:
 				// Empty paths are stdin
 				info.Modules = []*Module{{Files: []string{""}, SingleFile: true}}
-				c.modules = append(c.modules, info.Modules[0])
+				c.Modules = append(c.Modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
 				c.LogInfo("Resolved file from stdin")
@@ -181,7 +181,7 @@ func (c *Compiler) moduleFromDir(
 	name, dir string, modules *[]*Module, depth int, info *InputOptions,
 ) (klarFiles int, err error) {
 	m := &Module{Name: name, Path: dir}
-	c.modules = append(c.modules, m)
+	c.Modules = append(c.Modules, m)
 	*modules = append(*modules, m)
 	c.moduleInputs[m] = info
 
@@ -219,6 +219,11 @@ func (c *Compiler) moduleFromDir(
 func (c *Compiler) resolvePackage(
 	path string, modules *[]*Module, nesting bool, info *InputOptions,
 ) (klarFiles int, err error) {
+	defer func() {
+		if err != nil {
+			c.LogError("", err)
+		}
+	}()
 	items, err := os.ReadDir(path)
 	if err != nil {
 		return klarFiles, &FilesystemError{"read", path, err}
@@ -230,30 +235,24 @@ func (c *Compiler) resolvePackage(
 			// Report an error if there's a Klar file directly in a package
 			// Extensionless files are still allowed
 			if strings.HasSuffix(name, ".klar") {
-				c.LogError("Found a Klar file in package root:", fullPath)
 				err = &InterfaceError{Value: fullPath, Code: ErrFileInPackage}
 				return
 			}
 			continue
 		}
 		switch name {
-		case module.PackageFolder: // pkg
+		case module.PkgDir: // pkg
 			if nesting {
-				c.LogError("Found invalid nested project folder", fullPath)
 				err = &InterfaceError{Value: fullPath, Code: ErrNestedKlarFolder}
 				return
 			}
 			pkgs, err := os.ReadDir(fullPath)
 			if err != nil {
-				c.LogError("Read directory", fullPath, "failed:", err)
 				return klarFiles, &FilesystemError{"read", fullPath, err}
 			}
 			for _, pkg := range pkgs {
 				fullPkg := fullPath + sep + pkg.Name()
 				if !pkg.IsDir() {
-					c.LogErrorf("Found file %s in the %s directory",
-						fullPkg, module.PackageFolder,
-					)
 					return klarFiles,
 						&InterfaceError{Code: ErrFileInPkgDir, Value: fullPkg}
 				}
@@ -264,20 +263,18 @@ func (c *Compiler) resolvePackage(
 					return klarFiles, err
 				}
 			}
-		case ".klar":
+		case module.LocalDataDir: // .klar
 			if nesting {
-				c.LogError("Found invalid nested project folder", fullPath)
 				err = &InterfaceError{Value: fullPath, Code: ErrNestedKlarFolder}
 				return
 			}
-		case "shared":
+		case module.SharedDir: // shared
 			if nesting {
-				c.LogError("Found invalid nested project folder", fullPath)
 				err = &InterfaceError{Value: fullPath, Code: ErrNestedKlarFolder}
 				return
 			}
 			fallthrough
-		case "src", "cmd", "generated":
+		case module.SrcDir, module.CmdDir, module.GeneratedDir: // src, cmd, generated
 			// The only Klar project directories that contain buildable modules
 			c.LogInfo("Resolving modules in", fullPath)
 			more, err := c.moduleFromDir(name, fullPath, modules, 0, info)

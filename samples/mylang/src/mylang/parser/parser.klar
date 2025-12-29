@@ -1,0 +1,106 @@
+import mylang.lexer.{Token}
+
+type Parser {
+    tokens: [Token]
+    index: Int = 0
+    comments: [ast.Comment] = []
+}
+
+func Parser.current() -> Token = self.tokens[self.index]
+func Parser.hasTokens() = self.index < self.tokens.length
+func Parser.advance() -> (current: Token) {
+    current = self.tokens[self.index]
+    self.index += 1
+}
+
+func (parser: Parser).parse() -> Result<ast.Program, [SyntaxError]> {
+    program := ast.Program(commands: [], comments: parser.comments)
+    errors: [SyntaxError] := []
+    while parser.hasTokens() {
+        cmd := parser.parseCommand()
+        when cmd {
+            SyntaxError -> {
+                errors.append(cmd)
+                next while
+            }
+        }
+        when parser.current() {
+            .newline -> parser.advance(),
+            .eof -> {},
+            _ -> {
+                errors.append(.expected("a newline", parser.current()))
+                next while
+            }
+        }
+        _ -> program.commands += [cmd]
+    }
+    when errors.length {
+        > 0 -> return parser.errors
+        _ -> return program
+    }
+}
+
+func Parser.parseCommand() -> Result<ast.Command, SyntaxError> {
+    cmdName := ""
+    when self.current() {
+        .identifier(name) -> {
+            cmdName = name
+            self.advance()
+        }
+        _ -> return SyntaxError.expected("command name", cmdNameToken)
+    }
+    args: [ast.Value] := []
+    flags: [ast.Flag] := []
+    while self.hasTokens() {
+        when self.current() {
+            .newline | .eof -> stop while,
+            .dash -> {
+                // Flag
+                self.advance() // -
+                isShort := true
+                when self.current() {
+                    .dash -> {
+                        self.advance()
+                        isShort = false
+                    }
+                }
+                flagName := ""
+                when self.current() {
+                    .identifier(name) -> {
+                        flagName = name
+                        self.advance()
+                    }
+                    _ -> return SyntaxError.flagNameMustBeIdent(self.current())
+                }
+                when self.current() {
+                    .dash -> flags += [.(name, isShort, ast.BoolValue(true))]
+                    _ -> flags += [.(name, isShort, try self.parseValue())]
+                }
+            }
+            _ -> args += [try self.parseValue()]
+        }
+    }
+    return ast.Command(name: cmdName, :args, :flags)
+}
+
+func Parser.parseValue() -> Result<ast.Value, SyntaxError> {
+    token := self.advance()
+    when token {
+        .number(num) -> {
+            val := Int(num)
+            when val {
+                Error -> return SyntaxError.invalidNumber(val)
+                _ -> return IntValue(val)
+            }
+        }
+        .string(content, singleQuote) -> return StringValue(value, singleQuote),
+        .boolean(value) -> return BoolValue(value),
+        _ -> return SyntaxError.expected("a value", token)
+    }
+}
+
+type SyntaxError {
+    .expected(kind: string, got: Token) = "Expected {kind}, but found {got}"
+    .flagNameMustBeIdent(Token) = "A flag name must be an identifier"
+    .invalidNumber(number: string) = "'{number}' isn't a valid number"
+}

@@ -54,7 +54,6 @@ func Colorize(s string) string {
 		codes   []string
 	}
 	var stack []layer
-
 	reapply := func() {
 		if DisableColor {
 			return
@@ -83,17 +82,14 @@ func Colorize(s string) string {
 			b.WriteByte(c)
 			continue
 		}
-
-		// Potential tag start
 		end := strings.IndexByte(s[i:], '>')
 		if end == -1 {
+			// Unterminated '<', treat as literal
 			b.WriteByte(c)
 			continue
 		}
 		end += i
-
 		tagContent := s[i+1 : end]
-
 		// Closing tag
 		if after, ok := strings.CutPrefix(tagContent, "/"); ok {
 			i = end
@@ -179,7 +175,7 @@ func Fprintfln(w io.Writer, format string, a ...any) (n int, err error) {
 }
 
 func Sprintf(format string, a ...any) string {
-	return fmt.Sprintf(Colorize(format), a...)
+	return Colorize(fmt.Sprintf(format, a...))
 }
 
 func Sprint(v string) string {

@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"strings"
+
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -15,6 +17,13 @@ type Object struct {
 	typ     Type
 	order   uint32
 	flags   Flag
+}
+
+// NewObject returns a new [Object] without context information.
+func NewObject(
+	name string, fid FileID, rang ranges.Range, mod *Module, typ Type,
+) *Object {
+	return &Object{name: name, module: mod, rang: rang, file: fid, typ: typ}
 }
 
 // Name returns the name of the object as declared in its module
@@ -45,7 +54,10 @@ func (obj *Object) Type() Type { return obj.typ }
 func (obj *Object) Kind() Kind { return obj.typ.Kind() }
 
 // String returns a human-readable representation of the object
-func (obj *Object) String() string { return "" }
+func (obj *Object) String() string {
+	// TODO
+	return obj.typ.StringWithName(obj.name)
+}
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
@@ -53,58 +65,7 @@ func (obj *Object) Path() string {
 	return obj.Module().ImportPathString() + "." + obj.name
 }
 
-type Kind int
-
-const (
-	_ Kind = iota
-	KindInt
-	KindString
-	KindBool
-	KindFloat
-	KindList
-	KindMap
-	KindResult
-	KindAny
-	KindFunction
-	KindError
-	KindNothing
-
-	KindEnum
-	KindStruct
-	KindInterface
-	KindTag
-	KindUnion
-	KindOptional
-	KindFunctionAlias
-	KindModule
-
-	KindInvalid
-	KindUnreachable // Nothing
-)
-
-type Type interface {
-	Kind() Kind
-	String() string
-}
-
-// Kind returns the receiver.
-func (k Kind) Kind() Kind { return k }
-
-// NewObject returns a new [Object] without context information.
-func NewObject(
-	name string, fid FileID, rang ranges.Range, mod *Module, typ Type,
-) *Object {
-	return &Object{
-		name:   name,
-		module: mod,
-		rang:   rang,
-		file:   fid,
-		typ:    typ,
-	}
-}
-
-type TypeName struct{ Type }
-
+// IsTypeDecl reports whether o represents a type declaration.
 func (o *Object) IsTypeDecl() bool {
 	_, ok := o.typ.(*TypeName)
 	return ok
@@ -131,3 +92,139 @@ func (o *Object) FileRange() ranges.FileRange {
 func (o *Object) FilePathRange() ranges.FileRange {
 	return ranges.FileRange{o.rang, o.FilePath()}
 }
+
+// Type Kinds
+// ============
+
+// Kind represents the kind of an object.
+type Kind int
+
+const (
+	_ Kind = iota
+	KindInt
+	KindString
+	KindBool
+	KindFloat
+	KindList
+	KindMap
+	KindResult
+	KindAny
+	KindFunction
+	KindError
+	KindNothing
+
+	KindEnum
+	KindStruct
+	KindInterface
+	KindTag
+	KindUnion
+	KindOptional
+	KindModule
+
+	KindGeneric
+	KindInvalid
+	KindUnreachable // Nothing
+)
+
+// Kind returns the receiver.
+func (k Kind) Kind() Kind { return k }
+
+// String returns the name of the type k represents if k is a builtin.
+func (k Kind) String() string { return "" } // TODO
+
+// StringWithName implements [Type] and is equivalent to k.String()
+func (k Kind) StringWithName(string) string { return k.String() }
+
+// Types
+// ==========
+
+type Type interface {
+	// Kind returns the kind of the type.
+	Kind() Kind
+	// String returns a human-readable string representation of the type
+	// without a name.
+	String() string
+	// StringWithName returns a human-readable string representation
+	// of the type with the given name.
+	StringWithName(string) string
+}
+
+// TypeName represents a type declaration.
+type TypeName struct {
+	Type
+	Name string
+}
+
+func (n *TypeName) String() string                    { return n.Name }
+func (n *TypeName) StringWithName(name string) string { return name }
+
+// Function represents a function type, either a declared function or a lambda.
+type Function struct {
+	Self     *Variable // If method
+	Generics []*Generic
+	Params   []*Variable
+	Return   Type
+	Origin   *Object // If function alias
+}
+
+func (fn *Function) Kind() Kind     { return KindFunction }
+func (fn *Function) String() string { return fn.StringWithName("") }
+func (fn *Function) StringWithName(name string) string {
+	var b strings.Builder
+	b.WriteString("func")
+	if name != "" {
+		b.WriteByte(' ')
+		b.WriteString(name)
+	}
+	b.WriteByte('(')
+	for i, param := range fn.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.String())
+	}
+	b.WriteByte(')')
+	if fn.Return != nil {
+		switch fn.Return.Kind() {
+		case KindNothing, KindInvalid, KindUnreachable:
+		default:
+			b.WriteString(" -> ")
+			b.WriteString(fn.Return.String())
+		}
+	}
+	return b.String()
+}
+
+// OverloadedFunction represents a [Function] with multiple overloads.
+type OverloadedFunction struct {
+	Self      *Variable
+	Overloads []*Function
+}
+
+func (f *OverloadedFunction) String() string                    { return "func" }
+func (f *OverloadedFunction) StringWithName(name string) string { return "func " + name }
+
+// Generic represents a generic type parameter.
+type Generic struct{ Name string }
+
+func (g *Generic) Kind() Kind                        { return KindGeneric }
+func (g *Generic) String() string                    { return "<" + g.Name + ">" }
+func (g *Generic) StringWithName(name string) string { return "<" + name + ">" }
+
+// Variable represents a variable type.
+type Variable struct {
+	Name    string
+	VarKind VariableKind
+	Type
+}
+
+type VariableKind uint8
+
+const (
+	_              VariableKind = iota
+	TopLevelVar                 // Module-level variable
+	LocalVar                    // Locally declared variable
+	SelfVar                     // self
+	FuncParamVar                // Function parameter
+	StructFieldVar              // Struct field
+)

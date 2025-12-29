@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
+	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
@@ -13,8 +15,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
-	"github.com/ProCode-Software/klar/internal/target"
-	"github.com/ProCode-Software/klar/pkg/analysis"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/ergochat/readline"
 	"github.com/sanity-io/litter"
@@ -112,7 +112,6 @@ func (s *Session) Prompt() {
 	}
 	tokens, err := parser.TokenizeString(input, lexer.IncludeComments)
 	if err != nil {
-		// TODO: maybe better handling
 		s.handleLexerError(err)
 		return
 	}
@@ -130,7 +129,11 @@ func (s *Session) Prompt() {
 }
 
 func (s *Session) handleLexerError(err error) {
-	s.Printf(ansi.CodeBold, "%s: %v", ansi.BoldBrightRed("Failed to read tokens"), err)
+	s.Error("Failed to read tokens", err)
+}
+
+func (s *Session) Error(msg string, err error) {
+	ansi.Fprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v", msg, err)
 }
 
 func (s *Session) send() {
@@ -142,26 +145,36 @@ func (s *Session) send() {
 		s.SetPrompt(defaultPrompt)
 		s.tokens = nil
 	}
-	s.parse(t)
+	s.runTokens(t)
 }
 
-func (s *Session) parse(t []lexer.Token) {
-	ErrPrinter.LoadTokens("repl", "", t)
-	prog, errs := parser.Parse(t, &parser.Options{File: "repl"})
-	if len(errs) > 0 {
-		printErrors(errs)
+func (s *Session) runTokens(t []lexer.Token) {
+	res, err := run.RunTokens(t, "repl")
+	// TODO: get access to typechecked module in order to add Repl flag
+	ErrPrinter.LoadTokens("repl", "repl", t)
+	if len(res.Errors) > 0 {
+		printErrors(res.Errors)
 		return
 	}
-	litter.Dump(prog)
-	_, typeErrs := analysis.CheckProgram(prog, analysis.CheckOptions{
-		FilePath: "repl",
-		Target:   target.KlarVM,
-	})
-	if len(typeErrs) > 0 {
-		printErrors(typeErrs)
+	if err != nil {
+		if err, ok := err.(*build.InterfaceError); ok {
+			build.PrintInterfaceErr(err)
+		} else {
+			s.Printf(ansi.CodeBold, "%v", err)
+		}
 		return
 	}
+	litter.Dump(res.Modules[0].Programs["repl"])
 	s.evaluated = append(s.evaluated, t)
+}
+
+func printErrors[T errors.CompileError](errs []T) {
+	for i, err := range errs {
+		if i > 0 {
+			fmt.Fprintln(os.Stderr)
+		}
+		ErrPrinter.PrintError(err)
+	}
 }
 
 func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {
@@ -184,15 +197,6 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 		return false, false
 	}
 	return true, false
-}
-
-func printErrors[T errors.CompileError](errs []T) {
-	for i, err := range errs {
-		if i > 0 {
-			fmt.Fprintln(os.Stderr)
-		}
-		ErrPrinter.PrintError(err)
-	}
 }
 
 func isIncompleteToken(tok lexer.TokenType) bool {

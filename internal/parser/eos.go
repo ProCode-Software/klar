@@ -38,9 +38,11 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		return i
 	}
 	// Setup cached tokens
-	p.assignmentTokens = make(map[int]struct{})
+	possibleAssignments := make(map[int]struct{})
 	p.listCastTokens = make(map[int]struct{})
+	p.assignmentTokens = make(map[int]struct{})
 
+outer:
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
 			tok       = p.Tokens[i]
@@ -54,7 +56,8 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 	inner:
 		switch kind {
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-			comments = append(comments, p.ParseComment(tok))
+			i := readComments(i)
+			i--
 			continue
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
@@ -62,9 +65,14 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			brackets = append(brackets, len(new))
 			// Check for destructure assignment
 			switch prev {
-			// '/' if last statement ends in regex, or '*' for import. 0 = first token
-			case 0, lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
-				p.assignmentTokens[len(new)] = struct{}{}
+			default:
+				if i != 0 {
+					break
+				}
+				fallthrough // If first token
+			// '/' if last statement ends in regex, or '*' for import
+			case lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
+				possibleAssignments[len(new)] = struct{}{}
 			}
 		case lexer.EOF:
 			// Add before EOF
@@ -72,7 +80,11 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				new = append(new, lexer.Token{
 					Kind:     lexer.EndOfStatement,
 					Position: tok.Position,
-				})
+				}, tok)
+				if i+1 < len(p.Tokens) {
+					panic("EOF is not last token")
+				}
+				break outer
 			}
 		// Always add EOS after '}' unless empty in case it is on the same line
 		// as an expression: { x + 3 }
@@ -92,31 +104,47 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 				firstNewline int // Cannot be zero because preceded by bracket
 			)
 			if lastBrackI < 0 || newI >= len(p.Tokens) { // Unmatched bracket or EOF
+				i = newI
 				break inner
 			}
 			// List cast: [Int](...)
 			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
 				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
+				new = append(new, tok, p.Tokens[newI])
+				i = newI
+				continue
 			}
-			// Skip newlines
+			new = append(new, tok) // Add the brace
+
+			// Check for destructure assignment
 			if p.Tokens[newI].Kind == lexer.Newline {
+				// Skip newlines
 				firstNewline = newI
 				for p.Tokens[newI].Kind == lexer.Newline {
 					if newI = readComments(newI); newI >= len(p.Tokens) {
+						i = len(p.Tokens) - 2 // Read the EOF next
 						break inner
 					}
 				}
 			}
-			new = append(new, tok)
 			next := p.Tokens[newI]
 			switch next.Kind {
+			case lexer.In:
+				startBrackI := brackets[lastBrackI]
+				// Check that 'for' is before the bracket
+				if startBrackI == 0 || p.Tokens[startBrackI-1].Kind != lexer.For {
+					break
+				}
+				fallthrough
 			// Followed by assignment
-			case lexer.Colon, lexer.In, lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
+			case lexer.Colon, lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
 				lexer.MinusEqual, lexer.Comma:
 				startBrackI := brackets[lastBrackI] // The matching bracket
-				if _, ok := p.assignmentTokens[startBrackI]; !ok {
-					delete(p.assignmentTokens, startBrackI)
+				// Find the matching bracket
+				if _, ok := possibleAssignments[startBrackI]; ok {
+					p.assignmentTokens[startBrackI] = struct{}{}
 				}
+				delete(possibleAssignments, startBrackI)
 			default:
 				if firstNewline > 0 && !CanGoOnNewline(next.Kind) {
 					// Still add the EOS
@@ -133,15 +161,18 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 			if i = readComments(i); i >= len(p.Tokens) {
 				break inner
 			}
-			next := p.Tokens[i]
-			if next.Kind == lexer.Newline || next.Kind == lexer.EOF {
+			loop := p.Tokens[i] // Loop kind
+			if loop.Kind == lexer.Newline || loop.Kind == lexer.EOF {
+				i--
 				break inner
 			}
-			new = append(new, tok /* next, stop */, next /* loop kind */, lexer.Token{
+			new = append(new, tok /* next, stop */, loop, lexer.Token{
 				Kind:     lexer.EndOfStatement,
 				Position: p.Tokens[min(i+1, len(p.Tokens)-1)].Position,
 			})
-			i++ // readComments skips next/stop + i++ skips loop kind + EOS skipped after
+			if i+1 < len(p.Tokens) && p.Tokens[i+1].Kind == lexer.Newline {
+				i++ // i is currently at loop kind. Skip the newline after it
+			}
 			continue
 		}
 		if kind != lexer.Newline {

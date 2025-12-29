@@ -55,7 +55,7 @@ func (c *Compiler) getCheckerOptions(mod *Module) *analysis.Options {
 	conf := c.moduleInputs[mod]
 	opts := &analysis.Options{
 		CheckerOptions: conf.Options.Checker,
-		Target:         &conf.Options.Target,
+		Target:         conf.Options.Target,
 		// TODO
 		KlarVersion: nil,
 		Importer:    nil,

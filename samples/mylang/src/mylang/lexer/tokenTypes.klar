@@ -6,7 +6,7 @@ type Token {
     .comment(text: String) = "#{text}",
     .boolean(value: Bool) = String(value),
     .illegal(char: String) = char,
-    .dash = "-", .backslash = "\\", .eof = "",
+    .dash = "-", .backslash = "\\", .eof = "", .newline = "\n",
 }
 
 func String(token: Token) {

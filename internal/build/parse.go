@@ -28,7 +28,7 @@ func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
 	defer close(moduleCh)
-	c.LogInfof("Begin parsing modules (%d modules, %d files)", len(c.modules), numFiles)
+	c.LogInfof("Begin parsing modules (%d modules, %d files)", len(c.Modules), numFiles)
 	pctx := &parseContext{
 		processContext: pc,
 		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
@@ -36,7 +36,7 @@ func (c *Compiler) ParseModules(
 		}),
 	}
 	c.flatFiles = make(map[string]*ast.Program, numFiles)
-	for _, mod := range c.modules {
+	for _, mod := range c.Modules {
 		select {
 		case <-pc.ctx.Done():
 			return
@@ -55,7 +55,7 @@ func (c *Compiler) ParseModules(
 			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
 		}
 		moduleWg.Wait()
-		// If mod.Programs is less, a parse error occured in one of the files.
+		// If mod.Programs is less, a parse error occurred in one of the files.
 		// In that case, avoid typechecking the entire module.
 		if len(mod.Programs) == len(mod.Files) {
 			moduleCh <- mod
@@ -67,17 +67,17 @@ func (c *Compiler) ParseModules(
 }
 
 // parseFile parses a single file and sends results/errors to channels
-func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
+func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 	// Check if we should stop due to critical failure
 	select {
-	case <-pctx.ctx.Done():
+	case <-pc.ctx.Done():
 		return
 	default:
 	}
 	sendCriticalError := func(err error) {
 		select {
-		case pctx.fatalErrCh <- err:
-		case <-pctx.ctx.Done():
+		case pc.fatalErrCh <- err:
+		case <-pc.ctx.Done():
 		}
 	}
 	// Open file
@@ -86,13 +86,26 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 		fr        io.ReadCloser
 		fileSize  int64
 		shortPath string
+		err       error
+		toks      []lexer.Token
+		skipLexer bool
+
+		op, canOpenTokens = c.Opener.(TokenOpener)
 	)
-	if filePath == "" {
+	switch {
+	case filePath == "":
+		// Read from standard input
 		const stdinName = "standardInput"
 		fr = os.Stdin
 		filePath, shortPath = stdinName, stdinName
 		c.LogInfo("Reading file from stdin")
-	} else {
+	case canOpenTokens:
+		if toks, shortPath, err = op.OpenTokens(filePath); err == nil {
+			skipLexer = true
+			break
+		}
+		fallthrough
+	default:
 		f, err := c.Opener.Open(filePath)
 		if err != nil {
 			c.LogErrorf("Error while opening file %s: %v", filePath, err)
@@ -103,32 +116,32 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 		c.LogInfof("Opened %s", filePath)
 		defer f.Close()
 	}
-
 	// Tokenize
 	// =========
-	lex := pctx.pool.GetLexer(fr)
-	defer pctx.pool.PutLexer(lex)
-	c.LogInfo("Tokenizing file:", filePath)
-	// Estimate file size
-	var sizeEstimate int64
-	if fileSize > 0 {
-		sizeEstimate = fileSize / 10
-	}
-	toks, err := parser.TokenizeLexer(lex, sizeEstimate)
-	if err != nil {
-		c.LogErrorf("Error while tokenizing %s: %v", filePath, err)
-		sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
-		return
+	if !skipLexer { // Tokenize unless the opener already provided tokens
+		lex := pc.pool.GetLexer(fr)
+		defer pc.pool.PutLexer(lex)
+		c.LogInfo("Tokenizing file:", filePath)
+		// Estimate file size
+		var sizeEstimate int64
+		if fileSize > 0 {
+			sizeEstimate = fileSize / 10
+		}
+		if toks, err = parser.TokenizeLexer(lex, sizeEstimate); err != nil {
+			c.LogErrorf("Error while tokenizing %s: %v", filePath, err)
+			sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
+			return
+		}
 	}
 	// Load tokens into printer for diagnostics
-	pctx.printerMu.Lock()
+	pc.printerMu.Lock()
 	c.errorPrinter.LoadTokens(filePath, shortPath, toks)
-	pctx.printerMu.Unlock()
+	pc.printerMu.Unlock()
 
 	// Parse
 	// ========
-	pa := pctx.pool.GetParser(toks, filePath)
-	defer pctx.pool.PutParser(pa)
+	pa := pc.pool.GetParser(toks, filePath)
+	defer pc.pool.PutParser(pa)
 
 	c.LogInfo("Parsing file:", filePath)
 	ast := pa.Parse()
@@ -138,16 +151,16 @@ func (c *Compiler) parseFile(pctx *parseContext, filePath string, mod *Module) {
 	if len(errs) > 0 {
 		c.LogErrorf("%d errors found while parsing %s", len(errs), filePath)
 		select {
-		case pctx.errorCh <- convertParseErrors(errs):
-		case <-pctx.ctx.Done():
+		case pc.errorCh <- convertParseErrors(errs):
+		case <-pc.ctx.Done():
 		}
 		return
 	}
 	// Store result to avoid reparsing the same file
-	pctx.fileMu.Lock()
+	pc.fileMu.Lock()
 	c.flatFiles[filePath] = ast
 	mod.Programs[filepath.Base(filePath)] = ast
-	pctx.fileMu.Unlock()
+	pc.fileMu.Unlock()
 }
 
 func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {

@@ -14,145 +14,111 @@ var KlarProjectDirs = map[string]struct{}{
 	"recipes": {}, "scripts": {}, "generated": {}, "dist": {}, "docs": {},
 }
 
+var ProjectOnlyDirs = map[string]struct{}{
+	".klar": {}, "pkg": {}, "shared": {},
+}
+
 const sep = string(filepath.Separator)
 
 // Per Klar Project Structure Spec
 const (
-	ManifestName  = "glas.pack"
-	PackageFolder = "pkg"
-	BuildFileName = "klar.build"
+	ManifestFile = "glas.pack"
+	BuildFile    = "klar.build"
+
+	PkgDir       = "pkg"
+	LocalDataDir = ".klar"
+	SrcDir       = "src"
+	DistDir      = "dist"
+	ExternalDir  = "external"
+	SharedDir    = "shared"
+	GeneratedDir = "generated"
+	CmdDir       = "cmd"
 )
 
-type ResolvedPackage struct {
-	Dir     string
-	Modules []*ResolvedModule
+func IsProjectDir(name string) bool {
+	_, ok := KlarProjectDirs[name]
+	return ok
 }
 
-type ResolvedModule struct {
-	Name     string
-	Dir      string
-	LastMod  string
-	Files    []string
-	Internal bool
+func splitPath(p string) (string, string) {
+	parent, base := filepath.Split(p)
+	return strings.TrimSuffix(parent, sep), base
 }
 
-func NormalizeNamespace(ns string) (normalized string, isStd bool) {
-	isStd = strings.SplitN(ns, ".", 2)[0] == "klar"
-	normalized = strings.ReplaceAll(ns, ".", sep)
-	return
-}
-
-// ProjectRoot returns the path to the root of a Klar project. If from contains
-// a folder part of the standard Klar project folders, ProjectRoot returns the parent
-// of that folder. Otherwise, ProjectRoot returns from. There may not be a glas.pack
-// file present in path.
-func ProjectRoot(from string) (string, error) {
-	from, err := filepath.Abs(from)
+// PackageRoot returns the theoretical package root and project root
+// for a given path, following the Klar Project Structure Spec.
+// PackageRoot returns an error if [filepath.Abs](p) fails.
+func PackageRoot(p string) (pkg, project string, err error) {
+	// TODO: should we Clean the return paths
+	p, err = filepath.Abs(p)
 	if err != nil {
-		return from, err
-	}
-	if info, err := os.Stat(from); err == nil && !info.IsDir() {
-		from = filepath.Dir(from)
-		if info.Name() == ManifestName {
-			return from, nil
-		}
-	}
-	if _, err = os.Stat(from + sep + ManifestName); err == nil {
-		return from, nil
-	}
-	current := from
-	// Walk up the directory tree
-	for {
-		name := filepath.Base(current)
-		parent := filepath.Dir(current)
-		// Stop if we've reached the root
-		if current == parent {
-			break
-		}
-		if _, ok := KlarProjectDirs[name]; ok {
-			return parent, nil
-		}
-		current = parent
-	}
-	// Not found
-	return from, nil
-}
-
-// PackageRoot returns the package root and project root for a given path.
-// If from is inside a pkg folder, the package root is the folder inside pkg,
-// and the project root is the parent of pkg. For other Klar project directories,
-// the parent is the project root and also the package root.
-func PackageRoot(from string) (pkg, project string, err error) {
-	from, err = filepath.Abs(from)
-	if err != nil {
-		return from, from, err
+		return "", "", err
 	}
 	// Check if a manifest is located in dir
-	if info, err := os.Stat(from); err == nil && !info.IsDir() {
-		from = filepath.Dir(from)
-		if info.Name() == ManifestName {
-			return from, from, nil
+	if info, err := os.Stat(p); err == nil && !info.IsDir() {
+		p = filepath.Dir(p)
+		if info.Name() == ManifestFile {
+			return p, "", nil
 		}
 	}
-	if _, err = os.Stat(from + sep + ManifestName); err == nil {
-		return from, from, nil
+	if _, err = os.Stat(p + sep + ManifestFile); err == nil {
+		return p, "", nil
 	}
 	// Walk up the directory tree
-	curr := from
-	var pkgDir string
+	curr, prev := p, ""
 	for {
-		name := filepath.Base(curr)
-		parent := filepath.Dir(curr)
+		parent, name := splitPath(curr)
 		// Stop if we've reached the root
 		if curr == parent {
 			break
 		}
 		if _, ok := KlarProjectDirs[name]; ok {
-			if name == PackageFolder {
-				// For pkg folder: the folder inside pkg is the package root
-				// and the parent of pkg is the project root
-				if pkgDir != "" {
-					return pkgDir, parent, nil
-				}
-				// Directly in pkg folder
-				return "", parent, nil
-			} else {
-				// For other Klar project dirs: parent is both project and package root
+			// Parent of 'pkg' guaranteed to be project root
+			if name == PkgDir {
+				return prev, parent, nil // x/pkg/y -> (x/pkg/y, x, nil)
+			}
+			// Found the project root
+			if _, ok := ProjectOnlyDirs[name]; ok {
 				return parent, parent, nil
 			}
+			// Check if parent is 'pkg' (e.g: x/pkg/y/src)
+			if pkgPar, pkg := splitPath(filepath.Dir(parent)); pkg == PkgDir {
+				return parent, pkgPar, nil
+			}
+			return parent, parent, nil
 		}
 		// Track the last directory we saw (potential package inside pkg)
-		pkgDir = curr
+		prev = curr // Child
 		curr = parent
 	}
 	// Not found
-	return from, from, nil
+	return p, p, nil
 }
 
-// IsPackage reports whether path is a path to a package, as defined in the Klar
-// Project Structure Spec. IsPackage assumes that path is a directory path.
+// IsPackage reports whether p is a path to a package, as defined by the Klar
+// Project Structure Spec. IsPackage assumes that p is a directory path.
 // IsPackage returns an error if [filepath.Abs] fails.
-func IsPackage(path string) (bool, error) {
-	path, err := filepath.Abs(path)
+func IsPackage(p string) (bool, error) {
+	p, err := filepath.Abs(p)
 	if err != nil {
 		return false, err
 	}
-	current := path
-	parent := filepath.Dir(current)
-	depth := 0
-	// Walk up the directory tree
-	for current != parent {
-		name := filepath.Base(current)
-		if name == PackageFolder && depth == 1 {
+	var depth int
+	var parent, name string
+	for {
+		// p is a package if a package directory is found
+		parent, name = filepath.Split(p)
+		switch {
+		case name == PkgDir:
 			// We're one level inside pkg folder - this is a package
-			return true, nil
-		} else if _, ok := KlarProjectDirs[name]; ok {
-			// Found a Klar project directory - not a package
+			return depth == 1, nil
+		case IsProjectDir(name):
+			// Found a Klar project directory - not a package (parent is)
 			return false, nil
+		case p == parent:
+			return true, nil
 		}
-		current = parent
-		parent = filepath.Dir(current)
+		p = parent
 		depth++
 	}
-	return true, nil
 }

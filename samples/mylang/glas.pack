@@ -2,12 +2,11 @@ name: mylang
 version: v1.0.0
 description: A programming language written in Klar
 
-klar: v0.0.1
+klar: v0.1.0
 target: js
 
 js:
-  - runtimes: *
   - defaultRuntime: bun
 
 dependencies:
-  - @npm proicons/react latest
+  - @npm proicons/react latest as proiconsreact

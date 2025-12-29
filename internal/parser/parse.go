@@ -139,10 +139,13 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	return p.ParseStatement()
 }
 
-const withoutEOS = 1
+const (
+	withoutEOS = 1 << iota
+	usingComma
+)
 
 func (p *Parser) ParseStatement(flags ...int) ast.Statement {
-	noEOS := len(flags) > 0 && flags[0] == withoutEOS
+	noEOS := len(flags) > 0 && (flags[0]&withoutEOS) != 0
 	kind := p.CurrKind()
 	if res, handled := p.handleStatement(kind); handled {
 		if !noEOS {

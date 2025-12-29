@@ -35,7 +35,7 @@ func (c *Checker) importModule(
 		errs <- importErrorKey{importPathString, &errors.ModuleError{}}
 		return
 	}
-	mod, err := c.Options.Importer.Import(importPath, *c.Options.Target)
+	mod, err := c.Options.Importer.Import(importPath, c.Options.Target)
 	if err != nil {
 		errs <- importErrorKey{importPathString, err}
 		return

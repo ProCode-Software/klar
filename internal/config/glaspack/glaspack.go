@@ -25,9 +25,9 @@ type Manifest struct {
 	// module must be implemented for all of these targets, but '@target'
 	// directives can be used to exclude individual objects.
 	Target []target.Target
-	// Options when targetting JavaScript ('js', 'node', 'deno', 'bun')
+	// Options when targeting JavaScript ('js', 'node', 'deno', 'bun')
 	JS *JavaScriptOptions
-	// Permissions passed to the Deno runtime when targetting Deno or
+	// Permissions passed to the Deno runtime when targeting Deno or
 	// when it is set as the default runtime.
 	//
 	// See: https://docs.deno.com/runtime/fundamentals/security/#permissions

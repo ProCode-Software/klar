@@ -81,7 +81,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	case ErrNestedKlarFolder:
 		dir, base := filepath.Split(err.Value)
 		dir = strings.TrimSuffix(dir, "/")
-		if base == module.PackageFolder {
+		if base == module.PkgDir {
 			return "Can't nest the <c>" + base + "</c> directory: ",
 				"I found it nested in <c>" + dir + "</c>"
 		}
@@ -96,5 +96,5 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 
 func PrintInterfaceErr(err *InterfaceError) {
 	main, detail := err.PrettyError()
-	cli.Failure(ansi.Sprintf("<**>%s</**>%s", main, detail))
+	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }

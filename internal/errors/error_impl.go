@@ -20,6 +20,7 @@ func (err *ParseError) Hint(hint string) {
 func (err *ParseError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
+func (err *ParseError) addDetail(d Detail) { err.Details = append(err.Details, d) }
 
 func (err *TypeError) GetMessage() string         { return err.Error() }
 func (err *TypeError) GetName() string            { return "TypeError" }
@@ -37,6 +38,7 @@ func (err *TypeError) Hint(hint string) {
 func (err *TypeError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
+func (err *TypeError) addDetail(d Detail) { err.Details = append(err.Details, d) }
 
 func (err *Warning) GetMessage() string         { return err.Error() }
 func (err *Warning) GetName() string            { return "Warning" }
@@ -54,6 +56,7 @@ func (err *Warning) Hint(hint string) {
 func (err *Warning) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
+func (err *Warning) addDetail(d Detail) { err.Details = append(err.Details, d) }
 
 func (err *ReferenceError) GetMessage() string         { return err.Error() }
 func (err *ReferenceError) GetName() string            { return "ReferenceError" }
@@ -71,6 +74,7 @@ func (err *ReferenceError) Hint(hint string) {
 func (err *ReferenceError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
+func (err *ReferenceError) addDetail(d Detail) { err.Details = append(err.Details, d) }
 
 func (err *ModuleError) GetMessage() string         { return err.error() }
 func (err *ModuleError) GetName() string            { return "ModuleError" }
@@ -88,3 +92,4 @@ func (err *ModuleError) Hint(hint string) {
 func (err *ModuleError) Hintf(hint string, a ...any) {
 	err.Hints = hintf(err.Hints, hint, a)
 }
+func (err *ModuleError) addDetail(d Detail) { err.Details = append(err.Details, d) }

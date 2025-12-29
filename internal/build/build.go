@@ -15,7 +15,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/module"
 )
 
 // A Compiler compiles Inputs into files.
@@ -34,7 +33,7 @@ type Compiler struct {
 	Opener              Opener     // Opens files for reading
 
 	inputs  map[*Input]*InputOptions
-	modules []*Module
+	Modules []*Module
 	// To avoid reparsing the same file. The same individual file and the
 	// file's whole module can be inputs to the compiler.
 	flatFiles map[string]*ast.Program
@@ -96,9 +95,9 @@ type Module struct {
 }
 
 type InputOptions struct {
-	Modules []*Module
-	Project *module.ProjectInfo
-	Options *Options
+	Modules  []*Module
+	Manifest *glaspack.Manifest
+	Options  *Options
 }
 
 const (
@@ -123,6 +122,12 @@ type Opener interface {
 	Open(name string) (*OpenFile, error)
 }
 
+// TokenOpener is an [Opener] that can also provide a file's tokens.
+type TokenOpener interface {
+	Opener
+	OpenTokens(file string) (tokens []lexer.Token, shortPath string, err error)
+}
+
 // StdOpener implements [Opener] and is the standard implementation that reads
 // Klar files on the system.
 type StdOpener struct{ cwd string }
@@ -139,18 +144,65 @@ func (o StdOpener) Open(name string) (f *OpenFile, err error) {
 		return nil, err
 	}
 	relPath := name
-	if !filepath.IsAbs(name) {
-		relPath, err = filepath.Rel(o.cwd, name)
-		if err != nil || strings.HasPrefix(relPath, "..") {
-			// fallback to absolute path
-			relPath = name
-		}
+	relPath, err = filepath.Rel(o.cwd, name)
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		// fallback to absolute path
+		relPath = name
 	}
 	return &OpenFile{
 		Size:       stat.Size(),
 		ShortPath:  relPath,
 		ReadCloser: fr,
 	}, nil
+}
+
+// A SingleOpener is a [Opener] that opens only one file.
+type SingleOpener struct {
+	Path, ShortPath string
+	Reader          io.ReadCloser
+}
+
+// Open reads from o.Reader and returns a nil error if name == o.FileName,
+// otherwise it returns [os.ErrNotExist].
+func (o *SingleOpener) Open(name string) (f *OpenFile, err error) {
+	if name != o.Path {
+		return nil, os.ErrNotExist
+	}
+	var size int64
+	// Estimate size if possible
+	switch r := o.Reader.(type) {
+	case *os.File:
+		if stat, err := r.Stat(); err == nil {
+			size = stat.Size()
+		}
+	case interface{ Len() int }:
+		size = int64(r.Len())
+	}
+	return &OpenFile{
+		Size:       size,
+		ShortPath:  o.ShortPath,
+		ReadCloser: o.Reader,
+	}, nil
+}
+
+// SingleTokenOpener is a [TokenOpener] that opens only one file.
+type SingleTokenOpener struct {
+	Path, ShortPath string
+	Tokens          []lexer.Token
+}
+
+// OpenTokens returns (o.Tokens, o.ShortPath, nil) if name == o.Path,
+// otherwise it returns [os.ErrNotExist].
+func (o *SingleTokenOpener) OpenTokens(name string) ([]lexer.Token, string, error) {
+	if name != o.Path {
+		return nil, "", os.ErrNotExist
+	}
+	return o.Tokens, o.ShortPath, nil
+}
+
+// Open returns [os.ErrNotExist].
+func (o *SingleTokenOpener) Open(string) (*OpenFile, error) {
+	return nil, os.ErrNotExist
 }
 
 // Logging

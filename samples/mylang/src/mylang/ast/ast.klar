@@ -1,3 +1,8 @@
+type Program {
+    commands: [Command]
+    comments: [Comment]
+}
+
 type Command {
     name: String
     args: [Value]

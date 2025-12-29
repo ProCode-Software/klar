@@ -144,7 +144,12 @@ func getDefault(flag argparse.FlagDefinition) string {
 var templFuncs = template.FuncMap{
 	"join":      strings.Join,
 	"hasPrefix": strings.HasPrefix,
-	"wrap":      wrapString,
+	"wrap": func(s string) string {
+		b := strings.Builder{}
+		b.Grow(len(s) + len(s)/termWidth)
+		cli.Wrap(s, &b, termWidth, 0)
+		return b.String()
+	},
 
 	"exec":  func() string { return ansi.BoldGreen(ExecName) },
 	"ansi":  func(color, s string) string { return ansi.Color("\x1b["+color+"m", s) },
@@ -191,52 +196,4 @@ func sortFlags(flags map[string]argparse.FlagDefinition) []string {
 	}
 	slices.Sort(keys)
 	return keys
-}
-
-func wrapString(s string) string {
-	if termWidth <= 0 {
-		return s
-	}
-	var b strings.Builder
-	b.Grow(len(s) + len(s)/termWidth)
-
-	i := 0
-	needsNewline := false
-	for i < len(s) {
-		// Check for existing newline within termWidth
-		end := min(i+termWidth, len(s))
-		if nlIdx := strings.IndexByte(s[i:end], '\n'); nlIdx >= 0 {
-			// Found newline, write up to and including it
-			if needsNewline {
-				b.WriteByte('\n')
-			}
-			b.WriteString(s[i : i+nlIdx+1])
-			i += nlIdx + 1
-			needsNewline = false
-			continue
-		}
-
-		// No newline found, calculate line length
-		lineLen := end - i
-
-		// If not at end of string, try to break at last space
-		if end < len(s) {
-			if spaceIdx := strings.LastIndexByte(s[i:end], ' '); spaceIdx > 0 {
-				lineLen = spaceIdx
-			}
-		}
-
-		if needsNewline {
-			b.WriteByte('\n')
-		}
-		b.WriteString(s[i : i+lineLen])
-		i += lineLen
-		needsNewline = true
-
-		// Skip spaces after break
-		for i < len(s) && s[i] == ' ' {
-			i++
-		}
-	}
-	return b.String()
 }
