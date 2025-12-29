@@ -246,7 +246,7 @@ func (p *Parser) ParseControlStatement() ast.Statement {
 	switch p.CurrKind() {
 	case lexer.EndOfStatement, lexer.Comma:
 	case lexer.When, lexer.For, lexer.While:
-		p.Advance()
+		loopKind = p.Advance().Kind
 	default:
 		p.Error(errors.Token(errors.ErrInvalidLoop, p.Advance()).
 			SetParam("stmt", stmtKind),

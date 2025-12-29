@@ -139,13 +139,27 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	return p.ParseStatement()
 }
 
+func parseFlags(flgs []int) int {
+	if len(flgs) == 0 {
+		return 0
+	} else if len(flgs) == 1 {
+		return flgs[0]
+	}
+	var flags int
+	for _, flag := range flgs {
+		flags |= flag
+	}
+	return flags
+}
+
 const (
 	withoutEOS = 1 << iota
 	usingComma
 )
 
 func (p *Parser) ParseStatement(flags ...int) ast.Statement {
-	noEOS := len(flags) > 0 && (flags[0]&withoutEOS) != 0
+	flag := parseFlags(flags)
+	noEOS := (flag & withoutEOS) != 0
 	kind := p.CurrKind()
 	if res, handled := p.handleStatement(kind); handled {
 		if !noEOS {
@@ -163,12 +177,20 @@ func (p *Parser) ParseStatement(flags ...int) ast.Statement {
 	}
 	if handled { // reassigned in handleNUD() call
 		kind = p.CurrKind()
+		comma := noEOS && (flag&usingComma) != 0
+		if kind == lexer.Comma && comma {
+			goto checkEOS
+		}
 		r, handled = p.handleStatementLED(kind, res, DefaultBindingPower)
 		if !handled {
 			r = p.ParseLED(res, AssignBindingPower)
+			if comma && p.CurrKind() == lexer.Comma {
+				goto checkEOS
+			}
 			r, _ = p.handleStatementLED(p.CurrKind(), r.(ast.Expression), DefaultBindingPower)
 		}
 	}
+checkEOS:
 	if r == nil {
 		r = res
 	}

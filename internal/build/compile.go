@@ -66,7 +66,9 @@ func (c *Compiler) Compile() (res *BuildResult, err error) {
 	}
 	close(pc.errorCh)
 	<-collectDone // Make sure errors are appended to c.Errors
-	err = <-pc.fatalErrCh
+	if len(pc.fatalErrCh) > 0 {
+		err = <-pc.fatalErrCh
+	}
 	return
 }
 

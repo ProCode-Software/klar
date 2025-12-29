@@ -71,7 +71,8 @@ outer:
 				}
 				fallthrough // If first token
 			// '/' if last statement ends in regex, or '*' for import
-			case lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk:
+			case lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk,
+				lexer.LeftCurlyBrace:
 				possibleAssignments[len(new)] = struct{}{}
 			}
 		case lexer.EOF:
