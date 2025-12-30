@@ -48,6 +48,10 @@ func Failure(msg string, detail ...any) {
 	Exit(1)
 }
 
+func FailureError(err error) {
+	Failure(err.Error())
+}
+
 func Failuref(msg, detail string, v ...any) {
 	Failure(fmt.Sprintf(ansi.Bold(msg)+detail, v...))
 }

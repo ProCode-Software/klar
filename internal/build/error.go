@@ -41,6 +41,7 @@ const (
 	ErrFileInPackage    // File directly in package root
 	ErrFileInPkgDir     // File in 'pkg' directory
 	ErrNoKlarFiles      // No Klar files to compile in input
+	ErrNothingToCompile // No inputs
 	ErrLexer            // Lexer error
 )
 
@@ -89,6 +90,8 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 			"but I found it in <c>" + dir + "</c>"
 	case ErrNoKlarFiles:
 		return "I didn't find any Klar files to compile in <c>" + err.Value + "</c>", ""
+	case ErrNothingToCompile:
+		return "There's nothing to compile", ""
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

@@ -1,10 +1,10 @@
 package cli
 
 import (
+	"io"
 	"strconv"
 	"strings"
 	"time"
-	"io"
 
 	"github.com/ProCode-Software/klar/internal/char"
 )

@@ -113,7 +113,7 @@ loop:
 		}
 	default:
 		// BUG: Braces/comma required before '<' starting next case
-		res := p.ParseStatement(withoutEOS|usingComma)
+		res := p.ParseStatement(withoutEOS | usingComma)
 		switch res := res.(type) {
 		// All expressions are allowed
 		case *ast.ExpressionStatement:

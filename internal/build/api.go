@@ -1,10 +1,10 @@
 package build
 
 import (
-	"io"
 	"log/slog"
 	"os"
 
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 )
@@ -33,31 +33,45 @@ func (c *Compiler) PrintError(err errors.CompileError) {
 	c.errorPrinter.PrintError(err)
 }
 
-// SetLogger sets c's Logger and verbosity. If verbose is true, c.Logger is set
-// to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
-// of the value of verbose, c.Logger is set to write to that file. Otherwise,
-// c.Logger is set to nil. SetLogger returns an error if it fails to
-// open $KLAR_LOG_FILE.
-func (c *Compiler) SetLogger(verbose bool) error {
-	logFile := os.Getenv("KLAR_LOG_FILE")
-	var out io.Writer
-	switch {
-	case logFile != "":
-		file, err := os.Create(logFile)
-		if err != nil {
-			return &FilesystemError{"create", "KLAR_LOG_FILE", err}
-		}
-		out = file
-	case verbose:
-		out = os.Stderr
-	default:
-		out = nil
-	}
-	c.Logger = slog.New(NewLogHandler(out))
-	return nil
-}
-
 // AddInputs adds the given inputs to a new [Options] inside c.
 func (c *Compiler) AddInputs(inputs ...Input) {
 	c.Options = append(c.Options, &Options{Inputs: inputs})
+}
+
+// ReadKlarBuild reads a 'klar.build' file at path and returns the configurations
+// defined in it. No [Options] will contain more than one configuration. An error
+// is returned if the file cannot be read or parsed.
+func ReadKlarBuild(path string) ([]*Options, error) {
+	f, err := klarbuild.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(f.Configurations) > 0 {
+		opts := make([]*Options, len(f.Configurations))
+		for i, cfg := range f.Configurations {
+			opts[i] = ParseKlarBuild(f, cfg)
+		}
+	}
+	return []*Options{ParseKlarBuild(f, nil)}, nil
+}
+
+// ParseKlarBuild converts f and c into an [Options] object by converting
+// c's inputs into [Input]. If c != nil, f and c are merged into a single
+// configuration.
+func ParseKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) *Options {
+	// TODO: input resolution
+	if c == nil {
+		_ = f.Configuration
+		return &Options{
+			File: *f,
+			Inputs: nil,
+		} 
+	}
+	newFile := *f
+	newFile.Configurations = nil
+	newFile.Configuration = *c
+	return &Options{
+		File: newFile,
+		Inputs: nil,
+	}
 }

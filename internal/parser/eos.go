@@ -56,8 +56,7 @@ outer:
 	inner:
 		switch kind {
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
-			i := readComments(i)
-			i--
+			i = readComments(i) - 1
 			continue
 		// Mark start position for brackets
 		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,

@@ -185,7 +185,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 		start   = uint32(max(1, int64(at.Start.Line)-int64(p.MaxLines)+1)) // 3 lines above
 		end     = start + uint32(p.MaxLines) - 1
 
-		lastCol uint32 = 1
+		lastCol uint32
 		currTok int
 
 		digitLen       = digitLen(end)

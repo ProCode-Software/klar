@@ -1,7 +1,6 @@
 package build
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -58,11 +58,10 @@ const (
 )
 
 const (
-	KindDir InputKind = 1 << iota
-	KindFile
-	KindPackage = KindDir | (1 << iota)
-	KindModule  = KindDir | (1 << iota)
-	KindStdin   = KindFile | (1 << iota)
+	KindFile InputKind = iota
+	KindPackage
+	KindModule
+	KindStdin
 )
 
 type Options struct {
@@ -143,8 +142,7 @@ func (o StdOpener) Open(name string) (f *OpenFile, err error) {
 	if err != nil {
 		return nil, err
 	}
-	relPath := name
-	relPath, err = filepath.Rel(o.cwd, name)
+	relPath, err := filepath.Rel(o.cwd, name)
 	if err != nil || strings.HasPrefix(relPath, "..") {
 		// fallback to absolute path
 		relPath = name
@@ -210,25 +208,59 @@ func (o *SingleTokenOpener) Open(string) (*OpenFile, error) {
 
 // CloseLogger closes the logger if it is a [LogHandler] and the output file needs closing.
 func (c *Compiler) CloseLogger() error {
-	if h, ok := c.Logger.Handler().(*LogHandler); ok {
+	if h, ok := c.Logger.Handler().(*logger.LogHandler); ok {
 		return h.Close()
 	}
 	return nil
 }
 
 func (c *Compiler) _logBase(log func(string, ...any), msg string, v ...any) {
-	if c.Logger.Handler() != nil {
+	if c.Logger != nil && c.Logger.Handler() != nil {
+		if h, ok := c.Logger.Handler().(*logger.LogHandler); ok {
+			h.SetSkip(5)
+		}
 		log(msg, v...)
 	}
 }
 
-func (c *Compiler) _logfBase(log func(string, ...any), s string, v ...any) {
-	if c.Logger.Handler() != nil {
-		log(fmt.Sprintf(s, v...))
-	}
-}
-
 func (c *Compiler) LogInfo(msg string, v ...any)  { c._logBase(c.Logger.Info, msg, v...) }
-func (c *Compiler) LogInfof(s string, v ...any)   { c._logfBase(c.Logger.Info, s, v...) }
-func (c *Compiler) LogErrorf(s string, v ...any)  { c._logfBase(c.Logger.Error, s, v...) }
 func (c *Compiler) LogError(msg string, v ...any) { c._logBase(c.Logger.Error, msg, v...) }
+
+const showFileInLogs = false
+
+// SetLogger sets b's Logger and verbosity. If verbose is true, b.Logger is set
+// to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
+// of the value of verbose, b.Logger is set to write to that file. Otherwise,
+// b.Logger is set to nil. SetLogger returns an error if it fails to
+// open $KLAR_LOG_FILE.
+func SetLogger(b *Compiler, verbose, json bool) error {
+	var (
+		logFile = os.Getenv("KLAR_LOG_FILE")
+		out     io.Writer
+		flags   logger.Flags
+	)
+	switch {
+	case logFile != "":
+		file, err := os.Create(logFile)
+		if err != nil {
+			return &FilesystemError{"create", "KLAR_LOG_FILE", err}
+		}
+		out = file
+		flags |= logger.NoColor
+	case verbose:
+		out = os.Stderr
+	default:
+		return nil
+	}
+	if json {
+		b.Logger = slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{
+			AddSource: showFileInLogs,
+		}))
+		return nil
+	}
+	if showFileInLogs {
+		flags |= logger.ShowSource
+	}
+	b.Logger = slog.New(logger.NewLogHandler(out, flags))
+	return nil
+}

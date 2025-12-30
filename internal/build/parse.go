@@ -3,6 +3,7 @@ package build
 import (
 	"bufio"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -28,7 +29,9 @@ func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
 	defer close(moduleCh)
-	c.LogInfof("Begin parsing modules (%d modules, %d files)", len(c.Modules), numFiles)
+	c.LogInfo("Begin parsing modules", slog.Int("modules", len(c.Modules)),
+		slog.Int("files", numFiles),
+	)
 	pctx := &parseContext{
 		processContext: pc,
 		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
@@ -47,11 +50,11 @@ func (c *Compiler) ParseModules(
 		for _, filePath := range mod.Files {
 			// Skip if already parsed
 			if prog, ok := c.flatFiles[filePath]; ok {
-				c.LogInfo("Skipping already parsed file:", filePath)
+				c.LogInfo("Skipping already parsed file", slog.String("path", filePath))
 				mod.Programs[filepath.Base(filePath)] = prog
 				continue
 			}
-			c.LogInfo("Processing file:", filePath)
+			c.LogInfo("Processing file", slog.String("path", filePath))
 			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
 		}
 		moduleWg.Wait()
@@ -108,12 +111,14 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 	default:
 		f, err := c.Opener.Open(filePath)
 		if err != nil {
-			c.LogErrorf("Error while opening file %s: %v", filePath, err)
+			c.LogError("Error while opening file",
+				slog.String("file", filePath), slog.Any("error", err),
+			)
 			sendCriticalError(&FilesystemError{"open", filePath, err})
 			return
 		}
 		fr, fileSize, shortPath = f.ReadCloser, f.Size, f.ShortPath
-		c.LogInfof("Opened %s", filePath)
+		c.LogInfo("Successfully opened file", slog.String("file", filePath))
 		defer f.Close()
 	}
 	// Tokenize
@@ -121,14 +126,16 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 	if !skipLexer { // Tokenize unless the opener already provided tokens
 		lex := pc.pool.GetLexer(fr)
 		defer pc.pool.PutLexer(lex)
-		c.LogInfo("Tokenizing file:", filePath)
+		c.LogInfo("Tokenizing file", slog.String("path", filePath))
 		// Estimate file size
 		var sizeEstimate int64
 		if fileSize > 0 {
 			sizeEstimate = fileSize / 10
 		}
 		if toks, err = parser.TokenizeLexer(lex, sizeEstimate); err != nil {
-			c.LogErrorf("Error while tokenizing %s: %v", filePath, err)
+			c.LogError("Error while tokenizing file",
+				slog.String("file", filePath), slog.Any("error", err),
+			)
 			sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
 			return
 		}
@@ -143,13 +150,15 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 	pa := pc.pool.GetParser(toks, filePath)
 	defer pc.pool.PutParser(pa)
 
-	c.LogInfo("Parsing file:", filePath)
+	c.LogInfo("Parsing file", slog.String("path", filePath))
 	ast := pa.Parse()
 	errs := pa.Errors
 
 	// Send syntax errors
 	if len(errs) > 0 {
-		c.LogErrorf("%d errors found while parsing %s", len(errs), filePath)
+		c.LogError("Errors found while parsing file",
+			slog.Int("errors", len(errs)), slog.String("file", filePath),
+		)
 		select {
 		case pc.errorCh <- convertParseErrors(errs):
 		case <-pc.ctx.Done():

@@ -5,9 +5,9 @@ formatters:
 
 linters:
   enable: [
-    misspell, dupword, asasalint, bidichk, copyloopvar, exptostd,
+    misspell, asasalint, bidichk, copyloopvar, exptostd,
     gosec, unconvert
-    # errname
+    # errname, dupword, cyclop, exhaustive
   ]
   disable:
     - errcheck
@@ -19,6 +19,9 @@ linters:
     govet:
       disable:
         - composites
+    exhaustive:
+      default-signifies-exhaustive: true
+      ignore-enum-types: "\\bTokenType\\b"
     gosec:
       severity: low
       confidence: low
