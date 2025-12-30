@@ -15,6 +15,20 @@ import (
 	"github.com/ProCode-Software/klar/pkg/parser"
 )
 
+// Parser parses files into untyped ASTs.
+type Parser interface {
+	// Parse reads and parses the file at the given path and retuns the tokens,
+	// program, parse errors, and a fatal error if one occurs, such as during
+	// reading. If path == "", Parse should read from standard input. l may be
+	// used to log status. Parse may be called concurrently.
+	Parse(path string, l *slog.Logger) ([]lexer.Token, *ast.Program, []*errors.ParseError, error)
+}
+
+type Logger interface {
+	LogInfo(msg string, attrs ...any)
+	LogError(msg string, attrs ...any)
+}
+
 type parseContext struct {
 	*processContext
 	fileMu, printerMu sync.Mutex
@@ -83,6 +97,39 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 		case <-pc.ctx.Done():
 		}
 	}
+	if c.Parser == nil {
+		panic("Parser not set up")
+	}
+	tokens, program, errs, fatalErr := c.Parser.Parse(filePath, c.Logger)
+	if fatalErr != nil {
+		sendCriticalError(fatalErr)
+	}
+	// Send syntax errors
+	if len(errs) > 0 {
+		c.LogError("Errors found while parsing file",
+			slog.Int("errors", len(errs)), slog.String("file", filePath),
+		)
+		select {
+		case pc.errorCh <- convertParseErrors(errs):
+		case <-pc.ctx.Done():
+		}
+		return
+	}
+	// Store result to avoid reparsing the same file
+	pc.fileMu.Lock()
+	c.flatFiles[filePath] = ast
+	mod.Programs[filepath.Base(filePath)] = ast
+	pc.fileMu.Unlock()
+}
+
+// StdParser is the default [Parser] implementation for Klar.
+type StdParser struct {
+	*parsePool
+}
+
+func (p *StdParser) Parse(filePath string) (
+	tokens []lexer.Token, program *ast.Program, errs []errors.ParseError, fatalErr error,
+) {
 	// Open file
 	// ==========
 	var (
@@ -91,24 +138,16 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 		shortPath string
 		err       error
 		toks      []lexer.Token
-		skipLexer bool
-
-		op, canOpenTokens = c.Opener.(TokenOpener)
+		f         *OpenFile
 	)
-	switch {
-	case filePath == "":
+	
+	if filePath == "" {
 		// Read from standard input
 		const stdinName = "standardInput"
 		fr = os.Stdin
 		filePath, shortPath = stdinName, stdinName
 		c.LogInfo("Reading file from stdin")
-	case canOpenTokens:
-		if toks, shortPath, err = op.OpenTokens(filePath); err == nil {
-			skipLexer = true
-			break
-		}
-		fallthrough
-	default:
+	} else {
 		f, err := c.Opener.Open(filePath)
 		if err != nil {
 			c.LogError("Error while opening file",
@@ -153,23 +192,6 @@ func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
 	c.LogInfo("Parsing file", slog.String("path", filePath))
 	ast := pa.Parse()
 	errs := pa.Errors
-
-	// Send syntax errors
-	if len(errs) > 0 {
-		c.LogError("Errors found while parsing file",
-			slog.Int("errors", len(errs)), slog.String("file", filePath),
-		)
-		select {
-		case pc.errorCh <- convertParseErrors(errs):
-		case <-pc.ctx.Done():
-		}
-		return
-	}
-	// Store result to avoid reparsing the same file
-	pc.fileMu.Lock()
-	c.flatFiles[filePath] = ast
-	mod.Programs[filepath.Base(filePath)] = ast
-	pc.fileMu.Unlock()
 }
 
 func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {

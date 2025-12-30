@@ -30,7 +30,7 @@ type Compiler struct {
 	Errors              []errors.CompileError
 	Options             []*Options // Configurations from klar.build or CLI
 	PreBuild, PostBuild []any      // TODO
-	Opener              Opener     // Opens files for reading
+	Parser              Parser     // Parses files
 
 	inputs  map[*Input]*InputOptions
 	Modules []*Module

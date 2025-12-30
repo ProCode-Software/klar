@@ -32,8 +32,8 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 			if len(input) == 1 {
 				return nil, &InterfaceError{Code: ErrModuleDescriptor}
 			}
-			i = Input{Kind: KindModule, Name: input[1:]}
-			// TODO: resolve klar.build
+			// TODO: resolve by import path
+			i = Input{Kind: KindModule, Name: input}
 		default:
 			info, err := os.Stat(input)
 			if err != nil {
