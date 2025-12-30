@@ -2,8 +2,10 @@ package argparse
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -177,14 +179,14 @@ loop:
 	case n < len(p.ArgDefs) && !p.ArgDefs[last].Optional:
 		// Not enough arguments
 		var b strings.Builder
-		for i := n - len(p.ArgDefs) - n; i < len(p.ArgDefs); i++ {
+		for i := n; i < len(p.ArgDefs); i++ {
 			if i > 0 {
 				b.WriteByte(' ')
 			}
 			b.WriteString(p.ArgDefs[i].String())
 		}
 		return &MissingArgsError{b.String()}
-	case n > len(p.ArgDefs) && !p.ArgDefs[last].Variadic:
+	case n > len(p.ArgDefs) && (len(p.ArgDefs) == 0 || !p.ArgDefs[last].Variadic):
 		// Too many arguments
 		return &ExtraArgsError{p.Args[len(p.ArgDefs):]}
 	}
@@ -194,11 +196,15 @@ loop:
 func (p *Parser) parseShortFlag(i int, item string) (int, error) {
 	val, skip := true, false
 	if len(item) == 2 && i+1 < len(p.InputArgs) {
-		var (
-			name         = item[1:]
-			def          = p.FlagDefs[name]
-			flag, i, err = p.parseValue(&def, name, p.InputArgs[i+1], i)
-		)
+		name := item[1:]
+		def, ok := p.FlagDefs[name]
+		if !ok {
+			if !p.AllowUnknownFlags {
+				return i, &UnknownFlagError{name}
+			}
+			return i, nil
+		}
+		flag, i, err := p.parseValue(&def, name, p.InputArgs[i+1], i)
 		p.Flags[name] = flag
 		return i, err
 	}
@@ -215,7 +221,7 @@ func (p *Parser) parseShortFlag(i int, item string) (int, error) {
 		case !ok && !p.AllowUnknownFlags:
 			return i, &UnknownFlagError{name}
 		case def.Type != TypeBool:
-			return i, &ValueRequiredError{name}
+			return i, &MissingValueError{name, def.Type}
 		default:
 			p.Flags[name] = newDeclaredFlag(TypeBool, i, val)
 		}
@@ -237,7 +243,7 @@ func (p *Parser) parseLongFlag(i int, item string) (j int, err error) {
 		return i, nil
 	case p.Flags[name] != nil && def.Type != TypeList:
 		return i, &RepeatedFlagError{name}
-	case i+i < len(p.InputArgs) && p.InputArgs[i] == "" || p.InputArgs[i][0] != '-':
+	case i+1 < len(p.InputArgs) && (p.InputArgs[i+1] == "" || p.InputArgs[i+1][0] != '-'):
 		var flag *Flag
 		flag, i, err = p.parseValue(&def, name, p.InputArgs[i+1], i)
 		p.Flags[name] = flag
@@ -359,8 +365,11 @@ func (p *Parser) checkEnum(flag, input string) (any, error) {
 	}
 	val, ok := p.enumOpts[flag][input]
 	if !ok {
-		// TODO: ExpOptions in A-Z order
-		return nil, &InvalidOptionError{Flag: flag, ExpOptions: nil}
+		return nil, &InvalidOptionError{
+			Flag:       flag,
+			ExpOptions: slices.Sorted(maps.Keys(p.enumOpts[flag])),
+			Input:      input,
+		}
 	}
 	return val, nil
 }

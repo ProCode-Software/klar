@@ -59,7 +59,6 @@ type LogHandler struct {
 	mu     *sync.Mutex
 	groups []groupOrAttrs
 	flags  Flags
-	skip   int
 }
 
 func NewLogHandler(w io.Writer, flags Flags) *LogHandler {
@@ -84,10 +83,6 @@ func (h *LogHandler) Close() error {
 
 func (h *LogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h != nil
-}
-
-func (h *LogHandler) SetSkip(skip int) {
-	h.skip = skip
 }
 
 func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
@@ -148,12 +143,6 @@ func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 	}
 	// Caller
 	if r.PC != 0 && h.flags.Has(ShowSource) {
-		if h.skip > 0 {
-			var pcs [1]uintptr
-			runtime.Callers(h.skip+1, pcs[:])
-			r.PC = pcs[0]
-			h.skip = 0
-		}
 		frames := runtime.CallersFrames([]uintptr{r.PC})
 		fr, _ := frames.Next()
 		fmt.Fprintf(b, ansi.Gray(" (%s:%d)"), filepath.Base(fr.File), fr.Line)

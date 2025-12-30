@@ -9,10 +9,10 @@ import (
 
 type (
 	ParseError = errors.ParseError
-	Options    = parser.ParseOptions
+	Options    = parser.Options
 )
 
-func Parse(tokens []lexer.Token, options *parser.ParseOptions) (
+func Parse(tokens []lexer.Token, options *parser.Options) (
 	program *ast.Program, errors []*ParseError,
 ) {
 	p := parser.New(tokens, options)

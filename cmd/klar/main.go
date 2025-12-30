@@ -47,8 +47,8 @@ func main() {
 	case "-v", "--version":
 		fmt.Printf("Klar %s\n", cli.KlarVersion)
 	case "test", "glas", "upgrade", "new", "format", "check",
-		"docs", "lint", "clean", "generate":
-		cli.CustomFailure("Not implemented", ansi.ColorSprintf(ansi.CodeBold,
+		"docs", "lint", "clean", "generate", "zen":
+		cli.Failure(ansi.ColorSprintf(ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "help":

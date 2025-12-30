@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 
 	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
-	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
-	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
@@ -151,30 +148,11 @@ func (s *Session) send() {
 func (s *Session) runTokens(t []lexer.Token) {
 	res, err := run.RunTokens(t, "repl")
 	// TODO: get access to typechecked module in order to add Repl flag
-	ErrPrinter.LoadTokens("repl", "repl", t)
-	if len(res.Errors) > 0 {
-		printErrors(res.Errors)
-		return
-	}
 	if err != nil {
-		if err, ok := err.(*build.InterfaceError); ok {
-			build.PrintInterfaceErr(err)
-		} else {
-			s.Printf(ansi.CodeBold, "%v", err)
-		}
 		return
 	}
 	litter.Dump(res.Modules[0].Programs["repl"])
 	s.evaluated = append(s.evaluated, t)
-}
-
-func printErrors[T errors.CompileError](errs []T) {
-	for i, err := range errs {
-		if i > 0 {
-			fmt.Fprintln(os.Stderr)
-		}
-		ErrPrinter.PrintError(err)
-	}
 }
 
 func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {

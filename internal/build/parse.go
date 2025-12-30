@@ -11,29 +11,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	parse "github.com/ProCode-Software/klar/internal/parser"
-	"github.com/ProCode-Software/klar/pkg/parser"
+	"github.com/ProCode-Software/klar/internal/parser"
+	pkgparser "github.com/ProCode-Software/klar/pkg/parser"
 )
-
-// Parser parses files into untyped ASTs.
-type Parser interface {
-	// Parse reads and parses the file at the given path and retuns the tokens,
-	// program, parse errors, and a fatal error if one occurs, such as during
-	// reading. If path == "", Parse should read from standard input. l may be
-	// used to log status. Parse may be called concurrently.
-	Parse(path string, l *slog.Logger) ([]lexer.Token, *ast.Program, []*errors.ParseError, error)
-}
-
-type Logger interface {
-	LogInfo(msg string, attrs ...any)
-	LogError(msg string, attrs ...any)
-}
-
-type parseContext struct {
-	*processContext
-	fileMu, printerMu sync.Mutex
-	pool              *parsePool
-}
 
 // Step 3: Parse each file into an untyped AST
 // =====
@@ -43,15 +23,10 @@ func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
 	defer close(moduleCh)
-	c.LogInfo("Begin parsing modules", slog.Int("modules", len(c.Modules)),
+	c.Info("Begin parsing modules", slog.Int("modules", len(c.Modules)),
 		slog.Int("files", numFiles),
 	)
-	pctx := &parseContext{
-		processContext: pc,
-		pool: newParsePool(lexer.IncludeComments, &parse.ParseOptions{
-			MaxErrors: MaxErrors,
-		}),
-	}
+	var fileMu sync.Mutex
 	c.flatFiles = make(map[string]*ast.Program, numFiles)
 	for _, mod := range c.Modules {
 		select {
@@ -62,14 +37,16 @@ func (c *Compiler) ParseModules(
 		var moduleWg sync.WaitGroup
 		mod.Programs = make(map[string]*ast.Program, len(mod.Files))
 		for _, filePath := range mod.Files {
+			// Cache "file" attribute
+			fl := c.Logger.With(slog.String("file", filePath))
 			// Skip if already parsed
 			if prog, ok := c.flatFiles[filePath]; ok {
-				c.LogInfo("Skipping already parsed file", slog.String("path", filePath))
+				fl.Info("Skipping already parsed file")
 				mod.Programs[filepath.Base(filePath)] = prog
 				continue
 			}
-			c.LogInfo("Processing file", slog.String("path", filePath))
-			moduleWg.Go(func() { c.parseFile(pctx, filePath, mod) })
+			fl.Info("Processing file")
+			moduleWg.Go(func() { c.parseFile(pc, filePath, mod, fl, &fileMu) })
 		}
 		moduleWg.Wait()
 		// If mod.Programs is less, a parse error occurred in one of the files.
@@ -78,120 +55,127 @@ func (c *Compiler) ParseModules(
 			moduleCh <- mod
 		}
 	}
+	c.Info("Finished parsing files")
 	// All modules are done parsing at this point
 	// TODO: will flatFiles be needed for other build steps?
 	c.flatFiles = nil
 }
 
 // parseFile parses a single file and sends results/errors to channels
-func (c *Compiler) parseFile(pc *parseContext, filePath string, mod *Module) {
+func (c *Compiler) parseFile(pc *processContext,
+	filePath string, mod *Module, l *slog.Logger, mu *sync.Mutex,
+) {
 	// Check if we should stop due to critical failure
 	select {
 	case <-pc.ctx.Done():
 		return
 	default:
 	}
-	sendCriticalError := func(err error) {
+	if c.Parser == nil {
+		panic("Parser not set up")
+	}
+	shortPath, res, err := c.Parser.Parse(filePath, l)
+	if err != nil {
 		select {
 		case pc.fatalErrCh <- err:
 		case <-pc.ctx.Done():
 		}
 	}
-	if c.Parser == nil {
-		panic("Parser not set up")
-	}
-	tokens, program, errs, fatalErr := c.Parser.Parse(filePath, c.Logger)
-	if fatalErr != nil {
-		sendCriticalError(fatalErr)
-	}
+
+	// Load the tokens for diagnostics first
+	mu.Lock()
+	c.errorPrinter.LoadTokens(filePath, shortPath, res.Tokens)
+	// Store result to avoid reparsing the same file
+	c.flatFiles[filePath] = res.Program
+	mod.Programs[filepath.Base(filePath)] = res.Program
+	mu.Unlock()
+
 	// Send syntax errors
-	if len(errs) > 0 {
-		c.LogError("Errors found while parsing file",
-			slog.Int("errors", len(errs)), slog.String("file", filePath),
+	if len(res.Errors) > 0 {
+		c.Error("Errors found while parsing file",
+			slog.Int("errors", len(res.Errors)), slog.String("file", filePath),
 		)
 		select {
-		case pc.errorCh <- convertParseErrors(errs):
+		case pc.errorCh <- convertParseErrors(res.Errors):
 		case <-pc.ctx.Done():
 		}
 		return
 	}
-	// Store result to avoid reparsing the same file
-	pc.fileMu.Lock()
-	c.flatFiles[filePath] = ast
-	mod.Programs[filepath.Base(filePath)] = ast
-	pc.fileMu.Unlock()
 }
+
+// Standard parser implementation
+// ==============================
 
 // StdParser is the default [Parser] implementation for Klar.
 type StdParser struct {
 	*parsePool
+	cwd string
 }
 
-func (p *StdParser) Parse(filePath string) (
-	tokens []lexer.Token, program *ast.Program, errs []errors.ParseError, fatalErr error,
+func NewStdParser(cwd string, lexFlags lexer.Flags, parseOpts *parser.Options) *StdParser {
+	return &StdParser{parsePool: newParsePool(lexFlags, parseOpts), cwd: cwd}
+}
+
+func (p *StdParser) Reset() {
+	p.parsePool = nil
+	p.cwd = ""
+}
+
+func (p *StdParser) Parse(filePath string, l *slog.Logger) (
+	shortPath string, res *ParseResult, err error,
 ) {
 	// Open file
 	// ==========
-	var (
-		fr        io.ReadCloser
-		fileSize  int64
-		shortPath string
-		err       error
-		toks      []lexer.Token
-		f         *OpenFile
-	)
-	
+	var f *os.File
+	var sizeEst int64
 	if filePath == "" {
 		// Read from standard input
 		const stdinName = "standardInput"
-		fr = os.Stdin
+		f = os.Stdin
 		filePath, shortPath = stdinName, stdinName
-		c.LogInfo("Reading file from stdin")
+		l.Info("Reading file from stdin")
 	} else {
-		f, err := c.Opener.Open(filePath)
+		f, err = os.Open(filePath)
 		if err != nil {
-			c.LogError("Error while opening file",
-				slog.String("file", filePath), slog.Any("error", err),
-			)
-			sendCriticalError(&FilesystemError{"open", filePath, err})
-			return
+			l.Error("Error while opening file", slog.Any("error", err))
+			return "", nil, &FilesystemError{"open", filePath, err}
 		}
-		fr, fileSize, shortPath = f.ReadCloser, f.Size, f.ShortPath
-		c.LogInfo("Successfully opened file", slog.String("file", filePath))
 		defer f.Close()
+		// Get file size
+		stat, err := f.Stat()
+		if err != nil {
+			l.Error("Error while getting file info", slog.Any("error", err))
+			return shortPath, nil, &FilesystemError{"stat", filePath, err}
+		}
+		sizeEst = stat.Size() / 10
+		// Get relative path
+		if shortPath, err = filepath.Rel(p.cwd, filePath); err != nil {
+			l.Warn("Could not get short path for file", slog.Any("error", err))
+			shortPath = filePath
+		}
+		l.Info("Successfully opened file")
 	}
+	res = &ParseResult{}
 	// Tokenize
 	// =========
-	if !skipLexer { // Tokenize unless the opener already provided tokens
-		lex := pc.pool.GetLexer(fr)
-		defer pc.pool.PutLexer(lex)
-		c.LogInfo("Tokenizing file", slog.String("path", filePath))
-		// Estimate file size
-		var sizeEstimate int64
-		if fileSize > 0 {
-			sizeEstimate = fileSize / 10
-		}
-		if toks, err = parser.TokenizeLexer(lex, sizeEstimate); err != nil {
-			c.LogError("Error while tokenizing file",
-				slog.String("file", filePath), slog.Any("error", err),
-			)
-			sendCriticalError(&InterfaceError{Code: ErrLexer, Err: err})
-			return
-		}
+	lex := p.GetLexer(f)
+	defer p.PutLexer(lex)
+	l.Info("Tokenizing file")
+
+	if res.Tokens, err = pkgparser.TokenizeLexer(lex, sizeEst); err != nil {
+		l.Error("Error while tokenizing file", slog.Any("error", err))
+		return shortPath, res, &InterfaceError{Code: ErrLexer, Err: err}
 	}
-	// Load tokens into printer for diagnostics
-	pc.printerMu.Lock()
-	c.errorPrinter.LoadTokens(filePath, shortPath, toks)
-	pc.printerMu.Unlock()
 
 	// Parse
 	// ========
-	pa := pc.pool.GetParser(toks, filePath)
-	defer pc.pool.PutParser(pa)
+	pa := p.GetParser(res.Tokens, filePath)
+	defer p.PutParser(pa)
 
-	c.LogInfo("Parsing file", slog.String("path", filePath))
-	ast := pa.Parse()
-	errs := pa.Errors
+	l.Info("Parsing file")
+	res.Program = pa.Parse()
+	res.Errors = pa.Errors
+	return shortPath, res, nil
 }
 
 func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {
@@ -203,15 +187,20 @@ func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {
 }
 
 // Lexer/parser pool
+// =================
+
+// parsePool provides a pool of [lexer.Lexer] and [parser.Parser].
 type parsePool struct{ parser, lexer sync.Pool }
 
+// newParsePool creates a new [parsePool] with the provided
+// [lexer.Flags] and [pkgparser.Options] as defaults.
 func newParsePool(lexFlags lexer.Flags, parseOpts *parser.Options) *parsePool {
 	return &parsePool{
 		lexer: sync.Pool{New: func() any {
 			return lexer.NewLexer(nil, lexFlags)
 		}},
 		parser: sync.Pool{New: func() any {
-			return parse.New(nil, parseOpts)
+			return parser.New(nil, parseOpts)
 		}},
 	}
 }
@@ -227,14 +216,14 @@ func (p *parsePool) PutLexer(l *lexer.Lexer) {
 	p.lexer.Put(l)
 }
 
-func (p *parsePool) GetParser(tokens []lexer.Token, file string) *parse.Parser {
-	pa := p.parser.Get().(*parse.Parser)
+func (p *parsePool) GetParser(tokens []lexer.Token, file string) *parser.Parser {
+	pa := p.parser.Get().(*parser.Parser)
 	pa.Tokens = tokens
 	pa.Options.File = file
 	return pa
 }
 
-func (p *parsePool) PutParser(pa *parse.Parser) {
+func (p *parsePool) PutParser(pa *parser.Parser) {
 	pa.Reset()
 	p.parser.Put(pa)
 }

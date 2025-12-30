@@ -11,7 +11,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
@@ -22,16 +22,15 @@ import (
 
 // Build executes the "klar build" command.
 func Build(r *command.Runner) {
-	var (
-		inputArgs = r.Parser.VarArgByName("inputs")
-		b         = build.NewCompiler(build.ModeBuild)
-		err       = b.UseStdOpener()
-	)
+	inputArgs := r.Parser.VarArgByName("inputs")
+	b, err := build.NewCompiler(build.ModeBuild)
 	if err != nil {
 		cli.FailureError(err)
 	}
-	jsonOutput := r.BoolFlag("json-output")
-	if err := build.SetLogger(b, r.BoolFlag("verbose"), jsonOutput); err != nil {
+	b.UseStdParser()
+	// Logging
+	jsonOutput := r.Flag("json-output").Bool()
+	if err := build.SetLogger(b, r.Flag("verbose").Bool(), jsonOutput); err != nil {
 		cli.FailureError(err)
 	}
 	defer func() {
@@ -39,12 +38,13 @@ func Build(r *command.Runner) {
 			cli.Failure("Failed to write log file: ", err)
 		}
 	}()
-	delete(r.AllFlags(), "verbose") // Avoid reparsing flags in [ParseFlags]
-	delete(r.AllFlags(), "json-output")
+	// Avoid reparsing flags in [ParseFlags]
+	delete(r.Flags, "verbose")
+	delete(r.Flags, "json-output")
 
 	// Resolve all inputs if provided
 	if len(inputArgs) > 0 {
-		b.LogInfo("Resolving inputs", slog.Any("inputs", inputArgs))
+		b.Info("Resolving inputs", slog.Any("inputs", inputArgs))
 	}
 	b.StartTime = time.Now() // Start timer at resolution process
 	var configPath string    // Config path if resolved from cwd or --config flag
@@ -53,14 +53,14 @@ func Build(r *command.Runner) {
 		// Try reading from the cwd's klar.build if no inputs provided
 		if _, err := os.Stat("klar.build"); err == nil {
 			configPath = "klar.build"
-			b.LogInfo("klar.build found in current directory")
+			b.Info("klar.build found in current directory")
 		} else {
 			// Build the nearest *package* if no path provided
-			pkgPath, _, err := module.PackageRoot(".")
-			if err != nil {
+			pkgPath, _ := module.PackageRoot(".")
+			if false {
 				cli.ErrNoManifest(pkgPath)
 			}
-			b.LogInfo("Resolving inputs at current package", slog.String("package", pkgPath))
+			b.Info("Resolving inputs at current package", slog.String("package", pkgPath))
 			//nolint:ineffassign // False positive
 			inps, err = build.ResolveInputs([]string{pkgPath})
 		}
@@ -77,7 +77,7 @@ func Build(r *command.Runner) {
 	}
 	// Force a config path if --config flag was passed
 	var configFlag *build.Options
-	if conf := r.StringFlag("config"); conf != "klar.build" {
+	if conf := r.Flag("config").String(); conf != "klar.build" {
 		configPath = conf
 		cfs, err := build.ReadKlarBuild(conf)
 		if err != nil {
@@ -86,9 +86,9 @@ func Build(r *command.Runner) {
 			// Make sure the --config has options in it
 			cli.Failuref("The configuration from '%s' has no options in it", "", conf)
 		}
-		b.LogInfo("Using --config flag:", slog.String("path", conf))
+		b.Info("Using --config flag:", slog.String("path", conf))
 		configFlag = cfs[0]
-		delete(r.AllFlags(), "config")
+		delete(r.Flags, "config")
 	}
 
 	// Read options from klar.build
@@ -113,7 +113,7 @@ func Build(r *command.Runner) {
 			case err != nil:
 				build.PrintInterfaceErr(err.(*build.InterfaceError))
 			case len(opts) == 0:
-				opt = build.ParseKlarBuild(klarbuild.Default(), nil)
+				opt = build.DefaultKlarBuild()
 			default:
 				opt = opts[0]
 			}
@@ -201,7 +201,7 @@ func printJSONErrors(res *build.BuildResult, err error, isMaxErrors bool) {
 
 // ParseFlags parses flags from r into o.
 func ParseFlags(r *command.Runner, o *build.Options) {
-	for flag, v := range r.AllFlags() {
+	for flag, v := range r.Flags {
 		if v == nil {
 			continue
 		}
@@ -209,11 +209,11 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "config", "verbose":
 			continue // Already handled
 		case "watch":
-			o.Watch = v.Value().(bool)
+			o.Watch = v.Bool()
 		case "output":
-			o.Output = []string{v.Value().(string)}
+			o.Output = []string{v.String()}
 		case "target":
-			o.Target = v.Value().(target.Target)
+			o.Target = v.Value.(target.Target)
 		default:
 			// The rest are all JS flags
 			if o.JS == nil {
@@ -229,29 +229,29 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 			}
 			switch flag {
 			case "declaration":
-				o.JS.Declaration = v.Value().(bool)
+				o.JS.Declaration = v.Bool()
 			case "minify":
-				o.JS.Minify = v.Value().(bool)
+				o.JS.Minify = v.Bool()
 			case "inline-sourcemap":
-				if v.Value().(bool) {
+				if v.Bool() {
 					o.JS.Sourcemap = klarbuild.SourceMapInline
 				}
 			case "sourcemap":
-				if v.Value().(bool) {
+				if v.Bool() {
 					o.JS.Sourcemap = klarbuild.SourceMapEnabled
 				}
 			case "jsdoc":
-				o.JS.JSDoc = v.Value().(bool)
+				o.JS.JSDoc = v.Bool()
 			case "copy-node-modules":
-				o.JS.CopyNodeModules = v.Value().(bool)
+				o.JS.CopyNodeModules = v.Bool()
 			case "banner":
-				o.JS.Banner = v.Value().(string)
+				o.JS.Banner = v.String()
 			case "bundle":
-				o.JS.Bundle = v.Value().(klarbuild.BundleMode)
+				o.JS.Bundle = v.Value.(klarbuild.BundleMode)
 			case "declaration-path":
-				o.JS.DeclarationPath = v.Value().(string)
+				o.JS.DeclarationPath = v.String()
 			case "format":
-				o.JS.Format = v.Value().(klarbuild.ModuleFormat)
+				o.JS.Format = v.Value.(klarbuild.ModuleFormat)
 			default:
 				panic("unhandled flag: " + flag)
 			}

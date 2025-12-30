@@ -41,11 +41,7 @@ func TestPackageRoot(t *testing.T) {
 			return p
 		}
 		t.Run("", func(t *testing.T) {
-			pkg, proj, err := PackageRoot(tc.input)
-			if err != nil {
-				t.Errorf("PackageRoot(%#v) failed: %v", tc.input, err)
-				return
-			}
+			pkg, proj := PackageRoot(tc.input)
 			if pkg != tc.wantPkg || proj != tc.wantProj {
 				t.Errorf("PackageRoot(%#v) = (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
 					short(tc.input),
@@ -72,12 +68,7 @@ func TestIsPackage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			got, err := IsPackage(tt.input)
-			if err != nil {
-				t.Errorf("IsPackage(%#v) failed: %v", tt.input, err)
-				return
-			}
-			if got != tt.want {
+			if got := IsPackage(tt.input); got != tt.want {
 				t.Errorf("IsPackage(%#v) = %v, want %v", tt.input, got, tt.want)
 			}
 		})

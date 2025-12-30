@@ -8,7 +8,7 @@ var fullHelpTemplate = `
 
 {{ or .LongDescription .ShortDescription | wrap }}
 
-{{ if and .Flags (len .Flags.FlagDefinitions) -}}
+{{ if and .Flags (len .Flags.FlagDefs) -}}
 {{ title "Flags" }}
 {{ .FlagString 2 -}}
 {{- end -}}
@@ -19,7 +19,7 @@ var fullHelpTemplate = `
   {{ printf "%s:" .Description | ansi "2" }}
   {{ exec }} {{ bold "33" .Command }} {{- if .Args }} {{ join .Args " " }} {{- end }}
 	{{- range .Flags }} {{ if hasPrefix . "-" -}} {{ ansi "36" . }} 
-		{{- else -}} {{ ansi "34" . }} {{- end -}}
+		{{- else -}} TODO{{ ansi "32" . }} {{- end -}}
 	{{ end }}
 {{ end }}
 {{ end -}}

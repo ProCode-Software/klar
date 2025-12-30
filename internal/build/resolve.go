@@ -14,6 +14,9 @@ const sep = string(filepath.Separator)
 // Step 1: Determine the kind of each input and resolve its klar.build file
 // =====
 
+// ResolveInputs finds the location, kind, and klar.build file for each input.
+// ResolveInputs returns an error if a path cannot be read, an input is invalid,
+// or an input is not a .klar file.
 func ResolveInputs(inputs []string) ([]Input, error) {
 	if len(inputs) == 0 {
 		return nil, nil
@@ -50,13 +53,9 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 				i = Input{Path: fullPath, Kind: KindFile}
 			} else {
 				// Directory: module or package
-				i = Input{Path: fullPath, Name: filepath.Base(fullPath)}
-				if isPkg, err := module.IsPackage(fullPath); err != nil {
-					return nil, &FilesystemError{"get", "working directory", err}
-				} else if isPkg {
+				i = Input{Path: fullPath, Name: filepath.Base(fullPath), Kind: KindModule}
+				if module.IsPackage(fullPath) {
 					i.Kind = KindPackage
-				} else {
-					i.Kind = KindModule
 				}
 			}
 			// Get path to closest klar.build file
@@ -134,7 +133,7 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 			// TODO: resolve glas.pack for module/package
 			switch inp.Kind {
 			case KindPackage:
-				c.LogInfo("Resolving package", slog.String("path", inp.Path))
+				c.Info("Resolving package", slog.String("path", inp.Path))
 				klarFiles, err := c.resolvePackage(inp.Path, &info.Modules, false, info)
 				checkFileCount(klarFiles, inp.Path, &err)
 				if err != nil {
@@ -150,16 +149,16 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				c.Modules = append(c.Modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
-				c.LogInfo("Resolved file", slog.String("path", inp.Path))
+				c.Info("Resolved file", slog.String("path", inp.Path))
 			case KindStdin:
 				// Empty paths are stdin
 				info.Modules = []*Module{{Files: []string{""}, SingleFile: true}}
 				c.Modules = append(c.Modules, info.Modules[0])
 				c.moduleInputs[info.Modules[0]] = info
 				totalFiles++
-				c.LogInfo("Resolved file from stdin")
+				c.Info("Resolved file from stdin")
 			case KindModule:
-				c.LogInfo("Resolving module", slog.String("modulePath", inp.Path))
+				c.Info("Resolving module", slog.String("modulePath", inp.Path))
 				klarFiles, err := c.moduleFromDir(
 					inp.Name, inp.Path, &info.Modules, 0, info,
 				)
@@ -204,9 +203,9 @@ func (c *Compiler) moduleFromDir(
 				return
 			}
 			m.Submodules = append(m.Submodules, path)
-			c.LogInfo("Resolving submodule", slog.String("modulePath", path))
-			more, err := c.moduleFromDir(name, path, modules, depth+1, info)
-			klarFiles += more
+			c.Info("Resolving submodule", slog.String("modulePath", path))
+			n, err := c.moduleFromDir(name, path, modules, depth+1, info)
+			klarFiles += n
 			if err != nil {
 				return klarFiles, err
 			}
@@ -225,7 +224,7 @@ func (c *Compiler) resolvePackage(
 ) (klarFiles int, err error) {
 	defer func() {
 		if err != nil {
-			c.LogError("Error while resolving package",
+			c.Error("Error while resolving package",
 				slog.String("package", path), slog.Any("error", err),
 			)
 		}
@@ -262,10 +261,12 @@ func (c *Compiler) resolvePackage(
 					return klarFiles,
 						&InterfaceError{Code: ErrFileInPkgDir, Value: fullPkg}
 				}
-				more, err := c.resolvePackage(fullPkg, modules, true, info)
-				klarFiles += more
+				n, err := c.resolvePackage(fullPkg, modules, true, info)
+				klarFiles += n
 				if err != nil {
-					c.LogError("Resolving subpackage", fullPkg, "failed:", err)
+					c.Error("Failed to resolve subpackage",
+						slog.String("package", fullPkg), slog.Any("error", err),
+					)
 					return klarFiles, err
 				}
 			}
@@ -282,15 +283,15 @@ func (c *Compiler) resolvePackage(
 			fallthrough
 		case module.SrcDir, module.CmdDir, module.GeneratedDir: // src, cmd, generated
 			// The only Klar project directories that contain buildable modules
-			c.LogInfo("Resolving modules in", slog.String("path", fullPath))
-			more, err := c.moduleFromDir(name, fullPath, modules, 0, info)
-			klarFiles += more
+			c.Info("Resolving modules in", slog.String("path", fullPath))
+			n, err := c.moduleFromDir(name, fullPath, modules, 0, info)
+			klarFiles += n
 			if err != nil {
 				return klarFiles, err
 			}
 		default:
 			// Other directory: ignore
-			c.LogInfo("Ignoring directory", slog.String("dir", fullPath))
+			c.Info("Ignoring directory", slog.String("dir", fullPath))
 			continue
 		}
 	}

@@ -8,70 +8,37 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
-func IsREPL() bool {
-	return os.Getenv("KLAR_REPL") == "1"
-}
-
-func Print(msg string, detail ...any) {
-	Custom("Error", msg, detail...)
-}
+var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
 
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
 	str := ansi.BoldBrightRed(errorType) + ansi.BoldDim(": ") + ansi.Bold(msg)
-	if len(detail) > 0 {
-		str += fmt.Sprint(detail...)
-	}
-	fmt.Fprintln(os.Stderr, str)
-}
-
-// CustomError prints an error to [os.Stderr] with a custom title.
-func CustomError(errorType string, msg string, detail ...any) {
-	Custom(errorType, msg, detail...)
-}
-
-// CustomFailure prints an error to [os.Stderr] with a custom title, followed by a call to
-// [os.Exit](1).
-func CustomFailure(errorType string, msg string, detail ...any) {
-	Custom(errorType, msg, detail...)
-	Exit(1)
+	fmt.Fprintln(os.Stderr, str, detail)
 }
 
 // Error prints an error to [os.Stderr].
 func Error(msg string, detail ...any) {
-	Print(msg, detail...)
+	Custom("Error", msg, detail...)
 }
 
 // Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
 func Failure(msg string, detail ...any) {
-	Print(msg, detail...)
+	Error(msg, detail...)
 	Exit(1)
 }
 
+// FailureError is equivalent to [Failure](err.Error())
 func FailureError(err error) {
 	Failure(err.Error())
 }
 
 func Failuref(msg, detail string, v ...any) {
-	Failure(fmt.Sprintf(ansi.Bold(msg)+detail, v...))
+	f := errorPrefix + ansi.Bold(msg) + detail + "\n"
+	fmt.Fprintf(os.Stderr, f, v...)
 }
 
 func InternalError(detail ...any) {
 	Failure("Internal Error: ", detail...)
-}
-
-// TODO: update
-func InvalidUsage(title, passed, usage string) {
-	Print(title+": ", ansi.Yellow(passed)+"\n\n"+
-		ansi.Bold("Usage: ")+ansi.Cyan(usage)+"\n\n"+
-		"Use "+ansi.Cyan("'--help'")+" for more information.",
-	)
-	Exit(2)
-}
-
-func FileNotFound(path string) {
-	Error("File not found: ", path)
-	Exit(2)
 }
 
 func HintIndent(hint string) {
@@ -82,19 +49,14 @@ func Hint(hint string) {
 	Custom(ansi.BrightBlue("Hint"), "", hint)
 }
 
-func HandleInternalErr(err error, detail ...string) {
-	if err == nil {
-		return
-	}
-	if len(detail) > 0 {
-		InternalError(fmt.Errorf("%s: %w", detail[0], err))
-	}
-	InternalError(err)
-}
-
 func Eprintf(format string, a ...any) {
 	fmt.Fprintf(os.Stderr, format, a...)
 }
+
+func ColorErrorfln(format string, a ...any) {
+	ansi.Fprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
+}
+
 
 func ErrNoManifest(dir string) {
 	if dir == "" {

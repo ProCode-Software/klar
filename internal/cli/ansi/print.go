@@ -189,5 +189,6 @@ func Println(v string) (n int, err error) {
 // color is an color code. v is the raw ANSI string. every time v has an ansi reset,
 // code is reapplied.
 func Wrap(code string, v string) string {
+	// TODO
 	return code + v + CodeReset
 }

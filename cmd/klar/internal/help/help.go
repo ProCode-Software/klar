@@ -4,20 +4,20 @@ package help
 import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
 )
 
 // Existing CLI commands already handled in main.go
 func Run(c *command.Runner) {
-	if len(c.AllArgs()) < 1 {
+	if len(c.Args) < 1 {
 		cli.Failure("Expected a command or topic name when '-d' flag is used")
 	}
-	name := c.NamedArg("command")
+	name := c.ArgByName("command")
 	topic, ok := Topics[name]
 	switch {
 	case ok:
-	case c.BoolFlag("d"):
+	case c.Flag("d").Bool():
 		// Show documentation online
 		cli.Eprintf("Searching documentation for %s on %s\n",
 			ansi.Cyan(name), ansi.Magenta("site.url"),

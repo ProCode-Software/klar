@@ -56,6 +56,9 @@ type (
 func init() {
 	for name, cmd := range KlarCommands {
 		cmd.Name = name
+		if cmd.Flags != nil {
+			cmd.Usage = cmd.Flags.Pattern
+		}
 	}
 	command.Commands = KlarCommands
 }

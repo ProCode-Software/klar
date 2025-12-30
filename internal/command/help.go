@@ -11,7 +11,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/cli/argparse"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
 
@@ -22,9 +22,6 @@ func formatCmd(subCommand string) string {
 }
 
 func (c *Command) Help(f io.Writer) {
-	if c.Flags != nil {
-		c.Usage = c.Flags.Pattern
-	}
 	if f, ok := f.(*os.File); ok {
 		var err error
 		termWidth, _, err = term.GetSize(int(f.Fd()))
@@ -74,7 +71,7 @@ func (c *Command) FlagString(indent int) string {
 	var (
 		b       = &strings.Builder{}
 		tw      = cli.NewTabWriterOutput(b)
-		defs    = c.Flags.FlagDefinitions
+		defs    = c.Flags.FlagDefs
 		aliases = make(map[string][]string, len(defs))
 		cyan    = ansi.Partial(ansi.CodeCyan)
 		sep     = ansi.Reset() + ", " + cyan
@@ -90,7 +87,7 @@ func (c *Command) FlagString(indent int) string {
 	}
 	// Print each line
 	for _, name := range sortFlags(defs) {
-		flag := c.Flags.FlagDefinitions[name]
+		flag := c.Flags.FlagDefs[name]
 		al := aliases[name]
 		sortAliases(al) // Sort aliases by length
 		if len(al) > 0 && len(al[0]) == 1 {
@@ -106,7 +103,7 @@ func (c *Command) FlagString(indent int) string {
 			tw.WriteString(sep + argparse.FormatFlag(alias))
 		}
 		if flag.ParamName != "" {
-			tw.WriteString(ansi.DimBlue(" <" + flag.ParamName + ">"))
+			tw.WriteString(ansi.DimCyan(" <" + flag.ParamName + ">"))
 		}
 		fmt.Fprintf(tw, "%s\t%s %s\n", ansi.Reset(), flag.Description, getDefault(flag))
 	}
@@ -120,18 +117,18 @@ func tryFlush(tw *cli.TabWriter) {
 	}
 }
 
-func getDefault(flag argparse.FlagDefinition) string {
+func getDefault(flag argparse.FlagDef) string {
 	var def any
 	switch {
 	case flag.Default == nil:
 		return ""
-	case flag.Type == argparse.TypeEnumFlag:
-		def = flag.Default.(*argparse.EnumFlag).Name
+	case flag.Type == argparse.TypeEnum:
+		def = flag.Default.Enum().Key()
 		if def == "" {
 			return ""
 		}
 	default:
-		switch v := flag.Default.Value(); v {
+		switch v := flag.Default.Value; v {
 		case "", false, 0, nil:
 			return ""
 		default:
@@ -187,7 +184,7 @@ func sortAliases(aliases []string) {
 	})
 }
 
-func sortFlags(flags map[string]argparse.FlagDefinition) []string {
+func sortFlags(flags map[string]argparse.FlagDef) []string {
 	keys := make([]string, len(flags))
 	i := 0
 	for k := range flags {

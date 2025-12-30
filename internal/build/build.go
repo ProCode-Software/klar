@@ -4,8 +4,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -31,6 +29,7 @@ type Compiler struct {
 	Options             []*Options // Configurations from klar.build or CLI
 	PreBuild, PostBuild []any      // TODO
 	Parser              Parser     // Parses files
+	WorkDir             string
 
 	inputs  map[*Input]*InputOptions
 	Modules []*Module
@@ -105,104 +104,6 @@ const (
 	WarningAsError
 )
 
-// File opening
-// ============
-
-type OpenFile struct {
-	Size      int64
-	ShortPath string
-	io.ReadCloser
-}
-
-// Opener opens files for reading. The size parameter is the size of
-// the file in bytes. [io.NopCloser] can be used to wrap a [io.Reader]
-// if nothing needs to be done when closing.
-type Opener interface {
-	Open(name string) (*OpenFile, error)
-}
-
-// TokenOpener is an [Opener] that can also provide a file's tokens.
-type TokenOpener interface {
-	Opener
-	OpenTokens(file string) (tokens []lexer.Token, shortPath string, err error)
-}
-
-// StdOpener implements [Opener] and is the standard implementation that reads
-// Klar files on the system.
-type StdOpener struct{ cwd string }
-
-// Open implements [Opener]. Open returns the [*os.File], the size of the file in
-// bytes when calling [os.File.Stat], and any error that occurred while opening.
-func (o StdOpener) Open(name string) (f *OpenFile, err error) {
-	fr, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	stat, err := fr.Stat()
-	if err != nil {
-		return nil, err
-	}
-	relPath, err := filepath.Rel(o.cwd, name)
-	if err != nil || strings.HasPrefix(relPath, "..") {
-		// fallback to absolute path
-		relPath = name
-	}
-	return &OpenFile{
-		Size:       stat.Size(),
-		ShortPath:  relPath,
-		ReadCloser: fr,
-	}, nil
-}
-
-// A SingleOpener is a [Opener] that opens only one file.
-type SingleOpener struct {
-	Path, ShortPath string
-	Reader          io.ReadCloser
-}
-
-// Open reads from o.Reader and returns a nil error if name == o.FileName,
-// otherwise it returns [os.ErrNotExist].
-func (o *SingleOpener) Open(name string) (f *OpenFile, err error) {
-	if name != o.Path {
-		return nil, os.ErrNotExist
-	}
-	var size int64
-	// Estimate size if possible
-	switch r := o.Reader.(type) {
-	case *os.File:
-		if stat, err := r.Stat(); err == nil {
-			size = stat.Size()
-		}
-	case interface{ Len() int }:
-		size = int64(r.Len())
-	}
-	return &OpenFile{
-		Size:       size,
-		ShortPath:  o.ShortPath,
-		ReadCloser: o.Reader,
-	}, nil
-}
-
-// SingleTokenOpener is a [TokenOpener] that opens only one file.
-type SingleTokenOpener struct {
-	Path, ShortPath string
-	Tokens          []lexer.Token
-}
-
-// OpenTokens returns (o.Tokens, o.ShortPath, nil) if name == o.Path,
-// otherwise it returns [os.ErrNotExist].
-func (o *SingleTokenOpener) OpenTokens(name string) ([]lexer.Token, string, error) {
-	if name != o.Path {
-		return nil, "", os.ErrNotExist
-	}
-	return o.Tokens, o.ShortPath, nil
-}
-
-// Open returns [os.ErrNotExist].
-func (o *SingleTokenOpener) Open(string) (*OpenFile, error) {
-	return nil, os.ErrNotExist
-}
-
 // Logging
 // ==========
 
@@ -213,18 +114,6 @@ func (c *Compiler) CloseLogger() error {
 	}
 	return nil
 }
-
-func (c *Compiler) _logBase(log func(string, ...any), msg string, v ...any) {
-	if c.Logger != nil && c.Logger.Handler() != nil {
-		if h, ok := c.Logger.Handler().(*logger.LogHandler); ok {
-			h.SetSkip(5)
-		}
-		log(msg, v...)
-	}
-}
-
-func (c *Compiler) LogInfo(msg string, v ...any)  { c._logBase(c.Logger.Info, msg, v...) }
-func (c *Compiler) LogError(msg string, v ...any) { c._logBase(c.Logger.Error, msg, v...) }
 
 const showFileInLogs = false
 

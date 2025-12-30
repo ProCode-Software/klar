@@ -47,22 +47,16 @@ func splitPath(p string) (string, string) {
 
 // PackageRoot returns the theoretical package root and project root
 // for a given path, following the Klar Project Structure Spec.
-// PackageRoot returns an error if [filepath.Abs](p) fails.
-func PackageRoot(p string) (pkg, project string, err error) {
-	// TODO: should we Clean the return paths
-	p, err = filepath.Abs(p)
-	if err != nil {
-		return "", "", err
-	}
+func PackageRoot(p string) (pkg, project string) {
 	// Check if a manifest is located in dir
 	if info, err := os.Stat(p); err == nil && !info.IsDir() {
 		p = filepath.Dir(p)
 		if info.Name() == ManifestFile {
-			return p, "", nil
+			return p, ""
 		}
 	}
-	if _, err = os.Stat(p + sep + ManifestFile); err == nil {
-		return p, "", nil
+	if _, err := os.Stat(p + sep + ManifestFile); err == nil {
+		return p, ""
 	}
 	// Walk up the directory tree
 	curr, prev := p, ""
@@ -75,34 +69,29 @@ func PackageRoot(p string) (pkg, project string, err error) {
 		if _, ok := KlarProjectDirs[name]; ok {
 			// Parent of 'pkg' guaranteed to be project root
 			if name == PkgDir {
-				return prev, parent, nil // x/pkg/y -> (x/pkg/y, x, nil)
+				return prev, parent // x/pkg/y -> (x/pkg/y, x, nil)
 			}
 			// Found the project root
 			if _, ok := ProjectOnlyDirs[name]; ok {
-				return parent, parent, nil
+				return parent, parent
 			}
 			// Check if parent is 'pkg' (e.g: x/pkg/y/src)
 			if pkgPar, pkg := splitPath(filepath.Dir(parent)); pkg == PkgDir {
-				return parent, pkgPar, nil
+				return parent, pkgPar
 			}
-			return parent, parent, nil
+			return parent, parent
 		}
 		// Track the last directory we saw (potential package inside pkg)
 		prev = curr // Child
 		curr = parent
 	}
 	// Not found
-	return p, p, nil
+	return p, p
 }
 
 // IsPackage reports whether p is a path to a package, as defined by the Klar
 // Project Structure Spec. IsPackage assumes that p is a directory path.
-// IsPackage returns an error if [filepath.Abs] fails.
-func IsPackage(p string) (bool, error) {
-	p, err := filepath.Abs(p)
-	if err != nil {
-		return false, err
-	}
+func IsPackage(p string) bool {
 	var depth int
 	var parent, name string
 	for {
@@ -111,12 +100,12 @@ func IsPackage(p string) (bool, error) {
 		switch {
 		case name == PkgDir:
 			// We're one level inside pkg folder - this is a package
-			return depth == 1, nil
+			return depth == 1
 		case IsProjectDir(name):
 			// Found a Klar project directory - not a package (parent is)
-			return false, nil
+			return false
 		case p == parent:
-			return true, nil
+			return true
 		}
 		p = parent
 		depth++

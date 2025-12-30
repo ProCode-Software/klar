@@ -16,7 +16,7 @@ const (
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
-	Options ParseOptions
+	Options Options
 	Tokens  []lexer.Token
 	Index   int
 	Errors  []*ParseError
@@ -29,8 +29,8 @@ type Parser struct {
 // ParseError is [errors.ParseError]
 type ParseError = errors.ParseError
 
-// ParseOptions is options provided to [Parser].
-type ParseOptions struct {
+// Options is options provided to [Parser].
+type Options struct {
 	// Path of the file being parsed. File is applied to all reported errors.
 	File string
 	// If Error != nil, Error is called for every reported error.
@@ -42,9 +42,9 @@ type ParseOptions struct {
 
 // New returns a new [Parser] that reads from tokens. If options == nil,
 // default options are used.
-func New(tokens []lexer.Token, options *ParseOptions) *Parser {
+func New(tokens []lexer.Token, options *Options) *Parser {
 	if options == nil {
-		options = &ParseOptions{}
+		options = &Options{}
 	}
 	return &Parser{
 		Tokens:  tokens,

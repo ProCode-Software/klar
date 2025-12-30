@@ -1,31 +1,30 @@
 package build
 
 import (
+	"bytes"
+	"io"
 	"log/slog"
 	"os"
 
-	"github.com/ProCode-Software/klar/internal/config/klarbuild"
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/errors/printer"
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/parser"
+	pkgparse "github.com/ProCode-Software/klar/pkg/parser"
 )
 
-func NewCompiler(mode BuildMode) *Compiler {
+func NewCompiler(mode BuildMode) (*Compiler, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, &FilesystemError{"get", "working directory", err}
+	}
 	return &Compiler{
 		Mode:         mode,
 		errorPrinter: &printer.Printer{MaxLines: 3, Color: true},
 		Logger:       slog.New(slog.DiscardHandler),
-	}
-}
-
-// UseStdOpener sets c's Opener to the standard opener. UseStdOpener
-// returns an error if it fails to get the working directory.
-func (c *Compiler) UseStdOpener() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return &FilesystemError{"get", "working directory", err}
-	}
-	c.Opener = StdOpener{cwd: cwd}
-	return nil
+		WorkDir:      cwd,
+	}, nil
 }
 
 // PrintError prints an error to the error printer.
@@ -38,40 +37,93 @@ func (c *Compiler) AddInputs(inputs ...Input) {
 	c.Options = append(c.Options, &Options{Inputs: inputs})
 }
 
-// ReadKlarBuild reads a 'klar.build' file at path and returns the configurations
-// defined in it. No [Options] will contain more than one configuration. An error
-// is returned if the file cannot be read or parsed.
-func ReadKlarBuild(path string) ([]*Options, error) {
-	f, err := klarbuild.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	if len(f.Configurations) > 0 {
-		opts := make([]*Options, len(f.Configurations))
-		for i, cfg := range f.Configurations {
-			opts[i] = ParseKlarBuild(f, cfg)
-		}
-	}
-	return []*Options{ParseKlarBuild(f, nil)}, nil
+// Parser parses files into untyped ASTs.
+type Parser interface {
+	// Parse reads and parses the file at the given path and returns the short
+	// file path, a [ParseResult] object, and a fatal error if one occurs, such
+	// as during reading. If path == "", Parse should read from standard input.
+	// l may be used to log status. Parse may be called concurrently.
+	Parse(path string, l *slog.Logger) (shortPath string, res *ParseResult, err error)
 }
 
-// ParseKlarBuild converts f and c into an [Options] object by converting
-// c's inputs into [Input]. If c != nil, f and c are merged into a single
-// configuration.
-func ParseKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) *Options {
-	// TODO: input resolution
-	if c == nil {
-		_ = f.Configuration
-		return &Options{
-			File: *f,
-			Inputs: nil,
-		} 
+type ParseResult struct {
+	Tokens  []lexer.Token
+	Program *ast.Program
+	Errors  []*errors.ParseError
+}
+
+// UseStdParser sets c's Parser to the standard parser [StdParser].
+func (c *Compiler) UseStdParser() {
+	c.Parser = NewStdParser(c.WorkDir, lexer.IncludeComments,
+		&parser.Options{MaxErrors: MaxErrors + 1},
+	)
+}
+
+type StaticParserFile struct {
+	Tokens    []lexer.Token
+	Reader    io.Reader
+	ShortPath string
+	Program   *ast.Program
+}
+
+// StaticParser is a [Parser] implementation that parses only a set of files.
+// A reader, tokens, or an [ast.Program] may be provided for each file.
+type StaticParser struct {
+	Files map[string]*StaticParserFile
+}
+
+// NewStaticParser creates a new [StaticParser] that parses one file.
+func NewStaticParser(path string, f *StaticParserFile) *StaticParser {
+	return &StaticParser{map[string]*StaticParserFile{path: f}}
+}
+
+func (p *StaticParser) LoadFile(path string, f *StaticParserFile) {
+	if p.Files == nil {
+		p.Files = make(map[string]*StaticParserFile)
 	}
-	newFile := *f
-	newFile.Configurations = nil
-	newFile.Configuration = *c
-	return &Options{
-		File: newFile,
-		Inputs: nil,
+	p.Files[path] = f
+}
+
+// Parse implements [Parser]. It returns [os.ErrNotExist] if path
+// is not found in the StaticParser's file map.
+func (p *StaticParser) Parse(path string, l *slog.Logger) (
+	shortPath string, res *ParseResult, err error,
+) {
+	f, ok := p.Files[path]
+	switch {
+	case !ok:
+		return path, nil, os.ErrNotExist
+	case f.Program != nil:
+		// Program already provided
+		if f.Tokens == nil {
+			panic("both Program and Tokens must be provided")
+		}
+		return f.ShortPath, &ParseResult{Tokens: f.Tokens, Program: f.Program}, nil
+	case f.Tokens == nil:
+		var size int64
+		switch r := f.Reader.(type) {
+		case nil:
+			panic("Reader must be provided if Tokens == nil")
+		case *os.File:
+			if stat, err := r.Stat(); err == nil {
+				size = stat.Size()
+			}
+		case *bytes.Buffer:
+			size = int64(r.Len())
+		}
+		f.Tokens, err = pkgparse.Tokenize(f.Reader, lexer.IncludeComments, size/10)
+		if err != nil {
+			return path, nil, err
+		}
+		fallthrough
+	default:
+		// Need to parse
+		pa := parser.New(f.Tokens, nil)
+		prog := pa.Parse()
+		return f.ShortPath, &ParseResult{
+			Tokens: f.Tokens,
+			Program: prog,
+			Errors: pa.Errors,
+		}, nil
 	}
 }

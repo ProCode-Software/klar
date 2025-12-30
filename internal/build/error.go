@@ -71,7 +71,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	case ErrTooManyErrors:
 		return "There are too many errors", ""
 	case ErrMaxModuleDepth:
-		return "Only 4 submodules are allowed: ",
+		return "Only up to 4 submodules are allowed: ",
 			fmt.Sprintf("<c>%s</c> has %d", err.Value, MaxModuleDepth+1)
 	case ErrFileInPackage:
 		return "A file isn't allowed in the package or project root: ",

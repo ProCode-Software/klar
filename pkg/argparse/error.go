@@ -6,23 +6,32 @@ import (
 )
 
 type (
-	UnknownFlagError   struct{ Flag string }
-	MissingArgsError   struct{ Missing string }
-	ExtraArgsError     struct{ Extra []string }
-	RepeatedFlagError  struct{ Flag string }
-	ValueRequiredError struct{ Flag string }
-	HelpError          struct{}
-	InvalidValueError  struct {
+	// UnknownFlagError occurs when a flag that is not defined is provided
+	UnknownFlagError struct{ Flag string }
+	// MissingArgsError occurs when not enough arguments are provided
+	MissingArgsError struct{ Missing string }
+	// ExtraArgsError occurs when too many arguments are provided
+	ExtraArgsError struct{ Extra []string }
+	// RepeatedFlagError occurs when a flag is provided more than once
+	RepeatedFlagError struct{ Flag string }
+	// HelpError occurs when the --help or -h flag is provided
+	HelpError struct{}
+	// InvalidValueError occurs when a flag is provided with an invalid value.
+	// For enums, [InvalidOptionError] is reported instead.
+	InvalidValueError struct {
 		Type        FlagType
 		Flag, Input string
 	}
+	// MissingValueError occurs when a flag is provided without a value
 	MissingValueError struct {
 		Flag string
 		Type FlagType
 	}
+	// InvalidOptionError occurs when a value that is not part of the expected
+	// options is provided for a [TypeEnum] flag.
 	InvalidOptionError struct {
-		Flag       string
-		ExpOptions []string
+		Flag, Input string
+		ExpOptions  []string
 	}
 )
 
@@ -36,10 +45,6 @@ func (err *MissingArgsError) Error() string {
 
 func (err *ExtraArgsError) Error() string {
 	return "too many arguments: " + strings.Join(err.Extra, ", ")
-}
-
-func (err *ValueRequiredError) Error() string {
-	return "flag " + err.Flag + " must have a value"
 }
 
 func (err *InvalidValueError) Error() string {
