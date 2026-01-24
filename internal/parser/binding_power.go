@@ -23,7 +23,7 @@ const (
 	RangeBindingPower          // ..., ..<
 	AdditiveBindingPower       // +, -
 	MultiplicativeBindingPower // *, /, %
-	UnaryBindingPower          // await, go, left ..., !, ++, --
+	UnaryBindingPower          // await, go, !
 	ExponentiationBindingPower // ^ (higher than unary: -2 ^ 3 = -(2 ^ 3))
 	CallBindingPower           // Call: (
 	MemberBindingPower         // Index/Slice: . [
