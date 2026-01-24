@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -86,7 +87,7 @@ func (c *Command) FlagString(indent int) string {
 		aliases[actual] = append(aliases[actual], alias)
 	}
 	// Print each line
-	for _, name := range sortFlags(defs) {
+	for _, name := range slices.Sorted(maps.Keys(defs)) {
 		flag := c.Flags.FlagDefs[name]
 		al := aliases[name]
 		sortAliases(al) // Sort aliases by length
@@ -182,15 +183,4 @@ func sortAliases(aliases []string) {
 		}
 		return 1
 	})
-}
-
-func sortFlags(flags map[string]argparse.FlagDef) []string {
-	keys := make([]string, len(flags))
-	i := 0
-	for k := range flags {
-		keys[i] = k
-		i++
-	}
-	slices.Sort(keys)
-	return keys
 }
