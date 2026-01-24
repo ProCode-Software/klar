@@ -126,9 +126,9 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 		pa.Options.File = path
 		prog := pa.Parse()
 		return f.ShortPath, &ParseResult{
-			Tokens: f.Tokens,
+			Tokens:  f.Tokens,
 			Program: prog,
-			Errors: pa.Errors,
+			Errors:  pa.Errors,
 		}, nil
 	}
 }

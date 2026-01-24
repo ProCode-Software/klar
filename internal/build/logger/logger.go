@@ -160,12 +160,12 @@ func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 var typeColors = map[slog.Kind]string{
-	slog.KindString: ansi.CodeGreen,
-	slog.KindInt64: ansi.CodeYellow,
-	slog.KindUint64: ansi.CodeYellow,
-	slog.KindBool: ansi.CodeYellow,
+	slog.KindString:  ansi.CodeGreen,
+	slog.KindInt64:   ansi.CodeYellow,
+	slog.KindUint64:  ansi.CodeYellow,
+	slog.KindBool:    ansi.CodeYellow,
 	slog.KindFloat64: ansi.CodeYellow,
-	slog.KindTime: ansi.CodeCyan,
+	slog.KindTime:    ansi.CodeCyan,
 }
 
 func (h *LogHandler) writeAttr(b *bytes.Buffer, a slog.Attr, i int) {

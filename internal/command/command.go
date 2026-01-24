@@ -63,7 +63,7 @@ func Run(cmd *Command) {
 	if cmd.Flags == nil {
 		cmd.Flags = argparse.NewParser()
 	}
-	cmd.Flags.StartOffset = 1 // Command name
+	cmd.Flags.StartOffset = 1         // Command name
 	cmd.Flags.InputArgs = os.Args[1:] // klar
 	if err := cmd.Flags.Parse(); err != nil {
 		cmd.handleFlagError(err)
@@ -71,5 +71,3 @@ func Run(cmd *Command) {
 	}
 	cmd.Run(&Runner{Parser: cmd.Flags})
 }
-
-

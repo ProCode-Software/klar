@@ -1,9 +1,9 @@
 package build
 
 import (
-	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/target"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
 var (

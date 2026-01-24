@@ -25,10 +25,10 @@ case "$1" in
     ;;
 "-time")
     shift
-    time go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" $@
+    time go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" "$@"
     ;;
 *)
-    go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" $@
+    go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" "$@"
     ;;
 esac
 exit $?
