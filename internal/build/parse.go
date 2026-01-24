@@ -80,14 +80,17 @@ func (c *Compiler) parseFile(pc *processContext,
 		case pc.fatalErrCh <- err:
 		case <-pc.ctx.Done():
 		}
+		return
 	}
 
 	// Load the tokens for diagnostics first
 	mu.Lock()
 	c.errorPrinter.LoadTokens(filePath, shortPath, res.Tokens)
 	// Store result to avoid reparsing the same file
-	c.flatFiles[filePath] = res.Program
-	mod.Programs[filepath.Base(filePath)] = res.Program
+	if len(res.Errors) == 0 {
+		c.flatFiles[filePath] = res.Program
+		mod.Programs[filepath.Base(filePath)] = res.Program
+	}
 	mu.Unlock()
 
 	// Send syntax errors

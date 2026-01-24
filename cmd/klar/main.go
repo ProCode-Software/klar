@@ -25,7 +25,7 @@ func main() {
 	args := os.Args
 	if len(args) < 2 {
 		tryPipe()
-		ShowHelp(false)
+		ShowHelp(os.Stderr, false)
 		cli.Exit(2)
 	}
 	cmdName := args[1]
@@ -43,7 +43,7 @@ func main() {
 		}
 		run.RunInput(strings.NewReader(args[2]), "string")
 	case "--help", "-h":
-		ShowHelp(true)
+		ShowHelp(os.Stdout, true)
 	case "-v", "--version":
 		fmt.Printf("Klar %s\n", cli.KlarVersion)
 	case "test", "glas", "upgrade", "new", "format", "check",
@@ -53,7 +53,7 @@ func main() {
 		))
 	case "help":
 		if len(args) < 3 || args[2] == "" {
-			ShowHelp(true)
+			ShowHelp(os.Stdout, true)
 			cli.Exit(0)
 		}
 		// klar help cmd -> klar cmd --help

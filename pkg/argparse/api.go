@@ -150,3 +150,5 @@ func (p *Parser) SetOptions(flag string, opts map[string]any) {
 	}
 	p.enumOpts[flag] = opts
 }
+
+// TODO: SetDefaults

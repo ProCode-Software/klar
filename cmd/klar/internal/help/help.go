@@ -4,8 +4,8 @@ package help
 import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
 // Existing CLI commands already handled in main.go
@@ -23,7 +23,7 @@ func Run(c *command.Runner) {
 			ansi.Cyan(name), ansi.Magenta("site.url"),
 		)
 	default:
-		cli.Error("Can't find a CLI command or topic named ", ansi.Cyan(name))
+		cli.Error("Can't find a CLI command or topic named " + ansi.Cyan(name))
 		cli.HintIndent(
 			"To search online documentation, use the " + ansi.Cyan("-d") + " flag.",
 		)

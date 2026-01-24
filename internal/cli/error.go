@@ -12,8 +12,12 @@ var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
 
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
-	str := ansi.BoldBrightRed(errorType) + ansi.BoldDim(": ") + ansi.Bold(msg)
-	fmt.Fprintln(os.Stderr, str, detail)
+	str := ansi.BoldBrightRed(errorType) + ansi.BoldDim(":")
+	v := []any{str}
+	if msg != "" {
+		v = []any{str, ansi.Bold(msg)}
+	}
+	fmt.Fprintln(os.Stderr, append(v, detail...)...)
 }
 
 // Error prints an error to [os.Stderr].
@@ -56,7 +60,6 @@ func Eprintf(format string, a ...any) {
 func ColorErrorfln(format string, a ...any) {
 	ansi.Fprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
 }
-
 
 func ErrNoManifest(dir string) {
 	if dir == "" {

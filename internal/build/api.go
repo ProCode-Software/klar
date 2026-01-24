@@ -90,9 +90,13 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 	shortPath string, res *ParseResult, err error,
 ) {
 	f, ok := p.Files[path]
-	switch {
-	case !ok:
+	if !ok {
 		return path, nil, os.ErrNotExist
+	}
+	if f.ShortPath == "" {
+		f.ShortPath = path
+	}
+	switch {
 	case f.Program != nil:
 		// Program already provided
 		if f.Tokens == nil {
@@ -119,6 +123,7 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 	default:
 		// Need to parse
 		pa := parser.New(f.Tokens, nil)
+		pa.Options.File = path
 		prog := pa.Parse()
 		return f.ShortPath, &ParseResult{
 			Tokens: f.Tokens,

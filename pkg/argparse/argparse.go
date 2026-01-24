@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-// TODO: Parser.SetOptions(flag string, optMap map[passed string]any)
-// and Parser.SetDefaults
 type Parser struct {
 	AllowUnknownFlags bool     // Whether to allow unknown flags
 	StartOffset       int      // Number of arguments at the beginning to shift
@@ -196,7 +194,7 @@ loop:
 func (p *Parser) parseShortFlag(i int, item string) (int, error) {
 	val, skip := true, false
 	if len(item) == 2 && i+1 < len(p.InputArgs) {
-		name := item[1:]
+		name := p.resolve(item[1:])
 		def, ok := p.FlagDefs[name]
 		if !ok {
 			if !p.AllowUnknownFlags {
@@ -208,8 +206,8 @@ func (p *Parser) parseShortFlag(i int, item string) (int, error) {
 		p.Flags[name] = flag
 		return i, err
 	}
-	if nextI := i + 1; nextI < len(p.InputArgs) {
-		if next := p.InputArgs[nextI]; next == "true" || next == "false" {
+	if i+1 < len(p.InputArgs) {
+		if next := p.InputArgs[i+1]; next == "true" || next == "false" {
 			val = next == "true"
 			skip = true
 		}
@@ -264,7 +262,8 @@ func (p *Parser) parseValue(
 		if next == "true" || next == "false" {
 			return newDeclaredFlag(TypeBool, i, next == "true"), i + 1, nil
 		}
-		return nil, i, &InvalidValueError{TypeBool, name, next}
+		return newDeclaredFlag(TypeBool, i, true), i, nil
+		// return nil, i, &InvalidValueError{TypeBool, name, next}
 	case TypeString:
 		return newDeclaredFlag(TypeString, i, next), i + 1, nil
 	case TypeInt:
@@ -341,6 +340,9 @@ func newDeclaredFlag(kind FlagType, i int, v any) *Flag {
 }
 
 func (p *Parser) resolve(name string) string {
+	if _, ok := p.FlagDefs[name]; ok {
+		return name
+	}
 	if target, ok := p.FlagAliases[name]; ok {
 		return target
 	}
