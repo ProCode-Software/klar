@@ -4,7 +4,7 @@ After tokenizing files, the list of tokens in each file are parsed into an abstr
 
 Before parsing, comments are removed from the token list and statement terminators ("semicolons") are [inferred](#semicolon-inference).
 
-The Klar parser uses a [Pratt parser](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html) algorithm, allowing for operator precedence and for literals to be distinguished from operators. See the [Pratt parsing](#pratt-parsing) section for details.
+The Klar parser uses a [Pratt parser](https://martin.janiczek.cz/2023/07/03/demystifying-pratt-parsers.html) algorithm, allowing for operator precedence and for literals to be distinguished from operators. See the [Pratt parsing](#pratt-parsing) section for details.
 
 ## Semicolon Inference
 
