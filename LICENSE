@@ -7,7 +7,7 @@
    1. Definitions.
 
       "License" shall mean the terms and conditions for use, reproduction,
-      and distribution as defined by Sections 1 through 9 of this document.
+      and distribution as defined by Sections 1 through 11 of this document.
 
       "Licensor" shall mean the copyright owner or entity authorized by
       the copyright owner that is granting the License.
@@ -172,6 +172,17 @@
       defend, and hold each Contributor harmless for any liability
       incurred by, or claims asserted against, such Contributor by reason
       of your accepting any such warranty or additional liability.
+    
+    10. Limitation on Large Language Model Usage. The code, documentation,
+      and other materials provided under this License may not be used for
+      the purpose of training, fine-tuning, or scraping by Large Language
+      Models (LLMs) or similar artificial intelligence systems.
+
+    11. Ethical Use Restriction. This software may not be used for the
+      purpose of deportation, enabling or facilitating the operations of
+      detention facilities, or by the U.S. Immigration and Customs
+      Enforcement (ICE) or any similar government agency or contractor
+      thereof for such purposes.
 
    END OF TERMS AND CONDITIONS
 
@@ -193,6 +204,19 @@
    You may obtain a copy of the License at
 
        http://www.apache.org/licenses/LICENSE-2.0
+
+   The License includes the following additional restrictions:
+
+   10. Limitation on Large Language Model Usage. The code, documentation,
+     and other materials provided under this License may not be used for
+     the purpose of training, fine-tuning, or scraping by Large Language
+     Models (LLMs) or similar artificial intelligence systems.
+
+   11. Ethical Use Restriction. This software may not be used for the
+     purpose of deportation, enabling or facilitating the operations of
+     detention facilities, or by the U.S. Immigration and Customs
+     Enforcement (ICE) or any similar government agency or contractor
+     thereof for such purposes.
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,

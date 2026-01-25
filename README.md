@@ -43,4 +43,4 @@ for num in numbers {
 ```
 
 ## License
-Klar is dual-licensed under the [MIT License](https://github.com/ProCode-Software/klar/blob/main/LICENSE) and the [Apache License 2.0](https://github.com/ProCode-Software/klar/blob/main/LICENSE-APACHE). You may choose both, or either one.
+Klar is licensed under the [Apache License 2.0](https://github.com/ProCode-Software/klar/blob/main/LICENSE), [with additional clauses](https://github.com/ProCode-Software/klar/blob/main/LICENSE#L176).
