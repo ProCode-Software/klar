@@ -21,11 +21,9 @@ func (p *Parser) ParseBinaryExpression(left ast.Expression, bp BindingPower) *as
 	}
 }
 
+// Currently, '-' is the only unary operator.
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	op := p.Advance()
-	if p.CurrKind() == lexer.EndOfStatement { // For ! operato
-		p.Advance()
-	}
 	right := p.ParseExpression(UnaryBindingPower)
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
@@ -188,7 +186,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			continue
 		}
 		if curr != lexer.RightCurlyBrace {
-			p.Expect(lexer.EndOfStatement, lexer.Comma)
+			p.Expect(lexer.Newline, lexer.Comma)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
@@ -428,7 +426,7 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	for p.HasTokens() {
 		if curr := p.CurrKind(); curr == lexer.Slash && !isEscape {
 			break
-		} else if curr == lexer.Backslash {
+		} else if p.Curr().Source == `\` {
 			// BUG: Regexes can't contain #!, // or /* because comments
 			// are pre-parsed (errors are created if unterminated)
 			isEscape = !isEscape
@@ -461,14 +459,14 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	// Manually add EOS because regex ends in / which is operator
 	curr := p.Curr()
 	switch {
-	case curr.Position.Line > endSlashPos.Line && !CanGoOnNewline(curr.Kind),
+	case curr.Position.Line > endSlashPos.Line && !ContinuesStatement(curr.Kind),
 		curr.Kind == lexer.EOF,
 		curr.Kind == lexer.RightCurlyBrace:
 		p.Tokens = slices.Insert(
-			p.Tokens, p.Index, lexer.Token{Kind: lexer.EndOfStatement, Source: "\n"},
+			p.Tokens, p.Index, lexer.Token{Kind: lexer.Newline, Source: "\n"},
 		)
 	case curr.Kind == lexer.Identifier &&
-		curr.Position == ranges.Add(endSlashPos, 0, 1):
+		ranges.HasOffset(curr.Position, endSlashPos, 0, 1):
 		r.Flags = []rune(p.Advance().Source)
 	}
 	return r
@@ -637,6 +635,6 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 }
 
 func (p *Parser) ParseAssertExpression(left ast.Expression) *ast.AssertExpression {
-	p.Advance() // !
+	p.Advance() // !!
 	return &ast.AssertExpression{Expression: left}
 }

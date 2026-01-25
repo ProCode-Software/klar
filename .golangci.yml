@@ -3,6 +3,10 @@ formatters:
   enable:
     - gofumpt
 
+run:
+  build-tags:
+    - goexperiment.jsonv2
+
 linters:
   enable: [
     misspell, asasalint, bidichk, copyloopvar, exptostd,

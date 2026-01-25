@@ -8,38 +8,31 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// Valid unless explicitly parsed
-var validIdents = map[lexer.TokenType]struct{}{
-	lexer.Identifier: {}, lexer.Import: {}, lexer.Can: {},
-}
-
 // isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
 // [lexer.Identifier] and types in [ast.Modifiers].
-func isValidIdentifier(tok lexer.TokenType) bool {
-	_, valid := validIdents[tok]
-	return valid
+func isValidIdentifier(t lexer.TokenType) bool {
+	return t == lexer.Identifier || t == lexer.Import
 }
 
-func isValidIdentOrDiscard(tok lexer.TokenType) bool {
-	_, valid := validIdents[tok]
-	return valid || tok == lexer.Underscore
+func isValidIdentOrDiscard(t lexer.TokenType) bool {
+	return isValidIdentifier(t) || t == lexer.Underscore
 }
 
 // validateIdentifier reports whether tok is a valid identifier. If it is false,
 // validateIdentifier reports an error to the parser.
 func (p *Parser) validateIdentifier(tok lexer.Token) bool {
-	if _, ok := validIdents[tok.Kind]; !ok {
-		switch {
-		case tok.Kind == lexer.Underscore:
-			p.Error(errors.Token(errors.ErrUnderscoreValue, tok))
-		case slices.Contains(ast.ReservedIdent, tok.Kind):
-			p.Error(errors.Token(errors.ErrReservedKeyword, tok))
-		default:
-			p.Error(errors.ExpectedToken(lexer.Identifier, tok))
-		}
-		return false
+	if isValidIdentifier(tok.Kind) {
+		return true
 	}
-	return true
+	switch {
+	case tok.Kind == lexer.Underscore:
+		p.Error(errors.Token(errors.ErrUnderscoreValue, tok))
+	case slices.Contains(ast.ReservedIdent, tok.Kind):
+		p.Error(errors.Token(errors.ErrReservedKeyword, tok))
+	default:
+		p.Error(errors.ExpectedToken(lexer.Identifier, tok))
+	}
+	return false
 }
 
 func newIdentifier(t lexer.Token) ast.Identifier {

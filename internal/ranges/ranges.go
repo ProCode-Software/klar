@@ -89,6 +89,14 @@ func AddPosition(p Position, n Position) Position {
 	return Add(p, n.Line, n.Col)
 }
 
+// HasOffset reports whether pos is equal to from plus line and col.
+func HasOffset(pos Position, from Position, line, col uint32) bool {
+	return pos.Line == from.Line+line && pos.Col == from.Col+col
+}
+
+// Ranges
+// =============
+
 // Between returns a [Range] that starts at r1.Start and ends at r2.End.
 func Between(r1, r2 Range) Range {
 	return Range{Start: r1.Start, End: r2.End}

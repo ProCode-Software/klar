@@ -214,7 +214,12 @@ type PrimitiveType struct {
 // A TypeAlias is a non-primitive type name
 type TypeAlias struct {
 	BaseNode
-	Namespace, Identifier string
+	Identifier string
+}
+
+type QualifiedTypeAlias struct {
+	BaseNode
+	Namespace, Identifier Identifier
 }
 
 // An OptionalType is a type marked with the suffix '?'. In Klar, this indicates

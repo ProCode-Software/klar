@@ -66,15 +66,14 @@ func (p Position) LitterDump(w io.Writer) {
 }
 
 var TokenTypeString = map[TokenType]string{
-	0:              "<unknown>",
-	String:         "string",
-	Numeric:        "number",
-	Newline:        `\n`,
-	EndOfStatement: "newline",
-	Illegal:        "illegal",
-	Identifier:     "identifier",
-	Regex:          "regular expression",
-	EOF:            "EOF",
+	0:          "<unknown>",
+	String:     "string",
+	Numeric:    "number",
+	Newline:    "newline",
+	Illegal:    "illegal",
+	Identifier: "identifier",
+	Regex:      "regular expression",
+	EOF:        "EOF",
 }
 
 func init() {

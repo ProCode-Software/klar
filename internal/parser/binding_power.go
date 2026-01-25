@@ -11,9 +11,9 @@ type BindingPower int
 // 	https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
 
 const (
-	DefaultBindingPower BindingPower = iota
+	DefaultBindingPower BindingPower = iota // Zero
 
-	ExpressionBindingPower     // Minimum for expressions
+	ExpressionBindingPower     // Minimum
 	AssignBindingPower         // For error tolerance
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
@@ -27,7 +27,7 @@ const (
 	ExponentiationBindingPower // ^ (higher than unary: -2 ^ 3 = -(2 ^ 3))
 	CallBindingPower           // Call: (
 	MemberBindingPower         // Index/Slice: . [
-	PrimaryBindingPower        // Primary expressions, such as literals
+	PrimaryBindingPower        // Primary expressions (literals)
 )
 
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
@@ -51,6 +51,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.EqualEqual:     RelationalBindingPower,
 	lexer.NotEqual:       RelationalBindingPower,
 	lexer.In:             RelationalBindingPower,
+	lexer.NotIn:          RelationalBindingPower,
 
 	lexer.Ellipsis:       RangeBindingPower,
 	lexer.DotDotLessThan: RangeBindingPower,
@@ -74,8 +75,6 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Dot:         MemberBindingPower,
 	lexer.LeftBracket: MemberBindingPower,
 
-	// NUDs aren't important for precedence, but when used as a LED,
-	// you can get a better unexpected token error.
 	lexer.String:     PrimaryBindingPower,
 	lexer.Numeric:    PrimaryBindingPower,
 	lexer.Boolean:    PrimaryBindingPower,
@@ -91,9 +90,9 @@ const (
 	VariadicTypeBindingPower  // ...
 	OptionalTypeBindingPower  // ?
 	UnionTypeBindingPower     // |
-	NamespaceTypeBindingPower // .
 	GenericTypeBindingPower   // <
-	PrimaryTypeBindingPower   // Types
+	NamespaceTypeBindingPower // .
+	PrimaryTypeBindingPower   // Names
 )
 
 var TypeBindingPowerMap = map[lexer.TokenType]BindingPower{

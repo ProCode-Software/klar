@@ -96,7 +96,7 @@ func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.No
 	// Copy errors back
 	pBase.Errors = append(pBase.Errors, p.Errors...)
 	// Check that there is nothing else
-	if c := p.CurrKind(); c != lexer.EndOfStatement && c != lexer.EOF {
+	if c := p.CurrKind(); c != lexer.Newline && c != lexer.EOF {
 		pBase.Error(errors.Token(errors.ErrExpectedInterpolationEnd, p.Curr()))
 	}
 	return res

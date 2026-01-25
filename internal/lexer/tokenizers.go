@@ -4,7 +4,6 @@ import (
 	"io"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 // Returns true if the error is EOF, otherwise panics
@@ -19,7 +18,7 @@ func handleReadError(err error) bool {
 }
 
 func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
-	n, ok := opPrefixes[r]
+	n, ok := opPrefixes[r] // n = length of longest operator - 1
 	singleStr := string(r)
 	if !ok {
 		return Illegal, singleStr
@@ -31,28 +30,12 @@ func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
 		}
 		total := singleStr + string(next)
 		if opTok, ok := OperatorMap[total]; ok {
-			// Check if next byte is an indentifier if operator ends in ident
-			if IsIdent(rune(total[n])) && l.checkIfIdentNext(n) {
-				continue
-			}
-			l.Reader.Discard(n) // l.Reader.Read(make([]byte, n))
-			l.Pos.Col += uint32(n)
+			l.Reader.Discard(n)    // l.Reader.Read(make([]byte, n))
+			l.Pos.Col += uint32(n) // All operators are ASCII
 			return opTok, total
 		}
 	}
 	return OperatorMap[singleStr], singleStr
-}
-
-// checkIfIdentNext returns true if the byte after peeking n bytes
-// is non-ASCII, an identifier, or digit.
-func (l *Lexer) checkIfIdentNext(n int) bool {
-	if next, eof := l.PeekN(n + 1); !eof {
-		first := rune(next[n])
-		if first > utf8.RuneSelf || IsIdent(first) || IsDigit(first) {
-			return true
-		}
-	}
-	return false
 }
 
 func (l *Lexer) ReadShebang(pos Position) *Token {

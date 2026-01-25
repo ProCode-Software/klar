@@ -17,7 +17,7 @@ func (p *Parser) Parse() *ast.Program {
 		comments = p.InsertEOS()
 	)
 	for p.HasTokens() {
-		if p.CurrKind() == lexer.EndOfStatement {
+		if p.CurrKind() == lexer.Newline {
 			if p.Advance(); !p.HasTokens() {
 				break
 			}
@@ -128,11 +128,11 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	res, handled := p.handleTopLevelStatement(kind)
 	if handled {
 		if pb := p.PeekBehind(); pb.Kind != lexer.Asterisk {
-			p.Expect(lexer.EndOfStatement)
+			p.Expect(lexer.Newline)
 		} else if c := p.Curr(); c.Position.Line == pb.Position.Line &&
-			c.Kind != lexer.EndOfStatement && c.Kind != lexer.EOF {
+			c.Kind != lexer.Newline && c.Kind != lexer.EOF {
 			// No newline after import
-			p.Error(errors.ExpectedToken(lexer.EndOfStatement, c))
+			p.Error(errors.ExpectedToken(lexer.Newline, c))
 		}
 		return res
 	}
@@ -163,7 +163,7 @@ func (p *Parser) ParseStatement(flags ...int) ast.Statement {
 	kind := p.CurrKind()
 	if res, handled := p.handleStatement(kind); handled {
 		if !noEOS {
-			p.Expect(lexer.EndOfStatement)
+			p.Expect(lexer.Newline)
 		}
 		return res
 	}
@@ -195,7 +195,7 @@ checkEOS:
 		r = res
 	}
 	if !noEOS {
-		p.Expect(lexer.EndOfStatement)
+		p.Expect(lexer.Newline)
 	}
 	switch r := r.(type) {
 	// Left-denoted statement
@@ -216,7 +216,7 @@ func (p *Parser) skipUntilBoundary() {
 	brackCount := 1
 	for p.HasTokens() {
 		switch p.CurrKind() {
-		case lexer.Comma, lexer.EndOfStatement:
+		case lexer.Comma, lexer.Newline:
 			if brackCount <= 1 {
 				return
 			}
@@ -251,13 +251,13 @@ func parseSeries[T ast.Node](
 	allSeps := make([]lexer.TokenType, 1, 2)
 	allSeps[0] = separator
 	if allowEOS {
-		allSeps = append(allSeps, lexer.EndOfStatement)
+		allSeps = append(allSeps, lexer.Newline)
 	}
 	if until == 0 && separator == 0 {
 		panic("until and separator cannot both be zero")
 	}
 	for p.HasTokens() && p.CurrKind() != until {
-		if !allowEOS && p.CurrKind() == lexer.EndOfStatement {
+		if !allowEOS && p.CurrKind() == lexer.Newline {
 			break
 		}
 		start := p.Curr().Position
@@ -267,7 +267,7 @@ func parseSeries[T ast.Node](
 		}
 		curr := p.CurrKind()
 		if curr == until || (until == 0 && curr != separator) ||
-			(!allowEOS && curr == lexer.EndOfStatement) {
+			(!allowEOS && curr == lexer.Newline) {
 			break
 		}
 		if separator != 0 {

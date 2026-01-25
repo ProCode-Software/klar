@@ -84,8 +84,6 @@ func (l *Lexer) Tokenize() *Token {
 		case ' ':
 			continue
 		// Single-character tokens and operators
-		case '\\':
-			return NewToken(pos, Backslash, `\`)
 		case '@':
 			next, isEOF := l.BackupPeek()
 			if !isEOF {

@@ -29,7 +29,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	// Prefix/Unary
 	case lexer.Not:
 		fallthrough
-	case lexer.Minus, lexer.Plus:
+	case lexer.Minus:
 		res = p.ParseUnaryExpression()
 	// Group or tuple
 	case lexer.LeftParenthesis:
@@ -97,7 +97,6 @@ func (p *Parser) handleLED(
 		lexer.And, lexer.Or:
 		res = p.ParseBinaryExpression(left, bp)
 	// Relational
-
 	case lexer.GreaterThan, lexer.LessThan, lexer.GreaterEqualTo, lexer.LessEqualTo,
 		lexer.EqualEqual, lexer.NotEqual:
 		res = p.ParseRelationalExpression(left, bp)
@@ -117,7 +116,7 @@ func (p *Parser) handleLED(
 	case lexer.StrokeDot:
 		res = p.ParseObjectPipeline(left, bp)
 	// Assertion
-	case lexer.Not:
+	case lexer.NotNot:
 		res = p.ParseAssertExpression(left)
 	// Version
 	case lexer.Numeric:

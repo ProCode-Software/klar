@@ -8,9 +8,8 @@ type TokenType int
 const (
 	_ TokenType = iota
 	EOF
-	EndOfStatement // Replacement for semicolons
-	Illegal        // Unknown character
-	Newline        // Source only -- replaced with EndOfStatement
+	Newline // Newlines during lexing; "semicolons" during parsing
+	Illegal // Unknown character
 
 	// Punctuation
 	Comma              // ,
@@ -61,8 +60,8 @@ const (
 	AndAnd         // &&
 	OrOr           // ||
 	Not            // !
+	NotNot         // !!
 	NotIn          // !in
-	NotCan         // !can
 
 	// Types
 	Stroke   // |
@@ -74,12 +73,11 @@ const (
 	Arrow          // ->
 	Pipeline       // |>
 	StrokeDot      // |.
-	Backslash      // \
 
 	// Keywords
 	And
+	As
 	Await
-	Can
 	For
 	Func
 	Go
@@ -125,7 +123,6 @@ var OperatorMap = map[string]TokenType{
 	"?":   Question,
 	"|>":  Pipeline,
 	"|.":  StrokeDot,
-	`\`:   Backslash,
 
 	// Punctuation
 	":":  Colon,
@@ -147,20 +144,21 @@ var OperatorMap = map[string]TokenType{
 
 var KeywordMap = map[string]TokenType{
 	"and":    And,
+	"as":     As,
 	"await":  Await,
-	"stop":   Stop,
-	"can":    Can,
 	"for":    For,
 	"func":   Func,
 	"go":     Go,
 	"import": Import,
 	"if":     If,
 	"in":     In,
+	"!in":    NotIn,
 	"next":   Next,
 	"opaque": Opaque,
 	"or":     Or,
 	"public": Public,
 	"return": Return,
+	"stop":   Stop,
 	"try":    Try,
 	"type":   Type,
 	"when":   When,

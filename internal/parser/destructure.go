@@ -124,7 +124,7 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 			entry.Default = p.ParseExpression(ExpressionBindingPower)
 		}
 		entry.SetPos(ident.Position, end)
-		p.Expect(lexer.Comma, lexer.EndOfStatement)
+		p.Expect(lexer.Comma, lexer.Newline)
 		return entry
 	}, lexer.RightCurlyBrace, 0, true)
 	return &ast.ObjectDestructure{Values: items}
@@ -172,7 +172,7 @@ func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
 // ParseAssignLHS parses the left-hand side of an assignment. Destructures and
 // index expessions are allowed.
 func (p *Parser) ParseAssignLHS() (vars []ast.Assignable) {
-	for p.HasTokens() && p.CurrKind() != lexer.EndOfStatement {
+	for p.HasTokens() && p.CurrKind() != lexer.Newline {
 		dest := p.ParseDestructure()
 		curr := p.CurrKind()
 		if dest2, ok := dest.(*ast.Symbol); ok &&

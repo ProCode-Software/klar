@@ -70,9 +70,10 @@ func TokenizeBytes(b []byte, flags LexerFlags) ([]lexer.Token, error) {
 	return Tokenize(file, flags, int64(len(b)/3))
 }
 
-// AddSemicolons returns tokens with all [lexer.Newline] tokens either replaced with
-// [lexer.EndOfStatement] or removed. All comments are also removed from tokens.
-func AddSemicolons(tokens []lexer.Token) []lexer.Token {
+// InsertEOS returns tokens with [lexer.Newline] tokens where a newline terminates
+// a statement. It removes comments and raw newline tokens that do not terminate
+// a statement.
+func InsertEOS(tokens []lexer.Token) []lexer.Token {
 	p := parser.New(tokens, nil)
 	p.InsertEOS()
 	return p.Tokens

@@ -42,3 +42,10 @@ option to convert klon to json
 x: Int := 1
 shadow x: String := "foo"
 ```
+
+# RFCs
+- String formats
+- Regex literal formats
+- Resource-using
+- Should it be called `nil` or `none`?
+- Should methods be allowed on interfaces?

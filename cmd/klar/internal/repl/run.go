@@ -178,7 +178,7 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 }
 
 func isIncompleteToken(tok lexer.TokenType) bool {
-	if !astParser.CanAddEOSAfter(tok) {
+	if !astParser.CanEndStatement(tok) {
 		switch tok {
 		case lexer.Slash, lexer.Newline, lexer.Asterisk:
 			return false

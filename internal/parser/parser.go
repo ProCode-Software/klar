@@ -121,7 +121,7 @@ func (p *Parser) WhileNot(kind lexer.TokenType) bool {
 // not at EOF or EOS.
 func (p *Parser) WhileNotEndOr(kind lexer.TokenType) bool {
 	return p.HasTokens() &&
-		p.CurrKind() != lexer.EndOfStatement &&
+		p.CurrKind() != lexer.Newline &&
 		p.CurrKind() != kind
 }
 
@@ -133,7 +133,7 @@ func (p *Parser) IsCurrently(kinds ...lexer.TokenType) bool {
 // IsNotCurrentlyEndOr returns true if the current token is not EOF, EOS. or kind.
 func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 	curr := p.CurrKind()
-	return p.HasTokens() && curr != lexer.EndOfStatement && curr != kind
+	return p.HasTokens() && curr != lexer.Newline && curr != kind
 }
 
 // ExpectErrorCode adds a [errors.ParseError] with code to the parser if it the
@@ -201,7 +201,7 @@ func (p *Parser) Error(err *errors.ParseError) {
 func (p *Parser) AdvanceNonBoundary() lexer.Token {
 	c := p.Curr()
 	switch c.Kind {
-	case lexer.EndOfStatement, lexer.EOF, lexer.RightCurlyBrace,
+	case lexer.Newline, lexer.EOF, lexer.RightCurlyBrace,
 		lexer.RightParenthesis, lexer.RightBracket, lexer.Comma:
 	default:
 		p.Advance()

@@ -129,7 +129,7 @@ func (p *Parser) ParseCommaStatement(first ast.Expression, bp BindingPower) ast.
 func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	i := &ast.ImportStatement{}
 	p.Advance() // import
-	if p.CurrKind() == lexer.EndOfStatement {
+	if p.CurrKind() == lexer.Newline {
 		p.Advance()
 	}
 	if c := p.CurrKind(); c == lexer.Dot || c == lexer.LeftCurlyBrace {
@@ -190,7 +190,7 @@ unqualifiedImport:
 
 func (p *Parser) ParseReturnStatement() *ast.ReturnStatement {
 	p.Expect(lexer.Return)
-	if c := p.CurrKind(); c == lexer.EndOfStatement || c == lexer.Comma {
+	if c := p.CurrKind(); c == lexer.Newline || c == lexer.Comma {
 		return &ast.ReturnStatement{}
 	}
 	return &ast.ReturnStatement{Value: p.ParseExpression(DefaultBindingPower)}
@@ -244,7 +244,7 @@ func (p *Parser) ParseControlStatement() ast.Statement {
 	stmtKind := p.Advance().Kind // next, stop
 	var loopKind lexer.TokenType
 	switch p.CurrKind() {
-	case lexer.EndOfStatement, lexer.Comma:
+	case lexer.Newline, lexer.Comma:
 	case lexer.When, lexer.For, lexer.While:
 		loopKind = p.Advance().Kind
 	default:

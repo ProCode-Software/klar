@@ -19,12 +19,16 @@ type Manifest struct {
 	// be built with. Users with a lower version than this can't build
 	// (and thus install) this package. Features introduced in newer Klar
 	// versions can't be used in this package's code.
-	// TODO: use version.Specifier and support ranges
+	// TODO: support ranges
 	Klar version.Specifier
 	// Supported targets this package can be built for. All code in this
 	// module must be implemented for all of these targets, but '@target'
 	// directives can be used to exclude individual objects.
 	Target []target.Target
+	// Additional links to display in this package's documentation.
+	Links []*Link
+	// Paths to exclude when this package is installed. Glob patterns are supported.
+	Exclude []string
 	// Options when targeting JavaScript ('js', 'node', 'deno', 'bun')
 	JS *JavaScriptOptions
 	// Permissions passed to the Deno runtime when targeting Deno or
@@ -42,10 +46,6 @@ type Manifest struct {
 	// Packages that are only needed as build tools and aren't included
 	// when this package is installed normally.
 	DevelopmentDependencies DependencyList // TODO: devDependencies instead?
-	// Additional links to display in this package's documentation.
-	Links []*Link
-	// Paths to exclude when this package is installed. Glob patterns are supported.
-	Exclude []string
 }
 
 type Link struct{ Label, URL string }

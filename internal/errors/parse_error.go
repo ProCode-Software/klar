@@ -231,7 +231,7 @@ func (e *ParseError) error() string {
 	case ErrUnterminatedRegex:
 		return fmt.Sprintf("The regular expression starting at %s was left open", e.Range.Start)
 	case ErrExpectedTypeAssignment:
-		if kind == lexer.EndOfStatement {
+		if kind == lexer.Newline {
 			return "A type must be assigned a value"
 		}
 		return "I expected '{' or '=' after type, but found " + NameToken(tok) + " instead"

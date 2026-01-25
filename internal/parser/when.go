@@ -9,7 +9,6 @@ import (
 func (p *Parser) parseCaseSubExpr() ast.Expression {
 	tok := p.Curr()
 	var res ast.Expression
-outer:
 	switch tok.Kind {
 	// Relational operators don't need explicit LHS
 	// 	when x {
@@ -21,21 +20,6 @@ outer:
 	case lexer.Underscore:
 		p.Advance()
 		res = &ast.Discard{}
-	case lexer.NotCan:
-		res = p.ParseWhenCan()
-	case lexer.Can:
-		switch peek := p.PeekKind(); peek {
-		default:
-			if !isValidIdentifier(peek) {
-				break
-			}
-			fallthrough
-		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.Identifier,
-			lexer.Stroke, lexer.Ellipsis:
-			res = p.ParseWhenCan()
-			break outer
-		}
-		fallthrough
 	default:
 		res = p.ParseExpression(ExpressionBindingPower)
 	}
@@ -109,7 +93,7 @@ loop:
 
 		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
 			!isImplicitWhenOp(braceLine, k) {
-			p.Expect(lexer.EndOfStatement, lexer.Comma)
+			p.Expect(lexer.Newline, lexer.Comma)
 		}
 	default:
 		// BUG: Braces/comma required before '<' starting next case
@@ -127,14 +111,14 @@ loop:
 			p.Error(errors.Node(errors.ErrRequiredBraces, res))
 			c.Body = &ast.BadExpression{Value: res}
 		}
-		p.Expect(lexer.EndOfStatement, lexer.Comma)
+		p.Expect(lexer.Newline, lexer.Comma)
 	}
 	return c
 }
 
 func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
 	switch t.Kind {
-	case lexer.Comma, lexer.EndOfStatement:
+	case lexer.Comma, lexer.Newline:
 		return false
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn,

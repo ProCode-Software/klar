@@ -28,7 +28,7 @@ func QuoteToken(tok lexer.Token) string {
 		return "comma"
 	case lexer.Colon:
 		return "colon"
-	case lexer.EndOfStatement:
+	case lexer.Newline:
 		return "newline"
 	case lexer.EOF:
 		return "end of file"
@@ -50,20 +50,20 @@ func NameToken(tok lexer.Token) string {
 }
 
 var TypeStringMap = map[lexer.TokenType]string{
-	lexer.Identifier:     "an identifier",
-	lexer.Numeric:        "a number",
-	lexer.Boolean:        "a boolean",
-	lexer.String:         "a string",
-	lexer.Regex:          "a regular expression",
-	lexer.Nil:            "'nil'",
-	lexer.And:            "'and'",
-	lexer.Or:             "'or'",
-	lexer.EndOfStatement: "a newline",
-	lexer.EOF:            "end of file",
-	lexer.Comma:          "a comma",
-	lexer.Colon:          "a colon",
-	lexer.Dot:            "a period",
-	0:                    "<unknown>",
+	lexer.Identifier: "an identifier",
+	lexer.Numeric:    "a number",
+	lexer.Boolean:    "a boolean",
+	lexer.String:     "a string",
+	lexer.Regex:      "a regular expression",
+	lexer.Nil:        "'nil'",
+	lexer.And:        "'and'",
+	lexer.Or:         "'or'",
+	lexer.Newline:    "a newline",
+	lexer.EOF:        "end of file",
+	lexer.Comma:      "a comma",
+	lexer.Colon:      "a colon",
+	lexer.Dot:        "a period",
+	0:                "<unknown>",
 }
 
 func init() {

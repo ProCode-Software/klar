@@ -6,8 +6,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// InsertEOS performs automatic semicolon insertion by removing [lexer.Newline]
-// tokens from the parser's Tokens and replacing them with [lexer.EndOfStatement] (EOS).
+// InsertEOS performs automatic semicolon insertion by removing [lexer.Nl]
+// tokens from the parser's Tokens and replacing them with [lexer.Newline] (EOS).
 //
 // Klar does not use semicolons to terminate statements, and they are invalid.
 // Newlines are required to terminate a statement, so InsertEOS will tell
@@ -70,15 +70,30 @@ outer:
 				}
 				fallthrough // If first token
 			// '/' if last statement ends in regex, or '*' for import
-			case lexer.EndOfStatement, lexer.For, lexer.Slash, lexer.Asterisk,
+			case lexer.Newline, lexer.For, lexer.Slash, lexer.Asterisk,
 				lexer.LeftCurlyBrace:
 				possibleAssignments[len(new)] = struct{}{}
 			}
+		// Merge '!' + 'in' -> NotIn '!in'
+		case lexer.Not:
+			if i+1 >= len(p.Tokens) {
+				break
+			}
+			next := p.Tokens[i+1]
+			if next.Kind == lexer.In && ranges.HasOffset(next.Position, tok.Position, 0, 1) {
+				new = append(new, lexer.Token{
+					Kind: lexer.NotIn,
+					Source: tok.Source + next.Source, // "!in"
+					Position: tok.Position,
+				})
+				i++ // Skip 'in'
+				continue
+			}
 		case lexer.EOF:
 			// Add before EOF
-			if i > 0 && prev != lexer.EndOfStatement && CanAddEOSAfter(prev) {
+			if i > 0 && prev != lexer.Newline && CanEndStatement(prev) {
 				new = append(new, lexer.Token{
-					Kind:     lexer.EndOfStatement,
+					Kind:     lexer.Newline,
 					Position: tok.Position,
 				}, tok)
 				if i+1 < len(p.Tokens) {
@@ -90,9 +105,9 @@ outer:
 		// as an expression: { x + 3 }
 		case lexer.RightCurlyBrace:
 			if i > 0 && prev != lexer.LeftCurlyBrace &&
-				prev != lexer.HashLeftCurlyBrace && CanAddEOSAfter(prev) {
+				prev != lexer.HashLeftCurlyBrace && CanEndStatement(prev) {
 				new = append(new, lexer.Token{
-					Kind:     lexer.EndOfStatement,
+					Kind:     lexer.Newline,
 					Position: tok.Position,
 				})
 			}
@@ -146,10 +161,10 @@ outer:
 				}
 				delete(possibleAssignments, startBrackI)
 			default:
-				if firstNewline > 0 && !CanGoOnNewline(next.Kind) {
+				if firstNewline > 0 && !ContinuesStatement(next.Kind) {
 					// Still add the EOS
 					newTok := p.Tokens[firstNewline]
-					newTok.Kind = lexer.EndOfStatement
+					newTok.Kind = lexer.Newline
 					new = append(new, newTok)
 					i = newI - 1
 				}
@@ -170,9 +185,9 @@ outer:
 				if p.Tokens[i+1].Kind == lexer.Newline {
 					i++ // i is currently at loop kind. Skip the newline after it
 				}
-				if !CanGoOnNewline(p.Tokens[i+1].Kind) {
+				if !ContinuesStatement(p.Tokens[i+1].Kind) {
 					new = append(new, tok /* next, stop */, loop, lexer.Token{
-						Kind:     lexer.EndOfStatement,
+						Kind:     lexer.Newline,
 						Position: p.Tokens[min(i+1, len(p.Tokens)-1)].Position,
 					})
 					continue
@@ -186,15 +201,14 @@ outer:
 			continue
 		}
 		if i > 0 {
-			insertEOS = i > 0 && CanAddEOSAfter(prev)
+			insertEOS = i > 0 && CanEndStatement(prev)
 		}
 		nextTokI := readComments(i)
 		// Should add EOS before next token?
-		if insertEOS && nextTokI < len(p.Tokens) && CanGoOnNewline(p.Tokens[nextTokI].Kind) {
+		if insertEOS && nextTokI < len(p.Tokens) && ContinuesStatement(p.Tokens[nextTokI].Kind) {
 			insertEOS = false
 		}
 		if insertEOS {
-			tok.Kind = lexer.EndOfStatement
 			new = append(new, tok)
 		}
 		i = nextTokI - 1 // Continuing the loop
@@ -213,23 +227,23 @@ outer:
 }
 
 // Never add EOS after these tokens. All of the handled tokens are NUDs, otherwise
-// an EOS is added if canGoOnNewline(t) returns false.
-func CanAddEOSAfter(t lexer.TokenType) bool {
+// an EOS is added if ContinuesStatement(t) returns false.
+func CanEndStatement(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Punctuation
 		lexer.LeftBracket, lexer.LeftCurlyBrace,
-		lexer.LeftParenthesis, lexer.Colon, lexer.EndOfStatement,
-		lexer.HashLeftCurlyBrace, lexer.Newline,
+		lexer.LeftParenthesis, lexer.Colon, lexer.Newline,
+		lexer.HashLeftCurlyBrace,
 		// Keywords
 		lexer.Func, lexer.For, lexer.When, lexer.Type,
-		lexer.Go, lexer.Await, lexer.While, lexer.Can, lexer.NotCan,
+		lexer.Go, lexer.Await, lexer.While, lexer.Not,
 		lexer.Try, lexer.Opaque, lexer.Public:
 		return false
 	case lexer.RightParenthesis, lexer.RightBracket:
 		return true
 	default:
-		return !CanGoOnNewline(t)
+		return !ContinuesStatement(t)
 	}
 }
 
@@ -241,10 +255,10 @@ func CanAddEOSAfter(t lexer.TokenType) bool {
 //		.sort()
 //
 // If a newline before is a bad practice (such as parenthesis), then it will not be here.
-// Tokens that begin statements (such as keywords) aren't here either. [lexer.Newline]
+// Tokens that begin statements (such as keywords) aren't here either. [lexer.Nl]
 // is included and return true so that extra newlines are removed. Apart from that,
 // all of the handled tokens are LEDs.
-func CanGoOnNewline(t lexer.TokenType) bool {
+func ContinuesStatement(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Assignment
@@ -259,7 +273,7 @@ func CanGoOnNewline(t lexer.TokenType) bool {
 		lexer.Comma,
 		// Operators
 		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot, lexer.Ellipsis,
-		lexer.DotDotLessThan,
+		lexer.DotDotLessThan, lexer.NotNot,
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.AndAnd,

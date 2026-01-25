@@ -106,7 +106,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		// Enum already returned
 		p.Error(errors.Range(errors.ErrInvalidGenericType, ranges.Range{lt, gt}))
 		return res
-	case lexer.EndOfStatement:
+	case lexer.Newline:
 		// Type tag if interface
 		if isIntf {
 			return &ast.InterfaceDeclaration{
@@ -119,7 +119,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	default:
 		// Some other token or unassigned type (if EOS)
 		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.Curr()))
-		if p.CurrKind() != lexer.EndOfStatement {
+		if p.CurrKind() != lexer.Newline {
 			p.Advance()
 		}
 		return &ast.TypeAliasDeclaration{
@@ -180,14 +180,14 @@ func (p *Parser) ParseEnum(
 				fallthrough
 			default:
 				item.Value, _ = p.handleLED(c.Kind, item.Value, ExpressionBindingPower)
-			case lexer.RightCurlyBrace, lexer.EndOfStatement, lexer.At, lexer.Comma:
+			case lexer.RightCurlyBrace, lexer.Newline, lexer.At, lexer.Comma:
 			}
 		}
 		items = append(items, markStartEndPos(p, item, id.Position))
 		attrs = nil
 		switch c := p.Curr(); c.Kind {
 		case lexer.RightCurlyBrace:
-		case lexer.EndOfStatement, lexer.Comma:
+		case lexer.Newline, lexer.Comma:
 			p.Advance()
 			continue
 		case lexer.Dot:
@@ -196,7 +196,7 @@ func (p *Parser) ParseEnum(
 			}
 			fallthrough
 		default:
-			p.Expect(lexer.Comma, lexer.EndOfStatement)
+			p.Expect(lexer.Comma, lexer.Newline)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
@@ -212,7 +212,7 @@ func (p *Parser) ParseEnum(
 func (p *Parser) maybeParseAttributes() (attrs []*ast.Attribute) {
 	for p.HasTokens() && p.CurrKind() == lexer.At {
 		attrs = append(attrs, p.ParseAttribute())
-		if curr := p.CurrKind(); curr == lexer.EndOfStatement {
+		if curr := p.CurrKind(); curr == lexer.Newline {
 			p.Advance()
 		} else if curr != lexer.At {
 			break
@@ -265,7 +265,7 @@ func (p *Parser) ParseStruct(
 		f.Range.Start = f.Names[0].Position
 		attrs = nil
 		return f
-	}, lexer.RightCurlyBrace, lexer.EndOfStatement, true)
+	}, lexer.RightCurlyBrace, lexer.Newline, true)
 	return str
 }
 
@@ -373,7 +373,7 @@ func (p *Parser) ParseInterface(
 		}
 		f.Range.Start = f.Keys[0].Position
 		return f
-	}, lexer.RightCurlyBrace, lexer.EndOfStatement, true)
+	}, lexer.RightCurlyBrace, lexer.Newline, true)
 	return intf
 }
 
@@ -462,7 +462,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 				// Optional label:
 				// 	func replace(src, with replacement: String)
 				key.Label = p.ParseMapIdentifier(isLabel)
-				if peek == lexer.EndOfStatement {
+				if peek == lexer.Newline {
 					p.Advance()
 				}
 			}
