@@ -4,7 +4,7 @@
     "description": "A programming language",
     "publisher": "procode-software",
     "version": "0.0.1",
-    "license": "MIT OR Apache-2.0",
+    "license": "Apache-2.0",
     "engines": {
         "vscode": "^1.99.0"
     },
