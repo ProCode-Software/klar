@@ -14,7 +14,6 @@ const (
 	DefaultBindingPower BindingPower = iota // Zero
 
 	ExpressionBindingPower     // Minimum
-	AssignBindingPower         // For error tolerance
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
 	PipelineBindingPower       // |>
@@ -32,10 +31,6 @@ const (
 
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	// For error tolerance
-	lexer.ColonEqual: AssignBindingPower,
-	lexer.Equal:      AssignBindingPower,
-	lexer.PlusEqual:  AssignBindingPower,
-	lexer.MinusEqual: AssignBindingPower,
 
 	lexer.StrokeDot: ObjectPipelineBindingPower,
 
@@ -66,7 +61,7 @@ var BindingPowerMap = map[lexer.TokenType]BindingPower{
 	lexer.Slash:    MultiplicativeBindingPower,
 	lexer.Percent:  MultiplicativeBindingPower,
 
-	lexer.Not: UnaryBindingPower,
+	lexer.NotNot: UnaryBindingPower,
 
 	lexer.Caret: ExponentiationBindingPower,
 

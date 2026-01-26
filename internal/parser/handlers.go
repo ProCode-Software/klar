@@ -129,7 +129,8 @@ func (p *Parser) handleLED(
 			res = p.ParseVersion(l, bp)
 		}
 	// Invalid assignment
-	case lexer.PlusEqual, lexer.ColonEqual, lexer.MinusEqual, lexer.Equal:
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
+		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
 		err := errors.Token(errors.ErrAssignmentAsExpr, p.Advance())
 		if kind == lexer.Equal {
 			err.Hint("Did you mean to use '==' instead?")
@@ -144,36 +145,38 @@ func (p *Parser) handleLED(
 	return res, true
 }
 
-func (p *Parser) handleStatementLED(
-	kind lexer.TokenType, left ast.Expression, bp BindingPower,
-) (res ast.Node, handled bool) {
+func (p *Parser) handleStatementLED(kind lexer.TokenType, left ast.Expression) (
+	res ast.Statement, handled bool,
+) {
 	switch kind {
 	default:
-		return left, false
+		return nil, false
 	// Type annotation
 	case lexer.Colon:
-		res = p.ParseVarTypeAnnotation(left, bp)
+		res = p.ParseVarTypeAnnotation(left)
 	// Assignment
-	case lexer.PlusEqual, lexer.MinusEqual, lexer.ColonEqual, lexer.Equal:
-		res = p.ParseAssignment(left, bp)
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
+		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
+		res = p.ParseAssignment(left)
 	// Declaration or assignment
 	case lexer.Comma:
-		res = p.ParseCommaStatement(left, bp)
+		res = p.ParseCommaStatement(left)
 	}
 	res.SetPos(left.GetRange().Start, p.lastTokEnd())
 	return res, true
 }
 
-func (p *Parser) validateAssignableOrFix(node ast.Node) ast.Assignable {
-	if _, ok := node.(ast.Assignable); !ok {
-		p.Error(&errors.ParseError{
-			ErrorCode: errors.ErrInvalidAssignment,
-			Range:     node.GetRange(),
-			Node:      node,
-		})
-		return &ast.BadExpression{Value: node}
+func (p *Parser) validateAssignable(node ast.Node) ast.Assignable {
+	n, ok := node.(ast.Assignable)
+	if ok {
+		return n
 	}
-	return node.(ast.Assignable)
+	p.Error(&errors.ParseError{
+		ErrorCode: errors.ErrInvalidAssignment,
+		Range:     node.GetRange(),
+		Node:      node,
+	})
+	return &ast.BadExpression{Value: node}
 }
 
 func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
@@ -215,31 +218,6 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = p.ParseWhileStatement()
 	case lexer.Next, lexer.Stop:
 		res = p.ParseControlStatement()
-	}
-	res.SetPos(startPos, p.lastTokEnd())
-	return res, true
-}
-
-func (p *Parser) handleStatementNUD(kind lexer.TokenType) (res ast.Expression, handled bool) {
-	startPos := p.Curr().Position
-	switch kind {
-	case lexer.Underscore:
-		switch p.PeekKind() {
-		default:
-			return nil, false
-		case lexer.Comma, lexer.Colon, lexer.Equal, lexer.ColonEqual,
-			lexer.PlusEqual, lexer.MinusEqual:
-			p.Advance()
-			res = &ast.Discard{}
-		}
-	case lexer.LeftBracket, lexer.HashLeftCurlyBrace, lexer.LeftParenthesis:
-		if p.IsAssignmentStart() {
-			res = p.ParseDestructureVars()
-			break
-		}
-		fallthrough
-	default:
-		return nil, false
 	}
 	res.SetPos(startPos, p.lastTokEnd())
 	return res, true
@@ -298,10 +276,5 @@ func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPo
 
 func (p *Parser) IsListCastStart() bool {
 	_, ok := p.listCastTokens[p.Index]
-	return ok
-}
-
-func (p *Parser) IsAssignmentStart() bool {
-	_, ok := p.assignmentTokens[p.Index]
 	return ok
 }

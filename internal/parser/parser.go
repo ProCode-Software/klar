@@ -16,14 +16,12 @@ const (
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
 type Parser struct {
-	Options Options
-	Tokens  []lexer.Token
-	Index   int
-	Errors  []*ParseError
-	flags   uint8 // Conditional flags
-
-	// Stored token properties
-	listCastTokens, assignmentTokens map[int]struct{}
+	Options        Options
+	Tokens         []lexer.Token
+	Index          int
+	Errors         []*ParseError
+	flags          uint8            // Conditional flags
+	listCastTokens map[int]struct{} // Populated during EOS inference
 }
 
 // ParseError is [errors.ParseError]
@@ -232,5 +230,5 @@ func (p *Parser) Reset() {
 	p.Errors = nil
 	p.flags = 0
 
-	p.assignmentTokens, p.listCastTokens = nil, nil
+	p.listCastTokens = nil
 }

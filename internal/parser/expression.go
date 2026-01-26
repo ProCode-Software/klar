@@ -13,6 +13,9 @@ import (
 
 func (p *Parser) ParseBinaryExpression(left ast.Expression, bp BindingPower) *ast.BinaryExpression {
 	op := p.Advance()
+	if p.CurrKind() == lexer.Newline {
+		p.Advance()
+	}
 	right := p.ParseExpression(bp)
 	return &ast.BinaryExpression{
 		Left:     left,
@@ -107,11 +110,23 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, curr lexer.TokenType) {
 	p.Error(err)
 }
 
-func (p *Parser) ParseParamList() *ast.DestructureTuple {
+func (p *Parser) ParseParamList() *ast.AssignableTuple {
 	p.Expect(lexer.LeftParenthesis)
-	tuple := &ast.DestructureTuple{}
+	tuple := &ast.AssignableTuple{}
 	if p.CurrKind() != lexer.RightParenthesis {
-		tuple.Values = p.ParseDestructureTypePairs(true)
+		parseSeries(p, &tuple.Values, func() *ast.AssignableTypePair {
+			pair := &ast.AssignableTypePair{}
+			parseSeries(p, &pair.Keys, func() ast.Assignable { return p.ParseAssignable() }, 0, lexer.Comma, false)
+			if p.CurrKind() == lexer.Colon {
+				p.Advance()
+				pair.Type = p.ParseType(DefaultTypeBindingPower)
+			}
+			if p.isEqual() {
+				p.Advance()
+				pair.Value = p.ParseExpression(ExpressionBindingPower)
+			}
+			return pair
+		}, 0, lexer.Comma, false)
 	}
 	p.Expect(lexer.RightParenthesis)
 	return tuple
@@ -276,10 +291,12 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			// 	person2.greet(person: person)
 			p.Advance()
 			key, val := p.expectShorthand()
-			arg.Label, arg.Value = symbolToIdentifier(key), val
+			label := symbolToIdentifier(key)
+			arg.Label, arg.Value = &label, val
 		case p.PeekKind() == lexer.Colon:
 			// Label (allow keywords)
-			arg.Label = p.ParseMapIdentifier(isLabel)
+			label := p.ParseMapIdentifier(isLabel)
+			arg.Label = &label
 			p.Advance() // :
 			fallthrough
 		default:
@@ -317,16 +334,14 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 		// Params and optional type/default in parens
 		p.Advance()
 		if p.CurrKind() != lexer.RightParenthesis {
-			l.Params = p.ParseDestructureTypePairs(true)
+			p.parseAssignableTypePairs(&l.Params)
 		}
 		l.InParen = true
 		p.Expect(lexer.RightParenthesis)
 	case lexer.Arrow, lexer.LeftCurlyBrace:
 	default:
-		parseSeries(p, &l.Params, func() *ast.DestructureTypePair {
-			d := &ast.DestructureTypePair{
-				Keys: []ast.Destructure{p.ParseDestructure()},
-			}
+		parseSeries(p, &l.Params, func() *ast.AssignableTypePair {
+			d := &ast.AssignableTypePair{Keys: []ast.Assignable{p.ParseAssignable()}}
 			if p.CurrKind() == lexer.Colon {
 				// Non-parenthesized type
 				p.Error(errors.Token(errors.ErrParenAroundLambdaType, p.Advance()))
@@ -350,6 +365,25 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 		p.Error(errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
 	}
 	return l
+}
+
+// parseAssignableTypePairs parses a series of assignable expressions, optionally
+// followed by an optional type and/or a default value. An item in pairs may
+// have multiple keys and no type or value.
+func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair)  {
+	parseSeries(p, pairs, func() *ast.AssignableTypePair {
+		pair := &ast.AssignableTypePair{}
+		parseSeries(p, &pair.Keys, p.ParseAssignable, 0, lexer.Comma, false)
+		if p.CurrKind() == lexer.Colon {
+			p.Advance()
+			pair.Type = p.ParseType(DefaultTypeBindingPower)
+		}
+		if p.isEqual() {
+			p.Advance()
+			pair.Value = p.ParseExpression(ExpressionBindingPower)
+		}
+		return pair
+	}, 0, lexer.Comma, false)
 }
 
 // When case only: [...]
@@ -552,7 +586,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 		}
 		// Assignment
 		if k := p.CurrKind(); isAssignment(k) && k != lexer.ColonEqual {
-			l := p.validateAssignableOrFix(lhs)
+			l := p.validateAssignable(lhs)
 			assg := &ast.AssignmentStatement{
 				Assignee: []ast.Assignable{l},
 				Operator: newOperator(p.Advance()),
@@ -575,21 +609,26 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	f := &ast.ForExpression{}
-	// Peek for `in` before parsing destructure
-	if p.IsAssignmentStart() {
-		f.Variables = p.ParseDestructureTypePairs(false)
-		p.Expect(lexer.In)
-	}
-	f.Iterator = p.ParseExpression(RangeBindingPower)
-	if c := p.CurrKind(); c != lexer.Ellipsis {
-		f.Iterator, _ = p.TryParseLED(f.Iterator, bpOf(c))
-	}
-	p.isEqual() // Report error if ':='
-	switch p.CurrKind() {
-	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual, lexer.Arrow:
+	f.Variables, f.Iterator = p.parseForVariables()
+	k := p.CurrKind()
+	switch {
+	case p.isEqual(p.Curr()):
+		// = or :=; neither are allowed
+		fallthrough
+	default:
+		p.Error(errors.Token(errors.ErrInvalidForExprOperator, p.Curr()))
+		p.AdvanceNonBoundary()
+		// TODO: should we still parse an expression after?
+	case isAssignment(k), k == lexer.Arrow:
+		// -> or any assignment except := or =
 		f.Operator = newOperator(p.Advance())
-		f.Value = p.ParseExpression(ExpressionBindingPower)
-	case lexer.LeftCurlyBrace:
+		f.Value = p.ParseExpression(RangeBindingPower)
+		// Allow spread (...) to be included at the end, to spread entire loop.
+		// This means not to include it as the expression.
+		if p.CurrKind() != lexer.Ellipsis {
+			f.Value, _ = p.TryParseLED(f.Value, ExpressionBindingPower)
+		}
+	case k == lexer.LeftCurlyBrace:
 		f.Block = p.ParseBlock()
 	}
 	return f
@@ -597,18 +636,17 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 
 func (p *Parser) ParseGoExpression() *ast.GoExpression {
 	p.Advance() // go
-	g := &ast.GoExpression{}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		g.Body = p.ParseBlock()
+		return &ast.GoExpression{Body: p.ParseBlock()}
 	} else {
-		g.Expression = p.ParseExpression(UnaryBindingPower)
+		g := &ast.GoExpression{Expression: p.ParseExpression(UnaryBindingPower)}
 		if _, ok := g.Expression.(*ast.CallExpression); !ok {
 			p.Error(errors.Node(errors.ErrMustBeFuncCall, g.Expression).
 				SetParam("expr", lexer.Go),
 			)
 		}
+		return g
 	}
-	return g
 }
 
 func (p *Parser) ParseAwaitExpression() *ast.AwaitExpression {

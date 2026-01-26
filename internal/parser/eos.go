@@ -1,13 +1,15 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// InsertEOS performs automatic semicolon insertion by removing [lexer.Nl]
-// tokens from the parser's Tokens and replacing them with [lexer.Newline] (EOS).
+// InsertEOS performs statement termination inference by identifying which
+// [lexer.Newline] tokens are used as End of Statement (EOS) markers.
 //
 // Klar does not use semicolons to terminate statements, and they are invalid.
 // Newlines are required to terminate a statement, so InsertEOS will tell
@@ -16,7 +18,7 @@ import (
 //
 // Klar's ASI isn't contextual, so the rules stay the same regardless of the expression.
 // Because of this, there are some limitations such as EOS tokens always being
-// added after '-', '+', '...', or '.' when those tokens are used to begin a statement:
+// added after '-' or '.' when those tokens are used to begin a statement:
 //
 //	print(x) // No EOS here
 //	-x.toFixed(3) // Same as: print(x) - x.toFixed(3)
@@ -29,6 +31,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		new      = make([]lexer.Token, 0, len(p.Tokens))
 		brackets = make([]int, 0, len(p.Tokens)/8)
 	)
+	// Parses all consecutive comments and returns the next non-comment token
 	readComments := func(i int) (nextNonComment int) {
 		i++
 		for isComment(p.Tokens[i].Kind) {
@@ -37,11 +40,7 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		}
 		return i
 	}
-	// Setup cached tokens
-	possibleAssignments := make(map[int]struct{})
-	p.listCastTokens = make(map[int]struct{})
-	p.assignmentTokens = make(map[int]struct{})
-
+	p.listCastTokens = make(map[int]struct{}) // Keep track of list cast tokens
 outer:
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
@@ -53,54 +52,41 @@ outer:
 		if len(new) > 0 {
 			prev = new[len(new)-1].Kind
 		}
-	inner:
 		switch kind {
 		case lexer.BlockComment, lexer.LineComment, lexer.Hashbang:
 			i = readComments(i) - 1
 			continue
-		// Mark start position for brackets
-		case lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace,
-			lexer.LeftParenthesis:
+		case lexer.LeftBracket:
+			// Mark start position for brackets
 			brackets = append(brackets, len(new))
-			// Check for destructure assignment
-			switch prev {
-			default:
-				if i != 0 {
-					break
-				}
-				fallthrough // If first token
-			// '/' if last statement ends in regex, or '*' for import
-			case lexer.Newline, lexer.For, lexer.Slash, lexer.Asterisk,
-				lexer.LeftCurlyBrace:
-				possibleAssignments[len(new)] = struct{}{}
-			}
-		// Merge '!' + 'in' -> NotIn '!in'
 		case lexer.Not:
+			// Merge '!' + 'in' -> NotIn '!in'
 			if i+1 >= len(p.Tokens) {
 				break
 			}
 			next := p.Tokens[i+1]
 			if next.Kind == lexer.In && ranges.HasOffset(next.Position, tok.Position, 0, 1) {
 				new = append(new, lexer.Token{
-					Kind: lexer.NotIn,
-					Source: tok.Source + next.Source, // "!in"
+					Kind:     lexer.NotIn,
+					Source:   tok.Source + next.Source, // "!in"
 					Position: tok.Position,
 				})
 				i++ // Skip 'in'
 				continue
 			}
 		case lexer.EOF:
-			// Add before EOF
+			// Add newline before EOF
 			if i > 0 && prev != lexer.Newline && CanEndStatement(prev) {
 				new = append(new, lexer.Token{
 					Kind:     lexer.Newline,
 					Position: tok.Position,
-				}, tok)
-				if i+1 < len(p.Tokens) {
-					panic("EOF is not last token")
-				}
-				break outer
+				})
 			}
+			new = append(new, tok)
+			if i != len(p.Tokens)-1 {
+				panic("EOF must be the last token")
+			}
+			break outer
 		// Always add EOS after '}' unless empty in case it is on the same line
 		// as an expression: { x + 3 }
 		case lexer.RightCurlyBrace:
@@ -111,75 +97,30 @@ outer:
 					Position: tok.Position,
 				})
 			}
-			fallthrough
-		case lexer.RightBracket, lexer.RightParenthesis:
-			var (
-				newI         = readComments(i)
-				lastBrackI   = len(brackets) - 1
-				firstNewline int // Cannot be zero because preceded by bracket
-			)
-			if lastBrackI < 0 || newI >= len(p.Tokens) { // Unmatched bracket or EOF
-				i = newI
-				break inner
+		case lexer.RightBracket:
+			newI := readComments(i)
+			lastBrackI := len(brackets) - 1
+			if lastBrackI < 0 { // Unmatched bracket
+				break
 			}
 			// List cast: [Int](...)
-			if kind == lexer.RightBracket && p.Tokens[newI].Kind == lexer.LeftParenthesis {
+			if newI < len(p.Tokens) && p.Tokens[newI].Kind == lexer.LeftParenthesis {
 				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
+				brackets = brackets[:lastBrackI] // Remove bracket
 				new = append(new, tok, p.Tokens[newI])
 				i = newI
 				continue
 			}
-			new = append(new, tok) // Add the brace
-
-			// Check for destructure assignment
-			if p.Tokens[newI].Kind == lexer.Newline {
-				// Skip newlines
-				firstNewline = newI
-				for p.Tokens[newI].Kind == lexer.Newline {
-					if newI = readComments(newI); newI >= len(p.Tokens) {
-						i = len(p.Tokens) - 2 // Read the EOF next
-						break inner
-					}
-				}
-			}
-			next := p.Tokens[newI]
-			switch next.Kind {
-			case lexer.In:
-				startBrackI := brackets[lastBrackI]
-				// Check that 'for' is before the bracket
-				if startBrackI == 0 || p.Tokens[startBrackI-1].Kind != lexer.For {
-					break
-				}
-				fallthrough
-			// Followed by assignment
-			case lexer.Colon, lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
-				lexer.MinusEqual, lexer.Comma:
-				startBrackI := brackets[lastBrackI] // The matching bracket
-				// Find the matching bracket
-				if _, ok := possibleAssignments[startBrackI]; ok {
-					p.assignmentTokens[startBrackI] = struct{}{}
-				}
-				delete(possibleAssignments, startBrackI)
-			default:
-				if firstNewline > 0 && !ContinuesStatement(next.Kind) {
-					// Still add the EOS
-					newTok := p.Tokens[firstNewline]
-					newTok.Kind = lexer.Newline
-					new = append(new, newTok)
-					i = newI - 1
-				}
-			}
-			brackets = brackets[:lastBrackI] // Remove the bracket from the array
-			continue                         // Already appended above
+			brackets = brackets[:lastBrackI] // Remove bracket
 		case lexer.Next, lexer.Stop:
 			// Always add newline following the loop to continue/terminate
 			if i = readComments(i); i >= len(p.Tokens) {
-				break inner
+				break
 			}
 			loop := p.Tokens[i] // Loop kind
 			if loop.Kind == lexer.Newline || loop.Kind == lexer.EOF {
 				i--
-				break inner
+				break
 			}
 			if i+1 < len(p.Tokens) {
 				if p.Tokens[i+1].Kind == lexer.Newline {
@@ -205,7 +146,8 @@ outer:
 		}
 		nextTokI := readComments(i)
 		// Should add EOS before next token?
-		if insertEOS && nextTokI < len(p.Tokens) && ContinuesStatement(p.Tokens[nextTokI].Kind) {
+		if insertEOS && nextTokI < len(p.Tokens) &&
+			ContinuesStatement(p.Tokens[nextTokI].Kind) {
 			insertEOS = false
 		}
 		if insertEOS {
@@ -215,13 +157,9 @@ outer:
 	}
 	// Add EOF if not present
 	if len(new) > 0 && new[len(new)-1].Kind != lexer.EOF {
-		new = append(new, lexer.Token{
-			Kind:     lexer.EOF,
-			Position: ranges.TokenEnd(new[len(new)-1]),
-		})
+		panic("EOF not present in input p.Tokens")
 	}
-	// Free resources
-	p.Tokens = new[:len(new):len(new)]
+	p.Tokens = slices.Clip(new)
 	brackets = nil
 	return comments
 }
@@ -240,7 +178,8 @@ func CanEndStatement(t lexer.TokenType) bool {
 		lexer.Go, lexer.Await, lexer.While, lexer.Not,
 		lexer.Try, lexer.Opaque, lexer.Public:
 		return false
-	case lexer.RightParenthesis, lexer.RightBracket:
+	case lexer.RightParenthesis, lexer.RightBracket,
+		lexer.NotNot, lexer.GreaterThan:
 		return true
 	default:
 		return !ContinuesStatement(t)
@@ -254,23 +193,22 @@ func CanEndStatement(t lexer.TokenType) bool {
 //	[1, 2, 3]
 //		.sort()
 //
-// If a newline before is a bad practice (such as parenthesis), then it will not be here.
-// Tokens that begin statements (such as keywords) aren't here either. [lexer.Nl]
-// is included and return true so that extra newlines are removed. Apart from that,
-// all of the handled tokens are LEDs.
+// If a newline before is a bad practice (such as parenthesis), then it will not
+// be here. Tokens that begin statements (such as keywords) aren't here either.
+// [lexer.Newline] is included and returns true so that extra newlines are removed.
 func ContinuesStatement(t lexer.TokenType) bool {
 	switch t {
 	case
 		// Assignment
 		lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
+		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual,
 		// Arithmetic
 		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Caret,
 		lexer.Percent,
 		// Distributive
 		lexer.And, lexer.Or,
 		// Punctuation
-		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis,
-		lexer.Comma,
+		lexer.Dot, lexer.RightBracket, lexer.RightParenthesis, lexer.Comma,
 		// Operators
 		lexer.Stroke, lexer.Pipeline, lexer.Arrow, lexer.StrokeDot, lexer.Ellipsis,
 		lexer.DotDotLessThan, lexer.NotNot,

@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"fmt"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -13,7 +13,7 @@ import (
 func (p *Parser) Parse() *ast.Program {
 	defer p.handlePanic()
 	var (
-		body     = make([]ast.Statement, 0, len(p.Tokens)/3)
+		body     = make([]ast.Statement, 0, len(p.Tokens)/10)
 		comments = p.InsertEOS()
 	)
 	for p.HasTokens() {
@@ -25,7 +25,7 @@ func (p *Parser) Parse() *ast.Program {
 		body = append(body, p.ParseTopLevelStatement())
 	}
 	return &ast.Program{
-		Body:     body[:len(body):len(body)], // Remove unused length
+		Body:     slices.Clip(body),
 		Comments: comments,
 		BaseNode: ast.BaseNode{Range: ranges.Range{
 			Start: p.Tokens[0].Position,
@@ -96,6 +96,15 @@ func (p *Parser) nudError() {
 		return
 	case lexer.If:
 		p.Error(errors.Token(errors.ErrIfStatement, curr))
+	case lexer.Plus:
+		p.Error(errors.Token(errors.ErrPositiveSign, curr))
+	case lexer.NotNot:
+		count := p.countConsecutiveNot()
+		err := errors.Range(errors.ErrDoubleNot,
+			ranges.Offset(curr.Position, 0, uint32(count)),
+		)
+		err.SetParam("count", count)
+		p.Error(err)
 	}
 	p.skipUntilBoundary()
 }
@@ -139,13 +148,8 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 	return p.ParseStatement()
 }
 
-func parseFlags(flgs []int) int {
-	if len(flgs) == 0 {
-		return 0
-	} else if len(flgs) == 1 {
-		return flgs[0]
-	}
-	var flags int
+func parseFlags(flgs []uint8) uint8 {
+	var flags uint8
 	for _, flag := range flgs {
 		flags |= flag
 	}
@@ -153,63 +157,68 @@ func parseFlags(flgs []int) int {
 }
 
 const (
-	withoutEOS = 1 << iota
+	withoutEOS uint8 = 1 << iota
 	usingComma
 )
 
-func (p *Parser) ParseStatement(flags ...int) ast.Statement {
-	flag := parseFlags(flags)
-	noEOS := (flag & withoutEOS) != 0
-	kind := p.CurrKind()
+func (p *Parser) ParseStatement(flags ...uint8) ast.Statement {
+	var (
+		flag  = parseFlags(flags)
+		noEOS = (flag & withoutEOS) != 0
+		kind  = p.CurrKind()
+	)
 	if res, handled := p.handleStatement(kind); handled {
 		if !noEOS {
 			p.Expect(lexer.Newline)
 		}
 		return res
 	}
-	var r ast.Node
-	res, handled := p.handleStatementNUD(kind)
-	if !handled {
-		if res, handled = p.handleNUD(kind); !handled {
+	var (
+		expr    ast.Expression
+		handled bool
+		res     ast.Statement
+		comma   = noEOS && (flag&usingComma) != 0
+	)
+	// Allow discard assignments
+	if k := p.PeekKind(); kind == lexer.Underscore && (isAssignment(k) ||
+		k == lexer.Comma || k == lexer.Colon) {
+		p.Advance()
+		expr = &ast.Discard{}
+		handled = true
+	} else {
+		// Normal expression NUD
+		expr, handled = p.handleNUD(kind)
+		if !handled {
 			p.nudError()
-			res = &ast.BadExpression{Token: kind}
-		}
-	}
-	if handled { // reassigned in handleNUD() call
-		kind = p.CurrKind()
-		comma := noEOS && (flag&usingComma) != 0
-		if kind == lexer.Comma && comma {
+			expr = &ast.BadExpression{Token: kind}
 			goto checkEOS
 		}
-		r, handled = p.handleStatementLED(kind, res, DefaultBindingPower)
-		if !handled {
-			r = p.ParseLED(res, AssignBindingPower)
-			if comma && p.CurrKind() == lexer.Comma {
-				goto checkEOS
-			}
-			r, _ = p.handleStatementLED(p.CurrKind(), r.(ast.Expression), DefaultBindingPower)
+	}
+	kind = p.CurrKind()
+	if kind == lexer.Comma && comma {
+		goto checkEOS
+	}
+	if res, handled = p.handleStatementLED(kind, expr); !handled {
+		expr = p.ParseLED(expr, ExpressionBindingPower)
+		// Don't parse a comma statement
+		if comma && p.CurrKind() == lexer.Comma {
+			goto checkEOS
+		}
+		if stmt, handled := p.handleStatementLED(p.CurrKind(), expr); handled {
+			// Assignment statement
+			res = stmt
+		} else {
+			// Expression statement
+			res = copyPos(expr, &ast.ExpressionStatement{Expression: expr})
 		}
 	}
 checkEOS:
-	if r == nil {
-		r = res
-	}
-	if !noEOS {
+	if comma {
+		p.Expect(lexer.Comma, lexer.Newline)
+	} else if !noEOS {
 		p.Expect(lexer.Newline)
 	}
-	switch r := r.(type) {
-	// Left-denoted statement
-	case ast.Statement:
-		return r
-	// Then it is an expression
-	case ast.Expression:
-		stmt := &ast.ExpressionStatement{Expression: r}
-		copyPos(r, stmt)
-		return stmt
-	// I don't know what this is. If this occurs, then it is a bug.
-	default:
-		panic(fmt.Sprintf("node %v (type %[1]T) is neither an expression nor statement", r))
-	}
+	return res
 }
 
 func (p *Parser) skipUntilBoundary() {

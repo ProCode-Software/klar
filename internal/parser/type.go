@@ -67,25 +67,17 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 }
 
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericType {
-	params := make([]*ast.GenericParam, 0, 1)
+	params := make([]ast.Type, 0, 1)
 	p.Expect(lexer.LessThan)
 	if p.CurrKind() == lexer.GreaterThan {
 		// At least 1 parameter required
 		p.Error(errors.Token(errors.ErrEmptyGeneric, p.Curr()))
 		params = nil
 	}
-	parseSeries(p, &params, func() *ast.GenericParam {
-		var label *ast.Identifier
-		if p.PeekKind() == lexer.Colon {
-			l := p.ParseIdentifier()
-			label = &l
-			p.Advance() // :
-		}
-		return &ast.GenericParam{
-			Label: label,
-			Type:  p.ParseType(DefaultTypeBindingPower),
-		}
-	}, lexer.GreaterThan, lexer.Comma, false)
+	parseSeries(p, &params,
+		func() ast.Type { return p.ParseType(DefaultTypeBindingPower) },
+		lexer.GreaterThan, lexer.Comma, false,
+	)
 	return &ast.GenericType{Name: left, Parameters: params}
 }
 
@@ -196,8 +188,14 @@ func (p *Parser) ParseRestType() *ast.RestType {
 	return &ast.RestType{Value: p.ParseType(VariadicTypeBindingPower)}
 }
 
-func (p *Parser) ParseTypeNamespace(left *ast.TypeAlias, bp BindingPower) *ast.TypeAlias {
+func (p *Parser) ParseTypeNamespace(left *ast.TypeAlias, bp BindingPower) *ast.QualifiedTypeAlias {
 	p.Advance() // .
-	left.Namespace, left.Identifier = left.Identifier, p.ParseIdentifier().Name
-	return left
+	return &ast.QualifiedTypeAlias{
+		Namespace: ast.Identifier{
+			Name:     left.Identifier,
+			Position: left.Range.Start,
+			Len:      left.Range.LineLength(),
+		},
+		Identifier: p.ParseIdentifier(),
+	}
 }

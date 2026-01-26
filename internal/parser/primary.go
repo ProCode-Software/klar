@@ -18,14 +18,16 @@ func unwrap[T any](res T, err error) T {
 	return res
 }
 
-func (p *Parser) handleInvalidNumber(code int, format lexer.IntegerFormat, tok lexer.Token) {
+func (p *Parser) handleInvalidNumber(
+	ne *lexer.NumberError, format lexer.IntFormat, tok lexer.Token,
+) {
 	var (
 		err    *errors.ParseError
 		src    = tok.Source
 		tokPos = tok.Position
-		errPos = ranges.Add(tokPos, 0, uint32(tok.Attributes["errorPos"].(int)))
+		errPos = ranges.Add(tokPos, 0, ne.Offset)
 	)
-	switch code {
+	switch ne.Code {
 	case lexer.ErrIntMisplacedSeparator:
 		switch {
 		case strings.Contains(src, "__"):
@@ -40,7 +42,7 @@ func (p *Parser) handleInvalidNumber(code int, format lexer.IntegerFormat, tok l
 		}
 	case lexer.ErrIntIncompatibleDigit:
 		err = errors.TokenPos(
-			map[lexer.IntegerFormat]errors.ErrorCode{
+			map[lexer.IntFormat]errors.ErrorCode{
 				lexer.NumberFormatDecimal: errors.ErrExpectedDecimal,
 				lexer.NumberFormatBinary:  errors.ErrExpectedBinary,
 				lexer.NumberFormatOctal:   errors.ErrExpectedOctal,
@@ -59,17 +61,17 @@ func (p *Parser) ParseNumber() ast.Expression {
 		format = a.Format
 	)
 	switch {
-	case a.Invalid:
+	case a.Error != nil:
 		p.handleInvalidNumber(a.Error, format, token)
 		// Set default value for ParseInt call
 		src = "0"
-	case a.Float:
+	case (a.Flags & lexer.IsFloat) != 0:
 		// Exponents are floats
 		return &ast.FloatLiteral{
 			Source:    src,
 			Value:     unwrap(strconv.ParseFloat(src, 64)),
-			Separator: a.HasSeparator,
-			Exponent:  a.HasExponent,
+			Separator: (a.Flags & lexer.HasSeparator) != 0,
+			Exponent:  (a.Flags & lexer.HasExponent) != 0,
 		}
 	// Go parses 0 prefix as octal
 	// Also check if prefix is not 0o, 0b, or 0x
@@ -80,7 +82,7 @@ func (p *Parser) ParseNumber() ast.Expression {
 		Format:    format,
 		Source:    src,
 		Value:     unwrap(strconv.ParseInt(src, 0, 0)),
-		Separator: a.HasSeparator,
+		Separator: (a.Flags & lexer.HasSeparator) != 0,
 	}
 }
 

@@ -5,15 +5,6 @@ import (
 	"io"
 )
 
-type IntegerFormat int
-
-const (
-	NumberFormatDecimal IntegerFormat = iota
-	NumberFormatHex
-	NumberFormatOctal
-	NumberFormatBinary
-)
-
 func NewToken(pos Position, kind TokenType, src string) *Token {
 	return &Token{pos, kind, src, nil}
 }
@@ -54,11 +45,11 @@ func (t TokenType) LitterDump(w io.Writer) {
 }
 
 func (t Token) String() string {
-	s := fmt.Sprintf("%s %s: %#q", t.Position, t.Kind, t.Source)
+	s := fmt.Sprintf("Token{%s %s: %#q", t.Position, t.Kind, t.Source)
 	if t.Attributes != nil {
 		s += fmt.Sprintf(" %+v", t.Attributes)
 	}
-	return s
+	return s + "}"
 }
 
 func (p Position) LitterDump(w io.Writer) {

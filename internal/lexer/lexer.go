@@ -51,16 +51,7 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			return l.ReadString(pos, r, 0)
-		case '.':
-			next, isEOF := l.BackupPeek()
-			if isEOF {
-				return NewToken(pos, Dot, ".")
-			}
-			if IsDigit(rune(next)) {
-				return l.ReadNumber(pos)
-			}
-			fallthrough
-		case '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
+		case '.', '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
 			var (
 				typ, val = l.ReadOperator(r)
@@ -154,41 +145,6 @@ func (l *Lexer) Backup() {
 	l.Pos.Col--
 }
 
-// BackupTokenizeFunc backs up the lexer before calling TokenizeFunc.
-func (l *Lexer) BackupTokenizeFunc(fn func(rune, *Builder) bool) string {
-	l.Backup()
-	return l.TokenizeFunc(fn)
-}
-
-func (l *Lexer) TokenizeFunc(fn func(rune, *Builder) bool) string {
-	return l.TokenizeEOFFunc(fn, nil)
-}
-
-// TokenizeFunc with a callback if the lexer reaches EOF.
-func (l *Lexer) TokenizeEOFFunc(
-	fn func(rune, *Builder) bool,
-	onEOF func(),
-) string {
-	var b Builder
-	for {
-		r, _, err := l.Reader.ReadRune()
-		l.Pos.Col++
-		if handleReadError(err) {
-			if onEOF != nil {
-				onEOF()
-			}
-			return b.String()
-		}
-		if !fn(r, &b) {
-			l.Backup()
-			return b.String()
-		}
-		if r == '\n' {
-			l.ResetPosition()
-		}
-	}
-}
-
 func (l *Lexer) prevCol() Position {
 	return Position{Line: l.Pos.Line, Col: l.Pos.Col - 1}
 }
@@ -216,13 +172,12 @@ func (l *Lexer) PeekN(n int) (b []byte, eof bool) {
 }
 
 func (l *Lexer) ReadAll(char rune) (n int) {
-	l.TokenizeFunc(func(r rune, b *Builder) bool {
+	for r := range l.NewTokenizer(true).Tokenize {
 		if r != char {
-			return false
+			break
 		}
 		n++
-		return true
-	})
+	}
 	return
 }
 
@@ -232,6 +187,9 @@ func (l *Lexer) Reset() {
 	l.Pos.Col = 1
 	l.Flags = 0
 }
+
+// Utils
+// ================
 
 func IsDigit(r rune) bool {
 	return r >= '0' && r <= '9'
@@ -249,4 +207,49 @@ func isASCIILetter(r rune) bool {
 // r should be an ASCII character
 func repeat(prefix, r rune, n int) string {
 	return string(prefix) + string(char.Repeat(byte(r), n))
+}
+
+// Tokenizer
+// ================
+type Tokenizer struct {
+	Builder    strings.Builder
+	BackupLast bool
+	eof        bool
+	*Lexer
+}
+
+func (l *Lexer) NewTokenizer(backupLast bool) *Tokenizer {
+	return &Tokenizer{Builder: strings.Builder{}, BackupLast: backupLast, Lexer: l}
+}
+
+func (t *Tokenizer) Tokenize(yield func(rune, *Builder) bool) {
+	for {
+		r, _, err := t.Reader.ReadRune()
+		t.Pos.Col++
+		if handleReadError(err) {
+			t.eof = true
+			return
+		}
+		if !yield(r, &t.Builder) {
+			if t.BackupLast {
+				t.Backup()
+			}
+			return
+		}
+		if r == '\n' {
+			t.ResetPosition()
+		}
+	}
+}
+
+// EOF reports whether the lexer has reached the end of the input.
+func (t *Tokenizer) EOF() bool { return t.eof }
+
+// String returns the string representation of the accumulated tokens.
+func (t *Tokenizer) String() string { return t.Builder.String() }
+
+func (t *Tokenizer) Reset(backupLast bool) {
+	t.Builder.Reset()
+	t.BackupLast = backupLast
+	t.eof = false
 }

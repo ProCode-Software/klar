@@ -29,6 +29,10 @@ func (p *Parser) isEqual(token ...lexer.Token) bool {
 	return false
 }
 
+func (p *Parser) ParseAssignable() ast.Assignable {
+	return p.validateAssignable(p.ParseExpression(ExpressionBindingPower))
+}
+
 func (p *Parser) lastTokEnd() lexer.Position {
 	last := p.Tokens[p.Index-1]
 	return ranges.TokenEnd(last)
@@ -88,7 +92,9 @@ func newBaseNode(start, end lexer.Position) ast.BaseNode {
 
 func isAssignment(kind lexer.TokenType) bool {
 	switch kind {
-	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual:
+	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual,
+		lexer.MinusEqual, lexer.AsteriskEqual, lexer.SlashEqual,
+		lexer.PercentEqual, lexer.CaretEqual:
 		return true
 	}
 	return false

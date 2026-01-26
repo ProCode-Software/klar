@@ -9,20 +9,22 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Statement {
+func (p *Parser) ParseVarTypeAnnotation(left ast.Node) ast.Statement {
 	p.Advance() // :
-	var v *ast.DestructureVars
+	var v *ast.AssignableVars
 	switch left := left.(type) {
-	case *ast.DestructureVars:
+	case *ast.AssignableVars:
 		v = left
-	case *ast.Symbol, *ast.Discard, *ast.BadExpression:
-		v = &ast.DestructureVars{
-			Values: []ast.Assignable{left.(ast.Assignable)},
+	case ast.Assignable:
+		v = &ast.AssignableVars{
+			Values: []ast.Assignable{left},
 		}
 	default:
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
-		v = &ast.DestructureVars{
-			Values: []ast.Assignable{&ast.BadExpression{Value: left}},
+		v = &ast.AssignableVars{
+			Values: []ast.Assignable{
+				p.validateAssignable(&ast.BadExpression{Value: left}),
+			},
 		}
 	}
 	annot := &ast.TypeAnnotation{
@@ -30,38 +32,35 @@ func (p *Parser) ParseVarTypeAnnotation(left ast.Node, bp BindingPower) ast.Stat
 		Type:     p.ParseType(DefaultTypeBindingPower),
 	}
 	switch curr := p.Curr(); curr.Kind {
+	default:
+		if !isAssignment(curr.Kind) {
+			p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
+			return &ast.BadExpression{Value: annot}
+		}
+		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
+		fallthrough
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
 		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
 		fallthrough
 	case lexer.ColonEqual:
-		return p.ParseAssignment(v, bpOf(curr.Kind))
-	default:
-		p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
-		return &ast.BadExpression{Value: annot}
+		return p.ParseAssignment(v)
 	}
 }
 
 func (p *Parser) ParseVariableDeclaration(left ast.Expression, right []ast.Expression) *ast.VariableDeclaration {
 	var explicitType ast.Type
-	var vars []ast.Destructure
+	var vars []ast.Assignable
 	if annot, ok := left.(*ast.TypeAnnotation); ok {
 		left, explicitType = annot.Variable, annot.Type
 	}
 	switch left := left.(type) {
-	case *ast.DestructureVars:
-		vars = make([]ast.Destructure, len(left.Values))
-		for i, v := range left.Values {
-			if _, ok := v.(ast.Destructure); !ok {
-				p.Error(errors.Node(errors.ErrNonNameDeclaration, v))
-				v = &ast.BadExpression{Value: v}
-			}
-			vars[i] = v.(ast.Destructure)
-		}
-	case *ast.Symbol, *ast.Discard:
-		vars = []ast.Destructure{left.(ast.Destructure)}
+	case *ast.AssignableVars:
+		vars = left.Values
+	case ast.Assignable:
+		vars = []ast.Assignable{left}
 	default:
 		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
-		vars = []ast.Destructure{&ast.BadExpression{Value: left}}
+		vars = []ast.Assignable{p.validateAssignable(&ast.BadExpression{Value: left})}
 	}
 	return &ast.VariableDeclaration{
 		Variables:    vars,
@@ -71,11 +70,11 @@ func (p *Parser) ParseVariableDeclaration(left ast.Expression, right []ast.Expre
 }
 
 // ParseAssignment parses a variable declaration or reassignment statement.
-func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.Statement {
+func (p *Parser) ParseAssignment(left ast.Expression) ast.Statement {
 	op := p.Advance()
 	var values []ast.Assignable
 	switch left := left.(type) {
-	case *ast.DestructureVars:
+	case *ast.AssignableVars:
 		values = left.Values
 	case ast.Assignable:
 		values = []ast.Assignable{left}
@@ -86,7 +85,7 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	expLen := len(values)
 	rhs := make([]ast.Expression, 0, expLen)
 	for p.HasTokens() {
-		rhs = append(rhs, p.ParseExpression(bp))
+		rhs = append(rhs, p.ParseExpression(ExpressionBindingPower))
 		if p.CurrKind() != lexer.Comma {
 			break
 		}
@@ -108,18 +107,18 @@ func (p *Parser) ParseAssignment(left ast.Expression, bp BindingPower) ast.State
 	}
 }
 
-func (p *Parser) ParseCommaStatement(first ast.Expression, bp BindingPower) ast.Statement {
+func (p *Parser) ParseCommaStatement(first ast.Expression) ast.Statement {
 	items := make([]ast.Assignable, 1, 2)
-	items[0] = p.validateAssignableOrFix(first)
+	items[0] = p.validateAssignable(first)
 	for p.CurrKind() == lexer.Comma {
 		p.Advance()
-		items = append(items, p.ParseDestructure())
+		items = append(items, p.ParseAssignable())
 	}
-	d := &ast.DestructureVars{Values: items}
+	d := &ast.AssignableVars{Values: items}
 	if curr := p.CurrKind(); isAssignment(curr) {
-		return p.ParseAssignment(d, bpOf(curr))
+		return p.ParseAssignment(d)
 	} else if curr == lexer.Colon {
-		return p.ParseVarTypeAnnotation(d, bpOf(curr))
+		return p.ParseVarTypeAnnotation(d)
 	}
 	p.Error(errors.Slice(errors.ErrInvalidComma, items))
 	return &ast.BadExpression{Value: d}
@@ -175,12 +174,12 @@ unqualifiedImport:
 			p.Error(errors.Token(errors.ErrEmptyUnqualifiedImport, p.Curr()))
 		}
 		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.IdentifierPair) {
-			u = &ast.IdentifierPair{}
-			if p.PeekKind() == lexer.Colon {
-				u.Label = p.ParseIdentOrDiscard()
-				p.Advance() // :
+			u = &ast.IdentifierPair{Name: p.ParseIdentifier()}
+			// Alias
+			if p.CurrKind() == lexer.As {
+				p.Advance()
+				u.Label = p.ParseIdentifier()
 			}
-			u.Name = p.ParseIdentifier()
 			return
 		}, lexer.RightCurlyBrace, lexer.Comma, true)
 	}
@@ -200,19 +199,55 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		p.Error(errors.Token(errors.ErrForInvalidCondition, p.Curr()))
-		goto body
+		p.Error(errors.Token(errors.ErrNoForIterator, p.Curr()))
+	} else {
+		f.Variables, f.Expression = p.parseForVariables()
 	}
-	// Peek for `in` before parsing destructure
-	if k := p.PeekKind(); p.IsAssignmentStart() || k == lexer.Comma ||
-		k == lexer.Colon || k == lexer.In {
-		f.Variables = p.ParseDestructureTypePairs(false)
-		p.Expect(lexer.In)
-	}
-	f.Expression = p.ParseExpression(ExpressionBindingPower)
-body:
 	f.Body = p.ParseBlock()
 	return f
+}
+
+func (p *Parser) parseForVariables() (vars []*ast.AssignableTypePair, iter ast.Expression) {
+	first := p.ParseExpression(ExpressionBindingPower)
+	if bin, ok := first.(*ast.BinaryExpression); ok && bin.Operator.Kind == lexer.In {
+		// for k in m
+		// (*AssignableTypePair).Value == always nil
+		return []*ast.AssignableTypePair{
+			{Keys: []ast.Assignable{p.validateAssignable(bin.Left)}},
+		}, bin.Right
+	} else if k := p.CurrKind(); k == lexer.Comma || k == lexer.Colon {
+		// for k, v in m
+		// for k: Int in m
+		pair := &ast.AssignableTypePair{
+			Keys: []ast.Assignable{p.validateAssignable(first)},
+		}
+		for p.HasTokens() {
+			switch p.CurrKind() {
+			case lexer.Comma:
+				p.Advance()
+				expr := p.ParseExpression(DefaultBindingPower)
+				if expr, ok := expr.(*ast.BinaryExpression); ok &&
+					expr.Operator.Kind == lexer.In {
+					pair.Keys = append(pair.Keys, p.validateAssignable(expr.Left))
+					vars = append(vars, pair)
+					return vars, expr.Right
+				}
+				pair.Keys = append(pair.Keys, p.validateAssignable(expr))
+			case lexer.Colon:
+				p.Advance()
+				pair.Type = p.ParseType(DefaultTypeBindingPower)
+				vars = append(vars, pair)
+				if p.CurrKind() == lexer.In {
+					return vars, p.ParseExpression(ExpressionBindingPower)
+				}
+				pair = &ast.AssignableTypePair{}
+			default:
+				// TODO
+				// p.Error(errors.Token(errors.ErrInvalidForVariables, p.Curr()))
+			}
+		}
+	}
+	return nil, first
 }
 
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {

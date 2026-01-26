@@ -68,11 +68,13 @@ func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 	invalid := func(reason EscapeError) {
 		err, errPos = reason, l.Pos
 	}
-	esc := l.TokenizeEOFFunc(func(r rune, b *Builder) bool {
+	t := l.NewTokenizer(true)
+loop:
+	for r, b := range t.Tokenize {
 		l := b.Len()
 		switch {
 		case l > 0 && last == '}':
-			return false
+			break loop
 		case l < 2 && r == '}':
 			invalid(ErrEscapeTooShort)
 			b.WriteRune(r)
@@ -80,25 +82,22 @@ func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 			b.WriteRune(r)
 		case l > 6 && r != '}':
 			invalid(ErrEscapeTooLong)
-			return false
+			break loop
 		case r == delim:
 			invalid(ErrEscapeUnterm)
-			return false
+			break loop
 		default:
 			invalid(ErrEscapeExpHex)
-			return false
+			break loop
 		}
 		last = r
-		return true
-	}, func() {
-		if last != '}' {
-			invalid(ErrEscapeUnterm)
-		}
-	})
-
+	}
+	if t.EOF() && last != '}' {
+		invalid(ErrEscapeUnterm)
+	}
 	return StringEscape{
 		Type:          EscUnicode,
-		Value:         `\u` + esc,
+		Value:         `\u` + t.String(),
 		Invalid:       err,
 		ErrorPosition: &errPos,
 	}
@@ -108,30 +107,28 @@ func (l *Lexer) readHexEsc(delim rune) StringEscape {
 	var (
 		err     EscapeError
 		errPos  Position
-		unterm  bool
 		invalid = func() { err, errPos = ErrEscapeExpHex, l.Pos }
 	)
-	esc := l.TokenizeEOFFunc(func(r rune, b *Builder) bool {
-		l := b.Len()
+	t := l.NewTokenizer(true)
+loop:
+	for r, b := range t.Tokenize {
 		switch {
-		case l == 2:
-			return false
+		case b.Len() == 2:
+			break loop
 		case isHex(r):
 			b.WriteRune(r)
 		case r == delim:
 			invalid()
-			return false
+			break loop
 		default:
 			invalid()
 			b.WriteRune(r)
 		}
-		return true
-	}, func() { unterm = true })
-
-	if unterm && len(esc) < 2 {
+	}
+	esc := t.String()
+	if t.EOF() && len(esc) < 2 {
 		invalid()
 	}
-
 	return StringEscape{
 		Type:          EscHex,
 		Value:         `\x` + esc,

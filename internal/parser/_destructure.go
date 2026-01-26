@@ -17,7 +17,7 @@ func (p *Parser) ParseDestructure() ast.Destructure {
 	d := p.ParseDestructureInner()
 	// Continue parsing invalid expressions starting with identifiers
 	if expr, ok := d.(ast.Expression); ok && p.CurrKind() != lexer.In {
-		if expr, ok = p.TryParseLED(expr, AssignBindingPower); ok {
+		if expr, ok = p.TryParseLED(expr, ExpressionBindingPower); ok {
 			p.Error(errors.Node(errors.ErrInvalidAssignment, expr))
 			return &ast.BadExpression{Value: expr}
 		}
@@ -61,7 +61,7 @@ func (p *Parser) ParseDestructureInner() ast.Destructure {
 		if isValidIdentifier(kind) {
 			return p.ParseValidIdent().Symbol()
 		}
-		parsed := p.ParseExpression(AssignBindingPower)
+		parsed := p.ParseExpression(ExpressionBindingPower)
 		p.Error(errors.Node(errors.ErrInvalidAssignment, parsed))
 		// p.unknownTokenErr() // p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
 		return &ast.BadExpression{Token: kind, Value: parsed}
@@ -164,55 +164,7 @@ func (p *Parser) ParseListDestructure(end lexer.TokenType, start lexer.Position)
 	return markStartEndPos(p, d, start)
 }
 
-func (p *Parser) ParseDestructureSeries() (vars []ast.Destructure) {
-	parseSeries(p, &vars, p.ParseDestructure, 0, lexer.Comma, false)
+func (p *Parser) ParseDestructureSeries() (vars []ast.Expression) {
+	parseSeries(p, &vars, func() ast.Expression { return p.ParseDestructure() }, 0, lexer.Comma, false)
 	return vars
-}
-
-// ParseAssignLHS parses the left-hand side of an assignment. Destructures and
-// index expessions are allowed.
-func (p *Parser) ParseAssignLHS() (vars []ast.Assignable) {
-	for p.HasTokens() && p.CurrKind() != lexer.Newline {
-		dest := p.ParseDestructure()
-		curr := p.CurrKind()
-		if dest2, ok := dest.(*ast.Symbol); ok &&
-			!isAssignment(curr) && curr != lexer.Comma && curr != lexer.Colon {
-			res, handled := p.handleLED(curr, dest2, ExpressionBindingPower)
-			if !handled {
-				p.unknownTokenErr()
-				res = dest2
-			}
-			vars = append(vars, p.validateAssignableOrFix(res))
-		} else {
-			vars = append(vars, dest)
-		}
-		if p.CurrKind() != lexer.Comma {
-			break
-		}
-		p.Advance()
-	}
-	return vars
-}
-
-// Validate the += or -= operator at type-check time
-func (p *Parser) ParseDestructureVars() *ast.DestructureVars {
-	return &ast.DestructureVars{Values: p.ParseAssignLHS()}
-}
-
-// For lambda params or 'for' loop variables. Parentheses are not parsed.
-func (p *Parser) ParseDestructureTypePairs(withDefaults bool) (pairs []*ast.DestructureTypePair) {
-	parseSeries(p, &pairs, func() *ast.DestructureTypePair {
-		pair := &ast.DestructureTypePair{}
-		parseSeries(p, &pair.Keys, p.ParseDestructure, 0, lexer.Comma, false)
-		if p.CurrKind() == lexer.Colon {
-			p.Advance()
-			pair.Type = p.ParseType(DefaultTypeBindingPower)
-		}
-		if withDefaults && p.isEqual() {
-			p.Advance()
-			pair.Value = p.ParseExpression(ExpressionBindingPower)
-		}
-		return pair
-	}, 0, lexer.Comma, false)
-	return pairs
 }

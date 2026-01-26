@@ -51,8 +51,8 @@ func (ListCastExpression) expr()   {}
 func (ObjectPipeline) expr()       {}
 func (ForExpression) expr()        {}
 func (StructDotInit) expr()        {}
-func (DestructureVars) expr()      {}
-func (DestructureTuple) expr()     {}
+func (AssignableVars) expr()       {}
+func (AssignableTuple) expr()      {}
 func (WhenCanCase) expr()          {}
 func (GoExpression) expr()         {}
 func (AwaitExpression) expr()      {}
@@ -84,18 +84,19 @@ func (WhileStatement) stmt()       {}
 func (OpaqueDeclaration) stmt()    {}
 
 // Type
-func (PrimitiveType) _type() {}
-func (TypeAlias) _type()     {}
-func (OptionalType) _type()  {}
-func (ListType) _type()      {}
-func (RestType) _type()      {}
-func (TupleType) _type()     {}
-func (FunctionType) _type()  {}
-func (GenericType) _type()   {}
-func (UnionType) _type()     {}
-func (MethodType) _type()    {}
-func (ParenType) _type()     {}
-func (BadExpression) _type() {}
+func (PrimitiveType) _type()      {}
+func (TypeAlias) _type()          {}
+func (OptionalType) _type()       {}
+func (ListType) _type()           {}
+func (RestType) _type()           {}
+func (TupleType) _type()          {}
+func (FunctionType) _type()       {}
+func (GenericType) _type()        {}
+func (UnionType) _type()          {}
+func (MethodType) _type()         {}
+func (ParenType) _type()          {}
+func (BadExpression) _type()      {}
+func (QualifiedTypeAlias) _type() {}
 
 // Type declarations
 func (TypeAliasDeclaration) typeDecl()      {}
@@ -111,12 +112,15 @@ func (d InterfaceDeclaration) Name() string { return d.Identifier.Name }
 func (Symbol) assignable()            {}
 func (IndexExpression) assignable()   {}
 func (SliceExpression) assignable()   {}
-func (DestructureVars) assignable()   {}
+func (AssignableVars) assignable()    {}
 func (BadExpression) assignable()     {}
 func (Discard) assignable()           {}
 func (RestExpression) assignable()    {}
 func (ListDestructure) assignable()   {}
 func (ObjectDestructure) assignable() {}
+func (ListLiteral) assignable()       {}
+func (TupleLiteral) assignable()      {}
+func (MapLiteral) assignable()        {}
 
 // Destructuring
 func (ListDestructure) destruct()   {}

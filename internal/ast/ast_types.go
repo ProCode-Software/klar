@@ -63,7 +63,7 @@ type StringLiteral struct {
 
 type IntegerLiteral struct {
 	BaseNode
-	Format    lexer.IntegerFormat
+	Format    lexer.IntFormat
 	Value     int64
 	Source    string
 	Separator bool
@@ -110,14 +110,14 @@ type Comment struct {
 type CommentType = lexer.TokenType
 
 type BinaryExpression struct {
-	Left, Right Node
+	Left, Right Expression
 	Operator    Operator
 	BaseNode
 }
 
 type UnaryExpression struct {
 	Operator Operator
-	Right    Node
+	Right    Expression
 	BaseNode
 }
 
@@ -161,6 +161,7 @@ type Discard struct{ BaseNode } // _
 
 type Assignable interface {
 	Node
+	Expression
 	assignable()
 }
 
@@ -171,7 +172,7 @@ type PublicDeclaration struct {
 
 type VariableDeclaration struct {
 	BaseNode
-	Variables    []Destructure
+	Variables    []Assignable
 	Values       []Expression // Either 1 item or len(Variables)
 	ExplicitType Type
 }
@@ -246,14 +247,14 @@ type TupleType struct {
 }
 
 // Used for lambda parameters
-type DestructureTuple struct {
+type AssignableTuple struct {
 	BaseNode
-	Values []*DestructureTypePair
+	Values []*AssignableTypePair
 }
 
-type DestructureTypePair struct {
+type AssignableTypePair struct {
 	BaseNode
-	Keys  []Destructure
+	Keys  []Assignable
 	Type  Type
 	Value Expression
 }
@@ -269,16 +270,10 @@ type FunctionType struct {
 	ReturnType Type
 }
 
-type GenericParam struct {
-	BaseNode
-	Label *Identifier
-	Type  Type
-}
-
 type GenericType struct {
 	BaseNode
 	Name       Type
-	Parameters []*GenericParam
+	Parameters []Type
 }
 
 type TypePair struct {
@@ -311,7 +306,7 @@ type MethodTypeParam struct {
 
 type TypeAnnotation struct {
 	BaseNode
-	Variable *DestructureVars
+	Variable *AssignableVars
 	Type     Type
 }
 
@@ -528,8 +523,9 @@ type EnumLiteral struct {
 }
 
 type CallParam struct {
-	Label Identifier
-	Value Expression
+	Label     *Identifier
+	Value     Expression
+	Shorthand bool // Whether shorthand was used. Label != nil
 	BaseNode
 }
 
@@ -564,7 +560,7 @@ type UpdateStatement struct {
 //	for 5 { ...repeat 5 times }
 type ForStatement struct {
 	BaseNode
-	Variables  []*DestructureTypePair
+	Variables  []*AssignableTypePair
 	Expression Expression // When used as while loop or repeat
 	Body       *Block
 }
@@ -603,7 +599,7 @@ type WhenCanCase struct {
 
 type LambdaExpression struct {
 	BaseNode
-	Params  []*DestructureTypePair
+	Params  []*AssignableTypePair
 	InParen bool
 	Block   *Block
 	Expr    Expression
@@ -651,7 +647,7 @@ type ListCastExpression struct {
 //	for [variables] in [iterator] { block... }
 type ForExpression struct {
 	BaseNode
-	Variables []*DestructureTypePair
+	Variables []*AssignableTypePair
 	Iterator  Expression
 	Operator  Operator
 	Value     Expression
@@ -670,6 +666,7 @@ type ObjectPipeline struct {
 // (a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
 	Node
+	Expression
 	Assignable
 	destruct()
 }
@@ -709,7 +706,7 @@ type ObjectDestructureEntry struct {
 }
 
 // For parsing variable declarations and assignments
-type DestructureVars struct {
+type AssignableVars struct {
 	BaseNode
 	Values []Assignable
 }

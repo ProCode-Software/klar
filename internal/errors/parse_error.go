@@ -96,6 +96,7 @@ const (
 	ErrInequalityWithEqualChain   // Use of ==/!= with >/< in comparison chain
 	ErrStepInListSlice            // Step not allowed in list slice
 	ErrExpectedInterpolationEnd   // Expected end of string/regex interpolation
+	ErrInvalidForExprOperator     // Invalid or expected an operator in for expression
 
 	// Type =====
 
@@ -112,16 +113,18 @@ const (
 
 	// When =====
 
-	ErrForInvalidCondition // Expected assignment or expression in for loop
-	ErrUnderscoreWithRest  // ... instead of ..._ or _...
-	ErrNotAllowedInWhen    // When expression not allowed in when case guard
-	ErrRequiredBraces      // Required braces around statement in when case
+	ErrNoForIterator      // Expected assignment or expression in for loop
+	ErrUnderscoreWithRest // ... instead of ..._ or _...
+	ErrNotAllowedInWhen   // When expression not allowed in when case guard
+	ErrRequiredBraces     // Required braces around statement in when case
 
 	// Misc =====
-	ErrTryBlock    // Klar doesn't have try-catch blocks
-	ErrIfStatement // Klar doesn't have if statements
-	ErrTripleEqual // JavaScript !== or === used in Klar
-	ErrInvalidLoop // Invalid loop kind in 'next' or 'stop' statement
+	ErrTryBlock     // Klar doesn't have try-catch blocks
+	ErrIfStatement  // Klar doesn't have if statements
+	ErrTripleEqual  // JavaScript !== or === used in Klar
+	ErrInvalidLoop  // Invalid loop kind in 'next' or 'stop' statement
+	ErrPositiveSign // Leading '+' sign not allowed in Klar
+	ErrDoubleNot    // Double '!!' not allowed in Klar
 
 	// Analysis-time syntax errors =====
 
@@ -275,8 +278,8 @@ func (e *ParseError) error() string {
 	case ErrCurlyQuote:
 		alt := e.stringParam("alt")
 		return "Use the straight quotation mark " + Quote(alt) + " instead of a curly quotation mark"
-	case ErrForInvalidCondition:
-		return "A 'for' loop must have an assignment or a loop expression"
+	case ErrNoForIterator:
+		return "Missing variables or expression in 'for' loop"
 	case ErrEmptyGeneric:
 		return "At least 1 type is required inside '<...>'"
 	case ErrInvalidPublic:
@@ -430,6 +433,18 @@ func (e *ParseError) error() string {
 	case ErrPrivateOpaque:
 		e.Hint("Remember that 'opaque' allows a type to be exported without allowing external modules to create instances of it. If the type is not exported, it still can't be used by external modules, so 'opaque' has no effect.")
 		return "The 'opaque' modifier has no effect on a non-public type"
+	case ErrPositiveSign:
+		e.Hint("Remove it.")
+		return "A '+' prefix is not allowed in Klar"
+	case ErrDoubleNot:
+		if e.intParam("count")%2 == 0 {
+			e.Hint("Remove all of them.")
+		} else {
+			e.Hint("Keep only one of them.")
+		}
+		return "Multiple '!' are not allowed"
+	case ErrInvalidForExprOperator:
+		return "Expected '->', an arithmetic assignment, or block in 'for' expression"
 	case ErrRedeclared:
 		/*
 			"existing":       existing.FileRange(),
@@ -459,6 +474,7 @@ func (e *ParseError) error() string {
 
 func (e *ParseError) stringParam(name string) string { return e.Params[name].(string) }
 func (e *ParseError) boolParam(name string) bool     { return e.Params[name].(bool) }
+func (e *ParseError) intParam(name string) int       { return e.Params[name].(int) }
 func (e *ParseError) tokenTypeParam(name string) lexer.TokenType {
 	return e.Params[name].(lexer.TokenType)
 }

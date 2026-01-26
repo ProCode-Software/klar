@@ -86,33 +86,36 @@ func _() {
 	_ = x[ErrInequalityWithEqualChain-64]
 	_ = x[ErrStepInListSlice-65]
 	_ = x[ErrExpectedInterpolationEnd-66]
-	_ = x[ErrExpectedTypeAssignment-67]
-	_ = x[ErrRequiredStructFieldType-68]
-	_ = x[ErrEmptyGeneric-69]
-	_ = x[ErrParenFuncTypeParams-70]
-	_ = x[ErrIntfDefaultValue-71]
-	_ = x[ErrMixTypeTupleLabels-72]
-	_ = x[ErrIntfMultiKeyMethod-73]
-	_ = x[ErrInvalidGenericType-74]
-	_ = x[ErrInvalidArrow-75]
-	_ = x[ErrRedeclaredField-76]
-	_ = x[ErrForInvalidCondition-77]
-	_ = x[ErrUnderscoreWithRest-78]
-	_ = x[ErrNotAllowedInWhen-79]
-	_ = x[ErrRequiredBraces-80]
-	_ = x[ErrTryBlock-81]
-	_ = x[ErrIfStatement-82]
-	_ = x[ErrTripleEqual-83]
-	_ = x[ErrInvalidLoop-84]
-	_ = x[ErrRedeclared-85]
-	_ = x[ErrTopLevel-86]
-	_ = x[ErrRedeclaredEnum-87]
-	_ = x[ErrMethAndFieldSameName-88]
-	_ = x[ErrMethodInOtherScope-89]
-	_ = x[ErrProvenUnreachable-90]
-	_ = x[ErrUnusedValue-91]
-	_ = x[ErrReturnOutsideFunc-92]
-	_ = x[ErrImportShadow-93]
+	_ = x[ErrInvalidForExprOperator-67]
+	_ = x[ErrExpectedTypeAssignment-68]
+	_ = x[ErrRequiredStructFieldType-69]
+	_ = x[ErrEmptyGeneric-70]
+	_ = x[ErrParenFuncTypeParams-71]
+	_ = x[ErrIntfDefaultValue-72]
+	_ = x[ErrMixTypeTupleLabels-73]
+	_ = x[ErrIntfMultiKeyMethod-74]
+	_ = x[ErrInvalidGenericType-75]
+	_ = x[ErrInvalidArrow-76]
+	_ = x[ErrRedeclaredField-77]
+	_ = x[ErrNoForIterator-78]
+	_ = x[ErrUnderscoreWithRest-79]
+	_ = x[ErrNotAllowedInWhen-80]
+	_ = x[ErrRequiredBraces-81]
+	_ = x[ErrTryBlock-82]
+	_ = x[ErrIfStatement-83]
+	_ = x[ErrTripleEqual-84]
+	_ = x[ErrInvalidLoop-85]
+	_ = x[ErrPositiveSign-86]
+	_ = x[ErrDoubleNot-87]
+	_ = x[ErrRedeclared-88]
+	_ = x[ErrTopLevel-89]
+	_ = x[ErrRedeclaredEnum-90]
+	_ = x[ErrMethAndFieldSameName-91]
+	_ = x[ErrMethodInOtherScope-92]
+	_ = x[ErrProvenUnreachable-93]
+	_ = x[ErrUnusedValue-94]
+	_ = x[ErrReturnOutsideFunc-95]
+	_ = x[ErrImportShadow-96]
 	_ = x[ErrVarUndefined-301]
 	_ = x[ErrEnumUndefined-302]
 	_ = x[ErrTypeUndefined-303]
@@ -149,7 +152,7 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidUpdateErrInvalidUpdateExprErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrInvalidOpaqueErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrPrivateOpaqueErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncNotAllowedErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrInequalityWithEqualChainErrStepInListSliceErrExpectedInterpolationEndErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrForInvalidConditionErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadow"
+	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidUpdateErrInvalidUpdateExprErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrInvalidOpaqueErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrPrivateOpaqueErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncNotAllowedErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrInequalityWithEqualChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadow"
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
@@ -158,7 +161,7 @@ const (
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 372, 395, 416, 436, 450, 466, 483, 501, 518, 536, 562, 578, 598, 611, 630, 649, 669, 690, 714, 738, 761, 784, 805, 828, 847, 863, 879, 897, 917, 936, 954, 970, 988, 1012, 1027, 1045, 1069, 1093, 1117, 1146, 1173, 1190, 1215, 1239, 1266, 1284, 1313, 1340, 1358, 1385, 1410, 1436, 1451, 1473, 1492, 1513, 1534, 1555, 1570, 1588, 1610, 1631, 1650, 1667, 1678, 1692, 1706, 1720, 1733, 1744, 1761, 1784, 1805, 1825, 1839, 1859, 1874}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 372, 395, 416, 436, 450, 466, 483, 501, 518, 536, 562, 578, 598, 611, 630, 649, 669, 690, 714, 738, 761, 784, 805, 828, 847, 863, 879, 897, 917, 936, 954, 970, 988, 1012, 1027, 1045, 1069, 1093, 1117, 1146, 1173, 1190, 1215, 1239, 1266, 1284, 1313, 1340, 1358, 1385, 1410, 1435, 1461, 1476, 1498, 1517, 1538, 1559, 1580, 1595, 1613, 1629, 1650, 1669, 1686, 1697, 1711, 1725, 1739, 1754, 1766, 1779, 1790, 1807, 1830, 1851, 1871, 1885, 1905, 1920}
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
@@ -167,7 +170,7 @@ var (
 
 func (i ErrorCode) String() string {
 	switch {
-	case -1 <= i && i <= 93:
+	case -1 <= i && i <= 96:
 		i -= -1
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 104:

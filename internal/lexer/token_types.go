@@ -2,7 +2,7 @@
 
 package lexer
 
-// TokenType represent a lexer token
+// TokenType represent a lexer token.
 type TokenType int
 
 const (
@@ -45,10 +45,14 @@ const (
 	Caret    // ^
 
 	// Assignment
-	Equal      // =
-	ColonEqual // :=
-	PlusEqual  // +=
-	MinusEqual // -=
+	Equal         // =
+	ColonEqual    // :=
+	PlusEqual     // +=
+	MinusEqual    // -=
+	AsteriskEqual // *=
+	SlashEqual    // /=
+	PercentEqual  // %=
+	CaretEqual    // ^=
 
 	// Comparison
 	EqualEqual     // ==
@@ -102,6 +106,10 @@ var OperatorMap = map[string]TokenType{
 	":=":  ColonEqual,
 	"+=":  PlusEqual,
 	"-=":  MinusEqual,
+	"*=":  AsteriskEqual,
+	"/=":  SlashEqual,
+	"%=":  PercentEqual,
+	"^=":  CaretEqual,
 	"==":  EqualEqual,
 	"!=":  NotEqual,
 	">=":  GreaterEqualTo,
@@ -117,6 +125,7 @@ var OperatorMap = map[string]TokenType{
 	"%":   Percent,
 	"^":   Caret,
 	"!":   Not,
+	"!!":  NotNot,
 	">":   GreaterThan,
 	"<":   LessThan,
 	"|":   Stroke,
