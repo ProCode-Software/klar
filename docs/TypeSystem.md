@@ -6,14 +6,14 @@
 - `Int` - signed 64-bit integer
 - `Float` - signed 64-bit double
 - `Bool` - boolean (`true` | `false`)
-- `Result<T, E>` - value of `T` and error type of `E`
+- [`Result<T, E>`](#results) - value of `T` and error type of `E`
 - `T?` - optional value of `T` or `nil`
 - `[T]` - list with values of type `T`
 - `Map<K, V>` - map with keys of type `K` and values of type `V`
 - `A | B` - union type; value of either `A` or `B`
-- `func (A, B, ...) -> T` - function/lambda with params of type `A`, `B`, ..., and return value `T`
+- [`func (A, B, ...) -> T`](#functions) - function or lambda with params of type `A`, `B`, ..., and return value `T`
 - `Nothing` - return type of functions that don't return anything. Only valid in function return types.
-- `(A, B, ...)` - tuple with values of type `A`, `B`, ...
+- [`(A, B, ...)`](#tuples) - tuple with values of type `A`, `B`, ...
 
 ## User-Created Types
 
@@ -188,3 +188,76 @@ Rest destructuring is allowed, with the following restrictions:
 (first, second, rest...) := (1, 2, 3) // rest has 1 item
 (first, second, third, rest...) := (1, 2, 3) // rest is empty
 ```
+
+## Functions
+
+### Labelled parameters
+
+A labelled parameter is declared with another name before the name of the parameter/variable used internally.
+
+```klar
+func String.replace(substring: String, with replacement: String) -> String
+```
+
+The second parameter requires the label `with`, and `replacement` is the name of the variable used by the function. It would be called like:
+```klar
+"Hello, World!".replace("World", with: "John")
+```
+The label is always required when assigning the parameter. If a function signature declares any non-optional, labelled parameters, the function cannot be assigned to a variable, as lambdas can't declare parameter labels.
+
+Using the example method above, this is not allowed:
+```klar
+replace := "Hello, World!".replace
+```
+
+The `replace` variable must wrap the function:
+
+```klar
+replace := func(substring, replacement: String)
+    -> "Hello, World!".replace(substring, with: replacement)
+```
+
+### Optional Parameters
+
+A parameter may be omitted from a function call if:
+
+- The parameter is an optional type (e.g. `Bool?`), or
+- The parameter has a default value
+
+And:
+
+- The parameter isn't followed by any non-optional parameters, or
+- The parameter has a label
+
+```klar
+func greet(person: Bool, formally formal: Bool = false)
+greet("John") // formal = false
+greet("John", formally: false) // Same as above
+```
+
+## Optionals
+An optional is composed of an underlying type, but its value could be `nil`. For safety, optionals cannot be indexed and their underlying values cannot be used, without unwrapping the optional.
+
+Akin to `Result`s, optionals may be unwrapped using a `when` expression that specifically handles its `nil` value, or using an assertion (`!!`), which crashes the program if the value if `nil`.
+
+```klar
+maybeInt: Int? := 2
+print(maybeInt + 1) // Error: 'maybeInt' needs to be unwrapped
+
+// These are allowed
+print(maybeInt!! + 1) // Beware: Crashes the program if `maybeInt == nil`
+
+when maybeInt {
+    nil -> doSomethingElse()
+
+    // The compiler knows that maybeInt isn't nil; it has been unwrapped.
+    _ -> print(maybeInt + 1)
+    // This may be used instead, but it is not idiomatic:
+    Int -> print(maybeInt + 1)
+}
+```
+
+## Assertions
+The assert operator (`!!`) may be used with `Result` and [optional](#optionals) values to crash the program if the value is an error or `nil` respectively.
+
+Assertions should be used carefully, especially in production. It is more useful to show a better error message to the user or handle the special case. Klar has options for the typechecker to restrict the use of assertions to avoid hidden program crashes.
