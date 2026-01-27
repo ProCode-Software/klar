@@ -49,3 +49,4 @@ shadow x: String := "foo"
 - Resource-using
 - Should it be called `nil` or `none`?
 - Should methods be allowed on interfaces?
+- Struct publicity for fields and methods. Should they be private by default?
