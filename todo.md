@@ -22,6 +22,14 @@
         "Hello"... -> // when string begins with 'Hello'
     }
     ```
+- builtins:
+    - crashout
+    - TODO
+    - unreachable
+    - assert??
+    - typeOf??
+    - typeNameOf??
+    - sleep??
 
 ## Other
 - target property in manifest for defining target platform per module
@@ -56,3 +64,4 @@ shadow x: String := "foo"
 10. Bitmask enums
 11. New `Iterator` type, or iterators are `List`s with compiler optimizations?
 12. Should the compiler enforce identifier capitalization conventions? (`PascalCase` for types, `camelCase` for variables)
+13. Disallow tuples with 0 or 1 items

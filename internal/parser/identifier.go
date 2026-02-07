@@ -8,10 +8,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// isValidIdentifier reports whether tok is a valid identifier. Valid identifiers are
-// [lexer.Identifier] and types in [ast.Modifiers].
+// isValidIdentifier reports whether tok's Kind is [lexer.Identifier].
 func isValidIdentifier(t lexer.TokenType) bool {
-	return t == lexer.Identifier || t == lexer.Import
+	return t == lexer.Identifier
 }
 
 func isValidIdentOrDiscard(t lexer.TokenType) bool {
