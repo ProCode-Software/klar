@@ -44,9 +44,15 @@ shadow x: String := "foo"
 ```
 
 # RFCs
-- String formats
-- Regex literal formats
-- Resource-using
-- Should it be called `nil` or `none`?
-- Should methods be allowed on interfaces?
-- Struct publicity for fields and methods. Should they be private by default?
+1. String formats
+2. Regex literal formats (`#/.../` vs `%/.../`, multi-`/`)
+3. Resource-using (`use`, `using`)
+4. Should it be called `nil` or `none`?
+5. Should methods be allowed on interfaces?
+6. Struct publicity for fields and methods. Should they be private by default? Or should private fields be prefixed with `_`?
+7. How to distinguish variable values from unwrapped variable declarations in `when` pattern matching
+8. Should the value be the first, or last parameter in each pipeline step? Or should steps explicitly use `value` if they take multiple parameters?
+9. Private modules (`internal` folder, and/or `_` prefix?)
+10. Bitmask enums
+11. New `Iterator` type, or iterators are `List`s with compiler optimizations?
+12. Should the compiler enforce identifier capitalization conventions? (`PascalCase` for types, `camelCase` for variables)
