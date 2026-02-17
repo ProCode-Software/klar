@@ -370,7 +370,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 // parseAssignableTypePairs parses a series of assignable expressions, optionally
 // followed by an optional type and/or a default value. An item in pairs may
 // have multiple keys and no type or value.
-func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair)  {
+func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair) {
 	parseSeries(p, pairs, func() *ast.AssignableTypePair {
 		pair := &ast.AssignableTypePair{}
 		parseSeries(p, &pair.Keys, p.ParseAssignable, 0, lexer.Comma, false)
@@ -622,12 +622,8 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	case isAssignment(k), k == lexer.Arrow:
 		// -> or any assignment except := or =
 		f.Operator = newOperator(p.Advance())
-		f.Value = p.ParseExpression(RangeBindingPower)
 		// Allow spread (...) to be included at the end, to spread entire loop.
-		// This means not to include it as the expression.
-		if p.CurrKind() != lexer.Ellipsis {
-			f.Value, _ = p.TryParseLED(f.Value, ExpressionBindingPower)
-		}
+		f.Value = p.ParseExpressionWithout(excludeIf(lexer.Ellipsis), RangeBindingPower, try)
 	case k == lexer.LeftCurlyBrace:
 		f.Block = p.ParseBlock()
 	}

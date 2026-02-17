@@ -155,7 +155,7 @@ func (p *Parser) ParseEnum(
 			attrs = a
 		}
 		p.ExpectNoAdvance(lexer.Dot)
-		id := p.ParseIdentifier()
+		id := p.ParseMapIdentifier(0)
 
 		// Check if exists
 		if _, ok := itemMap[id.Name]; ok {
@@ -171,17 +171,9 @@ func (p *Parser) ParseEnum(
 		}
 		if p.isEqual() {
 			p.Advance()
-			item.Value = p.ParseExpression(MemberBindingPower)
-			switch c := p.Curr(); c.Kind {
-			case lexer.Dot:
-				if c.Line != item.Value.GetRange().End.Line {
-					break
-				}
-				fallthrough
-			default:
-				item.Value, _ = p.handleLED(c.Kind, item.Value, ExpressionBindingPower)
-			case lexer.RightCurlyBrace, lexer.Newline, lexer.At, lexer.Comma:
-			}
+			item.Value = p.ParseExpressionWithout(excludeIf(lexer.Dot),
+				MemberBindingPower, allowIfSameLine,
+			)
 		}
 		items = append(items, markStartEndPos(p, item, id.Position))
 		attrs = nil
@@ -270,6 +262,7 @@ func (p *Parser) ParseStruct(
 }
 
 // Similar to [*Parser.ParseTupleType]
+// TODO: rewrite
 func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
 	var names [][2]ast.Identifier
 	var isType, hasColon, hasLabel bool

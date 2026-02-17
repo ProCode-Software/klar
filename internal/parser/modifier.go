@@ -16,7 +16,7 @@ func (p *Parser) validatePublic() {
 func (p *Parser) ParseOpaqueModifier() ast.Statement {
 	p.Advance() // opaque
 	p.validatePublic()
-	stmt := p.ParseStatement(withoutEOS)
+	stmt := p.ParseStatement(noEOS)
 	switch stmt := stmt.(type) {
 	case *ast.InterfaceDeclaration, *ast.StructDeclaration:
 		return &ast.OpaqueDeclaration{Declaration: stmt.(ast.TypeDeclaration)}
@@ -46,7 +46,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 		stmt = &ast.BadExpression{Value: p.ParsePublicModifier()}
 		markStartEndPos(p, stmt, curr.Position)
 	default:
-		stmt = p.ParseStatement(withoutEOS)
+		stmt = p.ParseStatement(noEOS)
 	}
 	switch stmt.(type) {
 	case *ast.BadExpression:

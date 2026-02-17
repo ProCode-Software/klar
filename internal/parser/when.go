@@ -26,28 +26,11 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 	return markStartEndPos(p, res, tok.Position)
 }
 
-func (p *Parser) ParseWhenCan() *ast.WhenCanCase {
-	op := newOperator(p.Advance())            // can, !can
-	typ := p.ParseType(UnionTypeBindingPower) // Don't include '|'
-	// Parse types with lower binding power than '|': '?' and '...'
-	switch curr := p.CurrKind(); curr {
-	case lexer.Question, lexer.Ellipsis:
-		typ = p.ParseTypeLED(typ, TypeBindingPowerMap[curr])
-	}
-	when := &ast.WhenCanCase{Operator: op, Type: typ}
-	if p.CurrKind() == lexer.LeftParenthesis {
-		params := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
-		when.Params = params.Args
-	}
-	return when
-}
-
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 	var (
-		c         = &ast.WhenCase{}
-		commaExp  = make([]ast.Expression, 0, subjects)
-		orOpts    [][]ast.Expression
-		braceLine uint32
+		c        = &ast.WhenCase{}
+		commaExp = make([]ast.Expression, 0, subjects)
+		orOpts   [][]ast.Expression
 	)
 	// Back up isWhenCase flag
 	oldIsWhenCase := p.flags & isWhenCase
@@ -86,18 +69,27 @@ loop:
 	p.flags = (p.flags &^ isWhenCase) | oldIsWhenCase // Restore old isWhenCase flag
 	p.Expect(lexer.Arrow)
 	switch p.CurrKind() {
+	// Block
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
 		c.Braces = true
-		braceLine = c.Body.(*ast.Block).Range.End.Line
+		braceLine := c.Body.(*ast.Block).Range.End.Line
 
 		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
 			!isImplicitWhenOp(braceLine, k) {
 			p.Expect(lexer.Newline, lexer.Comma)
 		}
+	// Statement/expression outside braces
 	default:
+		switch p.CurrKind() {
+		// Treat these tokens as expressions
+		case lexer.For, lexer.Func:
+			c.Body = p.ParseExpression(ExpressionBindingPower)
+			p.Expect(lexer.Newline, lexer.Comma)
+			return c
+		}
 		// BUG: Braces/comma required before '<' starting next case
-		res := p.ParseStatement(withoutEOS | usingComma)
+		res := p.ParseStatement(allowCommaTerminator)
 		switch res := res.(type) {
 		// All expressions are allowed
 		case *ast.ExpressionStatement:
@@ -111,7 +103,6 @@ loop:
 			p.Error(errors.Node(errors.ErrRequiredBraces, res))
 			c.Body = &ast.BadExpression{Value: res}
 		}
-		p.Expect(lexer.Newline, lexer.Comma)
 	}
 	return c
 }

@@ -34,6 +34,73 @@ func (p *Parser) Parse() *ast.Program {
 	}
 }
 
+func (p *Parser) ParseStatement(flags ...uint8) ast.Statement {
+	flag := parseFlags(flags)
+	kind := p.CurrKind()
+	expectEOS := func() {
+		if (flag & allowCommaTerminator) != 0 {
+			p.Expect(lexer.Comma, lexer.Newline)
+		} else if (flag & noEOS) == 0 {
+			p.Expect(lexer.Newline)
+		}
+	}
+	// A. Try to parse a full statement
+	if res, handled := p.handleStatement(kind); handled {
+		expectEOS()
+		return res
+	}
+	var expr ast.Expression
+	var ok bool
+	// B. Start with a NUD
+	if next := p.PeekKind(); kind == lexer.Underscore &&
+		(isAssignment(next) || next == lexer.Comma || next == lexer.Colon) {
+		// Allow discard assignments
+		p.Advance()
+		expr = &ast.Discard{}
+	} else if expr, ok = p.handleNUD(kind); !ok { // Expression NUD
+		p.nudError()
+		// expectEOS() // TODO: should we?
+		return &ast.BadExpression{Token: kind}
+	}
+
+	// C. Try to parse a statement LED
+	if stmt, ok := p.handleStatementLED(p.CurrKind(), expr); ok {
+		expectEOS()
+		return stmt
+	}
+	// D. Otherwise parse an expression LED
+	expr = p.ParseLED(expr, ExpressionBindingPower)
+
+	// E. Then parse a statement LED after the expression, unless a comma
+	// is a terminator (don't parse comma assignments)
+	if flag&allowCommaTerminator == 0 || p.CurrKind() != lexer.Comma {
+		if stmt, ok := p.handleStatementLED(p.CurrKind(), expr); ok {
+			// Assignment statement
+			expectEOS()
+			return stmt
+		}
+	}
+	// F. This statement is an expression statement
+	expectEOS()
+	return copyPos(expr, &ast.ExpressionStatement{Expression: expr})
+}
+
+func (p *Parser) ParseTopLevelStatement() ast.Statement {
+	kind := p.CurrKind()
+	res, handled := p.handleTopLevelStatement(kind)
+	if handled {
+		if pb := p.PeekBehind(); pb.Kind != lexer.Asterisk {
+			p.Expect(lexer.Newline)
+		} else if c := p.Curr(); c.Position.Line == pb.Position.Line &&
+			c.Kind != lexer.Newline && c.Kind != lexer.EOF {
+			// No newline after import
+			p.Error(errors.ExpectedToken(lexer.Newline, c))
+		}
+		return res
+	}
+	return p.ParseStatement()
+}
+
 // ParseComment takes tok, a [lexer.LineComment], [lexer.BlockComment] or [lexer.Hashbang]
 // token and parses it into an [*ast.Comment] node.
 // Errors are reported to the parser if block comments are unterminated or shebangs
@@ -62,11 +129,6 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 	}
 }
 
-func (p *Parser) unknownTokenErr() {
-	p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
-	p.skipUntilBoundary()
-}
-
 func (p *Parser) ParseExpression(bp BindingPower) ast.Expression {
 	return p.ParseFull(bp)
 }
@@ -84,31 +146,6 @@ func (p *Parser) ParseFull(bp BindingPower) ast.Expression {
 	return p.ParseLED(left, bp)
 }
 
-func (p *Parser) nudError() {
-	switch curr := p.Curr(); curr.Kind {
-	case lexer.Illegal:
-		if p.checkIllegal(curr) {
-			break
-		}
-		fallthrough
-	default:
-		p.unknownTokenErr()
-		return
-	case lexer.If:
-		p.Error(errors.Token(errors.ErrIfStatement, curr))
-	case lexer.Plus:
-		p.Error(errors.Token(errors.ErrPositiveSign, curr))
-	case lexer.NotNot:
-		count := p.countConsecutiveNot()
-		err := errors.Range(errors.ErrDoubleNot,
-			ranges.Offset(curr.Position, 0, uint32(count)),
-		)
-		err.SetParam("count", count)
-		p.Error(err)
-	}
-	p.skipUntilBoundary()
-}
-
 func (p *Parser) TryParseLED(left ast.Expression, bp BindingPower) (ast.Expression, bool) {
 	kind := p.CurrKind()
 	left, handled := p.handleLED(kind, left, BindingPowerMap[kind])
@@ -124,7 +161,7 @@ func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {
 		kind := p.CurrKind()
 		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
-			p.unknownTokenErr()
+			p.unknownTokenError()
 			return &ast.BadExpression{Token: kind, Value: left}
 		}
 	}
@@ -132,20 +169,25 @@ func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {
 	return left
 }
 
-func (p *Parser) ParseTopLevelStatement() ast.Statement {
-	kind := p.CurrKind()
-	res, handled := p.handleTopLevelStatement(kind)
-	if handled {
-		if pb := p.PeekBehind(); pb.Kind != lexer.Asterisk {
-			p.Expect(lexer.Newline)
-		} else if c := p.Curr(); c.Position.Line == pb.Position.Line &&
-			c.Kind != lexer.Newline && c.Kind != lexer.EOF {
-			// No newline after import
-			p.Error(errors.ExpectedToken(lexer.Newline, c))
-		}
-		return res
+// ParseExpressionWithout parses an expression, stopping if exclude returns
+// true for the current token type.
+func (p *Parser) ParseExpressionWithout(
+	exclude func(lexer.TokenType) bool, initialBP BindingPower, flags uint8,
+) ast.Expression {
+	expr := p.ParseExpression(initialBP)
+	if exclude(p.CurrKind()) &&
+		(flags&allowIfSameLine == 0 || p.Curr().Line != expr.GetRange().End.Line) {
+		return expr
 	}
-	return p.ParseStatement()
+	if (flags & try) != 0 {
+		expr, _ = p.TryParseLED(expr, ExpressionBindingPower)
+		return expr
+	}
+	return p.ParseLED(expr, ExpressionBindingPower)
+}
+
+func excludeIf(kind lexer.TokenType) func(lexer.TokenType) bool {
+	return func(t lexer.TokenType) bool { return t == kind }
 }
 
 func parseFlags(flgs []uint8) uint8 {
@@ -157,89 +199,11 @@ func parseFlags(flgs []uint8) uint8 {
 }
 
 const (
-	withoutEOS uint8 = 1 << iota
-	usingComma
+	noEOS uint8 = 1 << iota
+	allowCommaTerminator
+	try
+	allowIfSameLine
 )
-
-func (p *Parser) ParseStatement(flags ...uint8) ast.Statement {
-	var (
-		flag  = parseFlags(flags)
-		noEOS = (flag & withoutEOS) != 0
-		kind  = p.CurrKind()
-	)
-	if res, handled := p.handleStatement(kind); handled {
-		if !noEOS {
-			p.Expect(lexer.Newline)
-		}
-		return res
-	}
-	var (
-		expr    ast.Expression
-		handled bool
-		res     ast.Statement
-		comma   = noEOS && (flag&usingComma) != 0
-	)
-	// Allow discard assignments
-	if k := p.PeekKind(); kind == lexer.Underscore && (isAssignment(k) ||
-		k == lexer.Comma || k == lexer.Colon) {
-		p.Advance()
-		expr = &ast.Discard{}
-		handled = true
-	} else {
-		// Normal expression NUD
-		expr, handled = p.handleNUD(kind)
-		if !handled {
-			p.nudError()
-			expr = &ast.BadExpression{Token: kind}
-			goto checkEOS
-		}
-	}
-	kind = p.CurrKind()
-	if kind == lexer.Comma && comma {
-		goto checkEOS
-	}
-	if res, handled = p.handleStatementLED(kind, expr); !handled {
-		expr = p.ParseLED(expr, ExpressionBindingPower)
-		// Don't parse a comma statement
-		if comma && p.CurrKind() == lexer.Comma {
-			goto checkEOS
-		}
-		if stmt, handled := p.handleStatementLED(p.CurrKind(), expr); handled {
-			// Assignment statement
-			res = stmt
-		} else {
-			// Expression statement
-			res = copyPos(expr, &ast.ExpressionStatement{Expression: expr})
-		}
-	}
-checkEOS:
-	if comma {
-		p.Expect(lexer.Comma, lexer.Newline)
-	} else if !noEOS {
-		p.Expect(lexer.Newline)
-	}
-	return res
-}
-
-func (p *Parser) skipUntilBoundary() {
-	brackCount := 1
-	for p.HasTokens() {
-		switch p.CurrKind() {
-		case lexer.Comma, lexer.Newline:
-			if brackCount <= 1 {
-				return
-			}
-		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace:
-			brackCount++
-		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
-			brackCount--
-			if brackCount <= 0 {
-				return
-			}
-		}
-		p.Advance()
-	}
-}
 
 func parseExprSeries[T ast.Node](
 	p *Parser, arr *[]T,
