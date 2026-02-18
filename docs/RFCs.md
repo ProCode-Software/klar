@@ -8,9 +8,9 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
 ## Open RFCs
 1. **String literal formats**
     - Ideas for existing quote styles:
-        - Double quotes `"` for multiline strings   with interpolation
+        - Double quotes `"` for multiline strings with interpolation
         - Single quotes `'` for single-line strings without interpolation
-        - Backticks <code>`</code> for multiline    strings with no interpolations or character escapes (raw strings)
+        - Backticks <code>`</code> for multiline strings with no interpolations or character escapes (raw strings)
     - New string formats (what quoting style to use?)
         - Strings that can be formatted multiline in source code, but are concatenated into a single line. ("folding strings")
         - Strings that allow escaping quotes??
@@ -20,9 +20,9 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
     - How can regex literals be defined with multiple-`/`? (to allow including `/` without escaping)
 3. **Resource management**
     - Implementations in other languages:
-        - Python: `with` block
-        - Gleam: [`use` declarations](https://tour.gleam.run/advanced-features/use/) that can be set to values that take a callback.
-        - JavaScript: [`using` declarations](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using) that can be set to values with a `Symbol.dispose` method
+        - Python: `with` blocks
+        - Gleam: [`use` declarations](https://tour.gleam.run/advanced-features/use/) that can be set to functions that take a callback.
+        - JavaScript: [`using` declarations](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using) that can be set to objects with a dispose method
         - Java: `try` blocks (Try-with-Resources)
     - Should the keyword be `use` or `using`?
 4. **Should it be called `nil` or `none`?**
@@ -77,7 +77,7 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
         var myValue MyEnum = Option1 | Option3
 
         // Check for an option
-        fmt.Println((myValue & Option3) != 0)
+        (myValue & Option3) != 0
 
         // Assign an option
         myValue |= Option2
@@ -85,7 +85,7 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
         // Remove an option
         myValue &^= Option1 // JavaScript: myValue &= ~Option1
         ```
-11. **How to implement iterators**
+11. **Iterators**
     <ol type="a">
         <li>New <code>Iterator</code> type (possibly builtin)</li>
         <li>Iterators are just lists, but optimized by the compiler when used in <code>for</code> loops</li>
@@ -109,9 +109,31 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
     > For now, `readonly` will be used to refer to this feature in RFCs.
 18. **Readonly interface fields**
     <ol type="a">
-        <li>
-            Add a <code>writeable</code>/<code>write</code> keyword that can be applied on fields, similar to <code>readonly</code> on structs.
-        </li>
+        <li>Add a <code>writeable</code>/<code>write</code> keyword that can be applied on fields, similar to <code>readonly</code> on structs.</li>
         <li>All fields are writable by default, and <code>readonly</code> can be used to override.</li>
         <li>Interface fields can't be modified at all.</li>
     </ol>
+19. **Should lists and tuples use 1-based indexing?**
+    - 0-based indexing is a convention taken from C, where array indexing is equivalent to taking memory offsets. We are careful about borrowing semantics from C into Klar, especially the low-level ones.
+    - Using 1-based indexing allows the list's `length` to be used as a valid index, avoiding off-by-one bugs.
+    - Lua, Julia, MATLAB, R, and Fortran are examples of languages with 1-based indexing.
+20. **Errors**
+    - TODO
+21. **Fallable list indexing** - Should all list index operations return `Result`s, or crash when out of range?
+22. **Should accumulative `for` expressions remain in the language?**
+    - These allow assignment operators such as `+=` to be used in `for` expressions to accumulate a value instead of creating a new list. (reduce)
+        ```klar
+        items := [1, 2, 3, 4, 5, 6]
+        sum := for item in items += item
+        ```
+    - Should `for` expression *blocks* remain in the language?
+    <br>These allow a new list to be created by returning values, also allowing control flow such as `next` and `stop`. (filter)
+        ```klar
+        numbers := [1, 2, 3, 4, 5, 6]
+        evenNumbers := for num in numbers {
+            when item % 2 {
+                0 -> return item
+                _ -> next
+            }
+        }
+        ```
