@@ -41,14 +41,12 @@ func (parser: Parser).parse() -> Result<ast.Program, [SyntaxError]> {
 }
 
 func Parser.parseCommand() -> Result<ast.Command, SyntaxError> {
-    cmdName := ""
-    when self.current() {
-        .identifier(name) -> {
-            cmdName = name
-            self.advance()
-        }
+    cmdName := when self.current() {
+        .identifier(name) -> name
         _ -> return SyntaxError.expected("command name", cmdNameToken)
     }
+    self.advance()
+
     args: [ast.Value] := []
     flags: [ast.Flag] := []
     while self.hasTokens() {
@@ -64,14 +62,11 @@ func Parser.parseCommand() -> Result<ast.Command, SyntaxError> {
                         isShort = false
                     }
                 }
-                flagName := ""
-                when self.current() {
-                    .identifier(name) -> {
-                        flagName = name
-                        self.advance()
-                    }
+                flagName := when self.current() {
+                    .identifier(name) -> name
                     _ -> return SyntaxError.flagNameMustBeIdent(self.current())
                 }
+                self.advance()
                 when self.current() {
                     .dash -> flags += [.(name, isShort, ast.BoolValue(true))]
                     _ -> flags += [.(name, isShort, try self.parseValue())]
@@ -100,7 +95,15 @@ func Parser.parseValue() -> Result<ast.Value, SyntaxError> {
 }
 
 type SyntaxError {
-    .expected(kind: string, got: Token) = "Expected {kind}, but found {got}"
-    .flagNameMustBeIdent(Token) = "A flag name must be an identifier"
-    .invalidNumber(number: string) = "'{number}' isn't a valid number"
+    .expected(kind: string, got: Token)
+    .flagNameMustBeIdent(Token)
+    .invalidNumber(number: string)
+}
+
+func Error(err: SyntaxError) {
+    self.message = when err {
+        .expected(kind, got) = "Expected {kind}, but found {got}"
+        .flagNameMustBeIdent = "A flag name must be an identifier"
+        .invalidNumber(number) = "'{number}' isn't a valid number"
+    }
 }

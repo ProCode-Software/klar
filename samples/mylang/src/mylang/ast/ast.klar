@@ -1,30 +1,38 @@
+// A list of commands, that may also contain comments.
 type Program {
     commands: [Command]
     comments: [Comment]
 }
 
+// Contains a command name, positional arguments, and flags.
+// These are the entries in [Program]s.
 type Command {
     name: String
     args: [Value]
     flags: [Flag]
 }
 
-type Comment {
-    text: String
-}
+// Text in the program's code that has no meaning.
+type Comment { text: String }
 
+// Can be passed to a [Command] as an optional, unordered argument.
 type Flag {
     name: String
     isShort: Bool
     Value: Value
 }
 
+// The value of an argument or flag.
 type #Value
 
+// A list of characters in single `'` or double `"` quotes.
 type StringValue: Value {
     value: String
     singleQuote: Bool
 }
 
+// A number.
 type IntValue: Value { value: Int }
+
+// Either `true` or `false`.
 type BoolValue: Value { value: Bool }

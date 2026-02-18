@@ -1,22 +1,30 @@
 // A simple group of characters read by [Lexer].
 type Token {
-    .identifier(name: String) = name,
-    .number(num: String) = num,
-    .string(content: String, singleQuote: Bool) = content,
-    .comment(text: String) = "#{text}",
-    .boolean(value: Bool) = String(value),
-    .illegal(char: String) = char,
-    .dash = "-", .backslash = "\\", .eof = "", .newline = "\n",
+    .identifier(name: String)
+    .number(num: String) = num
+    .string(content: String, singleQuote: Bool)
+    // A comment until the end of the line. Has no meaning.
+    .comment(text: String)
+    .boolean(value: Bool)
+    .illegal(char: String) // Unrecognized character
+    .eof // At the end of each [Token] stream.
+    .newline // A line break
+    .dash, .backslash, .newline
 }
 
-func String(token: Token) {
-    when token {
-        .string(content, singleQuote) if singleQuote
-            -> return `'{content}'`,
-        .string(content, singleQuote) if !singleQuote
-            -> return `"{content}"`,
-        .boolean(value) if value -> return "true",
-        .boolean(value) if !value -> return "false",
-        _ -> return token.value,
-    }
+// Returns the string representation of the token. EOF is
+// represented as an empty string.
+func String(token: Token) = when token {
+    .number(num) -> String(num),
+    .comment(text) -> "#{text}",
+    .identifier(ident) -> ident,
+    .illegal(char) -> char,
+    .dash -> '-',
+    .backslash -> '\\',
+    .eof -> '',
+    .newline -> '\n',
+    .string(content, singleQuote) if singleQuote -> `'{content}'`,
+    .string(content, singleQuote) if !singleQuote -> `"{content}"`,
+    .boolean(value) if value -> "true",
+    .boolean(value) if !value -> "false",
 }
