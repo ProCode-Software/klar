@@ -50,6 +50,7 @@ func (l *Lexer) Tokenize() *Token {
 			l.ResetPosition()
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
+			// Strings
 			return l.ReadString(pos, r, 0)
 		case '.', '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
@@ -60,34 +61,22 @@ func (l *Lexer) Tokenize() *Token {
 			switch typ {
 			default:
 				return NewToken(pos, typ, val)
-			// Just change position
 			case LineComment:
 				tok = l.ReadLineComment(pos)
 			case BlockComment:
 				tok = l.ReadBlockComment(pos)
 			case Hashbang:
 				tok = l.ReadShebang(pos)
+			case Regex:
+				tok = l.ReadRegex(pos)
 			}
-			if l.Flags&IncludeComments == 0 {
+			if (l.Flags & IncludeComments) == 0 {
 				continue
 			}
 			return tok
 		case ' ':
 			continue
 		// Single-character tokens and operators
-		case '@':
-			next, isEOF := l.BackupPeek()
-			if !isEOF {
-				switch next {
-				case '"', '`', '\'':
-					next := rune(next)
-					return l.ReadString(pos, next, l.ReadAll(next))
-				case '/':
-					next := rune(next)
-					return l.ReadRegex(pos, l.ReadAll(next))
-				}
-			}
-			return NewToken(pos, At, "@")
 		case '*':
 			return NewToken(pos, Asterisk, "*")
 		case '%':
@@ -117,13 +106,15 @@ func (l *Lexer) Tokenize() *Token {
 		case IsDigit(r):
 			return l.ReadNumber(pos)
 		case unicode.IsLetter(r), r == '_':
-			return l.ReadIdentifier(pos)
+			return l.ReadIdentifier(pos, r)
 		case r == 0xfeff:
+			// Byte order mark
 			if pos.Line == 1 && pos.Col == 1 {
 				continue
 			}
 			fallthrough
 		default:
+			// Invalid UTF-8
 			attrs := attrs{"length": uint32(1)}
 			if r == utf8.RuneError {
 				attrs["invalidCharacter"] = struct{}{}
@@ -171,6 +162,7 @@ func (l *Lexer) PeekN(n int) (b []byte, eof bool) {
 	return next, false
 }
 
+// Deprecated: Probably won't be used anymore
 func (l *Lexer) ReadAll(char rune) (n int) {
 	for r := range l.NewTokenizer(true).Tokenize {
 		if r != char {
@@ -191,14 +183,21 @@ func (l *Lexer) Reset() {
 // Utils
 // ================
 
-func IsDigit(r rune) bool {
-	return r >= '0' && r <= '9'
+// Returns true if the error is EOF, otherwise panics
+func handleReadError(err error) bool {
+	if err != nil {
+		if err == io.EOF {
+			return true
+		}
+		panic(err)
+	}
+	return false
 }
 
+func IsDigit(r rune) bool { return r >= '0' && r <= '9' }
+
 // IsIdent reports whether r is the beginning of an identifier
-func IsIdent(r rune) bool {
-	return r == '_' || unicode.IsLetter(r)
-}
+func IsIdent(r rune) bool { return r == '_' || unicode.IsLetter(r) }
 
 func isASCIILetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
@@ -215,6 +214,7 @@ type Tokenizer struct {
 	Builder    strings.Builder
 	BackupLast bool
 	eof        bool
+	endPos     Position
 	*Lexer
 }
 
@@ -228,12 +228,14 @@ func (t *Tokenizer) Tokenize(yield func(rune, *Builder) bool) {
 		t.Pos.Col++
 		if handleReadError(err) {
 			t.eof = true
+			t.endPos = t.Pos
 			return
 		}
 		if !yield(r, &t.Builder) {
 			if t.BackupLast {
 				t.Backup()
 			}
+			t.endPos = t.Pos
 			return
 		}
 		if r == '\n' {
@@ -248,8 +250,17 @@ func (t *Tokenizer) EOF() bool { return t.eof }
 // String returns the string representation of the accumulated tokens.
 func (t *Tokenizer) String() string { return t.Builder.String() }
 
+// EndPos returns the position of the last read character.
+func (t *Tokenizer) EndPos() Position { return t.endPos }
+
 func (t *Tokenizer) Reset(backupLast bool) {
 	t.Builder.Reset()
+	t.BackupLast = backupLast
+	t.eof = false
+}
+
+// ResetKeepBuilder resets the tokenizer without clearing the builder.
+func (t *Tokenizer) ResetKeepBuilder(backupLast bool) {
 	t.BackupLast = backupLast
 	t.eof = false
 }

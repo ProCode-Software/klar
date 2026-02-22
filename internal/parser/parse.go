@@ -34,13 +34,12 @@ func (p *Parser) Parse() *ast.Program {
 	}
 }
 
-func (p *Parser) ParseStatement(flags ...uint8) ast.Statement {
-	flag := parseFlags(flags)
+func (p *Parser) ParseStatement(flags uint8) ast.Statement {
 	kind := p.CurrKind()
 	expectEOS := func() {
-		if (flag & allowCommaTerminator) != 0 {
+		if (flags & allowCommaTerminator) != 0 {
 			p.Expect(lexer.Comma, lexer.Newline)
-		} else if (flag & noEOS) == 0 {
+		} else if (flags & noEOS) == 0 {
 			p.Expect(lexer.Newline)
 		}
 	}
@@ -73,7 +72,7 @@ func (p *Parser) ParseStatement(flags ...uint8) ast.Statement {
 
 	// E. Then parse a statement LED after the expression, unless a comma
 	// is a terminator (don't parse comma assignments)
-	if flag&allowCommaTerminator == 0 || p.CurrKind() != lexer.Comma {
+	if flags&allowCommaTerminator == 0 || p.CurrKind() != lexer.Comma {
 		if stmt, ok := p.handleStatementLED(p.CurrKind(), expr); ok {
 			// Assignment statement
 			expectEOS()
@@ -98,7 +97,7 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 		}
 		return res
 	}
-	return p.ParseStatement()
+	return p.ParseStatement(0)
 }
 
 // ParseComment takes tok, a [lexer.LineComment], [lexer.BlockComment] or [lexer.Hashbang]
@@ -203,6 +202,8 @@ const (
 	allowCommaTerminator
 	try
 	allowIfSameLine
+	allowNumber
+	isLabel
 )
 
 func parseExprSeries[T ast.Node](

@@ -64,8 +64,6 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	return newIdentifier(tok)
 }
 
-const includingNumber, isLabel uint8 = 1, 2
-
 // opt1: includingNumber, opt2: isLabel (for a better error)
 func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
 	tok := p.AdvanceNonBoundary()
@@ -73,7 +71,7 @@ func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
 	switch {
 	case kind == lexer.Identifier:
 		break
-	case kind == lexer.Numeric && opts&includingNumber == 0:
+	case kind == lexer.Numeric && opts&allowNumber == 0:
 		if opts&isLabel != 0 {
 			p.Error(errors.Token(errors.ErrNumericLabel, tok))
 			break

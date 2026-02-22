@@ -33,7 +33,7 @@ const (
 	Boolean
 	Nil
 	String
-	Regex      // @/
+	Regex      // #/
 	Underscore // _
 
 	// Arithmetic
@@ -149,6 +149,7 @@ var OperatorMap = map[string]TokenType{
 	"//": LineComment,
 	"/*": BlockComment,
 	"#!": Hashbang,
+	"#/": Regex,
 }
 
 var KeywordMap = map[string]TokenType{

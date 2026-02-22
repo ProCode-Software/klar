@@ -90,9 +90,8 @@ type FloatLiteral struct {
 type RegexLiteral struct {
 	BaseNode
 	Source     string
-	Flags      []rune
+	Flags      []byte
 	Multiline  bool
-	QuoteCount int // Number of '/' if '@' was used. Zero if it wasn't
 }
 
 type VersionLiteral struct {
@@ -464,7 +463,7 @@ type FuncAliasDeclaration struct {
 	BaseNode
 	Struct     *Identifier
 	Identifier Identifier
-	Alias      Expression
+	Target      Expression
 }
 
 type FunctionParam struct {

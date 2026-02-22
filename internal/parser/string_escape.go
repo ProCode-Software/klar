@@ -11,7 +11,7 @@ import (
 
 func parseHex(str string) int32 {
 	//nolint:gosec // There is a length limit in the lexer
-	return int32(unwrap(strconv.ParseInt(str, 16, 32)))
+	return int32(tryStrconv(strconv.ParseInt(str, 16, 32)))
 }
 
 func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {

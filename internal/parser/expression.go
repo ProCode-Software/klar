@@ -1,11 +1,9 @@
 package parser
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -121,7 +119,7 @@ func (p *Parser) ParseParamList() *ast.AssignableTuple {
 				p.Advance()
 				pair.Type = p.ParseType(DefaultTypeBindingPower)
 			}
-			if p.isEqual() {
+			if p.isEqual(p.Curr()) {
 				p.Advance()
 				pair.Value = p.ParseExpression(ExpressionBindingPower)
 			}
@@ -317,7 +315,7 @@ func (p *Parser) ParseEnumLiteral() ast.Expression {
 	if p.CurrKind() == lexer.LeftParenthesis {
 		return p.ParseStructDotInit()
 	}
-	return &ast.EnumLiteral{Name: p.ParseIdentifier()}
+	return &ast.EnumLiteral{Name: p.ParseMapIdentifier(0)}
 }
 
 func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
@@ -378,7 +376,7 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair) {
 			p.Advance()
 			pair.Type = p.ParseType(DefaultTypeBindingPower)
 		}
-		if p.isEqual() {
+		if p.isEqual(p.Curr()) {
 			p.Advance()
 			pair.Value = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -437,7 +435,7 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 		// only be used in expression statements
 		if p.CurrKind() == lexer.Return {
 			returnIndex = len(steps)
-			steps = append(steps, p.ParseStatement())
+			steps = append(steps, p.ParseStatement(0))
 		}
 		steps = append(steps, p.ParseExpression(bp))
 	}
@@ -447,63 +445,6 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 		p.Error(errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]))
 	}
 	return &ast.PipelineExpression{Steps: steps}
-}
-
-func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
-	var (
-		isEscape bool
-		b        strings.Builder
-		lastPos  lexer.Position
-	)
-	r := &ast.RegexLiteral{}
-	slashCol := p.Expect(lexer.Slash).Position.Col
-	for p.HasTokens() {
-		if curr := p.CurrKind(); curr == lexer.Slash && !isEscape {
-			break
-		} else if p.Curr().Source == `\` {
-			// BUG: Regexes can't contain #!, // or /* because comments
-			// are pre-parsed (errors are created if unterminated)
-			isEscape = !isEscape
-		}
-		// Including tokens of any kind, including illegal
-		tok := p.Advance()
-		offset := tok.Col - slashCol - 1
-
-		switch {
-		case tok.Source == "\n":
-			continue
-		case tok.Line == lastPos.Line:
-			// Add spaces between tokens
-			b.Write(char.Repeat(' ', int(tok.Col-lastPos.Col)))
-		case lastPos.Col == 0:
-		case offset > 0:
-			// Trim whitespace from start of line if aligned with beginning /
-			// similar to backtick strings
-			b.Write(char.Repeat(' ', int(offset)))
-		}
-		if !r.Multiline {
-			r.Multiline = tok.Line != lastPos.Line
-		}
-		b.WriteString(tok.Source)
-		lastPos = ranges.TokenEnd(tok)
-	}
-	r.Source = b.String()
-	err := errors.Position(errors.ErrUnterminatedRegex, p.Curr().Position)
-	endSlashPos := p.ExpectError(err, lexer.Slash).Position
-	// Manually add EOS because regex ends in / which is operator
-	curr := p.Curr()
-	switch {
-	case curr.Position.Line > endSlashPos.Line && !ContinuesStatement(curr.Kind),
-		curr.Kind == lexer.EOF,
-		curr.Kind == lexer.RightCurlyBrace:
-		p.Tokens = slices.Insert(
-			p.Tokens, p.Index, lexer.Token{Kind: lexer.Newline, Source: "\n"},
-		)
-	case curr.Kind == lexer.Identifier &&
-		ranges.HasOffset(curr.Position, endSlashPos, 0, 1):
-		r.Flags = []rune(p.Advance().Source)
-	}
-	return r
 }
 
 func (p *Parser) ParseVersion(left *ast.Symbol, bp BindingPower) ast.Expression {

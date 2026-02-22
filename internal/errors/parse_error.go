@@ -33,6 +33,7 @@ const (
 	ErrInvalidComma          // Comma statement
 	ErrCurlyQuote            // Unicode curly quote used instead of ASCII straight quote
 	ErrInvalidCharacter      // Invalid Unicode character
+	ErrMisplacedBOM          // Byte order mark must be at the beginning of the file
 
 	// Literal =====
 
@@ -48,6 +49,7 @@ const (
 	ErrInvalidVersion          // Invalid version literal syntax
 	ErrUnderscoreValue         // Use of _ as a value
 	ErrEmptyRegexInterpolation // Empty regex interpolation
+	ErrInvalidDecimalPoint     // Decimal point can only be used in decimal (base 10) format
 
 	// Assignment =====
 
@@ -66,15 +68,17 @@ const (
 	// Declaration =====
 
 	ErrGenericInFuncAlias   // Function aliases can't have generics
+	ErrSelfLabelInFuncAlias // Function aliases can't have a self label
 	ErrMissingFuncParamType // Required function parameter type
 	ErrNonNameFuncAlias     // Function alias target is not symbol or member
-	ErrInvalidOpaque        // Opaque on non-struct or interface
-	ErrInvalidPublic        // Public modifier applied to non-declaration
-	ErrPublicGoesFirst      // Public modifier always goes first
-	ErrDuplicateModifier    // More than 1 of the same modifier
-	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
-	ErrSelfNameDiscard      // Can't discard self name in method declaration
-	ErrPrivateOpaque        // Opaque on private type
+	ErrComputedFuncAlias
+	ErrInvalidOpaque     // Opaque on non-struct or interface
+	ErrInvalidPublic     // Public modifier applied to non-declaration
+	ErrPublicGoesFirst   // Public modifier always goes first
+	ErrDuplicateModifier // More than 1 of the same modifier
+	ErrFuncDotAfterSelf  // Expected . after (self: type). This is unlike Go
+	ErrSelfNameDiscard   // Can't discard self name in method declaration
+	ErrPrivateOpaque     // Opaque on private type
 
 	// Expression =====
 
@@ -290,6 +294,8 @@ func (e *ParseError) error() string {
 		return "A number can't contain consecutive underscores"
 	case ErrMisplacedSeparator:
 		return "An underscore must separate successive digits"
+	case ErrInvalidDecimalPoint:
+		return "A decimal can only be used in base 10 numbers"
 	case ErrNotAllowedInWhen:
 		return "A 'when' case can't contain 'when' expressions or lambdas"
 	case ErrUnterminatedComment:
@@ -384,7 +390,7 @@ func (e *ParseError) error() string {
 		}
 		return "Too many values on the right-hand side of this assignment: " + s
 	case ErrFuncDotAfterSelf:
-		return "Expected '.' between ')' and identifier in function declaration"
+		return "Expected a '.' between ')' and the name in function declaration"
 	case ErrMultiDirectionCompareChain:
 		return "The operators in a comparison chain must follow a single direction"
 	case ErrChainedNotEqual:
@@ -408,6 +414,7 @@ func (e *ParseError) error() string {
 		op := FormatTokenType(e.tokenTypeParam("op"))
 		return "In Klar, comparisons are always strict; use " + op + " instead"
 	case ErrSelfNameDiscard:
+		e.Hint("Remove the label")
 		return "Can't use '_' as name of self in method declaration"
 	case ErrInvalidLoop:
 		kind := e.tokenTypeParam("stmt")
@@ -426,6 +433,8 @@ func (e *ParseError) error() string {
 		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
+	case ErrComputedFuncAlias:
+		return "The target of a function alias can't be computed"
 	case ErrInvalidCharacter:
 		return "This isn't a valid Unicode character"
 	case ErrEmptyRegexInterpolation:
@@ -445,6 +454,10 @@ func (e *ParseError) error() string {
 		return "Multiple '!' are not allowed"
 	case ErrInvalidForExprOperator:
 		return "Expected '->', an arithmetic assignment, or block in 'for' expression"
+	case ErrMisplacedBOM:
+		return "Byte order mark must be the first character in the file"
+	case ErrSelfLabelInFuncAlias:
+		return "Function aliases can't have a named self"
 	case ErrRedeclared:
 		/*
 			"existing":       existing.FileRange(),

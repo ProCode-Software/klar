@@ -14,11 +14,7 @@ func newOperator(t lexer.Token) ast.Operator {
 
 // isEqual returns true if the current token is '='. If it is ':=', isEqual
 // reports an error and still returns true.
-func (p *Parser) isEqual(token ...lexer.Token) bool {
-	t := p.Curr()
-	if len(token) > 0 {
-		t = token[0]
-	}
+func (p *Parser) isEqual(t lexer.Token) bool {
 	switch t.Kind {
 	case lexer.ColonEqual:
 		p.Error(errors.Token(errors.ErrColonEqual, t))

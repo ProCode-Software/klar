@@ -48,7 +48,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		res = p.ParseEnumLiteral()
 	case lexer.Ellipsis:
 		res = p.ParseLeftRest()
-	case lexer.Slash:
+	case lexer.Regex:
 		res = p.ParseRegexLiteral()
 	case lexer.When:
 		res = p.ParseWhenBlock()
@@ -153,11 +153,11 @@ func (p *Parser) handleStatementLED(kind lexer.TokenType, left ast.Expression) (
 		return nil, false
 	// Type annotation
 	case lexer.Colon:
-		res = p.ParseVarTypeAnnotation(left)
+		res = p.ParseVarTypeAnnotation([]ast.Assignable{p.validateAssignable(left)})
 	// Assignment
 	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
-		res = p.ParseAssignment(left)
+		res = p.ParseAssignment([]ast.Assignable{p.validateAssignable(left)}, nil)
 	// Declaration or assignment
 	case lexer.Comma:
 		res = p.ParseCommaStatement(left)

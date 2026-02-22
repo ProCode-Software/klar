@@ -35,87 +35,91 @@ func _() {
 	_ = x[ErrInvalidComma-13]
 	_ = x[ErrCurlyQuote-14]
 	_ = x[ErrInvalidCharacter-15]
-	_ = x[ErrStringEscape-16]
-	_ = x[ErrUnicodeEscapeTooBig-17]
-	_ = x[ErrConsecutiveSeparator-18]
-	_ = x[ErrMisplacedSeparator-19]
-	_ = x[ErrTrailingSeparator-20]
-	_ = x[ErrExpectedHex-21]
-	_ = x[ErrExpectedOctal-22]
-	_ = x[ErrExpectedBinary-23]
-	_ = x[ErrExpectedDecimal-24]
-	_ = x[ErrInvalidVersion-25]
-	_ = x[ErrUnderscoreValue-26]
-	_ = x[ErrEmptyRegexInterpolation-27]
-	_ = x[ErrInvalidUpdate-28]
-	_ = x[ErrInvalidUpdateExpr-29]
-	_ = x[ErrColonEqual-30]
-	_ = x[ErrAssignmentAsExpr-31]
-	_ = x[ErrEmptyDestructure-32]
-	_ = x[ErrInvalidAssignment-33]
-	_ = x[ErrNonNameDeclaration-34]
-	_ = x[ErrInvalidTypeAnnotation-35]
-	_ = x[ErrDestructPatAfterColon-36]
-	_ = x[ErrDestructInvalidEqual-37]
-	_ = x[ErrMismatchedAssignment-38]
-	_ = x[ErrGenericInFuncAlias-39]
-	_ = x[ErrMissingFuncParamType-40]
-	_ = x[ErrNonNameFuncAlias-41]
-	_ = x[ErrInvalidOpaque-42]
-	_ = x[ErrInvalidPublic-43]
-	_ = x[ErrPublicGoesFirst-44]
-	_ = x[ErrDuplicateModifier-45]
-	_ = x[ErrFuncDotAfterSelf-46]
-	_ = x[ErrSelfNameDiscard-47]
-	_ = x[ErrPrivateOpaque-48]
-	_ = x[ErrReservedKeyword-49]
-	_ = x[ErrInvalidLabelShorthand-50]
-	_ = x[ErrNumericLabel-51]
-	_ = x[ErrUnderscoreLabel-52]
-	_ = x[ErrReturnPipelineNotLast-53]
-	_ = x[ErrInvalidObjectPipeStep-54]
-	_ = x[ErrMultipleKeysInMapRest-55]
-	_ = x[ErrExpectedExprAfterOpenRange-56]
-	_ = x[ErrEllipsisForOpenRangeStep-57]
-	_ = x[ErrMustBeFuncCall-58]
-	_ = x[ErrSelfExecFuncNotAllowed-59]
-	_ = x[ErrParenAroundLambdaType-60]
-	_ = x[ErrParenAroundLambdaDefault-61]
-	_ = x[ErrChainedNotEqual-62]
-	_ = x[ErrMultiDirectionCompareChain-63]
-	_ = x[ErrInequalityWithEqualChain-64]
-	_ = x[ErrStepInListSlice-65]
-	_ = x[ErrExpectedInterpolationEnd-66]
-	_ = x[ErrInvalidForExprOperator-67]
-	_ = x[ErrExpectedTypeAssignment-68]
-	_ = x[ErrRequiredStructFieldType-69]
-	_ = x[ErrEmptyGeneric-70]
-	_ = x[ErrParenFuncTypeParams-71]
-	_ = x[ErrIntfDefaultValue-72]
-	_ = x[ErrMixTypeTupleLabels-73]
-	_ = x[ErrIntfMultiKeyMethod-74]
-	_ = x[ErrInvalidGenericType-75]
-	_ = x[ErrInvalidArrow-76]
-	_ = x[ErrRedeclaredField-77]
-	_ = x[ErrNoForIterator-78]
-	_ = x[ErrUnderscoreWithRest-79]
-	_ = x[ErrNotAllowedInWhen-80]
-	_ = x[ErrRequiredBraces-81]
-	_ = x[ErrTryBlock-82]
-	_ = x[ErrIfStatement-83]
-	_ = x[ErrTripleEqual-84]
-	_ = x[ErrInvalidLoop-85]
-	_ = x[ErrPositiveSign-86]
-	_ = x[ErrDoubleNot-87]
-	_ = x[ErrRedeclared-88]
-	_ = x[ErrTopLevel-89]
-	_ = x[ErrRedeclaredEnum-90]
-	_ = x[ErrMethAndFieldSameName-91]
-	_ = x[ErrMethodInOtherScope-92]
-	_ = x[ErrProvenUnreachable-93]
-	_ = x[ErrUnusedValue-94]
-	_ = x[ErrReturnOutsideFunc-95]
-	_ = x[ErrImportShadow-96]
+	_ = x[ErrMisplacedBOM-16]
+	_ = x[ErrStringEscape-17]
+	_ = x[ErrUnicodeEscapeTooBig-18]
+	_ = x[ErrConsecutiveSeparator-19]
+	_ = x[ErrMisplacedSeparator-20]
+	_ = x[ErrTrailingSeparator-21]
+	_ = x[ErrExpectedHex-22]
+	_ = x[ErrExpectedOctal-23]
+	_ = x[ErrExpectedBinary-24]
+	_ = x[ErrExpectedDecimal-25]
+	_ = x[ErrInvalidVersion-26]
+	_ = x[ErrUnderscoreValue-27]
+	_ = x[ErrEmptyRegexInterpolation-28]
+	_ = x[ErrInvalidDecimalPoint-29]
+	_ = x[ErrInvalidUpdate-30]
+	_ = x[ErrInvalidUpdateExpr-31]
+	_ = x[ErrColonEqual-32]
+	_ = x[ErrAssignmentAsExpr-33]
+	_ = x[ErrEmptyDestructure-34]
+	_ = x[ErrInvalidAssignment-35]
+	_ = x[ErrNonNameDeclaration-36]
+	_ = x[ErrInvalidTypeAnnotation-37]
+	_ = x[ErrDestructPatAfterColon-38]
+	_ = x[ErrDestructInvalidEqual-39]
+	_ = x[ErrMismatchedAssignment-40]
+	_ = x[ErrGenericInFuncAlias-41]
+	_ = x[ErrSelfLabelInFuncAlias-42]
+	_ = x[ErrMissingFuncParamType-43]
+	_ = x[ErrNonNameFuncAlias-44]
+	_ = x[ErrComputedFuncAlias-45]
+	_ = x[ErrInvalidOpaque-46]
+	_ = x[ErrInvalidPublic-47]
+	_ = x[ErrPublicGoesFirst-48]
+	_ = x[ErrDuplicateModifier-49]
+	_ = x[ErrFuncDotAfterSelf-50]
+	_ = x[ErrSelfNameDiscard-51]
+	_ = x[ErrPrivateOpaque-52]
+	_ = x[ErrReservedKeyword-53]
+	_ = x[ErrInvalidLabelShorthand-54]
+	_ = x[ErrNumericLabel-55]
+	_ = x[ErrUnderscoreLabel-56]
+	_ = x[ErrReturnPipelineNotLast-57]
+	_ = x[ErrInvalidObjectPipeStep-58]
+	_ = x[ErrMultipleKeysInMapRest-59]
+	_ = x[ErrExpectedExprAfterOpenRange-60]
+	_ = x[ErrEllipsisForOpenRangeStep-61]
+	_ = x[ErrMustBeFuncCall-62]
+	_ = x[ErrSelfExecFuncNotAllowed-63]
+	_ = x[ErrParenAroundLambdaType-64]
+	_ = x[ErrParenAroundLambdaDefault-65]
+	_ = x[ErrChainedNotEqual-66]
+	_ = x[ErrMultiDirectionCompareChain-67]
+	_ = x[ErrInequalityWithEqualChain-68]
+	_ = x[ErrStepInListSlice-69]
+	_ = x[ErrExpectedInterpolationEnd-70]
+	_ = x[ErrInvalidForExprOperator-71]
+	_ = x[ErrExpectedTypeAssignment-72]
+	_ = x[ErrRequiredStructFieldType-73]
+	_ = x[ErrEmptyGeneric-74]
+	_ = x[ErrParenFuncTypeParams-75]
+	_ = x[ErrIntfDefaultValue-76]
+	_ = x[ErrMixTypeTupleLabels-77]
+	_ = x[ErrIntfMultiKeyMethod-78]
+	_ = x[ErrInvalidGenericType-79]
+	_ = x[ErrInvalidArrow-80]
+	_ = x[ErrRedeclaredField-81]
+	_ = x[ErrNoForIterator-82]
+	_ = x[ErrUnderscoreWithRest-83]
+	_ = x[ErrNotAllowedInWhen-84]
+	_ = x[ErrRequiredBraces-85]
+	_ = x[ErrTryBlock-86]
+	_ = x[ErrIfStatement-87]
+	_ = x[ErrTripleEqual-88]
+	_ = x[ErrInvalidLoop-89]
+	_ = x[ErrPositiveSign-90]
+	_ = x[ErrDoubleNot-91]
+	_ = x[ErrRedeclared-92]
+	_ = x[ErrTopLevel-93]
+	_ = x[ErrRedeclaredEnum-94]
+	_ = x[ErrMethAndFieldSameName-95]
+	_ = x[ErrMethodInOtherScope-96]
+	_ = x[ErrProvenUnreachable-97]
+	_ = x[ErrUnusedValue-98]
+	_ = x[ErrReturnOutsideFunc-99]
+	_ = x[ErrImportShadow-100]
 	_ = x[ErrVarUndefined-301]
 	_ = x[ErrEnumUndefined-302]
 	_ = x[ErrTypeUndefined-303]
@@ -152,41 +156,36 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidUpdateErrInvalidUpdateExprErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrInvalidOpaqueErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrPrivateOpaqueErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncNotAllowedErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrInequalityWithEqualChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadow"
-	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
-	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
-	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
-	_ErrorCode_name_4 = "ModuleErrorPrefixErrModuleNotFoundErrModuleCycleErrModuleKlarTooNewErrImporterErrorErrImporterNotFound"
-	_ErrorCode_name_5 = "ImplementationErrorPrefix"
+	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedOctalErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrInvalidUpdateErrInvalidUpdateExprErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidOpaqueErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrPrivateOpaqueErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncNotAllowedErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrInequalityWithEqualChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncWarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
+	_ErrorCode_name_1 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
+	_ErrorCode_name_2 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
+	_ErrorCode_name_3 = "ModuleErrorPrefixErrModuleNotFoundErrModuleCycleErrModuleKlarTooNewErrImporterErrorErrImporterNotFound"
+	_ErrorCode_name_4 = "ImplementationErrorPrefix"
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 372, 395, 416, 436, 450, 466, 483, 501, 518, 536, 562, 578, 598, 611, 630, 649, 669, 690, 714, 738, 761, 784, 805, 828, 847, 863, 879, 897, 917, 936, 954, 970, 988, 1012, 1027, 1045, 1069, 1093, 1117, 1146, 1173, 1190, 1215, 1239, 1266, 1284, 1313, 1340, 1358, 1385, 1410, 1435, 1461, 1476, 1498, 1517, 1538, 1559, 1580, 1595, 1613, 1629, 1650, 1669, 1686, 1697, 1711, 1725, 1739, 1754, 1766, 1779, 1790, 1807, 1830, 1851, 1871, 1885, 1905, 1920}
-	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
-	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
-	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
-	_ErrorCode_index_4 = [...]uint8{0, 17, 34, 48, 67, 83, 102}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 365, 387, 410, 431, 451, 465, 481, 498, 516, 533, 551, 577, 599, 615, 635, 648, 667, 686, 706, 727, 751, 775, 798, 821, 842, 865, 888, 907, 927, 943, 959, 977, 997, 1016, 1034, 1050, 1068, 1092, 1107, 1125, 1149, 1173, 1197, 1226, 1253, 1270, 1295, 1319, 1346, 1364, 1393, 1420, 1438, 1465, 1490, 1515, 1541, 1556, 1578, 1597, 1618, 1639, 1660, 1675, 1693, 1709, 1730, 1749, 1766, 1777, 1791, 1805, 1819, 1834, 1846, 1859, 1870, 1887, 1910, 1931, 1951, 1965, 1985, 1998, 2012, 2024, 2039, 2049}
+	_ErrorCode_index_1 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
+	_ErrorCode_index_2 = [...]uint8{0, 20, 35, 51, 67, 79}
+	_ErrorCode_index_3 = [...]uint8{0, 17, 34, 48, 67, 83, 102}
 )
 
 func (i ErrorCode) String() string {
 	switch {
-	case -1 <= i && i <= 96:
+	case -1 <= i && i <= 104:
 		i -= -1
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
-	case 100 <= i && i <= 104:
-		i -= 100
-		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
 	case 200 <= i && i <= 225:
 		i -= 200
-		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
+		return _ErrorCode_name_1[_ErrorCode_index_1[i]:_ErrorCode_index_1[i+1]]
 	case 300 <= i && i <= 304:
 		i -= 300
-		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
+		return _ErrorCode_name_2[_ErrorCode_index_2[i]:_ErrorCode_index_2[i+1]]
 	case 400 <= i && i <= 405:
 		i -= 400
-		return _ErrorCode_name_4[_ErrorCode_index_4[i]:_ErrorCode_index_4[i+1]]
+		return _ErrorCode_name_3[_ErrorCode_index_3[i]:_ErrorCode_index_3[i+1]]
 	case i == 500:
-		return _ErrorCode_name_5
+		return _ErrorCode_name_4
 	default:
 		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

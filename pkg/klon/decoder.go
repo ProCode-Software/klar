@@ -15,7 +15,7 @@ type decoder struct {
 
 type decodeFunc func(reflect.Value, ast.Value, *decoder) error
 
-var DecodeCache = MakeCache[reflect.Type, decodeFunc]()
+var DecodeCache = makeCache[reflect.Type, decodeFunc]()
 
 func decode(rd *reader, ctx *Context, v any, flgs ...Flags) (err error) {
 	defer handlePanic(&err)
@@ -46,11 +46,11 @@ func (d *decoder) decodeValue(val ast.Value, rv reflect.Value) error {
 
 // Looks up a decoder or creates one if it doesn't exist.
 func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
-	if marsh, ok := DecodeCache.Get(rt); ok {
+	if marsh, ok := DecodeCache.get(rt); ok {
 		return marsh
 	}
 	marsh := d.makeDefaultDecoder(rt)
-	DecodeCache.Set(rt, marsh)
+	DecodeCache.set(rt, marsh)
 	return preprocessValue(marsh)
 }
 

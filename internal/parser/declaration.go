@@ -169,7 +169,7 @@ func (p *Parser) ParseEnum(
 		if p.CurrKind() == lexer.LeftParenthesis {
 			item.Parameters = p.ParseTupleType().Values
 		}
-		if p.isEqual() {
+		if p.isEqual(p.Curr()) {
 			p.Advance()
 			item.Value = p.ParseExpressionWithout(excludeIf(lexer.Dot),
 				MemberBindingPower, allowIfSameLine,
@@ -250,7 +250,7 @@ func (p *Parser) ParseStruct(
 			f.Type = p.ParseType(DefaultTypeBindingPower)
 		}
 		// Default value
-		if p.isEqual() {
+		if p.isEqual(p.Curr()) {
 			p.Advance()
 			f.Value = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -373,43 +373,32 @@ func (p *Parser) ParseInterface(
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
-	var rec ast.Identifier
+	// TODO: rewrite this function
 	// func (p: Parser)
 	if p.CurrKind() == lexer.LeftParenthesis {
+		// Method declaration with receiver alias
 		p.Advance() // (
-		if p.CurrKind() == lexer.Underscore {
-			p.Error(errors.Token(errors.ErrSelfNameDiscard, p.Curr()))
+		if p.PeekKind() == lexer.Colon {
+			if p.CurrKind() == lexer.Underscore {
+				p.Error(errors.Token(errors.ErrSelfNameDiscard, p.Curr()))
+			}
+			f.SelfName = new(p.ParseIdentOrDiscard())
+			p.Expect(lexer.Colon)
 		}
-		self := p.ParseIdentOrDiscard() // self name
-		f.SelfName = &self
-		if p.CurrKind() != lexer.Colon { // :
-			p.Expect(lexer.Colon) // Report error
-		} else {
-			p.Advance()
-			rec = p.ParseIdentifier()        // Struct name
-			p.Expect(lexer.RightParenthesis) // )
-		}
-		if p.CurrKind() != lexer.Dot {
-			p.Error(errors.Token(errors.ErrFuncDotAfterSelf, p.Curr()))
-			// Just set it for error tolerance
-			str := rec
-			f.Struct = &str
-			rec = p.ParseMapIdentifier(0) // Goes to f.Identifier = rec
-		}
-		// Otherwise, p.CurrKind() == lexer.Dot
-	} else {
-		rec = p.ParseIdentifier()
-	}
-
-	// Struct receiver
-	// 	func Person.greet()
-	if p.CurrKind() == lexer.Dot {
-		f.Struct = &rec
-		p.Advance() // .
+		f.Struct = new(p.ParseIdentifier()) // TODO: change type of f.Struct to allow types
+		p.Expect(lexer.RightParenthesis)    // )
+		p.ExpectErrorCodeNoAdvance(errors.ErrFuncDotAfterSelf, lexer.Dot)
+		f.Identifier = p.ParseMapIdentifier(0)
+	} else if p.PeekKind() == lexer.Dot {
+		// Method declaration
+		f.Struct = new(p.ParseIdentifier())
+		p.Expect(lexer.Dot)
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else {
-		f.Identifier = rec
+		// Normal function declaration
+		f.Identifier = p.ParseIdentifier()
 	}
+
 	// Generic:
 	//	func get<T, U>(a: T, b: [U]) -> T
 	// Can't be assigned, only inferred
@@ -421,22 +410,30 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		}
 	}
 	// Function alias
-	if p.isEqual() {
+	if p.isEqual(p.Curr()) {
 		p.Advance()
 		if f.GenericParams != nil {
 			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
 		}
-		alias := p.ParseExpression(ExpressionBindingPower)
-		switch alias := alias.(type) {
-		case *ast.Symbol, *ast.IndexExpression:
+		if f.SelfName != nil {
+			p.Error(errors.Node(errors.ErrSelfLabelInFuncAlias, f.Identifier))
+		}
+		target := p.ParseExpression(ExpressionBindingPower)
+		switch target := target.(type) {
+		case *ast.Symbol:
+		case *ast.IndexExpression:
+			if target.Computed {
+				p.Error(errors.Node(errors.ErrComputedFuncAlias, target))
+			}
 		default:
-			// Note: computed member expressions not validated
-			p.Error(errors.Node(errors.ErrNonNameFuncAlias, alias))
+			err := errors.Node(errors.ErrNonNameFuncAlias, target)
+			err.Hint("Or, did you mean to add parentheses after the function name?")
+			p.Error(err)
 		}
 		return &ast.FuncAliasDeclaration{
 			Identifier: f.Identifier,
 			Struct:     f.Struct,
-			Alias:      alias,
+			Target:     target,
 		}
 	}
 	// Params
@@ -473,7 +470,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		}
 		// Default value:
 		// 	func List.join(by by: String = ", ")
-		if p.isEqual() {
+		if p.isEqual(p.Curr()) {
 			p.Advance()
 			param.Default = p.ParseExpression(ExpressionBindingPower)
 		}
@@ -493,7 +490,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// 	func Date.now() -> Date
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		f.Body = p.ParseBlock()
-	} else if p.isEqual() {
+	} else if p.isEqual(p.Curr()) {
 		p.Advance()
 		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}

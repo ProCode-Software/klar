@@ -106,6 +106,7 @@ func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectError(nil, need...)
 }
 
+// ExpectNoAdvance is [Expect], but doesn't advance the parser on error.
 func (p *Parser) ExpectNoAdvance(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectErrorNoAdvance(nil, need...)
 }
@@ -140,6 +141,14 @@ func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType)
 	return p.ExpectError(&ParseError{ErrorCode: code}, need...)
 }
 
+// ExpectErrorCodeNoAdvance is [ExpectErrorCode], but doesn't advance the parser on error.
+func (p *Parser) ExpectErrorCodeNoAdvance(
+	code errors.ErrorCode, need ...lexer.TokenType,
+) lexer.Token {
+	return p.ExpectErrorNoAdvance(&ParseError{ErrorCode: code}, need...)
+}
+
+// ExpectErrorNoAdvance is [ExpectError], but doesn't advance the parser on error.
 func (p *Parser) ExpectErrorNoAdvance(err error, need ...lexer.TokenType) lexer.Token {
 	token := p.Curr()
 	got := token.Kind
@@ -193,9 +202,9 @@ func (p *Parser) Error(err *errors.ParseError) {
 	}
 }
 
-// AdvanceNonBoundary returns the current token advances the parser and returns the current token
-// if it is not a boundary, otherwise returns the current token. Useful when an expected
-// token is missing.
+// AdvanceNonBoundary returns the current token advances the parser and returns
+// the current token if it is not a boundary, otherwise returns the current token.
+// Useful when an expected token is missing.
 func (p *Parser) AdvanceNonBoundary() lexer.Token {
 	c := p.Curr()
 	switch c.Kind {

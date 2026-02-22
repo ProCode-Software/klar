@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -10,10 +11,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// Unwraps the error tuple and panics if err != nil
-func unwrap[T any](res T, err error) T {
+// tryStrconv returns res, panicking if err != nil.
+func tryStrconv[T any](res T, err error) T {
 	if err != nil {
-		panic(err)
+		// All Klar number are valid Go numbers. strconv failing means
+		// there is a bug in the lexer.
+		panic("strconv.ParseInt/ParseFloat should not fail: " + err.Error())
 	}
 	return res
 }
@@ -49,6 +52,10 @@ func (p *Parser) handleInvalidNumber(
 				lexer.NumberFormatHex:     errors.ErrExpectedHex,
 			}[format], errPos, tok,
 		)
+	case lexer.ErrInvalidDecimalPoint:
+		err = errors.Position(errors.ErrInvalidDecimalPoint, errPos)
+	default:
+		panic(fmt.Sprintf("unhandled lexer.NumberErrorCode: %d", ne.Code))
 	}
 	p.Error(err)
 }
@@ -69,7 +76,7 @@ func (p *Parser) ParseNumber() ast.Expression {
 		// Exponents are floats
 		return &ast.FloatLiteral{
 			Source:    src,
-			Value:     unwrap(strconv.ParseFloat(src, 64)),
+			Value:     tryStrconv(strconv.ParseFloat(src, 64)),
 			Separator: (a.Flags & lexer.HasSeparator) != 0,
 			Exponent:  (a.Flags & lexer.HasExponent) != 0,
 		}
@@ -81,7 +88,7 @@ func (p *Parser) ParseNumber() ast.Expression {
 	return &ast.IntegerLiteral{
 		Format:    format,
 		Source:    src,
-		Value:     unwrap(strconv.ParseInt(src, 0, 0)),
+		Value:     tryStrconv(strconv.ParseInt(src, 0, 0)),
 		Separator: (a.Flags & lexer.HasSeparator) != 0,
 	}
 }
@@ -133,16 +140,15 @@ func (p *Parser) ParseNil() *ast.NilLiteral {
 	return &ast.NilLiteral{}
 }
 
-func (p *Parser) ParseRegexToken() *ast.RegexLiteral {
+func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	re := p.Advance()
 	params := re.Attributes["params"].(lexer.RegexAttrs)
 	if params.Unterminated {
 		p.Error(errors.Position(errors.ErrUnterminatedRegex, re.Position))
 	}
 	return &ast.RegexLiteral{
-		Source:     params.Source,
-		Flags:      params.Flags,
-		QuoteCount: params.SlashCount,
-		Multiline:  params.Multiline,
+		Source:    params.Source,
+		Flags:     params.Flags,
+		Multiline: params.Multiline,
 	}
 }

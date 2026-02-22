@@ -9,80 +9,33 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) ParseVarTypeAnnotation(left ast.Node) ast.Statement {
+func (p *Parser) ParseVarTypeAnnotation(left []ast.Assignable) ast.Statement {
 	p.Advance() // :
-	var v *ast.AssignableVars
-	switch left := left.(type) {
-	case *ast.AssignableVars:
-		v = left
-	case ast.Assignable:
-		v = &ast.AssignableVars{
-			Values: []ast.Assignable{left},
-		}
-	default:
-		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
-		v = &ast.AssignableVars{
-			Values: []ast.Assignable{
-				p.validateAssignable(&ast.BadExpression{Value: left}),
-			},
-		}
-	}
-	annot := &ast.TypeAnnotation{
-		Variable: v,
-		Type:     p.ParseType(DefaultTypeBindingPower),
-	}
+	typ := p.ParseType(DefaultTypeBindingPower)
 	switch curr := p.Curr(); curr.Kind {
 	default:
 		if !isAssignment(curr.Kind) {
 			p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
-			return &ast.BadExpression{Value: annot}
+			return &ast.BadExpression{Value: typ}
 		}
-		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
+		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, typ))
 		fallthrough
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
-		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, annot))
+		err := errors.Node(errors.ErrInvalidTypeAnnotation, typ)
+		if curr.Kind == lexer.Equal {
+			err.Hint("Did you mean to use ':='?")
+		}
+		p.Error(err)
 		fallthrough
 	case lexer.ColonEqual:
-		return p.ParseAssignment(v)
-	}
-}
-
-func (p *Parser) ParseVariableDeclaration(left ast.Expression, right []ast.Expression) *ast.VariableDeclaration {
-	var explicitType ast.Type
-	var vars []ast.Assignable
-	if annot, ok := left.(*ast.TypeAnnotation); ok {
-		left, explicitType = annot.Variable, annot.Type
-	}
-	switch left := left.(type) {
-	case *ast.AssignableVars:
-		vars = left.Values
-	case ast.Assignable:
-		vars = []ast.Assignable{left}
-	default:
-		p.Error(errors.Node(errors.ErrNonNameDeclaration, left))
-		vars = []ast.Assignable{p.validateAssignable(&ast.BadExpression{Value: left})}
-	}
-	return &ast.VariableDeclaration{
-		Variables:    vars,
-		Values:       right,
-		ExplicitType: explicitType,
+		return p.ParseAssignment(left, typ)
 	}
 }
 
 // ParseAssignment parses a variable declaration or reassignment statement.
-func (p *Parser) ParseAssignment(left ast.Expression) ast.Statement {
+func (p *Parser) ParseAssignment(lhs []ast.Assignable, explicitType ast.Type) ast.Statement {
 	op := p.Advance()
-	var values []ast.Assignable
-	switch left := left.(type) {
-	case *ast.AssignableVars:
-		values = left.Values
-	case ast.Assignable:
-		values = []ast.Assignable{left}
-	default:
-		p.Error(errors.Node(errors.ErrInvalidAssignment, left))
-		values = []ast.Assignable{&ast.BadExpression{Value: left}}
-	}
-	expLen := len(values)
+	expLen := len(lhs)
 	rhs := make([]ast.Expression, 0, expLen)
 	for p.HasTokens() {
 		rhs = append(rhs, p.ParseExpression(ExpressionBindingPower))
@@ -98,10 +51,14 @@ func (p *Parser) ParseAssignment(left ast.Expression) ast.Statement {
 		p.Error(err)
 	}
 	if op.Kind == lexer.ColonEqual {
-		return p.ParseVariableDeclaration(left, rhs)
+		return &ast.VariableDeclaration{
+			Variables:    lhs,
+			ExplicitType: explicitType,
+			Values:       rhs,
+		}
 	}
 	return &ast.AssignmentStatement{
-		Assignee: values,
+		Assignee: lhs,
 		Operator: newOperator(op),
 		Values:   rhs,
 	}
@@ -116,9 +73,9 @@ func (p *Parser) ParseCommaStatement(first ast.Expression) ast.Statement {
 	}
 	d := &ast.AssignableVars{Values: items}
 	if curr := p.CurrKind(); isAssignment(curr) {
-		return p.ParseAssignment(d)
+		return p.ParseAssignment(items, nil)
 	} else if curr == lexer.Colon {
-		return p.ParseVarTypeAnnotation(d)
+		return p.ParseVarTypeAnnotation(items)
 	}
 	p.Error(errors.Slice(errors.ErrInvalidComma, items))
 	return &ast.BadExpression{Value: d}
@@ -266,7 +223,7 @@ func (p *Parser) ParseBlock() *ast.Block {
 	var body []ast.Statement
 	start := p.ExpectNoAdvance(lexer.LeftCurlyBrace).Position
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		body = append(body, p.ParseStatement())
+		body = append(body, p.ParseStatement(0))
 	}
 	end := p.ExpectNoAdvance(lexer.RightCurlyBrace).Position
 	return &ast.Block{
