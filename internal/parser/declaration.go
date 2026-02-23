@@ -373,8 +373,7 @@ func (p *Parser) ParseInterface(
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
-	// TODO: rewrite this function
-	// func (p: Parser)
+	// func (p: Parser).
 	if p.CurrKind() == lexer.LeftParenthesis {
 		// Method declaration with receiver alias
 		p.Advance() // (
@@ -409,6 +408,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			p.Error(errors.Token(errors.ErrEmptyGeneric, p.PeekBehind()))
 		}
 	}
+	
 	// Function alias
 	if p.isEqual(p.Curr()) {
 		p.Advance()
@@ -436,6 +436,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			Target:     target,
 		}
 	}
+	
 	// Params
 	p.Expect(lexer.LeftParenthesis)
 	parseSeries(p, &f.Parameters, func() *ast.FunctionParam {

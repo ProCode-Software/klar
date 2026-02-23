@@ -89,9 +89,9 @@ type FloatLiteral struct {
 
 type RegexLiteral struct {
 	BaseNode
-	Source     string
-	Flags      []byte
-	Multiline  bool
+	Source    string
+	Flags     []byte
+	Multiline bool
 }
 
 type VersionLiteral struct {
@@ -463,7 +463,7 @@ type FuncAliasDeclaration struct {
 	BaseNode
 	Struct     *Identifier
 	Identifier Identifier
-	Target      Expression
+	Target     Expression
 }
 
 type FunctionParam struct {
