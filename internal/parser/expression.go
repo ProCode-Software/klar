@@ -29,12 +29,18 @@ func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	return &ast.UnaryExpression{Operator: newOperator(op), Right: right}
 }
 
+const (
+	dirNeutral = iota
+	dirLessThan
+	dirGreaterThan
+)
+
 func (p *Parser) ParseRelationalExpression(
 	left ast.Expression, bp BindingPower,
 ) *ast.RelationalExpression {
 	rel := &ast.RelationalExpression{}
 	rel.Expressions = append(rel.Expressions, left) // First expression
-	var gtLtDir uint8                               // 0: none; 1: < or <=; 2: > or >=
+	dir := dirNeutral
 loop:
 	for {
 		switch p.CurrKind() {
@@ -43,16 +49,16 @@ loop:
 				err := errors.Token(errors.ErrChainedNotEqual, p.Curr())
 				err.Hint(
 					"In 'a != b != c', 'a' could still be equal to 'c'. Since this " +
-						"is confusing, chaining the '!=' operator isn't allowed in Klar. " +
-						"To check if all values are different from each other, use " +
-						"'a != b && b != c && a != c'. Otherwise, split the chain into " +
-						"multiple comparisons with '&&': 'a != b && b != c'",
+						"is confusing, chaining the '!=' operator isn't allowed in Klar.\n\n" +
+						"* To check if all values are different from each other, use " +
+						"'a != b && b != c && a != c'.\n"+ "* Otherwise, split the chain into " +
+						"multiple comparisons: 'a != b && b != c' if this is intentional.",
 				)
 				p.Error(err)
 			}
 			fallthrough
 		case lexer.EqualEqual:
-			if gtLtDir != 0 {
+			if dir != dirNeutral {
 				p.Error(errors.Token(errors.ErrInequalityWithEqualChain, p.Curr()))
 			}
 			// Hint for use of JavaScript === or !==
@@ -64,15 +70,15 @@ loop:
 			}
 		// Check for multidirectional comparisons (</<= with >/>=)
 		case lexer.GreaterThan, lexer.GreaterEqualTo:
-			if gtLtDir == 1 {
+			if dir == dirLessThan {
 				p.multidirCompareErr(rel.Operators, p.CurrKind())
 			}
-			gtLtDir = 2
+			dir = dirGreaterThan
 		case lexer.LessThan, lexer.LessEqualTo:
-			if gtLtDir == 2 {
+			if dir == dirGreaterThan {
 				p.multidirCompareErr(rel.Operators, p.CurrKind())
 			}
-			gtLtDir = 1
+			dir = dirLessThan
 		default:
 			break loop // Non-relational operator
 		}
@@ -82,11 +88,11 @@ loop:
 	return rel
 }
 
-func (p *Parser) multidirCompareErr(ops []ast.Operator, curr lexer.TokenType) {
+func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 	err := errors.Token(errors.ErrMultiDirectionCompareChain, p.Curr())
 	if len(ops) == 1 { // 3 operands
 		var next lexer.TokenType
-		switch curr {
+		switch got {
 		case lexer.GreaterThan:
 			next = lexer.LessThan
 		case lexer.GreaterEqualTo:
@@ -96,12 +102,12 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, curr lexer.TokenType) {
 		case lexer.LessEqualTo:
 			next = lexer.GreaterEqualTo
 		}
-		err.Hintf("Reorder the comparison: a %s c %s b\n"+
-			"Or, split it into multiple chains with '&&': a %[1]s b && b %[3]s c",
-			ops[0], next, curr,
+		err.Hintf("Reorder the comparison: (e.g. 'a %s c %s b')\n"+
+			"Or, split it into multiple comparisons: (e.g. 'a %[1]s b && b %[3]s c')",
+			ops[0], next, got,
 		)
 	} else {
-		err.Hint("Reorder the comparison, or split it into multiple chains with '&&'" +
+		err.Hint("Reorder the comparison, or split it into multiple comparisons" +
 			" (e.g. 'a < b > c' to 'a < b && b > c')",
 		)
 	}
