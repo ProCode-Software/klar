@@ -43,7 +43,6 @@ const (
 	ErrMisplacedSeparator      // Number has separator somewhere where it's not supposed to
 	ErrTrailingSeparator       // Number has misplaced _
 	ErrExpectedHex             // Expected hex digit (0-9, a-f, A-F)
-	ErrExpectedOctal           // Expected octal digit (0-7)
 	ErrExpectedBinary          // Expected binary digit (0 or 1)
 	ErrExpectedDecimal         // Expected decimal digit (0-9)
 	ErrInvalidVersion          // Invalid version literal syntax
@@ -251,8 +250,6 @@ func (e *ParseError) error() string {
 		return "I expected 2 hexadecimal digits (0-9, a-f or A-F) after"
 	case ErrExpectedBinary:
 		return "I expected a binary digit (0-1)"
-	case ErrExpectedOctal:
-		return "I expected an octal digit (0-7)"
 	case ErrExpectedDecimal:
 		return "I expected a decimal digit (0-9)"
 	case ErrUnicodeEscapeTooBig:

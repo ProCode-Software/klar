@@ -15,7 +15,6 @@ type IntFormat uint8
 const (
 	NumberFormatDecimal IntFormat = iota
 	NumberFormatHex               // 0x
-	NumberFormatOctal             // 0o
 	NumberFormatBinary            // 0b
 )
 
@@ -65,12 +64,9 @@ readNumber:
 		// 0 prefix
 		if b.String() == "0" {
 			last = r
-			switch lower {
+			switch r {
 			case 'x':
 				format = NumberFormatHex
-				goto writeAndContinue
-			case 'o':
-				format = NumberFormatOctal
 				goto writeAndContinue
 			case 'b':
 				format = NumberFormatBinary
@@ -137,8 +133,7 @@ readNumber:
 				break readNumber
 			case format == NumberFormatDecimal,
 				format == NumberFormatHex,
-				format == NumberFormatBinary && r <= '1',
-				format == NumberFormatOctal && r <= '7':
+				format == NumberFormatBinary && r <= '1':
 			default:
 				newError(ErrIntIncompatibleDigit, b)
 			}
@@ -148,16 +143,15 @@ readNumber:
 		last = r
 	}
 	num := t.String()
-
-	switch last {
-	// Last digit can't be a separator
-	case '_':
-		newError(ErrIntMisplacedSeparator, nil)
-		errPos = len(num) - 1
-	}
+	// Last character validation
 	if last == '_' {
+		// Last digit can't be a separator
 		newError(ErrIntMisplacedSeparator, nil)
 		errPos = len(num) - 1
+	} else if !IsDigit(last) {
+		// "1e-" .. EOF
+		newError(ErrIntIncompatibleDigit, nil)
+		errPos = len(num)
 	}
 	var err *NumberError
 	if errorType != 0 {

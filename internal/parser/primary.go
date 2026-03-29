@@ -48,7 +48,6 @@ func (p *Parser) handleInvalidNumber(
 			map[lexer.IntFormat]errors.ErrorCode{
 				lexer.NumberFormatDecimal: errors.ErrExpectedDecimal,
 				lexer.NumberFormatBinary:  errors.ErrExpectedBinary,
-				lexer.NumberFormatOctal:   errors.ErrExpectedOctal,
 				lexer.NumberFormatHex:     errors.ErrExpectedHex,
 			}[format], errPos, tok,
 		)
