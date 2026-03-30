@@ -177,11 +177,11 @@ func (e *ParseError) error() string {
 	)
 	switch e.ErrorCode {
 	default:
-		title := "error code " + e.ErrorCode.String() + " doesn't have a message: "
+		title := "error code " + e.ErrorCode.String() + " doesn't have a message "
 		if e.Node != nil {
-			panic(title + "node = " + reflect.TypeOf(e.Node).Name())
+			panic(title + "[node = " + reflect.TypeOf(e.Node).Name() + "]")
 		}
-		panic(title + "token = {" + tok.String() + "}")
+		panic(title + "[token = " + tok.String() + "]")
 	case ErrAssignmentAsExpr:
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
@@ -255,12 +255,16 @@ func (e *ParseError) error() string {
 	case ErrUnicodeEscapeTooBig:
 		return "This Unicode escape must be in the range 0 to 10FFFF"
 	case ErrStringEscape:
-		reason := e.Params["reason"].(lexer.EscapeError)
 		kind := e.Params["type"].(lexer.EscapeType)
-		switch reason {
+		switch code := e.Params["reason"].(lexer.EscapeErrorCode); code {
 		case lexer.ErrEscapeExpHex:
-			return `I expected 2 hexadecimal digits (0-9, a-f or A-F) after '\x'`
-		case lexer.ErrEscapeUnknown:
+			msg := "I expected 2 hexadecimal digits (0-9, a-f or A-F) "
+			if kind == lexer.EscHex {
+				return msg + `after '\x'`
+			}
+			// Unicode
+			return msg + "between { }"
+		case lexer.ErrCharEscapeUnknown:
 			esc := e.stringParam("escape")
 			return "Unknown character escape " + Quote(esc)
 		case lexer.ErrEscapeTooShort:
@@ -268,13 +272,17 @@ func (e *ParseError) error() string {
 				return "A string interpolation can't be empty"
 			}
 			fallthrough
-		case lexer.ErrEscapeTooLong:
-			if kind == lexer.EscUnicode {
-				return "I expected 1-6 hex digits between { } in Unicode escape"
+		case lexer.ErrUnicodeEscapeTooLong:
+			return "I expected 1-6 hex digits between { } in Unicode escape"
+		case lexer.ErrEscapeUnterm:
+			k := "escape"
+			if kind == lexer.EscInterpolation {
+				k = "interpolation"
 			}
-			return "I expected an expression"
+			return "Expected '}' to end string " + k
 		default:
-			return "Invalid string escape"
+			panic(fmt.Sprintf("unknown EscapeErrorCode: %d", code))
+			// return "Invalid string escape"
 		}
 	case ErrCurlyQuote:
 		alt := e.stringParam("alt")
@@ -479,6 +487,13 @@ func (e *ParseError) error() string {
 		}
 		return "The import " + Quote(name) + importPath +
 			" has the same name as an existing object in this module"
+	case ErrRedeclaredField:
+		name := e.Node.(ast.Identifier).Name
+		kind := e.stringParam("kind")
+		if kind == "enum" {
+			return "Item " + Quote(name) + " was already declared in this enum"
+		}
+		return "The field " + Quote(name) + " was already declared in this " + kind
 	}
 }
 
@@ -511,18 +526,6 @@ func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *ParseErr
 		ErrorCode: ErrExpectedToken,
 		Params: ErrorParams{
 			"expected": expTokenKind,
-		},
-	}
-}
-
-func StringEscape(e lexer.StringEscape) *ParseError {
-	return &ParseError{
-		Range:     ranges.Offset(ranges.Sub(*e.ErrorPosition, 0, 1), 0, 1),
-		ErrorCode: ErrStringEscape,
-		Params: ErrorParams{
-			"reason": e.Invalid,
-			"type":   e.Type,
-			"escape": e.Value,
 		},
 	}
 }

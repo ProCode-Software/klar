@@ -240,7 +240,7 @@ func (c *Compiler) resolvePackage(
 			// Report an error if there's a Klar file directly in a package
 			// Extensionless files are still allowed
 			if strings.HasSuffix(name, ".klar") {
-				err = &InterfaceError{Value: fullPath, Code: ErrFileInPackage}
+				err = &InterfaceError{Value: fullPath, Code: ErrFileInRoot}
 				return
 			}
 			continue

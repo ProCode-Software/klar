@@ -13,15 +13,14 @@ func _() {
 	_ = x[PrimitiveInt-2]
 	_ = x[PrimitiveFloat-3]
 	_ = x[PrimitiveBool-4]
-	_ = x[PrimitiveMap-5]
-	_ = x[PrimitiveNothing-6]
-	_ = x[PrimitiveResult-7]
-	_ = x[PrimitiveError-8]
+	_ = x[PrimitiveNothing-5]
+	_ = x[PrimitiveResult-6]
+	_ = x[PrimitiveError-7]
 }
 
-const _PrimitiveTypeName_name = "AnyStringIntFloatBoolMapNothingResultError"
+const _PrimitiveTypeName_name = "AnyStringIntFloatBoolNothingResultError"
 
-var _PrimitiveTypeName_index = [...]uint8{0, 3, 9, 12, 17, 21, 24, 31, 37, 42}
+var _PrimitiveTypeName_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 34, 39}
 
 func (i PrimitiveTypeName) String() string {
 	if i < 0 || i >= PrimitiveTypeName(len(_PrimitiveTypeName_index)-1) {

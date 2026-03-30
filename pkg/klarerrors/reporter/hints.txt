@@ -1,0 +1,30 @@
+A. Full line added + range removed
+
+Hint: Update the variable as a statement beforehand
+
+1 + id++
+2 │ value := data.lookups[++id]
+  ·                       --
+
+
+B. Range added
+
+Hint: Explicitly annotate the declaration with the 'Any?' type
+
+1 │ var: Any? := nil
+  ·      ++++
+
+
+C. Ranges added on multiple lines
+
+1 │ var: Any? := nil
+  ·      ++++
+2 │ print([Any?]([nil]))
+  ·        ++++++     + 
+
+   Notes:
+    1. For this example, there are 3 ranges
+
+
+Notes (all):
+    1. 

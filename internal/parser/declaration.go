@@ -331,7 +331,7 @@ func (p *Parser) ParseInterface(
 			name := p.ParseMapIdentifier(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
-				err.SetParam("kind", "struct")
+				err.SetParam("kind", "interface")
 				p.Error(err)
 			}
 			fieldMap[name.Name] = struct{}{}
@@ -408,7 +408,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			p.Error(errors.Token(errors.ErrEmptyGeneric, p.PeekBehind()))
 		}
 	}
-	
+
 	// Function alias
 	if p.isEqual(p.Curr()) {
 		p.Advance()
@@ -436,7 +436,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			Target:     target,
 		}
 	}
-	
+
 	// Params
 	p.Expect(lexer.LeftParenthesis)
 	parseSeries(p, &f.Parameters, func() *ast.FunctionParam {

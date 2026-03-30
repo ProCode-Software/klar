@@ -63,13 +63,14 @@ readNumber:
 		lower := unicode.ToLower(r)
 		// 0 prefix
 		if b.String() == "0" {
-			last = r
 			switch r {
 			case 'x':
 				format = NumberFormatHex
+				last = r
 				goto writeAndContinue
 			case 'b':
 				format = NumberFormatBinary
+				last = r
 				goto writeAndContinue
 			default:
 				format = NumberFormatDecimal

@@ -102,8 +102,8 @@ type SyntaxError {
 
 func Error(err: SyntaxError) {
     self.message = when err {
-        .expected(kind, got) = "Expected {kind}, but found {got}"
-        .flagNameMustBeIdent = "A flag name must be an identifier"
-        .invalidNumber(number) = "'{number}' isn't a valid number"
+        .expected(kind, got) -> "Expected {kind}, but found {got}",
+        .flagNameMustBeIdent -> "A flag name must be an identifier",
+        .invalidNumber(number) -> "'{number}' isn't a valid number",
     }
 }

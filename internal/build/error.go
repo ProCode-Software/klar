@@ -38,7 +38,7 @@ const (
 	ErrTooManyErrors    // More than 10 errors globally
 	ErrMaxModuleDepth   // No more than 4 submodules
 	ErrNestedKlarFolder // Klar project directory nested in a pkg folder
-	ErrFileInPackage    // File directly in package root
+	ErrFileInRoot       // File directly in package root
 	ErrFileInPkgDir     // File in 'pkg' directory
 	ErrNoKlarFiles      // No Klar files to compile in input
 	ErrNothingToCompile // No inputs
@@ -73,11 +73,11 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	case ErrMaxModuleDepth:
 		return "Only up to 4 submodules are allowed: ",
 			fmt.Sprintf("<c>%s</c> has %d", err.Value, MaxModuleDepth+1)
-	case ErrFileInPackage:
-		return "A file isn't allowed in the package or project root: ",
+	case ErrFileInRoot:
+		return "A Klar file isn't allowed in the package or project root: ",
 			"I found <c>" + err.Value + "</c>"
 	case ErrFileInPkgDir:
-		return "A file isn't allowed in the <c>pkg</c> directory, ",
+		return "A Klar file isn't allowed in the <c>pkg</c> directory, ",
 			"but I found <c>" + err.Value + "</c>"
 	case ErrNestedKlarFolder:
 		dir, base := filepath.Split(err.Value)
@@ -92,6 +92,8 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return "I didn't find any Klar files to compile in <c>" + err.Value + "</c>", ""
 	case ErrNothingToCompile:
 		return "There's nothing to compile", ""
+	case ErrLexer:
+		return "An error occured during tokenization: ", err.Err.Error()
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

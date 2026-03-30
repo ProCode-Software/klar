@@ -12,20 +12,23 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+// A Reporter prints compile errors with colored file context and highlights.
 type Reporter struct {
 	MaxLines     int           // If set to 0, MaxLines is set to 3.
 	Output       io.Writer     // If set to nil, [os.Stderr] is used.
 	ColorPalette *ColorPalette // If set to nil, colored tokens are disabled.
 	CharacterSet *CharacterSet // If set to nil, [DefaultCharacterSet] is used.
 	// Alternative error titles to display instead of the type name. Keys are error prefixes.
-	ErrorNames map[int]string
-	files      map[string]file
-	buf        *bytes.Buffer
+	ErrorNames     map[int]string
+	alreadyPrinted bool // If true, Reporter prints a separator before the next error
+	files          map[string]*file
+	buf            *bytes.Buffer
 }
 
 type file struct {
 	tokens      []lexer.Token
 	rel         string // Name used when printing
+	lastLine    int    // Line number of last reported error
 	lastLineTok int    // Index of first token on line of last reported error
 }
 
@@ -36,7 +39,7 @@ func NewReporter() *Reporter {
 		Output:       os.Stderr,
 		ColorPalette: DefaultColorPalette(),
 		CharacterSet: DefaultCharacterSet(),
-		files:        make(map[string]file),
+		files:        make(map[string]*file),
 	}
 }
 
@@ -47,7 +50,7 @@ func NewReporterTheme(colors *ColorPalette, chars *CharacterSet) *Reporter {
 		Output:       os.Stderr,
 		ColorPalette: colors,
 		CharacterSet: chars,
-		files:        make(map[string]file),
+		files:        make(map[string]*file),
 	}
 }
 
@@ -57,9 +60,9 @@ func NewReporterTheme(colors *ColorPalette, chars *CharacterSet) *Reporter {
 // tokens.
 func (r *Reporter) LoadFile(path, rel string, tokens []lexer.Token) {
 	if r.files == nil {
-		r.files = make(map[string]file)
+		r.files = make(map[string]*file)
 	}
-	r.files[path] = file{tokens: tokens, rel: rel}
+	r.files[path] = &file{tokens: tokens, rel: rel}
 }
 
 // RemoveFile unloads path with path's tokens from r.

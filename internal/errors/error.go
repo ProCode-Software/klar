@@ -3,20 +3,22 @@ package errors
 import (
 	"fmt"
 
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type CompileError interface {
 	error
-	GetName() string
+	GetName() string // The type of the error, e.g. "Syntax Error"
 	GetMessage() string
 	GetRange() ranges.Range
 	GetCode() ErrorCode
-	GetHints() []Hint
-	GetFile() string
+	GetHints() []Hint // Hints for the error, which may include diffs.
+	GetFile() string  // The full path to the file where the error occurred.
+	// Additional details for context, which may be in different files.
 	GetDetails() []Detail
-	GetLabel() string
-	GetHighlights() []Highlight
+	GetLabel() string           // The label of the error highlight
+	GetHighlights() []Highlight // Additional highlights for context
 	addDetail(d Detail)
 }
 
@@ -35,6 +37,7 @@ type (
 	}
 	Hint struct {
 		Message string
+		Diff    *Diff
 	}
 )
 
@@ -63,4 +66,15 @@ func TooManyErrors() *ParseError {
 
 func AddDetail(err CompileError, file string, rang ranges.Range, msg string) {
 	err.addDetail(Detail{file, Highlight{rang, msg}})
+}
+
+type Diff struct {
+	Ranges []DiffRange
+}
+
+type DiffRange struct {
+	Operation bool           // true: Add, false: Remove
+	Line      bool           // Whether the edit is a whole line
+	Range     ranges.Range   // Only for removals
+	Added     *[]lexer.Token // Only for additions
 }

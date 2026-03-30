@@ -15,39 +15,50 @@ func parseHex(str string) int32 {
 }
 
 func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
-	var (
-		lexEscapes = tok.Attributes["params"].(lexer.StringAttrs).Fragments
-		frags      = make([]ast.StringFragment, len(lexEscapes))
-		val        = ast.EscapeFragment{}
-	)
+	lexEscapes := tok.Attributes["params"].(lexer.StringAttrs).Fragments
 	if len(lexEscapes) == 0 {
 		return nil
 	}
+	frags := make([]ast.StringFragment, len(lexEscapes))
 	for i, frag := range lexEscapes {
+		// Text fragment
 		if frag, ok := frag.(lexer.TextFragment); ok {
 			frags[i] = frag
 			continue
 		}
+		// Escape or interpolation fragment
 		e := frag.(lexer.StringEscape)
 		src := e.Value
-		if e.Invalid > 0 {
+
+		// Escape error
+		if err := e.Error; err != nil {
 			p.Error(&ParseError{
-				Range:     ranges.Offset(ranges.Sub(*e.ErrorPosition, 0, 1), 0, 1),
+				Range:     ranges.Offset(ranges.Sub(err.Pos, 0, 1), 0, 1),
 				ErrorCode: errors.ErrStringEscape,
 				Params: errors.ErrorParams{
-					"reason": e.Invalid,
+					"reason": err.Code,
 					"type":   e.Type,
-					"escape": e.Value,
+					"escape": src,
 				},
 			})
 			frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
 			continue
 		}
+
+		frag := ast.EscapeFragment{}
 		switch e.Type {
+		// Interpolation
+		case lexer.EscInterpolation:
+			frags[i] = ast.InterpolationFragment{
+				Expression: p.parseStringInterpolation(*e.Interpolated),
+			}
+			continue
+
+		// Actual escapes
 		case lexer.EscCharacter:
-			val.Value = ast.CharacterEscape{Character: rune(src[1])}
+			frag.Value = ast.CharacterEscape{Character: rune(src[1])}
 		case lexer.EscHex:
-			val.Value = ast.HexadecimalEscape{Hex: parseHex(src[2:])}
+			frag.Value = ast.HexadecimalEscape{Hex: parseHex(src[2:])}
 		case lexer.EscUnicode:
 			hex := parseHex(src[3 : len(src)-1])
 			if hex > 0x10FFFF {
@@ -55,15 +66,12 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 					ranges.Add(e.Pos, 0, 3),
 					ranges.Add(e.Pos, 0, uint32(len(src)-1)), //nolint:gosec
 				}))
-				frags[i] = ast.EscapeFragment{ast.BadEscape{Source: src}}
-				continue
+				frag.Value = ast.BadEscape{Source: src}
+			} else {
+				frag.Value = ast.HexadecimalEscape{Hex: hex}
 			}
-			val.Value = ast.HexadecimalEscape{Hex: hex}
-		case lexer.EscInterpolation:
-			ct := p.parseStringInterpolation(*e.Interpolated)
-			val.Value = ast.StringInterpolation{Expression: ct}
 		}
-		frags[i] = val
+		frags[i] = frag
 	}
 	return frags
 }

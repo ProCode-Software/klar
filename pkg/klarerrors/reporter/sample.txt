@@ -1,0 +1,68 @@
+A. Single-line error
+
+  ┌─ main.klar:1:11
+1 │ a: Int := false
+  ·           ━━━━━ Expected 'Int', but this is 'Bool'
+
+
+B. Multiline error
+
+  ┌─ main.klar:2:9
+2 │ a = 2 + `Hello
+3 · ╭·······━━━━━━
+4 │ │ World!` + 5
+5 · ╰━━━━━━━━ Expected 'Int', but this is 'String'
+
+
+C. Long multiline error
+
+  ┌─ main.klar:2:9
+1 │ add(1, func a, b {
+  · ╭······━━━━━━━━━━━
+2 │ │     a += 1
+- ┤ ├ ···
+5 │ │ })
+  · ╰━━━ Expected 'Int', but this is a function
+
+
+D. Single-character error
+
+  ┌─ main.klar:1:12
+1 │ a: Bool := 0
+  ·            ^ Expected 'Bool', but this is 'Int'
+
+
+E. With arrows
+  Implementation notes:
+    1. Rightmost positions are shown higher
+    2. For the bottom arrow, the stem is 2 characters from the beginning
+
+  ┌─ main.klar:1:15
+1 │ object.name + 5
+  · ━━━━━━━━━━━   ^ This is 'Int'
+      ╰─ This is 'String'
+
+
+F. With arrows on different lines
+
+  ┌─ main.klar:1:15
+1 │ "Hello"
+  · ━━━━━━━ This is 'String'
+2 │     + 5
+  ·       ^ This is 'Int'
+
+
+G. Arrow with less terminal width
+  Implementation notes:
+    1. The stem in this sample is in the middle
+    2. The text can be positioned to the right if there is more terminal width. Otherwise, the text is positioned below the arrow, starting from the left.
+
+  ┌─ main.klar:2:11
+2 │ a := keys[++value]
+  ·           ━━━┬━━━
+    Increments aren't expressions in Klar
+
+
+Notes:
+- Wrap the arrow text to fit within the terminal width
+- Use a full-width divider between diagnostics

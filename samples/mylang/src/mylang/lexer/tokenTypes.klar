@@ -9,10 +9,11 @@ type Token {
     .illegal(char: String) // Unrecognized character
     .eof // At the end of each [Token] stream.
     .newline // A line break
-    .dash, .backslash, .newline
+    .dash // -
+    .backslash // \
 }
 
-// Returns the string representation of the token. EOF is
+// Returns the string representation of the token. [Token.eof] is
 // represented as an empty string.
 func String(token: Token) = when token {
     .number(num) -> String(num),
@@ -23,8 +24,8 @@ func String(token: Token) = when token {
     .backslash -> '\\',
     .eof -> '',
     .newline -> '\n',
-    .string(content, singleQuote) if singleQuote -> `'{content}'`,
-    .string(content, singleQuote) if !singleQuote -> `"{content}"`,
-    .boolean(value) if value -> "true",
-    .boolean(value) if !value -> "false",
+    .string(content, singleQuote: true) -> `'{content}'`,
+    .string(content, singleQuote: false) -> `"{content}"`,
+    .boolean(true) -> "true",
+    .boolean(false) -> "false",
 }

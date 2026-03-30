@@ -4,7 +4,7 @@ type #X
 type #X
 import invalidHere
 // Supposed to be public
-opaque type Z {
+  opaque type Z {
     name: String
 }
 

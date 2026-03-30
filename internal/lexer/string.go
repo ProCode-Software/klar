@@ -5,6 +5,25 @@ import (
 	"unicode/utf8"
 )
 
+type StringAttrs struct {
+	Fragments    []StringFragment // Between newlines and escapes (newline at end)
+	QuoteStyle   rune
+	Unterminated bool
+}
+
+// String escapes
+// =========
+
+// Note: Interpolations are [StringEscape].
+type StringEscape struct {
+	Offset       int
+	Pos          Position
+	Type         EscapeType
+	Value        string
+	Interpolated *[]Token
+	Error        *EscapeError
+}
+
 type EscapeType int
 
 const (
@@ -15,60 +34,41 @@ const (
 	EscInterpolation
 )
 
-type EscapeError int
+type EscapeError struct {
+	Code EscapeErrorCode
+	Pos  Position
+}
+
+type EscapeErrorCode int
 
 const (
-	_ EscapeError = iota
+	_ EscapeErrorCode = iota
 	ErrEscapeTooShort
-	ErrEscapeTooLong
+	ErrUnicodeEscapeTooLong
 	ErrEscapeUnterm
 	ErrEscapeExpHex
-	ErrEscapeUnknown
+	ErrCharEscapeUnknown
 )
 
-type StringAttrs struct {
-	Fragments    []StringFragment // Between newlines and escapes (newline at end)
-	QuoteStyle   rune
-	QuoteCount   int // > 0 if @ was used
-	Unterminated bool
-}
-
-type StringEscape struct {
-	Offset        int
-	Pos           Position
-	Type          EscapeType
-	Value         string
-	Interpolated  *[]Token
-	Invalid       EscapeError
-	ErrorPosition *Position
-}
+// String fragments
+// ============
 
 type StringFragment interface {
-	frag()
+	StringFrag()
 }
 
-type TextFragment struct {
-	Source string
-}
+type TextFragment struct{ Source string }
 
-func (TextFragment) frag()    {}
-func (TextFragment) ASTFrag() {}
-func (StringEscape) frag()    {}
-
-func isHex(r rune) bool {
-	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
-}
+func (TextFragment) StringFrag() {}
+func (StringEscape) StringFrag() {}
 
 func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 	var (
-		err    EscapeError
-		errPos Position
-		last   rune
+		err     *EscapeError
+		last    rune
+		invalid = func(code EscapeErrorCode) { err = &EscapeError{code, l.Pos} }
+		t       = l.NewTokenizer(true)
 	)
-	invalid := func(reason EscapeError) {
-		err, errPos = reason, l.Pos
-	}
-	t := l.NewTokenizer(true)
 loop:
 	for r, b := range t.Tokenize {
 		l := b.Len()
@@ -78,10 +78,10 @@ loop:
 		case l < 2 && r == '}':
 			invalid(ErrEscapeTooShort)
 			b.WriteRune(r)
-		case r == '}', isHex(r), l == 0 && r == '{':
+		case r == '}', IsHex(r), l == 0 && r == '{':
 			b.WriteRune(r)
 		case l > 6 && r != '}':
-			invalid(ErrEscapeTooLong)
+			invalid(ErrUnicodeEscapeTooLong)
 			break loop
 		case r == delim:
 			invalid(ErrEscapeUnterm)
@@ -96,26 +96,24 @@ loop:
 		invalid(ErrEscapeUnterm)
 	}
 	return StringEscape{
-		Type:          EscUnicode,
-		Value:         `\u` + t.String(),
-		Invalid:       err,
-		ErrorPosition: &errPos,
+		Type:  EscUnicode,
+		Value: `\u` + t.String(),
+		Error: err,
 	}
 }
 
 func (l *Lexer) readHexEsc(delim rune) StringEscape {
 	var (
-		err     EscapeError
-		errPos  Position
-		invalid = func() { err, errPos = ErrEscapeExpHex, l.Pos }
+		err     *EscapeError
+		invalid = func() { err = &EscapeError{ErrEscapeExpHex, l.Pos} }
+		t       = l.NewTokenizer(true)
 	)
-	t := l.NewTokenizer(true)
 loop:
 	for r, b := range t.Tokenize {
 		switch {
 		case b.Len() == 2:
 			break loop
-		case isHex(r):
+		case IsHex(r):
 			b.WriteRune(r)
 		case r == delim:
 			invalid()
@@ -130,18 +128,16 @@ loop:
 		invalid()
 	}
 	return StringEscape{
-		Type:          EscHex,
-		Value:         `\x` + esc,
-		Invalid:       err,
-		ErrorPosition: &errPos,
+		Type:  EscHex,
+		Value: `\x` + esc,
+		Error: err,
 	}
 }
 
 // '{' already parsed
 func (l *Lexer) readStrInterp() StringEscape {
 	var (
-		err     EscapeError
-		errPos  Position
+		err     *EscapeError
 		tokens  []Token
 		braceCt = 1
 		b       Builder
@@ -158,7 +154,7 @@ loop:
 		t := l.Tokenize()
 		switch t.Kind {
 		case EOF:
-			err, errPos = ErrEscapeUnterm, l.Pos
+			err = &EscapeError{ErrEscapeUnterm, l.Pos}
 			break loop
 		case LeftCurlyBrace, HashLeftCurlyBrace:
 			braceCt++
@@ -166,7 +162,7 @@ loop:
 			braceCt--
 			if braceCt == 0 {
 				if len(tokens) == 0 {
-					err, errPos = ErrEscapeTooShort, l.Pos
+					err = &EscapeError{ErrEscapeTooShort, l.Pos}
 				} else {
 					tokens[len(tokens)-1].setAttr("end", l.Pos)
 				}
@@ -178,11 +174,10 @@ loop:
 		b.WriteString(t.Source)
 	}
 	return StringEscape{
-		Type:          EscInterpolation,
-		Interpolated:  &tokens,
-		Value:         b.String(),
-		Invalid:       err,
-		ErrorPosition: &errPos,
+		Type:         EscInterpolation,
+		Interpolated: &tokens,
+		Value:        b.String(),
+		Error:        err,
 	}
 }
 
@@ -196,52 +191,45 @@ There are three types of strings in Klar:
 	Single-quote '': Raw, no escapes
 	Backtick ``: Interpolation, escapes, multiline
 */
-func (l *Lexer) ReadString(pos Position, delim rune, quoteN int) *Token {
+func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 	var (
-		currQuoteN, fragStart       int
+		fragStart                   int
 		leng                        uint32
-		b                           Builder
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
-		end, escStart               Position
+		escStart                    Position
 		frags                       []StringFragment
-		lastQuoteEnd                = pos.Col + 1 + uint32(quoteN)
+		t                           = l.NewTokenizer(false)
 	)
 	newEscape := func(e StringEscape) {
 		if escapes == nil {
 			escapes = map[Position]StringEscape{}
 		}
 		if e.Type == EscInterpolation {
-			b.WriteString(e.Value)
+			t.Builder.WriteString(e.Value)
 		} else {
-			b.WriteString(e.Value[1:]) // Character after \
-		}
-		if e.Invalid > 0 {
-			p := l.Pos
-			e.ErrorPosition = &p
+			t.Builder.WriteString(e.Value[1:]) // Character after \
 		}
 		e.Offset, e.Pos = fragStart, escStart
 		frags = append(frags, e)
-		isEscape, fragStart = false, b.Len()
+		isEscape, fragStart = false, t.Builder.Len()
 	}
-	charEscape := func(c rune, err EscapeError) StringEscape {
-		return StringEscape{Type: EscCharacter, Value: `\` + string(c), Invalid: err}
+	charEscape := func(c rune, errCode EscapeErrorCode) StringEscape {
+		esc := StringEscape{
+			Type:  EscCharacter,
+			Value: `\` + string(c),
+		}
+		if errCode != 0 {
+			esc.Error = &EscapeError{errCode, l.Pos}
+		}
+		return esc
 	}
 	endFrag := func() { // End a fragment before '\' in escape or after '\n'
-		frags = append(frags, TextFragment{b.String()[fragStart:]})
+		frags = append(frags, TextFragment{t.Builder.String()[fragStart:]})
 	}
 loop:
-	for {
-		r, _, err := l.Reader.ReadRune()
-		if handleReadError(err) {
-			unterm = true
-			break loop
-		}
-		l.Pos.Col++
+	for r, b := range t.Tokenize {
 		leng++
-		if r != delim {
-			currQuoteN = 0
-		}
 		if isEscape {
 			switch r {
 			case '\\', '{', 'b', 'e', 'f', 'n', 'r', 't', delim:
@@ -251,28 +239,19 @@ loop:
 			case 'u':
 				newEscape(l.readUnicodeEsc(delim))
 			default:
-				newEscape(charEscape(r, ErrEscapeUnknown))
+				newEscape(charEscape(r, ErrCharEscapeUnknown))
 			}
 			isNewline = false
 			continue loop
 		}
 		switch r {
 		case delim:
-			if currQuoteN++; currQuoteN >= quoteN {
-				// Cut existing quotes out of fragment
-				frag := TextFragment{b.String()[fragStart:]}
-				frag.Source = frag.Source[:len(frag.Source)-currQuoteN+1]
-				frags = append(frags, frag)
-
-				b.WriteRune(r)
-				end = l.Pos
-				break loop
-			}
+			endFrag()
+			b.WriteRune(r)
+			break loop
 		case '\\':
-			if quoteN == 0 { // No escape in @... string
-				endFrag()
-				isEscape, escStart = true, l.prevCol()
-			}
+			endFrag()
+			isEscape, escStart = true, l.prevCol()
 		case '{':
 			if delim != '\'' { // " or `
 				escStart = l.prevCol()
@@ -280,7 +259,6 @@ loop:
 				continue loop
 			}
 		case '\n':
-			l.ResetPosition()
 			b.WriteRune(r)
 			if delim != '`' { // " or '
 				// Invalid newline, just stop parsing
@@ -293,26 +271,22 @@ loop:
 			continue loop
 		default:
 			// Strip leading spaces from backtick string
-			if isNewline && unicode.IsSpace(r) && l.Pos.Col-1 <= lastQuoteEnd {
+			if isNewline && unicode.IsSpace(r) && l.Pos.Col-1 <= pos.Col {
 				continue loop
 			}
 		}
 		b.WriteRune(r)
 		isNewline = false
 	}
-	var prefix string
-	if quoteN > 0 {
-		prefix = repeat('@', delim, quoteN)
-	} else {
-		prefix = string(delim)
+	if t.EOF() {
+		unterm = true
 	}
-	return NewToken(pos, String, prefix+b.String()).withAttrs(attrs{
-		"end":    end,
+	return NewToken(pos, String, string(delim)+t.String()).withAttrs(attrs{
+		"end":    t.EndPos(),
 		"length": leng,
 		"params": StringAttrs{
 			QuoteStyle:   delim,
 			Unterminated: unterm,
-			QuoteCount:   quoteN,
 			Fragments:    frags,
 		},
 	})

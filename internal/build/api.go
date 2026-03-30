@@ -8,9 +8,9 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
+	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 	pkgparse "github.com/ProCode-Software/klar/pkg/parser"
 )
 
@@ -20,16 +20,21 @@ func NewCompiler(mode BuildMode) (*Compiler, error) {
 		return nil, &FilesystemError{"get", "working directory", err}
 	}
 	return &Compiler{
-		Mode:         mode,
-		errorPrinter: &printer.Printer{MaxLines: 3, Color: true},
-		Logger:       slog.New(slog.DiscardHandler),
-		WorkDir:      cwd,
+		Mode:    mode,
+		WorkDir: cwd,
+		Reporter: &reporter.Reporter{
+			MaxLines:     3,
+			Output:       os.Stderr,
+			ColorPalette: reporter.DefaultColorPalette(),
+			CharacterSet: reporter.DefaultCharacterSet(),
+		},
+		Logger: slog.New(slog.DiscardHandler),
 	}, nil
 }
 
 // PrintError prints an error to the error printer.
-func (c *Compiler) PrintError(err errors.CompileError) {
-	c.errorPrinter.PrintError(err)
+func (c *Compiler) PrintError(err errors.CompileError) (int64, error) {
+	return c.Reporter.Report(err)
 }
 
 // AddInputs adds the given inputs to a new [Options] inside c.

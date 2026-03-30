@@ -63,9 +63,12 @@ func (p *Parser) ParseStatement(flags uint8) ast.Statement {
 	}
 
 	// C. Try to parse a statement LED
-	if stmt, ok := p.handleStatementLED(p.CurrKind(), expr); ok {
-		expectEOS()
-		return stmt
+	// Don't parse comma assignments if comma is a terminator
+	if flags&allowCommaTerminator == 0 || p.CurrKind() != lexer.Comma {
+		if stmt, ok := p.handleStatementLED(p.CurrKind(), expr); ok {
+			expectEOS()
+			return stmt
+		}
 	}
 	// D. Otherwise parse an expression LED
 	expr = p.ParseLED(expr, ExpressionBindingPower)

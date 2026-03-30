@@ -1,6 +1,6 @@
 import klar.http.*
 import klar.http.server
-import klar.json.{encode, decode, D: Decodable}
+import klar.json.{encode, decode, Decodable as D}
 
 users := [
     Person("John", age: 32),
@@ -19,7 +19,7 @@ type DBRequest {
     filter: func(x: Person) -> Bool
 }
 
-server.handle(path: '/get', with: func r, w -> {
+server.handle(path: '/get', with: func r, w {
     params: DBRequest? := nil
     r.params.decode(object: params)
     when params {
@@ -28,7 +28,7 @@ server.handle(path: '/get', with: func r, w -> {
             filtered := users.filter(params.filter)
             filtered = when params.amount {
                 <= 0 -> filtered
-                _ -> filtered[:params.amount]
+                _ -> filtered[..<params.amount]
             }
             w.returnJSON(filtered)
         }

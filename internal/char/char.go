@@ -2,6 +2,7 @@
 package char
 
 import (
+	"bytes"
 	"slices"
 )
 
@@ -32,3 +33,8 @@ func Repeat(r byte, n int) []byte {
 	QuoteMap[r] = slices.Clone(arr)
 	return arr
 }
+
+func RepeatRune(r rune, n int) []byte {
+	return bytes.Repeat([]byte(string(r)), n)
+}
+

@@ -11,8 +11,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
 // A Compiler compiles Inputs into files.
@@ -36,11 +36,11 @@ type Compiler struct {
 	// To avoid reparsing the same file. The same individual file and the
 	// file's whole module can be inputs to the compiler.
 	flatFiles map[string]*ast.Program
-	// Map modules back to configurations
-	moduleInputs  map[*Module]*InputOptions
-	errorPrinter  *printer.Printer
-	WarningLevels map[string]uint8 // Severity levels for warnings
-	*slog.Logger                   // TODO: use slog
+
+	moduleInputs  map[*Module]*InputOptions // Map modules back to configurations
+	Reporter      *reporter.Reporter        // Reports errors to the console
+	WarningLevels map[string]uint8          // Severity levels for warnings
+	*slog.Logger
 }
 
 type (

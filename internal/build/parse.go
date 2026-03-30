@@ -85,7 +85,7 @@ func (c *Compiler) parseFile(pc *processContext,
 
 	// Load the tokens for diagnostics first
 	mu.Lock()
-	c.errorPrinter.LoadTokens(filePath, shortPath, res.Tokens)
+	c.Reporter.LoadFile(filePath, shortPath, res.Tokens)
 	// Store result to avoid reparsing the same file
 	if len(res.Errors) == 0 {
 		c.flatFiles[filePath] = res.Program

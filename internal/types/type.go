@@ -61,8 +61,8 @@ var PrimitiveMap = map[ast.PrimitiveTypeName]Type{
 	ast.PrimitiveString:  String,
 	ast.PrimitiveNothing: Nothing,
 	ast.PrimitiveError:   Error,
-	ast.PrimitiveMap:     Map{Any, Any},
-	ast.PrimitiveResult:  Result{Nothing, Error},
+	// ast.PrimitiveMap:     Map{Any, Any},
+	ast.PrimitiveResult: Result{Nothing, Error},
 }
 
 type (

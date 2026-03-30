@@ -146,7 +146,7 @@ loop:
 	t.ResetKeepBuilder(true)
 	var flags []byte
 	for r, b := range t.Tokenize {
-		if !isASCIILetter(r) {
+		if !IsASCIILetter(r) {
 			break
 		}
 		c := byte(r)

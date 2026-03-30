@@ -145,7 +145,7 @@ var templFuncs = template.FuncMap{
 	"wrap": func(s string) string {
 		b := strings.Builder{}
 		b.Grow(len(s) + len(s)/termWidth)
-		cli.Wrap(s, &b, termWidth, 0)
+		cli.Wrap(s, &b, termWidth, 0, 0)
 		return b.String()
 	},
 

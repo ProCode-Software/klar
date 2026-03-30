@@ -177,14 +177,11 @@ func printErrors(res *build.BuildResult, b *build.Compiler, jsonOutput bool, err
 	}
 	// Show "build failed" message
 	ansi.Fprintfln(os.Stderr,
-		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>",
+		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
 		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
-	for i, err := range errs {
-		if i > 0 {
-			fmt.Fprintln(os.Stderr)
-		}
+	for _, err := range errs {
 		b.PrintError(err)
 	}
 	if isMaxErrors {

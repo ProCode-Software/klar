@@ -234,7 +234,7 @@ func (p *Printer) PrintError(err errors.CompileError) {
 			break
 		}
 		// Line number
-		b.WriteString(fmt.Sprintf("%s%*d ", ansi.Partial(lineColor), digitLen, line))
+		fmt.Fprintf(&b, "%s%*d ", ansi.Partial(lineColor), digitLen, line)
 		box(icons.BoxVertical)
 		b.WriteByte(' ')
 		// Each token on line
@@ -284,7 +284,7 @@ printMsg:
 	for _, hint := range err.GetHints() {
 		b.WriteString(ansi.BoldBrightBlue("  Hint"))
 		b.WriteString(ansi.BoldDim(": "))
-		cli.Wrap(hint.Message, &b, 80, 4)
+		cli.Wrap(hint.Message, &b, 80, 0, 4)
 		b.WriteByte('\n')
 	}
 	os.Stderr.Write(b.Bytes())

@@ -102,15 +102,10 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		a       = token.Attributes["params"].(lexer.StringAttrs)
 		src     = token.Source
 		escapes = p.parseStringEscapes(token)
-		start   = 1 + a.QuoteCount
-		strLen  = len(src) - 2
 		full    string
 	)
-	if a.QuoteCount > 0 {
-		strLen = len(src) - 2*a.QuoteCount - 1
-	}
 	if a.Unterminated {
-		full = src[start:]
+		full = src[1:]
 		if a.QuoteStyle != '`' && full[len(full)-1] == '\n' {
 			// Use a better error for quoted strings with newline
 			p.Error(errors.Position(errors.ErrMultilineQuotedString, token.Position))
@@ -118,12 +113,11 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
 		}
 	} else {
-		full = src[start : start+strLen] // Remove quotes
+		full = src[1 : len(src)-1] // Remove quotes
 	}
 	return &ast.StringLiteral{
 		QuoteStyle: a.QuoteStyle,
 		Fragments:  escapes,
-		QuoteCount: a.QuoteCount,
 		Content:    full,
 	}
 }

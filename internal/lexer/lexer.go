@@ -7,8 +7,6 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/ProCode-Software/klar/internal/char"
 )
 
 type Builder = strings.Builder
@@ -51,7 +49,7 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Newline, "\n")
 		case '"', '\'', '`':
 			// Strings
-			return l.ReadString(pos, r, 0)
+			return l.ReadString(pos, r)
 		case '.', '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
 			// Multi-character operators
 			var (
@@ -162,17 +160,6 @@ func (l *Lexer) PeekN(n int) (b []byte, eof bool) {
 	return next, false
 }
 
-// Deprecated: Probably won't be used anymore
-func (l *Lexer) ReadAll(char rune) (n int) {
-	for r := range l.NewTokenizer(true).Tokenize {
-		if r != char {
-			break
-		}
-		n++
-	}
-	return
-}
-
 func (l *Lexer) Reset() {
 	l.Reader.Reset(nil)
 	l.Pos.Line = 1
@@ -199,13 +186,12 @@ func IsDigit(r rune) bool { return r >= '0' && r <= '9' }
 // IsIdent reports whether r is the beginning of an identifier
 func IsIdent(r rune) bool { return r == '_' || unicode.IsLetter(r) }
 
-func isASCIILetter(r rune) bool {
+func IsASCIILetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
 
-// r should be an ASCII character
-func repeat(prefix, r rune, n int) string {
-	return string(prefix) + string(char.Repeat(byte(r), n))
+func IsHex(r rune) bool {
+	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
 }
 
 // Tokenizer

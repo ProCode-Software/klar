@@ -51,7 +51,7 @@ loop:
 					"In 'a != b != c', 'a' could still be equal to 'c'. Since this " +
 						"is confusing, chaining the '!=' operator isn't allowed in Klar.\n\n" +
 						"* To check if all values are different from each other, use " +
-						"'a != b && b != c && a != c'.\n"+ "* Otherwise, split the chain into " +
+						"'a != b && b != c && a != c'.\n" + "* Otherwise, split the chain into " +
 						"multiple comparisons: 'a != b && b != c' if this is intentional.",
 				)
 				p.Error(err)

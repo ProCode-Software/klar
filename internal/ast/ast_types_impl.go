@@ -13,11 +13,10 @@ func (node *BaseNode) SetPos(start, end lexer.Position) {
 func (node *BaseNode) GetRange() ranges.Range { return node.Range }
 
 // String escapes
-func (BadEscape) stringEsc()           {}
-func (CharacterEscape) stringEsc()     {}
-func (UnicodeEscape) stringEsc()       {}
-func (HexadecimalEscape) stringEsc()   {}
-func (StringInterpolation) stringEsc() {}
+func (BadEscape) stringEsc()         {}
+func (CharacterEscape) stringEsc()   {}
+func (UnicodeEscape) stringEsc()     {}
+func (HexadecimalEscape) stringEsc() {}
 
 // Expressions
 func (BinaryExpression) expr()     {}
@@ -88,6 +87,7 @@ func (PrimitiveType) _type()      {}
 func (TypeAlias) _type()          {}
 func (OptionalType) _type()       {}
 func (ListType) _type()           {}
+func (MapType) _type()            {}
 func (RestType) _type()           {}
 func (TupleType) _type()          {}
 func (FunctionType) _type()       {}

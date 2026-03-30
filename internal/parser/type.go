@@ -199,3 +199,15 @@ func (p *Parser) ParseTypeNamespace(left *ast.TypeAlias, bp BindingPower) *ast.Q
 		Identifier: p.ParseIdentifier(),
 	}
 }
+
+func (p *Parser) ParseMapType() *ast.MapType {
+	p.Advance() // #{
+	key := p.ParseType(DefaultTypeBindingPower)
+	p.Expect(lexer.Colon)
+	val := p.ParseType(DefaultTypeBindingPower)
+	if p.CurrKind() == lexer.Newline {
+		p.Advance()
+	}
+	p.Expect(lexer.RightCurlyBrace)
+	return &ast.MapType{Key: key, Value: val}
+}

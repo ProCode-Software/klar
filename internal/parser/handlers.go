@@ -230,10 +230,12 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool) {
 	startPos := p.Curr().Position
 	switch kind {
-	case lexer.LeftBracket:
-		res = p.ParseListType()
 	case lexer.Identifier:
 		res = p.ParseTypeAlias()
+	case lexer.LeftBracket:
+		res = p.ParseListType()
+	case lexer.HashLeftCurlyBrace:
+		res = p.ParseMapType()
 	case lexer.LeftParenthesis:
 		res = p.ParseTupleType()
 	case lexer.Func:

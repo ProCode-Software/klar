@@ -53,8 +53,6 @@ type ExpressionStatement struct {
 type StringLiteral struct {
 	BaseNode
 	QuoteStyle rune // ' " or `
-	// Number of QuoteStyle after '@' if it was used, otherwise 0
-	QuoteCount int
 	// Full string contents including escape literals
 	Content string
 	// Parts of string split by newlines (at end of segment) and escapes (skipped)
@@ -129,14 +127,18 @@ type RelationalExpression struct {
 }
 
 type StringFragment interface {
-	ASTFrag()
+	StringFrag()
 }
 
-type EscapeFragment struct {
-	Value StringEscape
-}
+// String fragments. Implement [StringFragment].
+type (
+	EscapeFragment        struct{ Value StringEscape }
+	TextFragment          = lexer.TextFragment
+	InterpolationFragment struct{ Expression Node }
+)
 
-func (EscapeFragment) ASTFrag() {}
+func (EscapeFragment) StringFrag()        {}
+func (InterpolationFragment) StringFrag() {}
 
 // A StringEscape is an escape sequence inside a [StringLiteral].
 type StringEscape interface {
@@ -144,11 +146,10 @@ type StringEscape interface {
 }
 
 type (
-	BadEscape           struct{ Source string }
-	CharacterEscape     struct{ Character rune }
-	UnicodeEscape       struct{ Hex int32 }
-	HexadecimalEscape   struct{ Hex int32 }
-	StringInterpolation struct{ Expression Node }
+	BadEscape         struct{ Source string }
+	CharacterEscape   struct{ Character rune }
+	UnicodeEscape     struct{ Hex int32 }
+	HexadecimalEscape struct{ Hex int32 }
 )
 
 type Symbol struct {
@@ -232,6 +233,11 @@ type OptionalType struct {
 type ListType struct {
 	BaseNode
 	Value Type
+}
+
+type MapType struct {
+	BaseNode
+	Key, Value Type
 }
 
 type RestType struct {
@@ -318,7 +324,6 @@ const (
 	PrimitiveInt                              // Int
 	PrimitiveFloat                            // Float
 	PrimitiveBool                             // Bool
-	PrimitiveMap                              // Map
 	PrimitiveNothing                          // Nothing
 	PrimitiveResult                           // Result
 	PrimitiveError                            // Error
@@ -330,7 +335,6 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 	"Int":     PrimitiveInt,
 	"Float":   PrimitiveFloat,
 	"Bool":    PrimitiveBool,
-	"Map":     PrimitiveMap,
 	"Nothing": PrimitiveNothing,
 	"Result":  PrimitiveResult,
 	"Error":   PrimitiveError,
