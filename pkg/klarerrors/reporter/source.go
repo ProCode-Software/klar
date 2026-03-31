@@ -37,9 +37,9 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 		}
 		r.printLineFromToken(s.tokens, i, line) // Finally!
 		lastCol = end.Col
-		/* if end.Line > line {
+		if end.Line > line {
 			break
-		} */
+		}
 	}
 	*firstTokOnLine = i
 	return

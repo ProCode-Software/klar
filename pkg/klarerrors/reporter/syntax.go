@@ -5,6 +5,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // GetTokenColor returns the color for token type k, or an empty
@@ -77,12 +78,15 @@ func (r *Reporter) colorizeString(t lexer.Token, targetLine uint32) {
 		attrs       = t.Attributes["params"].(lexer.StringAttrs)
 		stringColor = r.ColorPalette.GetTokenColor(lexer.String)
 		escColor    = r.ColorPalette.StringEscape
-		currLine    = targetLine
+		currLine    = t.Position.Line
 	)
 	if escColor == "" {
 		escColor = stringColor
 	}
-	r.appendRune(attrs.QuoteStyle, stringColor)
+	if targetLine == t.Position.Line {
+		r.appendRune(attrs.QuoteStyle, stringColor)
+	}
+loop:
 	for _, frag := range attrs.Fragments {
 		switch frag := frag.(type) {
 		case lexer.TextFragment:
@@ -90,23 +94,28 @@ func (r *Reporter) colorizeString(t lexer.Token, targetLine uint32) {
 			content, hasNewline := strings.CutSuffix(frag.Source, "\n")
 			if currLine == targetLine {
 				r.appendString(content, stringColor)
-				break
 			}
 			if hasNewline {
 				currLine++
+				break
 			}
 		case lexer.StringEscape:
 			// String interpolations may be multiline
 			for content := range strings.SplitSeq(frag.Value, "\n") {
+				if currLine > targetLine {
+					// We didn't stop below because there may be only 1
+					// iteration if the escape doesn't contain the newline.
+					// If this loop runs again, it will reach here and terminate.
+					break loop
+				}
 				if currLine == targetLine {
 					r.appendString(content, escColor)
-					break
 				}
 				currLine++
 			}
 		}
 	}
-	if !attrs.Unterminated {
+	if !attrs.Unterminated && targetLine == ranges.TokenEnd(t).Line {
 		r.appendRune(attrs.QuoteStyle, stringColor)
 	}
 }
