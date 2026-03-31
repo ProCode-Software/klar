@@ -39,7 +39,7 @@ E. With arrows
 
   ┌─ main.klar:1:15
 1 │ object.name + 5
-  · ━━━━━━━━━━━   ^ This is 'Int'
+  · ━━┬━━━━━━━━   ^ This is 'Int'
       ╰─ This is 'String'
 
 

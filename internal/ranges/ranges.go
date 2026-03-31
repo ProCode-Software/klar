@@ -121,6 +121,11 @@ func (r Range) RangeIn(r2 Range) bool {
 	return r.PosIn(r2.Start) && r.PosIn(r2.End)
 }
 
+// LineIn reports whether line l is in the range r.
+func (r Range) LineIn(l uint32) bool {
+	return r.Start.Line <= l && l <= r.End.Line
+}
+
 func (r Range) IsSingleLine() bool {
 	return r.Start.Line == r.End.Line
 }

@@ -164,47 +164,39 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	return f
 }
 
-func (p *Parser) parseForVariables() (vars []*ast.AssignableTypePair, iter ast.Expression) {
-	first := p.ParseExpression(ExpressionBindingPower)
-	if bin, ok := first.(*ast.BinaryExpression); ok && bin.Operator.Kind == lexer.In {
-		// for k in m
-		// (*AssignableTypePair).Value == always nil
-		return []*ast.AssignableTypePair{
-			{Keys: []ast.Assignable{p.validateAssignable(bin.Left)}},
-		}, bin.Right
-	} else if k := p.CurrKind(); k == lexer.Comma || k == lexer.Colon {
-		// for k, v in m
-		// for k: Int in m
+func (p *Parser) parseForVariables() (
+	vars []*ast.AssignableTypePair, iter ast.Expression,
+) {
+	for p.HasTokens() {
+		var expr ast.Expression
+		if peek := p.PeekKind(); p.CurrKind() == lexer.Underscore &&
+			(peek == lexer.In || peek == lexer.Comma || peek == lexer.Colon) {
+			// Allow '_' only as a variable name
+			expr = rangeFromToken(&ast.Discard{}, p.Advance())
+		} else {
+			expr = p.ParseExpressionWithout(excludeIf(lexer.In), bpOf(lexer.In), 0)
+		}
+		if p.CurrKind() == lexer.LeftCurlyBrace {
+			// for 5 {}
+			return nil, expr
+		}
 		pair := &ast.AssignableTypePair{
-			Keys: []ast.Assignable{p.validateAssignable(first)},
+			Keys: []ast.Assignable{p.validateAssignable(expr)},
 		}
-		for p.HasTokens() {
-			switch p.CurrKind() {
-			case lexer.Comma:
-				p.Advance()
-				expr := p.ParseExpression(DefaultBindingPower)
-				if expr, ok := expr.(*ast.BinaryExpression); ok &&
-					expr.Operator.Kind == lexer.In {
-					pair.Keys = append(pair.Keys, p.validateAssignable(expr.Left))
-					vars = append(vars, pair)
-					return vars, expr.Right
-				}
-				pair.Keys = append(pair.Keys, p.validateAssignable(expr))
-			case lexer.Colon:
-				p.Advance()
-				pair.Type = p.ParseType(DefaultTypeBindingPower)
-				vars = append(vars, pair)
-				if p.CurrKind() == lexer.In {
-					return vars, p.ParseExpression(ExpressionBindingPower)
-				}
-				pair = &ast.AssignableTypePair{}
-			default:
-				// TODO
-				// p.Error(errors.Token(errors.ErrInvalidForVariables, p.Curr()))
-			}
+		// for k: Int in ...
+		// TODO: for k, v: Int in ...
+		if p.CurrKind() == lexer.Colon {
+			p.Advance()
+			pair.Type = p.ParseType(DefaultTypeBindingPower)
 		}
+		vars = append(vars, pair)
+		if p.CurrKind() != lexer.Comma {
+			break
+		}
+		p.Advance()
 	}
-	return nil, first
+	p.Expect(lexer.In)
+	return vars, p.ParseExpression(ExpressionBindingPower)
 }
 
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {

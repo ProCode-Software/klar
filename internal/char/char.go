@@ -37,4 +37,3 @@ func Repeat(r byte, n int) []byte {
 func RepeatRune(r rune, n int) []byte {
 	return bytes.Repeat([]byte(string(r)), n)
 }
-

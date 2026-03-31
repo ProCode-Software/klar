@@ -138,7 +138,9 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			}
 			if o, ok := stmt.(*ast.OpaqueDeclaration); ok {
 				if !public {
-					c.fileError(errors.Node(errors.ErrPrivateOpaque, stmt), fid)
+					err := errors.Node(errors.ErrPrivateOpaque, stmt)
+					err.Label = "This type isn't exported"
+					c.fileError(err, fid)
 				}
 				opaque = true
 				stmt = o.Declaration
@@ -146,7 +148,9 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
 				// Imports were already processed. Misplaced import
-				c.fileError(errors.Node(errors.ErrImportsGoFirst, stmt), fid)
+				err := errors.Node(errors.ErrImportsGoFirst, stmt)
+				err.Label = "Put this import at the top of the file"
+				c.fileError(err, fid)
 				continue
 			case *ast.FunctionDeclaration:
 				name := stmt.Identifier.Name

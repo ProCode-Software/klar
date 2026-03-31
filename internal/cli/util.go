@@ -58,7 +58,7 @@ func Wrap(s string, w AllWriter, width, firstRowWidth, margin int) {
 		textWidth    = max(width-margin, 1) // Width of the text after the margin
 		i            int
 		needsNewline bool
-		currWidth = width
+		currWidth    = width
 	)
 	// Adjust width for the first line
 	if firstRowWidth > 0 {

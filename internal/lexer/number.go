@@ -66,11 +66,9 @@ readNumber:
 			switch r {
 			case 'x':
 				format = NumberFormatHex
-				last = r
 				goto writeAndContinue
 			case 'b':
 				format = NumberFormatBinary
-				last = r
 				goto writeAndContinue
 			default:
 				format = NumberFormatDecimal

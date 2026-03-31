@@ -93,7 +93,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	case ErrNothingToCompile:
 		return "There's nothing to compile", ""
 	case ErrLexer:
-		return "An error occured during tokenization: ", err.Err.Error()
+		return "An error occurred during tokenization: ", err.Err.Error()
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

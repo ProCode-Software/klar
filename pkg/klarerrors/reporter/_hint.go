@@ -115,9 +115,9 @@ func (r *Reporter) groupDiffLines(diff *errors.Diff) (map[uint32]*diffLine, []ui
 
 // printFullRemove highlights and renders a completely removed line using the '-' indicator.
 func (r *Reporter) printFullRemove(file string, dl *diffLine, digitWidth int) {
-	r.appendString(fmt.Sprintf("%*d", digitWidth, dl.lineNum), r.ColorPalette.BoxColor)
+	r.appendString(fmt.Sprintf("%*d", digitWidth, dl.lineNum), r.ColorPalette.Box)
 	r.appendSpace(1)
-	r.appendRune('-', r.ColorPalette.DiffDeleteColor)
+	r.appendRune('-', r.ColorPalette.DiffDeleteForeground)
 	r.appendSpace(1)
 
 	fileData := r.checkForFile(file)
@@ -149,9 +149,9 @@ func (r *Reporter) printFullRemove(file string, dl *diffLine, digitWidth int) {
 
 // printFullAdd highlights and renders a completely new line using the '+' indicator.
 func (r *Reporter) printFullAdd(dl *diffLine, digitWidth int) {
-	r.appendString(fmt.Sprintf("%*d", digitWidth, dl.lineNum), r.ColorPalette.BoxColor)
+	r.appendString(fmt.Sprintf("%*d", digitWidth, dl.lineNum), r.ColorPalette.Box)
 	r.appendSpace(1)
-	r.appendRune('+', r.ColorPalette.DiffAddColor)
+	r.appendRune('+', r.ColorPalette.DiffAddForeground)
 	r.appendSpace(1)
 
 	var lastCol uint32 = 1
@@ -259,7 +259,7 @@ func (r *Reporter) buildInlineDiffBlocks(dl *diffLine, origBlocks []renderBlock)
 				col:   startCol + shift,
 				width: width,
 				char:  '+',
-				color: r.ColorPalette.DiffAddColor,
+				color: r.ColorPalette.DiffAddForeground,
 			})
 
 			shift += width
@@ -289,7 +289,7 @@ func (r *Reporter) buildInlineDiffBlocks(dl *diffLine, origBlocks []renderBlock)
 			col:   rem.Start.Col + s,
 			width: rem.End.Col - rem.Start.Col,
 			char:  '-',
-			color: r.ColorPalette.DiffDeleteColor,
+			color: r.ColorPalette.DiffDeleteForeground,
 		})
 	}
 
@@ -299,9 +299,9 @@ func (r *Reporter) buildInlineDiffBlocks(dl *diffLine, origBlocks []renderBlock)
 // renderDiffBlocks commits the merged blocks layout text buffer accurately spacing standard tokens and shifts.
 func (r *Reporter) renderDiffBlocks(lineNum uint32, digitWidth int, blocks []renderBlock) {
 	// Setup left padding context and box border margin.
-	r.appendString(fmt.Sprintf("%*d", digitWidth, lineNum), r.ColorPalette.BoxColor)
+	r.appendString(fmt.Sprintf("%*d", digitWidth, lineNum), r.ColorPalette.Box)
 	r.appendSpace(1)
-	r.appendRune(r.CharacterSet.BoxL, r.ColorPalette.BoxColor)
+	r.appendRune(r.CharacterSet.BoxL, r.ColorPalette.Box)
 	r.appendSpace(1)
 
 	var lastCol uint32 = 1
@@ -329,7 +329,7 @@ func (r *Reporter) renderUnderlines(digitWidth int, underlines []diffUnderline) 
 
 	r.appendString(fmt.Sprintf("%*s", digitWidth, ""), "")
 	r.appendSpace(1)
-	r.appendRune(r.CharacterSet.HighlightLine, r.ColorPalette.BoxColor)
+	r.appendRune(r.CharacterSet.HighlightLine, r.ColorPalette.Box)
 	r.appendSpace(1)
 
 	var lastUCol uint32 = 1

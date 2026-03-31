@@ -20,14 +20,14 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	msgHighlight := errors.Highlight{e.GetRange(), e.GetLabel()}
 	highlights := append([]errors.Highlight{msgHighlight}, e.GetHighlights()...)
 	sortHighlights(highlights)
-
-	startLine := uint32(max(1, int(highlights[0].Range.Start.Line)-r.MaxLines+1))
-	endLine := highlights[len(highlights)-1].Range.End.Line
+	startLine, endLine := r.getBoxRanges(highlights[0].Range,
+		highlights[len(highlights)-1].Range,
+	)
 
 	// Highlight color
-	hlc := r.ColorPalette.HighlightColor
+	hlc := r.ColorPalette.ErrorColor
 	if _, ok := e.(*errors.Warning); ok {
-		hlc = r.ColorPalette.WarningHighlightColor
+		hlc = r.ColorPalette.WarningColor
 	}
 
 	// Digit width
@@ -51,7 +51,7 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 
 	// 3. Box (file content and highlights)
 	r.printBox(e.GetFile(),
-		&msgHighlight, highlights,
+		highlights, &msgHighlight,
 		startLine, endLine, digitWidth, 0, hlc,
 	)
 
@@ -65,13 +65,25 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	// TODO: not implemented in [CompileError] yet
 
 	// 6. Hints
-	for _, hint := range e.GetHints() {
+	/* for _, hint := range e.GetHints() {
 		r.newline()
 		r.printHint(e.GetFile(), hint)
-	}
+	} */
 
 	r.alreadyPrinted = true
 	return r.buf.WriteTo(r.Output)
+}
+
+func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32) {
+	startLine = uint32(max(1, int(r1.Start.Line)-r.MaxLines+1))
+	endLine = r2.End.Line
+	// If the ranges are far apart, render less lines before the first
+	// range to stay closer to MaxLines.
+	if 1 < startLine && startLine < r1.Start.Line &&
+		endLine-startLine > uint32(r.MaxLines) {
+		startLine += 1
+	}
+	return
 }
 
 // printMessage prints the error message and error code.
@@ -93,19 +105,19 @@ func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
 // printHeader prints the file name and position in the header.
 func (r *Reporter) printHeader(file string, rang ranges.Range, digitWidth int) {
 	r.appendSpace(digitWidth + 1)
-	r.appendRune(r.CharacterSet.BoxTL, r.ColorPalette.BoxColor)
-	r.appendRune(r.CharacterSet.BoxT, r.ColorPalette.BoxColor)
+	r.appendRune(r.CharacterSet.BoxTL, r.ColorPalette.Box)
+	r.appendRune(r.CharacterSet.BoxT, r.ColorPalette.Box)
 	r.appendSpace(1)
 	rel := r.files[file].rel
 	if rel == "" {
 		rel = file
 	}
-	r.appendString(rel, r.ColorPalette.FileNameColor)
+	r.appendString(rel, r.ColorPalette.FileName)
 	if pos := rang.Start; pos.Line > 0 {
 		r.appendRune(':', ansi.CodeDim)
-		r.appendNumber(pos.Line, r.ColorPalette.FilePosColor)
+		r.appendNumber(pos.Line, r.ColorPalette.FilePos)
 		r.appendRune(':', ansi.CodeDim)
-		r.appendNumber(pos.Col, r.ColorPalette.FilePosColor)
+		r.appendNumber(pos.Col, r.ColorPalette.FilePos)
 	}
 	r.newline()
 }
@@ -118,9 +130,8 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	r.appendString(det.Message, ansi.CodeBold) // Should we use bold? Yellow?
 	r.newline()
 
-	startLine := max(1, det.Range.Start.Line-uint32(r.MaxLines)+1)
-	endLine := det.Range.End.Line
-	digitWidth := digitLen(det.Range.End.Line)
+	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
+	digitWidth := digitLen(endLine)
 
 	// Only print a header if the file is different from the main error
 	if !sameFile {
@@ -130,7 +141,7 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	hl := det.Highlight
 	hl.Message = ""
 	r.printBox(det.File,
-		&hl, []errors.Highlight{hl}, startLine, endLine,
+		[]errors.Highlight{hl}, &hl, startLine, endLine,
 		digitWidth, detailMargin, r.ColorPalette.HintColor,
 	)
 }

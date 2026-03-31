@@ -106,11 +106,21 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 	)
 	if a.Unterminated {
 		full = src[1:]
-		if a.QuoteStyle != '`' && full[len(full)-1] == '\n' {
+		if a.QuoteStyle != '`' && src[len(src)-1] == '\n' {
 			// Use a better error for quoted strings with newline
-			p.Error(errors.Position(errors.ErrMultilineQuotedString, token.Position))
+			p.Error(errors.Position(errors.ErrMultilineQuotedString,
+				ranges.TokenEnd(token),
+			))
 		} else {
-			p.Error(errors.Position(errors.ErrUnterminatedString, token.Position))
+			err := errors.Position(errors.ErrUnterminatedString,
+				ranges.Add(ranges.TokenEnd(token), 0, 1),
+			)
+			err.Label = "Expected " + errors.Quote(string(a.QuoteStyle))
+			err.Highlights = append(err.Highlights, errors.Highlight{
+				Range:   ranges.Offset(token.Position, 0, 1),
+				Message: "It was started here",
+			})
+			p.Error(err)
 		}
 	} else {
 		full = src[1 : len(src)-1] // Remove quotes

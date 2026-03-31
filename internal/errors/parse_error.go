@@ -397,7 +397,7 @@ func (e *ParseError) error() string {
 	case ErrFuncDotAfterSelf:
 		return "Expected a '.' between ')' and the name in function declaration"
 	case ErrMultiDirectionCompareChain:
-		return "'<'/'<=' and '>'/'>=' can't be mixed in a single compairson chain"
+		return "'<'/'<=' and '>'/'>=' can't be mixed in a single comparison chain"
 	case ErrChainedNotEqual:
 		return "The '!=' operator isn't allowed to be chained in a comparison chain"
 	case ErrStepInListSlice:

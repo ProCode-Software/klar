@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/ProCode-Software/klar/internal/char"
@@ -16,22 +17,24 @@ func (r *Reporter) checkForFile(name string) *file {
 	return file
 }
 
-// getTokenIndexForLine finds the first token index mapped to a target line.
+// getTokenIndexForLine returns the index of the first token on line.
+// getTokenIndexForLine may return a token that begins on an earlier line,
+// but ends on line, such as multiline strings.
 func (f *file) getTokenIndexForLine(line uint32) int {
 	// Use cached file.lastLine and lastLineTok
 	var currTok int
-	if f.lastLine > 0 && uint32(f.lastLine) <= line {
+	if f.lastLine > 0 && f.lastLine <= line {
 		currTok = f.lastLineTok
 	}
 	for i := currTok; i < len(f.tokens); i++ {
-		// Check End.Line in case of multiline strings that end here
-		if ranges.FromToken(f.tokens[i]).End.Line >= line {
+		// Check end line in case of multiline strings that end here
+		if ranges.TokenEnd(f.tokens[i]).Line >= line {
 			currTok = i
 			break
 		}
 	}
 	// Update cache
-	f.lastLine = int(line)
+	f.lastLine = line
 	f.lastLineTok = currTok
 	return currTok
 }
@@ -47,10 +50,19 @@ func (r *Reporter) appendString(s string, color string) {
 func (r *Reporter) appendNumber(n uint32, color string) {
 	r.buf.WriteString(ansi.Color(color, strconv.FormatUint(uint64(n), 10)))
 }
-func (r *Reporter) appendColor(color string) {
-	r.buf.WriteString(ansi.Partial(color))
+
+func (r *Reporter) appendf(color, format string, a ...any) {
+	fmt.Fprintf(r.buf, ansi.Color(color, format), a...)
 }
 
 func (r *Reporter) appendSpace(n int) { r.buf.Write(char.Repeat(' ', n)) }
 func (r *Reporter) newline()          { r.buf.WriteByte('\n') }
 func (r *Reporter) blankLine()        { r.buf.Write([]byte("\n\n")) }
+
+func (r *Reporter) padding(lastCol, currCol uint32) {
+	if padding := int(currCol) - int(lastCol); padding > 0 {
+		r.appendSpace(padding)
+	} else if padding < 0 {
+		panic("negative column offset")
+	}
+}

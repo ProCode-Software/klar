@@ -6,53 +6,55 @@ import (
 )
 
 type ColorPalette struct {
-	TokenColors   map[lexer.TokenType]string
-	TypeColor     string // The color of type names
-	FunctionColor string // The color of function names
-	EscapeColor   string // The color of string escapes
+	TokenColors  map[lexer.TokenType]string
+	Type         string // The color of type names
+	Function     string // The color of function names
+	BuiltinFunc  string // The color of built-in function names
+	StringEscape string // The color of string escapes
 
-	DividerColor  string // The color of error dividers
-	BoxColor      string // The color of the container and line numbers
-	FileNameColor string // The color of the file name in the header
-	FilePosColor  string // The color of the line and column numbers in the header
+	Divider  string // The color of error dividers
+	Box      string // The color of the container and line numbers
+	FileName string // The color of the file name in the header
+	FilePos  string // The color of the line and column numbers in the header
 
-	HighlightColor        string // The color of error highlights
-	WarningHighlightColor string // The color of warning highlights
-	HintColor             string // The color of the hint label and hint highlights
+	ErrorColor   string // The color of error highlights
+	WarningColor string // The color of warning highlights
+	HintColor    string // The color of the hint label and hint highlights
 
 	Highlight1, Highlight2, Highlight3 string // The color of secondary highlights
 
 	// Background and symbol colors for diffs
-	DiffAddBackground, DiffAddColor       string
-	DiffDeleteBackground, DiffDeleteColor string
+	DiffAddBackground, DiffAddForeground       string
+	DiffDeleteBackground, DiffDeleteForeground string
 }
 
 var defaultColors = makeDefaultTokenColors()
 
 func DefaultColorPalette() *ColorPalette {
 	return &ColorPalette{
-		TokenColors:   defaultColors,
-		TypeColor:     ansi.CodeCyan,
-		FunctionColor: ansi.CodeMagenta,
-		EscapeColor:   ansi.CodeCyan,
+		TokenColors:  defaultColors,
+		Type:         ansi.CodeCyan,
+		Function:     ansi.CodeMagenta,
+		StringEscape: ansi.CodeCyan,
+		BuiltinFunc:  ansi.CodeBlue,
 
-		DividerColor:  ansi.CodeDim,
-		BoxColor:      ansi.CodeBlue,
-		FileNameColor: ansi.CodeCyan,
-		FilePosColor:  ansi.CodeYellow,
+		Divider:  ansi.CodeDim,
+		Box:      ansi.CodeBlue,
+		FileName: ansi.CodeCyan,
+		FilePos:  ansi.CodeYellow,
 
-		HighlightColor:        ansi.CodeBrightRed,
-		WarningHighlightColor: ansi.CodeBrightYellow,
-		HintColor:             ansi.CodeBrightBlue,
+		ErrorColor:   ansi.CodeBrightRed,
+		WarningColor: ansi.CodeBrightYellow,
+		HintColor:    ansi.CodeBrightBlue,
 
-		Highlight1: ansi.CodeGreen,
-		Highlight2: ansi.CodeMagenta,
-		Highlight3: ansi.CodeBlue,
+		Highlight1: ansi.CodeBrightGreen,
+		Highlight2: ansi.CodeBrightMagenta,
+		Highlight3: ansi.CodeBrightBlue,
 
 		DiffAddBackground:    "",
-		DiffAddColor:         ansi.CodeBrightGreen,
+		DiffAddForeground:    ansi.CodeBrightGreen,
 		DiffDeleteBackground: "", // TODO
-		DiffDeleteColor:      ansi.CodeBrightRed,
+		DiffDeleteForeground: ansi.CodeBrightRed,
 	}
 }
 

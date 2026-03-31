@@ -28,7 +28,7 @@ type Reporter struct {
 type file struct {
 	tokens      []lexer.Token
 	rel         string // Name used when printing
-	lastLine    int    // Line number of last reported error
+	lastLine    uint32 // Line number of last reported error
 	lastLineTok int    // Index of first token on line of last reported error
 }
 

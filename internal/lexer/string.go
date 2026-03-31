@@ -55,12 +55,15 @@ const (
 
 type StringFragment interface {
 	StringFrag()
+	Text() string
 }
 
 type TextFragment struct{ Source string }
 
-func (TextFragment) StringFrag() {}
-func (StringEscape) StringFrag() {}
+func (TextFragment) StringFrag()    {}
+func (StringEscape) StringFrag()    {}
+func (t TextFragment) Text() string { return t.Source }
+func (e StringEscape) Text() string { return e.Value }
 
 func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 	var (
@@ -263,6 +266,7 @@ loop:
 			if delim != '`' { // " or '
 				// Invalid newline, just stop parsing
 				unterm = true
+				endFrag()
 				break loop
 			}
 			isNewline = true
@@ -280,6 +284,7 @@ loop:
 	}
 	if t.EOF() {
 		unterm = true
+		endFrag()
 	}
 	return NewToken(pos, String, string(delim)+t.String()).withAttrs(attrs{
 		"end":    t.EndPos(),
