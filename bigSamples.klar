@@ -1,5 +1,9 @@
+func x(n: Int) -> Int {
+    return n * 2
+}
 print(
     `Yes, this is a BIG samp\nle
+    again
     {1 + 1}
 
 

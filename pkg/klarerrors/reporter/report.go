@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -88,18 +89,18 @@ func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32)
 
 // printMessage prints the error message and error code.
 func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
+	var b strings.Builder
 	msgParts := strings.SplitAfterN(e.GetMessage(), ": ", 2)
-	var code string
-	if e.GetCode() != 0 {
-		code = ansi.Dim(" (" + e.GetCode().Format() + ")")
-	}
-	r.appendString(e.GetName(), ansi.CodeBold+hlc)
-	r.appendString(": ", ansi.CodeBoldDim)
-	r.appendString(msgParts[0], ansi.CodeBold)
+	b.WriteString(ansi.Color(hlc, e.GetName()))
+	b.WriteString(ansi.Color(": ", ansi.CodeBoldDim))
+	b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
 	if len(msgParts) > 1 {
-		r.appendString(msgParts[1], "")
+		b.WriteString(msgParts[1])
 	}
-	r.appendString(code, "")
+	if e.GetCode() != 0 {
+		b.WriteString(ansi.Dim(" (" + e.GetCode().Format() + ")"))
+	}
+	cli.Wrap(b.String(), r.buf, termWidth, 0, 2)
 }
 
 // printHeader prints the file name and position in the header.

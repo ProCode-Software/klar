@@ -4,8 +4,10 @@ type #X
 type #X
 import invalidHere
 // Supposed to be public
-  opaque type Z {
+opaque type Person: Organism {
     name: String
+    age: Int
+    job: String
 }
 
 yeahLetsGo()

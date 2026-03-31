@@ -23,9 +23,9 @@ type ColorPalette struct {
 
 	Highlight1, Highlight2, Highlight3 string // The color of secondary highlights
 
-	// Background and symbol colors for diffs
-	DiffAddBackground, DiffAddForeground       string
-	DiffDeleteBackground, DiffDeleteForeground string
+	// Underline/text and background colors for added/deleted segments in diffs
+	DiffAdd, DiffAddBackground,
+	DiffDelete, DiffDeleteBackground string
 }
 
 var defaultColors = makeDefaultTokenColors()
@@ -43,8 +43,8 @@ func DefaultColorPalette() *ColorPalette {
 		FileName: ansi.CodeCyan,
 		FilePos:  ansi.CodeYellow,
 
-		ErrorColor:   ansi.CodeBrightRed,
-		WarningColor: ansi.CodeBrightYellow,
+		ErrorColor:   ansi.CodeBoldBrightRed,
+		WarningColor: ansi.CodeBoldBrightYellow,
 		HintColor:    ansi.CodeBrightBlue,
 
 		Highlight1: ansi.CodeBrightGreen,
@@ -52,61 +52,64 @@ func DefaultColorPalette() *ColorPalette {
 		Highlight3: ansi.CodeBrightBlue,
 
 		DiffAddBackground:    "",
-		DiffAddForeground:    ansi.CodeBrightGreen,
+		DiffAdd:              ansi.CodeBrightGreen,
 		DiffDeleteBackground: "", // TODO
-		DiffDeleteForeground: ansi.CodeBrightRed,
+		DiffDelete:           ansi.CodeBrightRed,
 	}
 }
 
 // TODO: other palettes: frost, github
 
 type CharacterSet struct {
-	HighlightSingle rune
-	HighlightMulti  rune
-	BoxTL           rune
-	BoxT            rune
-	BoxL            rune
-	HighlightLine   rune
-	SkipLine        rune
-	SkipLineL       rune
+	HighlightSingle rune // Single-character underlines
+	HighlightMulti  rune // Multi-character underlines
+	BoxTL           rune // The top left corner of the box
+	// The top border of the box. Also used at the end of multiline highlights
+	BoxT rune
+	// The left border of the box, after line numbers. Also used for multiline highlights
+	BoxL          rune
+	HighlightLine rune // The left border of the box on lines with highlights
+	// The character in the line number position on collapsed lines
+	SkipLine rune
+	// The left border of the box on collapsed lines without active highlights
+	SkipLineL rune
 
-	HighlightMultilineTL           rune
-	HighlightMultilineBL           rune
-	HighlightMultilineOffset       rune
-	HighlightMultilineSkip         rune
-	HighlightMultilineSkipEllipsis rune
+	HighlightMultilineTL rune // The top left corner of multiline highlights
+	HighlightMultilineBL rune // The bottom left corner of multiline highlights
+	// The character used to underline the areas of the first line of a
+	// multiline highlight before it begins.
+	HighlightMultilineOffset rune
+	// The left of multiline highlights on lines that are collapsed
+	HighlightMultilineCollapsed rune
+	CollapsedEllipsis           rune // The ellipsis used on collapsed lines
 
-	ArrowT  rune
-	ArrowBL rune
-	ArrowH  rune
-	ArrowV  rune
+	ArrowT  rune // The top of underline arrows where the stem begins
+	ArrowBL rune // Underline arrow curves
 
-	ErrorDivider rune
+	ErrorDivider rune // The character used to separate errors
 }
 
 // DefaultCharacterSet returns a character set that uses default
 // characters, which may be Unicode.
 func DefaultCharacterSet() *CharacterSet {
 	return &CharacterSet{
-		HighlightSingle: '^',
-		HighlightMulti:  '━', // '─'
-		BoxTL:           '┌',
-		BoxT:            '─',
-		BoxL:            '│',
-		HighlightLine:   '·',
-		SkipLine:        '-', // ╌
-		SkipLineL:       '┤',
+		HighlightSingle:      '^',
+		HighlightMulti:       '━', // '─'
+		BoxTL:                '┌',
+		BoxT:                 '─',
+		BoxL:                 '│',
+		HighlightLine:        '·',
+		SkipLine:             '-', // ╌
+		SkipLineL:            '├',
 
-		HighlightMultilineTL:           '╭',
-		HighlightMultilineBL:           '╰',
-		HighlightMultilineOffset:       '·',
-		HighlightMultilineSkip:         '├',
-		HighlightMultilineSkipEllipsis: '·',
+		HighlightMultilineTL:        '╭',
+		HighlightMultilineBL:        '╰',
+		HighlightMultilineOffset:    '·',
+		HighlightMultilineCollapsed: '├',
+		CollapsedEllipsis:           '·',
 
-		ArrowT:  '┬',
+		ArrowT:  '┯',
 		ArrowBL: '╰',
-		ArrowH:  '─',
-		ArrowV:  '│',
 
 		ErrorDivider: '-',
 	}
@@ -115,25 +118,23 @@ func DefaultCharacterSet() *CharacterSet {
 // ASCIICharacterSet returns a character set that uses ASCII characters.
 func ASCIICharacterSet() *CharacterSet {
 	return &CharacterSet{
-		HighlightSingle: '^',
-		HighlightMulti:  '~',
-		BoxTL:           '|',
-		BoxT:            '-',
-		BoxL:            '|',
-		HighlightLine:   '.',
-		SkipLine:        '=',
-		SkipLineL:       '+',
+		HighlightSingle:      '^',
+		HighlightMulti:       '~',
+		BoxTL:                '|',
+		BoxT:                 '-',
+		BoxL:                 '|',
+		HighlightLine:        '.',
+		SkipLine:             '=',
+		SkipLineL:            '+',
 
-		HighlightMultilineTL:           'r',
-		HighlightMultilineBL:           '\'',
-		HighlightMultilineOffset:       '.',
-		HighlightMultilineSkip:         '=',
-		HighlightMultilineSkipEllipsis: '.',
+		HighlightMultilineTL:        'r',
+		HighlightMultilineBL:        '\'',
+		HighlightMultilineOffset:    '.',
+		HighlightMultilineCollapsed: '}',
+		CollapsedEllipsis:           '.',
 
 		ArrowT:  ',',
 		ArrowBL: '`',
-		ArrowH:  '-',
-		ArrowV:  '|',
 
 		ErrorDivider: '-',
 	}

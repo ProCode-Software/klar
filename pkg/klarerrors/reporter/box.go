@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"github.com/ProCode-Software/klar/internal/char"
-	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -31,8 +30,8 @@ func (r *Reporter) printBox(fileName string,
 	startLine, endLine uint32, digitWidth, margin int, mainHlColor string,
 ) {
 	var (
-		file  = r.checkForFile(fileName)
-		state = &state{
+		file = r.checkForFile(fileName)
+		s    = &state{
 			tokens:     file.tokens,
 			digitWidth: digitWidth,
 			margin:     margin,
@@ -48,9 +47,9 @@ func (r *Reporter) printBox(fileName string,
 	var colorI int
 	for _, hl := range highlights {
 		if hl == *mainHl {
-			state.hlColors[hl] = mainHlColor + ansi.CodeBold // Primary highlight
+			s.hlColors[hl] = mainHlColor // Primary highlight
 		} else {
-			state.hlColors[hl] = colors[colorI%len(colors)]
+			s.hlColors[hl] = colors[colorI%len(colors)]
 			colorI++
 		}
 	}
@@ -58,22 +57,22 @@ func (r *Reporter) printBox(fileName string,
 	firstTokOnLine := file.getTokenIndexForLine(startLine)
 	for line := startLine; line <= endLine; line++ {
 		groups := groupHighlights(highlights, line)
-		if len(groups.existing) > 0 &&
-			len(groups.newSingleLine) == 0 && len(groups.newMultiline) == 0 {
+		if len(groups.newSingleLine) == 0 && len(groups.newMultiline) == 0 {
 			// No new highlights on this line: check if we can collapse lines
-			if nextLine := r.tryCollapseLines(state, line, endLine, groups.existing); nextLine > line {
-				line = nextLine - 1 // Because of line++ in the loop
+			if n := r.tryCollapseLines(s, line, endLine, &firstTokOnLine, groups.existing); n > 0 {
+				line += n
+				firstTokOnLine = file.getTokenIndexForLine(line + 1)
 				continue
 			}
 		}
 		// Print the line number
-		r.printLineNumber(state, line)
+		r.printLineNumber(s, line)
 
 		// Print a line of code
-		lastCol := r.printSourceLine(state, line, &firstTokOnLine, groups.existing)
+		lastCol := r.printSourceLine(s, line, &firstTokOnLine, groups.existing)
 		r.newline()
 		// TODO: change these params
-		r.printHighlights(state, line, lastCol, groups)
+		r.printHighlights(s, line, lastCol, groups)
 	}
 }
 
@@ -97,40 +96,36 @@ func groupHighlights(highlights []errors.Highlight, line uint32) *groupedHighlig
 }
 
 // tryCollapseLines checks if lines starting from line can be collapsed. If
-// possible, tryCollapseLines prints the collapsed lines and returns the next,
-// line that is not collapsed, otherwise it returns the current line.
-// tryCollapseLines only collapses lines if there are no new or ending
-// highlights on the next line, assuming there are none on line.
-func (r *Reporter) tryCollapseLines(s *state, line, endLine uint32, activeHls []errors.Highlight) (nextLine uint32) {
-	var dist uint32 // Distance between 'line' and next line with highlights
+// possible, tryCollapseLines prints the collapsed lines and returns the
+// distance between line and the next line with highlights, otherwise it
+// returns 0. tryCollapseLines only collapses lines if there are no new or
+// ending highlights on the next line, assuming there are none on line.
+func (r *Reporter) tryCollapseLines(s *state, line,
+	endLine uint32, firstTokOnLine *int, activeHls []errors.Highlight,
+) (n uint32) {
+	// Find the next line with highlights starting or ending.
 	for line := line + 1; line <= endLine; line++ {
 		groups := groupHighlights(s.highlights, line)
 		if len(groups.newSingleLine) > 0 || len(groups.newMultiline) > 0 ||
-			!r.highlightsEndOnLine(line, activeHls) {
+			r.highlightsEndOnLine(line, groups.existing) {
 			break
 		}
-		dist++
+		n++
 	}
-	if dist <= 1 {
-		return line
+	if n <= 1 { // If that line is the next one, just print it.
+		return 0
 	}
-	// Print the dashed line number
-	r.appendSpace(s.margin)
-	r.appendf(r.ColorPalette.Box, "%s%c ",
-		char.RepeatRune(r.CharacterSet.SkipLine, s.digitWidth+1), // Dashes in line num pos
-		r.CharacterSet.SkipLineL,                                 // Box divider
-	)
-	// Print pipes, except the last one. We want another style for that last one.
-	r.printHighlightPipes(s, activeHls[:len(activeHls)-1])
-	// Last pipe + ellipsis
-	r.appendf(
-		s.hlColors[activeHls[len(activeHls)-1]],
-		"%c %[2]c%[2]c%[2]c\n", r.CharacterSet.HighlightMultilineSkip,
-		r.CharacterSet.HighlightMultilineSkipEllipsis,
-	)
-	return line + dist
+	// Print 1 line of context before collapsing
+	r.printLineNumber(s, line)
+	r.printSourceLine(s, line, firstTokOnLine, activeHls)
+	r.newline()
+
+	// Print the collapsed line number, highlight pipes, and ellipsis
+	r.printCollapsedLineNumber(s, activeHls)
+	return n
 }
 
+// highlightsEndOnLine reports whether any highlight ends on the given line.
 func (r *Reporter) highlightsEndOnLine(line uint32, highlights []errors.Highlight) bool {
 	for _, hl := range highlights {
 		if hl.Range.End.Line == line {
@@ -154,6 +149,40 @@ func (r *Reporter) printHighlightPipes(s *state, activeHls []errors.Highlight) {
 	for _, hl := range activeHls {
 		r.appendf(s.hlColors[hl], "%c ", r.CharacterSet.BoxL)
 	}
+}
+
+// printCollapsedLineNumber prints the collapsed line number, the pipes of
+// active multiline highlights, and ellipsis.
+func (r *Reporter) printCollapsedLineNumber(s *state, highlights []errors.Highlight) {
+	// Character for the border of the box.
+	borderChar := r.CharacterSet.SkipLineL // Horizontal line on right side
+	if len(highlights) > 0 {
+		// No horizontal line
+		borderChar = r.CharacterSet.BoxL
+	}
+
+	// Print the dashed line number
+	r.appendSpace(s.margin)
+	r.appendf(r.ColorPalette.Box, "%s %c ",
+		// Dashes in line num position
+		char.RepeatRune(r.CharacterSet.SkipLine, s.digitWidth),
+		borderChar, // Box border
+	)
+
+	// Print the pipes of active multiline highlights
+	if len(highlights) > 0 {
+		// Exclude the last pipe. We want another style for that last one.
+		r.printHighlightPipes(s, highlights[:len(highlights)-1])
+		// Last pipe + ellipsis
+		r.appendf(
+			s.hlColors[highlights[len(highlights)-1]], "%c %[2]c%[2]c%[2]c\n",
+			r.CharacterSet.HighlightMultilineCollapsed,
+			r.CharacterSet.CollapsedEllipsis,
+		)
+		return
+	}
+	// No active multiline highlights: ellipsis only in the box color
+	r.appendf(r.ColorPalette.Box, "%[1]c%[1]c%[1]c\n", r.CharacterSet.CollapsedEllipsis)
 }
 
 // printHighlights prints a line with the highlights that start or end on line.

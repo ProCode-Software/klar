@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -140,6 +141,19 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				if !public {
 					err := errors.Node(errors.ErrPrivateOpaque, stmt)
 					err.Label = "This type isn't exported"
+					err.Highlights = append(err.Highlights, errors.Highlight{
+						Range: ranges.Range{
+							Start: stmt.GetRange().Start,
+							End:   ranges.Add(stmt.GetRange().End, 0, 3),
+						},
+						Message: "You found out",
+					},errors.Highlight{
+						Range: ranges.Range{
+							Start: stmt.GetRange().Start,
+							End:   ranges.Add(stmt.GetRange().End, 0, 2),
+						},
+						Message: "You found out again",
+					})
 					c.fileError(err, fid)
 				}
 				opaque = true

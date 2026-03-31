@@ -3,6 +3,7 @@ package reporter
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -20,23 +21,33 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 	// Now, what you've been waiting for: print the actual tokens!
 	lastCol = 1
 	var i int
-	for i = *firstTokOnLine; i < len(s.tokens) && s.tokens[i].Position.Line <= line; i++ {
+	for i = *firstTokOnLine; i < len(s.tokens); i++ {
 		tok := s.tokens[i]
-		if tok.Source == "\n" {
-			continue // Don't print newlines
+		if tok.Kind == lexer.EOF || tok.Position.Line > line {
+			break
+		}
+		if tok.Source == "\n" && tok.Position.Line == line {
+			i++
+			break
 		}
 		end := ranges.TokenEnd(tok)
-		// Add a padding, unless the token started on a previous line
-		if tok.Position.Line >= line {
-			if padding := int(tok.Position.Col) - int(lastCol); padding > 0 {
-				r.appendSpace(padding)
-			} else if padding < 0 {
+		if end.Line < line {
+			continue
+		}
+		if tok.Position.Line == line {
+			// Add a padding between this and the last token
+			if pad := int(tok.Position.Col) - int(lastCol); pad > 0 {
+				r.appendSpace(pad)
+				lastCol = tok.Position.Col
+			} else if pad < 0 {
 				// Error with input tokens
-				panic(fmt.Sprintf("invalid token offsets: A(%s), B(%s)", s.tokens[i-1], tok))
+				panic(fmt.Sprintf("invalid token offsets: A(%s), B(%s)",
+					s.tokens[i-1], tok,
+				))
 			}
 		}
-		r.printLineFromToken(s.tokens, i, line) // Finally!
-		lastCol = end.Col
+		 // Finally!
+		lastCol += r.printLineFromToken(s.tokens, i, line)
 		if end.Line > line {
 			break
 		}
@@ -46,9 +57,10 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 }
 
 // printLineFromToken prints only the part of tok that is on a given line.
-func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) {
+// It returns the length of the printed part in runes.
+func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) uint32 {
 	tok := tokens[i]
-	tokRange := ranges.FromToken(tok)
+	rang := ranges.FromToken(tok)
 	errNoNewline := func() {
 		panic(fmt.Sprintf("impossible: newline not found in %s token: %q",
 			tok.Kind, tok.Source,
@@ -56,10 +68,11 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 	}
 	switch {
 	case tok.Kind == lexer.String: // Any string
-		r.colorizeString(tok, line)
-	case tokRange.IsSingleLine(): // Normal token
+		return r.colorizeString(tok, line)
+	case rang.IsSingleLine(): // Normal token
 		r.colorize(tokens, i)
-	case tokRange.Start.Line == line:
+		return tok.Len()
+	case rang.Start.Line == line:
 		// Fast path for taking the FIRST line
 		nl := strings.IndexByte(tok.Source, '\n')
 		if nl < 0 {
@@ -67,8 +80,10 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 		}
 		// We can just use GetTokenColor because the token is guaranteed
 		// to not be an identifier, which is single-line.
-		r.appendString(tok.Source[:nl], r.ColorPalette.GetTokenColor(tok.Kind))
-	case tokRange.End.Line == line:
+		src := tok.Source[:nl]
+		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
+		return uint32(utf8.RuneCountInString(src))
+	case rang.End.Line == line:
 		// Fast path for taking the LAST line of a token
 		nl := strings.LastIndexByte(tok.Source, '\n') // Last newline
 		// Things that should't happen
@@ -79,10 +94,14 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 				tok.Kind, tok.Source,
 			))
 		}
-		r.appendString(tok.Source[nl+1:], r.ColorPalette.GetTokenColor(tok.Kind))
+		src := tok.Source[nl+1:]
+		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
+		return uint32(utf8.RuneCountInString(src))
 	default:
 		// Slow path
 		lines := strings.Split(tok.Source, "\n")
-		r.appendString(lines[line-tok.Position.Line], r.ColorPalette.GetTokenColor(tok.Kind))
+		src := lines[line-tok.Position.Line]
+		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
+		return uint32(utf8.RuneCountInString(src))
 	}
 }

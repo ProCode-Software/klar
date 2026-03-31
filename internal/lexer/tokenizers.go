@@ -14,9 +14,9 @@ func (l *Lexer) ReadIdentifier(start Position, first rune) *Token {
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			b.WriteRune(r)
 			length++
-		} else {
-			break
+			continue
 		}
+		break
 	}
 	id := t.String()
 	// Check for keywords

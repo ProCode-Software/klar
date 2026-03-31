@@ -16,7 +16,7 @@ type StringAttrs struct {
 
 // Note: Interpolations are [StringEscape].
 type StringEscape struct {
-	Offset       int
+	Offset       int // TODO: do we need this?
 	Pos          Position
 	Type         EscapeType
 	Value        string
@@ -55,15 +55,20 @@ const (
 
 type StringFragment interface {
 	StringFrag()
-	Text() string
+	String() string
 }
 
-type TextFragment struct{ Source string }
+type TextFragment struct {
+	Source string
+	// Number of spaces before this fragment begins if this is the
+	// first fragment on the line
+	LineOffset uint32
+}
 
-func (TextFragment) StringFrag()    {}
-func (StringEscape) StringFrag()    {}
-func (t TextFragment) Text() string { return t.Source }
-func (e StringEscape) Text() string { return e.Value }
+func (TextFragment) StringFrag()      {}
+func (StringEscape) StringFrag()      {}
+func (t TextFragment) String() string { return t.Source }
+func (e StringEscape) String() string { return e.Value }
 
 func (l *Lexer) readUnicodeEsc(delim rune) StringEscape {
 	var (
@@ -197,7 +202,7 @@ There are three types of strings in Klar:
 func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 	var (
 		fragStart                   int
-		leng                        uint32
+		leng, firstOffset           uint32
 		isEscape, isNewline, unterm bool
 		escapes                     map[Position]StringEscape
 		escStart                    Position
@@ -228,7 +233,11 @@ func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 		return esc
 	}
 	endFrag := func() { // End a fragment before '\' in escape or after '\n'
-		frags = append(frags, TextFragment{t.Builder.String()[fragStart:]})
+		frags = append(frags, TextFragment{
+			Source:     t.Builder.String()[fragStart:],
+			LineOffset: firstOffset,
+		})
+		firstOffset = 0
 	}
 loop:
 	for r, b := range t.Tokenize {
@@ -276,6 +285,7 @@ loop:
 		default:
 			// Strip leading spaces from backtick string
 			if isNewline && unicode.IsSpace(r) && l.Pos.Col-1 <= pos.Col {
+				firstOffset++
 				continue loop
 			}
 		}

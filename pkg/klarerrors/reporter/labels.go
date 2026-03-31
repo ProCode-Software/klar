@@ -42,7 +42,6 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 	hl := highlights[len(highlights)-1]
 	// Number of spaces to add after the line number
 	startCol := pipeLen + int(hl.Range.Start.Col-1)
-	r.appendSpace(1)
 	r.printLabel(hl.Message, s.hlColors[hl],
 		startCol, int(hl.Range.LineLength()), printLineStart,
 	)
@@ -66,12 +65,12 @@ func (r *Reporter) printArrows(s *state, remHls []errors.Highlight,
 			r.padding(lastCol, rang.Start.Col)
 			r.appendSpace(stemOffset)
 			if i < len(remHls)-1 || stemsOnly {
-				r.appendRune(r.CharacterSet.ArrowV, color)
+				r.appendRune(r.CharacterSet.BoxL, color)
 				lastCol = rang.End.Col
 			} else {
 				// Rightmost
 				r.appendRune(r.CharacterSet.ArrowBL, color)
-				r.appendRune(r.CharacterSet.ArrowH, color)
+				r.appendRune(r.CharacterSet.BoxT, color)
 			}
 		}
 		if stemsOnly {
@@ -80,7 +79,6 @@ func (r *Reporter) printArrows(s *state, remHls []errors.Highlight,
 		// Label and cut off the rightmost highlight
 		hl := remHls[len(remHls)-1]
 		startOffset := (int(hl.Range.Start.Col) - 1) + pipeLen
-		r.appendSpace(1)
 		r.printLabel(hl.Message, s.hlColors[hl], startOffset, -1, nil)
 		r.newline()
 		remHls = remHls[:len(remHls)-1]
@@ -99,10 +97,13 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 			r.printHighlightPipes(s, highlights[:i])
 		}
 		color := s.hlColors[hl]
-		r.appendRune(r.CharacterSet.HighlightMultilineBL, color)
-		r.appendRune(r.CharacterSet.ArrowH, color)
-		r.appendSpace(1)
-		r.printLabel(hl.Message, color, -1, -1, nil)
+		// pipeLen := i * 2
+		r.appendf(color, "%c%s",
+			r.CharacterSet.HighlightMultilineBL,
+			char.RepeatRune(r.CharacterSet.HighlightMulti, int(hl.Range.End.Col)),
+		)
+		// r.appendRune(r.CharacterSet.BoxT, color)
+		r.printLabel(hl.Message, color, -1 /* I don't care */, -1, nil)
 		r.newline()
 	}
 }
@@ -112,32 +113,49 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []errors.Highlight,
 	lastCol uint32, printLineStart func(),
 ) {
-	for _, hl := range highlights {
+	for i, hl := range highlights {
 		printLineStart()
 		color := s.hlColors[hl]
 		pos := hl.Range.Start
+		// Reduce the offset (and maybe pipe length) to account for the pipe
+		// lengths of previous printed pipes
+		pipeLen := i * 2
+		var ulShift int
+
+
+		r.printHighlightPipes(s, highlights[:i])
 		r.appendRune(r.CharacterSet.HighlightMultilineTL, color)
 		// Dotted offset
 		if pos.Col > 2 {
+			offsetShift := int(pos.Col-2) - pipeLen
+			if offsetShift < 0 {
+				// Offset isn't long enough to reduce. Instead reduce the underline
+				ulShift = -offsetShift
+			}
 			r.appendf(color, "%s", char.RepeatRune(
-				r.CharacterSet.HighlightMultilineOffset, int(pos.Col-2),
+				r.CharacterSet.HighlightMultilineOffset, max(0, offsetShift),
 			))
+		} else if pipeLen > 0 {
+			ulShift = pipeLen
 		}
 		// Underline the contents of the first line
 		r.appendf(color, "%s", char.RepeatRune(
-			r.CharacterSet.HighlightMulti, int(lastCol-pos.Col),
+			r.CharacterSet.HighlightMulti, max(1, int(lastCol-pos.Col)-ulShift),
 		))
 		r.newline()
 	}
 }
 
-// printLabel prints a label, wrapping the label if it doesn't fit in the
+// printLabel prints a space and a label, wrapping the label if it doesn't fit in the
 // terminal's width. If width > 0, printLabel may print an arrow on the next
 // line with label under. offset is the number of spaces to add after the line
 // number. ulWidth is the length of the underline in order to center the label.
 func (r *Reporter) printLabel(label, color string,
 	offset, ulWidth int, printLineStart func(),
 ) {
+	if label == "" {
+		return
+	}
 	labelLen := utf8.RuneCountInString(label)
 	// If the label doesn't fit within the terminal's width, print it on the next line
 	if ulWidth > 0 && termWidth > 0 && offset+labelLen > termWidth {
@@ -148,6 +166,7 @@ func (r *Reporter) printLabel(label, color string,
 		textCenter := max(ulCenter-(labelLen/2), 0)
 		r.appendSpace(textCenter)
 	}
+	r.appendSpace(1)
 	r.appendString(label, color)
 }
 

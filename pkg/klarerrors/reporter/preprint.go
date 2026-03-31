@@ -25,7 +25,7 @@ func (r *Reporter) init() {
 		r.CharacterSet = DefaultCharacterSet()
 	}
 	if r.ColorPalette == nil {
-		r.ColorPalette = DefaultColorPalette()
+		r.ColorPalette = &ColorPalette{}
 	}
 	getTermWidth(r.Output)
 }
