@@ -10,7 +10,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// printSourceLine prints the syntax-highlighted tokens on line. "Pipes" of active multiline highlights are printed first. printSourceLine returns the end column of the last token on the line.
+// printSourceLine prints the syntax-highlighted tokens on line. "Pipes" of
+// active multiline highlights are printed first. printSourceLine returns
+// the end column of the last token on the line.
 func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 	activeHls []errors.Highlight,
 ) (lastCol uint32) {

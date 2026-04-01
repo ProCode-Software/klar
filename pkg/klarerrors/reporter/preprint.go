@@ -27,6 +27,12 @@ func (r *Reporter) init() {
 	if r.ColorPalette == nil {
 		r.ColorPalette = &ColorPalette{}
 	}
+	if r.ColorPalette.TokenColors != nil {
+		r.ColorPalette.TokenColors[addedToken] = r.ColorPalette.DiffAdd +
+			r.ColorPalette.DiffAddBackground
+		r.ColorPalette.TokenColors[deletedToken] = r.ColorPalette.DiffDelete +
+			r.ColorPalette.DiffDeleteBackground
+	}
 	getTermWidth(r.Output)
 }
 

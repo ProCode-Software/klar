@@ -371,6 +371,7 @@ func (p *Parser) ParseInterface(
 }
 
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
+	funcTok := p.Index
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
 	// func (p: Parser).
@@ -411,6 +412,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 
 	// Function alias
 	if p.isEqual(p.Curr()) {
+		beforeEqual := p.Index-1
 		p.Advance()
 		if f.GenericParams != nil {
 			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
@@ -427,7 +429,16 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			}
 		default:
 			err := errors.Node(errors.ErrNonNameFuncAlias, target)
-			err.Hint("Or, did you mean to add parentheses after the function name?")
+			err.HintWithDiff(
+				"Or, did you mean to add parentheses after the function name?",
+				&errors.Diff{
+					Tokens: p.Tokens[funcTok:p.Index],
+					Edits: []errors.DiffEdit{errors.AddedString{
+						Position: ranges.TokenEnd(p.Tokens[beforeEqual]),
+						String:   "()",
+					}},
+				},
+			)
 			p.Error(err)
 		}
 		return &ast.FuncAliasDeclaration{

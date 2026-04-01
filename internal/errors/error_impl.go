@@ -13,8 +13,15 @@ func (err *ParseError) GetFile() string            { return err.File }
 func (err *ParseError) GetDetails() []Detail       { return err.Details }
 func (err *ParseError) GetLabel() string           { return err.Label }
 func (err *ParseError) GetHighlights() []Highlight { return err.Highlights }
-func (err *ParseError) Hint(hint string) {
-	err.Hints = append(err.Hints, Hint{Message: hint})
+func (err *ParseError) Hint(hint string) *Hint {
+	h := Hint{Message: hint}
+	err.Hints = append(err.Hints, h)
+	return &h
+}
+func (err *ParseError) HintWithDiff(hint string, diff *Diff) *Hint {
+	h := Hint{Message: hint, Diff: diff}
+	err.Hints = append(err.Hints, h)
+	return &h
 }
 
 func (err *ParseError) Hintf(hint string, a ...any) {

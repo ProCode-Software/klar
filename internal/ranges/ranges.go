@@ -4,8 +4,8 @@
 package ranges
 
 import (
+	"cmp"
 	"fmt"
-	"slices"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -112,8 +112,7 @@ func (r Range) PosIn(p Position) bool {
 	if p.Line < r.Start.Line || p.Line > r.End.Line {
 		return false
 	}
-	return p.Col >= r.Start.Col &&
-		p.Col <= r.End.Col
+	return p.Col >= r.Start.Col && p.Col <= r.End.Col
 }
 
 // RangeIn reports whether r2 is entirely inside r.
@@ -153,21 +152,18 @@ func (r Range) Lines() uint32 {
 	return r.End.Col - r.Start.Col + 1
 }
 
-func Sort(ranges ...Range) []Range {
-	slices.SortFunc(ranges, func(a, b Range) int {
-		if a.Start.Line < b.Start.Line {
-			return -1
-		} else if a.Start.Line > b.Start.Line {
-			return 1
-		}
-		if a.Start.Col < b.Start.Col {
-			return -1
-		} else if a.Start.Col > b.Start.Col {
-			return 1
-		}
-		return 0
-	})
-	return ranges
+// TokenIntersects reports whether t intersects r at any point.
+func (r Range) TokenIntersects(t lexer.Token) bool {
+	return r.PosIn(t.Position) || r.PosIn(TokenEnd(t))
+}
+
+func Compare(a, b Range) int {
+	return cmp.Or(
+		cmp.Compare(a.Start.Line, b.Start.Line),
+		cmp.Compare(a.Start.Col, b.Start.Col),
+		cmp.Compare(a.End.Line, b.End.Line),
+		cmp.Compare(a.End.Col, b.End.Col),
+	)
 }
 
 // A FileRange represents a range of positions in a file.

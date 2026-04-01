@@ -51,9 +51,9 @@ func DefaultColorPalette() *ColorPalette {
 		Highlight2: ansi.CodeBrightMagenta,
 		Highlight3: ansi.CodeBrightBlue,
 
-		DiffAddBackground:    "",
+		DiffAddBackground:    ansi.BackgroundBit8(22),
 		DiffAdd:              ansi.CodeBrightGreen,
-		DiffDeleteBackground: "", // TODO
+		DiffDeleteBackground: ansi.BackgroundBit8(52), // 88
 		DiffDelete:           ansi.CodeBrightRed,
 	}
 }
@@ -93,14 +93,14 @@ type CharacterSet struct {
 // characters, which may be Unicode.
 func DefaultCharacterSet() *CharacterSet {
 	return &CharacterSet{
-		HighlightSingle:      '^',
-		HighlightMulti:       '━', // '─'
-		BoxTL:                '┌',
-		BoxT:                 '─',
-		BoxL:                 '│',
-		HighlightLine:        '·',
-		SkipLine:             '-', // ╌
-		SkipLineL:            '├',
+		HighlightSingle: '^',
+		HighlightMulti:  '━', // '─'
+		BoxTL:           '┌',
+		BoxT:            '─',
+		BoxL:            '│',
+		HighlightLine:   '·',
+		SkipLine:        '-', // ╌
+		SkipLineL:       '├',
 
 		HighlightMultilineTL:        '╭',
 		HighlightMultilineBL:        '╰',
@@ -118,14 +118,14 @@ func DefaultCharacterSet() *CharacterSet {
 // ASCIICharacterSet returns a character set that uses ASCII characters.
 func ASCIICharacterSet() *CharacterSet {
 	return &CharacterSet{
-		HighlightSingle:      '^',
-		HighlightMulti:       '~',
-		BoxTL:                '|',
-		BoxT:                 '-',
-		BoxL:                 '|',
-		HighlightLine:        '.',
-		SkipLine:             '=',
-		SkipLineL:            '+',
+		HighlightSingle: '^',
+		HighlightMulti:  '~',
+		BoxTL:           '|',
+		BoxT:            '-',
+		BoxL:            '|',
+		HighlightLine:   '.',
+		SkipLine:        '=',
+		SkipLineL:       '+',
 
 		HighlightMultilineTL:        'r',
 		HighlightMultilineBL:        '\'',

@@ -66,10 +66,10 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	// TODO: not implemented in [CompileError] yet
 
 	// 6. Hints
-	/* for _, hint := range e.GetHints() {
+	for _, hint := range e.GetHints() {
 		r.newline()
-		r.printHint(e.GetFile(), hint)
-	} */
+		r.printHint(hint)
+	}
 
 	r.alreadyPrinted = true
 	return r.buf.WriteTo(r.Output)
@@ -145,4 +145,20 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 		[]errors.Highlight{hl}, &hl, startLine, endLine,
 		digitWidth, detailMargin, r.ColorPalette.HintColor,
 	)
+}
+
+const hintMargin = 4
+
+// printHint prints a hint message and an optional diff.
+func (r *Reporter) printHint(hint errors.Hint) {
+	r.appendString("Hint", r.ColorPalette.HintColor)
+	r.appendString(": ", ansi.CodeDim)
+
+	cli.Wrap(hint.Message, r.buf, termWidth, termWidth-len("Hint: "), 2)
+	r.newline()
+
+	if hint.Diff != nil {
+		// r.newline() // TODO: do we need an extra newline?
+		r.printDiff(hint.Diff)
+	}
 }

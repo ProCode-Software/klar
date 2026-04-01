@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -45,7 +46,9 @@ func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 		prev == lexer.Arrow && next == lexer.LeftCurlyBrace, // Return type: -> Type {
 		prev == lexer.Type,     // Type declaration: type Type
 		next == lexer.Stroke,   // Union: Type1 | Type2
-		next == lexer.Question: // Optional: Type?
+		next == lexer.Question, // Optional: Type?
+		// Initializer: Capitalized identifier followed by '('
+		next == lexer.LeftParenthesis && unicode.IsUpper(firstChar(tok.Source)):
 		color = r.ColorPalette.Type
 	case next == lexer.LeftParenthesis:
 		// Function call: x(...
@@ -60,6 +63,11 @@ func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 		color = r.ColorPalette.Function
 	}
 	r.appendString(tok.Source, color)
+}
+
+func firstChar(s string) rune {
+	r, _ := utf8.DecodeRuneInString(s)
+	return r
 }
 
 func isPrimitive(name string) bool {

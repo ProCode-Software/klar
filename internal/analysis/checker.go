@@ -150,7 +150,7 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 					},errors.Highlight{
 						Range: ranges.Range{
 							Start: stmt.GetRange().Start,
-							End:   ranges.Add(stmt.GetRange().End, 0, 2),
+							End:   ranges.Sub(stmt.GetRange().End, 1, 0),
 						},
 						Message: "You found out again",
 					})

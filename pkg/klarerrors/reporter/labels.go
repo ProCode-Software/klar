@@ -97,12 +97,13 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 			r.printHighlightPipes(s, highlights[:i])
 		}
 		color := s.hlColors[hl]
-		// pipeLen := i * 2
-		r.appendf(color, "%c%s",
+		// Draw extra parts that aren't underlined to make up for other active pipes
+		pipeLen := ((len(highlights) - i) * 2) - 1
+		r.appendf(color, "%c%s%s",
 			r.CharacterSet.HighlightMultilineBL,
+			char.RepeatRune(r.CharacterSet.BoxT, pipeLen),
 			char.RepeatRune(r.CharacterSet.HighlightMulti, int(hl.Range.End.Col)),
 		)
-		// r.appendRune(r.CharacterSet.BoxT, color)
 		r.printLabel(hl.Message, color, -1 /* I don't care */, -1, nil)
 		r.newline()
 	}
@@ -114,15 +115,15 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []errors.Hig
 	lastCol uint32, printLineStart func(),
 ) {
 	for i, hl := range highlights {
+		var (
+			color = s.hlColors[hl]
+			pos   = hl.Range.Start
+			// Reduce the offset (and maybe pipe length) to account for the pipe
+			// lengths of previous printed pipes
+			pipeLen = i * 2
+			ulShift int
+		)
 		printLineStart()
-		color := s.hlColors[hl]
-		pos := hl.Range.Start
-		// Reduce the offset (and maybe pipe length) to account for the pipe
-		// lengths of previous printed pipes
-		pipeLen := i * 2
-		var ulShift int
-
-
 		r.printHighlightPipes(s, highlights[:i])
 		r.appendRune(r.CharacterSet.HighlightMultilineTL, color)
 		// Dotted offset
@@ -130,10 +131,10 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []errors.Hig
 			offsetShift := int(pos.Col-2) - pipeLen
 			if offsetShift < 0 {
 				// Offset isn't long enough to reduce. Instead reduce the underline
-				ulShift = -offsetShift
+				offsetShift, ulShift = 0, -offsetShift
 			}
 			r.appendf(color, "%s", char.RepeatRune(
-				r.CharacterSet.HighlightMultilineOffset, max(0, offsetShift),
+				r.CharacterSet.HighlightMultilineOffset, offsetShift,
 			))
 		} else if pipeLen > 0 {
 			ulShift = pipeLen

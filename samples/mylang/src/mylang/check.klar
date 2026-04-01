@@ -8,6 +8,8 @@ opaque type Person: Organism {
     name: String
     age: Int
     job: String
-}
+  }
 
 yeahLetsGo()
+
+func abc = Person("John", 32, "Developer (Go)")

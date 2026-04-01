@@ -39,6 +39,10 @@ type (
 		Message string
 		Diff    *Diff
 	}
+	Diff struct {
+		Tokens []lexer.Token // Not the full file
+		Edits []DiffEdit
+	}
 )
 
 const (
@@ -66,15 +70,4 @@ func TooManyErrors() *ParseError {
 
 func AddDetail(err CompileError, file string, rang ranges.Range, msg string) {
 	err.addDetail(Detail{file, Highlight{rang, msg}})
-}
-
-type Diff struct {
-	Ranges []DiffRange
-}
-
-type DiffRange struct {
-	Operation bool           // true: Add, false: Remove
-	Line      bool           // Whether the edit is a whole line
-	Range     ranges.Range   // Only for removals
-	Added     *[]lexer.Token // Only for additions
 }
