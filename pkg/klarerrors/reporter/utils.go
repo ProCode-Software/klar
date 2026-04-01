@@ -6,10 +6,9 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (r *Reporter) checkForFile(name string) *file {
+func (r *Reporter) getFile(name string) *file {
 	file, ok := r.files[name]
 	if !ok {
 		panic("file not loaded into Reporter: " + name)
@@ -28,7 +27,7 @@ func (f *file) getTokenIndexForLine(line uint32) int {
 	}
 	for i := currTok; i < len(f.tokens); i++ {
 		// Check end line in case of multiline strings that end here
-		if ranges.TokenEnd(f.tokens[i]).Line >= line {
+		if f.tokens[i].End().Line >= line {
 			currTok = i
 			break
 		}

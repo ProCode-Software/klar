@@ -51,9 +51,9 @@ func DefaultColorPalette() *ColorPalette {
 		Highlight2: ansi.CodeBrightMagenta,
 		Highlight3: ansi.CodeBrightBlue,
 
-		DiffAddBackground:    ansi.BackgroundBit8(22),
+		DiffAddBackground:    ansi.CodeBold, // ansi.BackgroundBit8(22),
 		DiffAdd:              ansi.CodeBrightGreen,
-		DiffDeleteBackground: ansi.BackgroundBit8(52), // 88
+		DiffDeleteBackground: ansi.CodeBold, // ansi.BackgroundBit8(52), // 88
 		DiffDelete:           ansi.CodeBrightRed,
 	}
 }
@@ -120,11 +120,11 @@ func ASCIICharacterSet() *CharacterSet {
 	return &CharacterSet{
 		HighlightSingle: '^',
 		HighlightMulti:  '~',
-		BoxTL:           '|',
+		BoxTL:           '-',
 		BoxT:            '-',
 		BoxL:            '|',
 		HighlightLine:   '.',
-		SkipLine:        '=',
+		SkipLine:        '-',
 		SkipLineL:       '+',
 
 		HighlightMultilineTL:        'r',

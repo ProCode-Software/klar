@@ -31,7 +31,7 @@ func (p *Parser) ParseAssignable() ast.Assignable {
 
 func (p *Parser) lastTokEnd() lexer.Position {
 	last := p.Tokens[p.Index-1]
-	return ranges.TokenEnd(last)
+	return last.End()
 }
 
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {

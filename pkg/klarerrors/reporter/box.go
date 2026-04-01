@@ -30,7 +30,7 @@ func (r *Reporter) printBox(fileName string,
 	startLine, endLine uint32, digitWidth, margin int, mainHlColor string,
 ) {
 	var (
-		file = r.checkForFile(fileName)
+		file = r.getFile(fileName)
 		s    = &state{
 			tokens:     file.tokens,
 			digitWidth: digitWidth,

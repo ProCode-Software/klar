@@ -33,7 +33,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 		// Escape error
 		if err := e.Error; err != nil {
 			p.Error(&ParseError{
-				Range:     ranges.Offset(ranges.Sub(err.Pos, 0, 1), 0, 1),
+				Range:     ranges.Offset(err.Pos.Sub(0, 1), 0, 1),
 				ErrorCode: errors.ErrStringEscape,
 				Params: errors.ErrorParams{
 					"reason": err.Code,
@@ -63,8 +63,8 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 			hex := parseHex(src[3 : len(src)-1])
 			if hex > 0x10FFFF {
 				p.Error(errors.Range(errors.ErrUnicodeEscapeTooBig, ranges.Range{
-					ranges.Add(e.Pos, 0, 3),
-					ranges.Add(e.Pos, 0, uint32(len(src)-1)), //nolint:gosec
+					e.Pos.Add(0, 3),
+					e.Pos.Add(0, uint32(len(src)-1)), //nolint:gosec
 				}))
 				frag.Value = ast.BadEscape{Source: src}
 			} else {
@@ -79,7 +79,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Node) {
 	content = append(content, lexer.Token{
 		Kind:     lexer.EOF,
-		Position: ranges.TokenEnd(content[len(content)-1]),
+		Position: content[len(content)-1].End(),
 	})
 	p := New(content, &pBase.Options)
 	defer p.Reset()

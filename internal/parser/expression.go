@@ -65,7 +65,7 @@ loop:
 			if p.PeekKind() == lexer.Equal {
 				p.Error(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
 					p.Curr().Position,
-					ranges.Add(p.Advance().Position, 0, 3),
+					p.Advance().Position.Add(0, 3),
 				)).SetParam("op", p.CurrKind()))
 			}
 		// Check for multidirectional comparisons (</<= with >/>=)

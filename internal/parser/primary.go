@@ -28,7 +28,7 @@ func (p *Parser) handleInvalidNumber(
 		err    *errors.ParseError
 		src    = tok.Source
 		tokPos = tok.Position
-		errPos = ranges.Add(tokPos, 0, ne.Offset)
+		errPos = tokPos.Add(0, ne.Offset)
 	)
 	switch ne.Code {
 	case lexer.ErrIntMisplacedSeparator:
@@ -109,11 +109,11 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		if a.QuoteStyle != '`' && src[len(src)-1] == '\n' {
 			// Use a better error for quoted strings with newline
 			p.Error(errors.Position(errors.ErrMultilineQuotedString,
-				ranges.TokenEnd(token),
+				token.End(),
 			))
 		} else {
 			err := errors.Position(errors.ErrUnterminatedString,
-				ranges.Add(ranges.TokenEnd(token), 0, 1),
+				token.End().Add(0, 1),
 			)
 			err.Label = "Expected " + errors.Quote(string(a.QuoteStyle))
 			err.Highlights = append(err.Highlights, errors.Highlight{

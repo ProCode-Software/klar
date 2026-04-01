@@ -9,16 +9,16 @@ import (
 type Wrapper struct {
 	Width, FirstRowWidth int
 	AllWriter
-	Margin int
+	Margin       int
 	WriteNewline func()
 }
 
 func Wrap(s string, w AllWriter, width, firstRowWith, margin int) {
 	wr := &Wrapper{
-		Width: width,
+		Width:         width,
 		FirstRowWidth: firstRowWith,
-		AllWriter: w,
-		Margin: margin,
+		AllWriter:     w,
+		Margin:        margin,
 	}
 	wr.Wrap(s)
 }

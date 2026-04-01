@@ -22,39 +22,14 @@ func NewRange(sl, sc, el, ec uint32) Range {
 	return Range{Start: Position{sl, sc}, End: Position{el, ec}}
 }
 
-func IsZeroPosition(p Position) bool {
-	return p.Line == 0
-}
-
-func getTokEnd(t lexer.Token) (end Position, ok bool) {
-	if t.Attributes != nil {
-		if end, ok := t.Attributes["end"].(Position); ok && !IsZeroPosition(end) {
-			return end, true
-		}
-	}
-	return
-}
-
 // FromToken returns a new Range that is the position and length of token t.
 // If the token is multiline, this will only work with an 'end' attribute.
 func FromToken(t lexer.Token) Range {
-	if t.Attributes != nil {
-		if end, ok := getTokEnd(t); ok {
-			return Range{t.Position, end}
-		}
-	}
-	return Range{Start: t.Position, End: Position{
-		Line: t.Position.Line,
-		Col:  t.Position.Col + t.Len(),
-	}}
+	return Range{Start: t.Position, End: t.End()}
 }
 
-func TokenEnd(t lexer.Token) Position {
-	if end, ok := getTokEnd(t); ok {
-		return end
-	}
-	return Position{Line: t.Position.Line, Col: t.Position.Col + t.Len()}
-}
+// Positions
+// ===========
 
 // Min returns the lowest position out of p1 and p2. If they are equal, Min returns p1.
 func Min(p1, p2 Position) Position {
@@ -66,32 +41,12 @@ func Min(p1, p2 Position) Position {
 	return p2
 }
 
-// Sub returns the new Position with line and col subtracted from p.
-// The line and column are clamped to zero if they are negative.
-func Sub(p Position, line, col uint32) Position {
-	return Position{Line: p.Line - line, Col: p.Col - col}
-}
-
+// Offset returns a [Range] that starts at start and has a length of endLine and endCol.
 func Offset(start Position, endLine, endCol uint32) Range {
 	return Range{
 		Start: start,
 		End:   Position{Line: start.Line + endLine, Col: start.Col + endCol},
 	}
-}
-
-// Add returns a new Position with line and col added to p.
-func Add(p Position, line, col uint32) Position {
-	return Position{Line: p.Line + line, Col: p.Col + col}
-}
-
-// Add returns a new Position with n.Line and n.Col added to p.
-func AddPosition(p Position, n Position) Position {
-	return Add(p, n.Line, n.Col)
-}
-
-// HasOffset reports whether pos is equal to from plus line and col.
-func HasOffset(pos Position, from Position, line, col uint32) bool {
-	return pos.Line == from.Line+line && pos.Col == from.Col+col
 }
 
 // Ranges
@@ -144,7 +99,7 @@ func (r Range) String() string {
 
 // IsZero reports whether r is the zero value.
 func (r Range) IsZero() bool {
-	return IsZeroPosition(r.Start) && IsZeroPosition(r.End)
+	return r.Start.IsZero() && r.End.IsZero()
 }
 
 // Lines returns the number of lines r covers. If r is on a single line, Lines returns 1.
@@ -154,7 +109,7 @@ func (r Range) Lines() uint32 {
 
 // TokenIntersects reports whether t intersects r at any point.
 func (r Range) TokenIntersects(t lexer.Token) bool {
-	return r.PosIn(t.Position) || r.PosIn(TokenEnd(t))
+	return r.PosIn(t.Position) || r.PosIn(t.End())
 }
 
 func Compare(a, b Range) int {
@@ -179,6 +134,9 @@ func (r FileRange) String() string {
 func (r FileRange) FilePos() FilePos {
 	return FilePos{Position: r.Start, File: r.File}
 }
+
+// File Positions
+// ==================
 
 // A FilePos represents a position in a file.
 type FilePos struct {

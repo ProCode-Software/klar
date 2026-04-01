@@ -18,6 +18,7 @@ func (err *ParseError) Hint(hint string) *Hint {
 	err.Hints = append(err.Hints, h)
 	return &h
 }
+
 func (err *ParseError) HintWithDiff(hint string, diff *Diff) *Hint {
 	h := Hint{Message: hint, Diff: diff}
 	err.Hints = append(err.Hints, h)

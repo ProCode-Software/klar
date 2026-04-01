@@ -133,7 +133,7 @@ func (p *Parser) ParseObjectDestructure() *ast.ObjectDestructure {
 func (p *Parser) errorIfEmptyDestruct(endKind lexer.TokenType) bool {
 	if p.CurrKind() == endKind {
 		start := p.Tokens[p.Index-1].Position
-		end := ranges.TokenEnd(p.Curr())
+		end := p.Curr().End()
 		p.Error(errors.Range(errors.ErrEmptyDestructure, ranges.FromPosition(start, end)))
 		p.Advance()
 		return true

@@ -12,19 +12,23 @@ type DiffEdit interface {
 	EndLine() uint32
 }
 
-type DeletedRange struct {
-	Range ranges.Range
-	Line  bool
-}
+type DeletedRange struct{ Range ranges.Range }
 
 func (r DeletedRange) Operation() bool       { return false }
-func (r DeletedRange) FullLine() bool        { return r.Line }
+func (r DeletedRange) FullLine() bool        { return false }
 func (r DeletedRange) Start() lexer.Position { return r.Range.Start }
 func (r DeletedRange) EndLine() uint32       { return r.Range.End.Line }
 
+type DeletedLine struct{ Line uint32 }
+
+func (r DeletedLine) Operation() bool       { return false }
+func (r DeletedLine) FullLine() bool        { return true }
+func (r DeletedLine) Start() lexer.Position { return lexer.Position{r.Line, 1} }
+func (r DeletedLine) EndLine() uint32       { return r.Line }
+
 type AddedTokens struct {
-	Tokens   []lexer.Token
-	Line     bool
+	Tokens []lexer.Token
+	Line   bool
 }
 
 func (r AddedTokens) Operation() bool       { return true }

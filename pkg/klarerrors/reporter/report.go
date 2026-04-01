@@ -68,7 +68,7 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	// 6. Hints
 	for _, hint := range e.GetHints() {
 		r.newline()
-		r.printHint(hint)
+		r.printHint(hint, e.GetFile())
 	}
 
 	r.alreadyPrinted = true
@@ -92,7 +92,7 @@ func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
 	var b strings.Builder
 	msgParts := strings.SplitAfterN(e.GetMessage(), ": ", 2)
 	b.WriteString(ansi.Color(hlc, e.GetName()))
-	b.WriteString(ansi.Color(": ", ansi.CodeBoldDim))
+	b.WriteString(ansi.Color(ansi.CodeBoldDim, ": "))
 	b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
 	if len(msgParts) > 1 {
 		b.WriteString(msgParts[1])
@@ -150,7 +150,7 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 const hintMargin = 4
 
 // printHint prints a hint message and an optional diff.
-func (r *Reporter) printHint(hint errors.Hint) {
+func (r *Reporter) printHint(hint errors.Hint, file string) {
 	r.appendString("Hint", r.ColorPalette.HintColor)
 	r.appendString(": ", ansi.CodeDim)
 
@@ -159,6 +159,9 @@ func (r *Reporter) printHint(hint errors.Hint) {
 
 	if hint.Diff != nil {
 		r.newline() // TODO: do we need an extra newline?
+		if hint.Diff.File == "" {
+			hint.Diff.File = file
+		}
 		r.printDiff(hint.Diff)
 	}
 }

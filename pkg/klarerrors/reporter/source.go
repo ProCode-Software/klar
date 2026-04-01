@@ -32,7 +32,7 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 			i++
 			break
 		}
-		end := ranges.TokenEnd(tok)
+		end := tok.End()
 		if end.Line < line {
 			continue
 		}
@@ -48,7 +48,7 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 				))
 			}
 		}
-		 // Finally!
+		// Finally!
 		lastCol += r.printLineFromToken(s.tokens, i, line)
 		if end.Line > line {
 			break

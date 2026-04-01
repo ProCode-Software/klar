@@ -1,11 +1,10 @@
 package reporter
 
 import (
-	"cmp"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -24,13 +23,13 @@ type diffState struct {
 type diffLine struct {
 	line        uint32
 	addedLine   *errors.DiffEdit
-	deletedLine *errors.DeletedRange
+	deletedLine *errors.DeletedLine
 	ranges      []errors.DiffEdit
 }
 
 const (
 	deletedToken lexer.TokenType = -69
-	addedToken                   = deletedToken - 1
+	addedToken                   = deletedToken + 1
 )
 
 // printDiff formats and prints all line changes and highlights described in the diff.
@@ -38,28 +37,31 @@ func (r *Reporter) printDiff(diff *errors.Diff) {
 	var (
 		lines, end = r.groupDiffLines(diff)
 		digitWidth = digitLen(end)
+		file       = r.getFile(diff.File)
 		state      = &diffState{
 			digitWidth: digitWidth,
-			tokens:     diff.Tokens,
+			tokens:     file.tokens,
 		}
 	)
 	var lastLine uint32
 	for _, lineNum := range slices.Sorted(maps.Keys(lines)) {
-		if lineNum <= lastLine {
+		if lastLine > 0 && lineNum <= lastLine {
 			continue
+		}
+		if lastLine > 0 && lineNum > lastLine+1 {
+			r.printSkippedDiffLineNumber(state)
 		}
 		dl := lines[lineNum]
-		// Order: 1. Full-line removals, 2. Full-line additions
-		// Or: Inline
-		if dl.deletedLine != nil {
-			lastLine = r.printFullRemove(state, dl)
-			continue
+		if dl.deletedLine != nil || dl.addedLine != nil {
+			if dl.deletedLine != nil {
+				lastLine = r.printFullRemove(state, dl)
+			}
+			if dl.addedLine != nil {
+				lastLine = r.printFullAdd(state, dl)
+			}
+		} else {
+			lastLine = r.printInline(state, dl)
 		}
-		if dl.addedLine != nil {
-			lastLine = r.printFullAdd(state, dl)
-			continue
-		}
-		lastLine = r.printInline(state, dl)
 	}
 }
 
@@ -69,21 +71,24 @@ func (r *Reporter) groupDiffLines(diff *errors.Diff) (
 ) {
 	lines = make(map[uint32]*diffLine)
 	for _, edit := range diff.Edits {
-		lineNum := edit.Start().Line
-		if _, ok := lines[lineNum]; !ok {
-			lines[lineNum] = &diffLine{line: lineNum}
-		}
-		dl := lines[lineNum]
-		end = max(end, edit.EndLine())
-		if !edit.FullLine() {
-			dl.ranges = append(dl.ranges, edit)
-			continue
-		}
-		switch edit := edit.(type) {
-		case errors.DeletedRange:
-			dl.deletedLine = &edit
-		case errors.AddedTokens, errors.AddedString:
-			dl.addedLine = &edit
+		start := edit.Start().Line
+		endLine := edit.EndLine()
+		for line := start; line <= endLine; line++ {
+			if _, ok := lines[line]; !ok {
+				lines[line] = &diffLine{line: line}
+			}
+			dl := lines[line]
+			end = max(end, endLine) // Keep track of maximum line seen
+			if !edit.FullLine() {
+				dl.ranges = append(dl.ranges, edit)
+				continue
+			}
+			switch edit := edit.(type) {
+			case errors.DeletedLine:
+				dl.deletedLine = &edit
+			case errors.AddedTokens, errors.AddedString:
+				dl.addedLine = &edit
+			}
 		}
 	}
 	return
@@ -93,26 +98,31 @@ func (r *Reporter) groupDiffLines(diff *errors.Diff) (
 func (r *Reporter) printFullRemove(s *diffState, dl *diffLine) (lastLine uint32) {
 	edit := *dl.deletedLine
 	// Get intersecting tokens
-	var firstTokI, maxTokI int = -1, len(s.tokens)
+	firstTokI, maxTokI := -1, -1
 	for i, tok := range s.tokens[s.lastReadTok:] {
-		if edit.Range.TokenIntersects(tok) {
+		if ranges.FromToken(tok).LineIn(edit.Line) {
 			if firstTokI < 0 {
-				firstTokI = i
+				firstTokI = s.lastReadTok + i
 			}
-		} else {
-			maxTokI = i
-			lastLine = ranges.TokenEnd(s.tokens[i-1]).Line
-			s.lastReadTok += i - 1
+		} else if firstTokI >= 0 {
+			maxTokI = s.lastReadTok + i
 			break
 		}
 	}
-	srcState := &state{tokens: s.tokens[firstTokI:maxTokI]}
-	hlColor := r.ColorPalette.DiffDelete + r.ColorPalette.DiffDeleteBackground
+	if maxTokI < 0 && firstTokI >= 0 {
+		maxTokI = len(s.tokens)
+	}
+	if firstTokI < 0 {
+		// The diff's token range doesn't include the line, so we can't print it
+		panic(fmt.Sprintf("no tokens found for line %d", dl.line))
+	}
+	srcTokens := r.setTokenKind(s.tokens[firstTokI:maxTokI], deletedToken)
+	srcState := &state{tokens: srcTokens}
 	r.printDiffLineNumber(s, dl.line, false, true)
-	// TODO: make printSourceLine highlight
-	r.printSourceLine(srcState, dl.line, &s.lastReadTok, nil)
-	_ = hlColor
-	return
+	r.printSourceLine(srcState, dl.line, new(int), nil)
+	s.lastReadTok = maxTokI
+	r.newline()
+	return dl.line
 }
 
 // printFullAdd prints a block of source code or strings representing a
@@ -135,151 +145,27 @@ func (r *Reporter) printFullAdd(s *diffState, dl *diffLine) (lastLine uint32) {
 		r.newline()
 		return dl.line
 	case errors.AddedTokens:
-		// TODO
-		srcState := &state{tokens: edit.Tokens}
-		r.printDiffLineNumber(s, dl.line, true, true)
-		var firstTokOnLine int // edit.Position.Col
-		r.printSourceLine(srcState, dl.line, &firstTokOnLine, nil)
-		println("first on next line", firstTokOnLine) // TODO: print more lines
-		r.newline()
+		var (
+			srcTokens = r.setTokenKind(edit.Tokens, addedToken)
+			srcState  = &state{tokens: srcTokens}
+			end       = edit.EndLine()
+		)
+		for line := edit.Start().Line; line <= end; line++ {
+			r.printDiffLineNumber(s, line, true, true)
+			r.printSourceLine(srcState, line, new(int), nil)
+			r.newline()
+		}
+		return end
 	}
-	return
+	return dl.line
 }
 
-// printInline prints a line with inline diff highlights.
-// It displays both the "before" state (with deletions marked) and the "after"
-// state (with additions inserted), using printDiffUnderlines to highlight the changes.
-func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
-	r.sortDiffEdits(dl.ranges)
-	var (
-		orig         = r.getOriginalTokens(s, dl.line)
-		merged, last = r.buildMergedTokens(dl.line, orig, dl.ranges)
-		first        int
-	)
-	// Print the merged line(s) with both additions and removals highlighted
-	for l := dl.line; l <= last; l++ {
-		r.printDiffLine(s, l, merged, &first, false)
+func (r *Reporter) setTokenKind(tokens []lexer.Token, kind lexer.TokenType) []lexer.Token {
+	tokens = slices.Clone(tokens)
+	for i := range tokens {
+		tokens[i].Kind = kind
 	}
-	s.finishLine(dl.line)
-	return last
-}
-
-// sortDiffEdits sorts inline edits by their column position, ensuring that
-// deletions are processed before additions at the same column.
-func (r *Reporter) sortDiffEdits(edits []errors.DiffEdit) {
-	slices.SortFunc(edits, func(a, b errors.DiffEdit) int {
-		if colOrder := cmp.Compare(a.Start().Col, b.Start().Col); colOrder != 0 {
-			return colOrder
-		}
-		if !a.Operation() && b.Operation() {
-			return -1
-		}
-		if a.Operation() && !b.Operation() {
-			return 1
-		}
-		return 0
-	})
-}
-
-// getOriginalTokens returns the tokens from the original source that intersect with line.
-func (r *Reporter) getOriginalTokens(s *diffState, line uint32) (orig []lexer.Token) {
-	for i := s.lastReadTok; i < len(s.tokens); i++ {
-		tok := s.tokens[i]
-		if tok.Position.Line > line {
-			break
-		}
-		if ranges.TokenEnd(tok).Line < line {
-			s.lastReadTok = i + 1
-			continue
-		}
-		orig = append(orig, tok)
-	}
-	return
-}
-
-// buildMergedTokens creates a set of virtual tokens representing the merged "before" and "after"
-// states of the line, adjusting positions and handling multi-line additions.
-func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []errors.DiffEdit) (
-	merged []lexer.Token, lastLine uint32,
-) {
-	var (
-		editI              int
-		currentOriginalCol uint32 = 1
-		virtualPos                = lexer.Position{Line: line, Col: 1}
-	)
-	addToken := func(tok lexer.Token) {
-		tok.Position = virtualPos
-		merged = append(merged, tok)
-		if strings.Contains(tok.Source, "\n") {
-			parts := strings.Split(tok.Source, "\n")
-			virtualPos.Line += uint32(len(parts) - 1)
-			virtualPos.Col = uint32(utf8.RuneCountInString(parts[len(parts)-1])) + 1
-		} else {
-			virtualPos.Col += uint32(utf8.RuneCountInString(tok.Source))
-		}
-	}
-	for _, tok := range orig {
-		// Insert additions that start at or before this token's column
-		for editI < len(edits) && edits[editI].Start().Col <= tok.Position.Col {
-			edit := edits[editI]
-			if edit.Operation() {
-				switch e := edit.(type) {
-				case errors.AddedString:
-					addToken(lexer.Token{Kind: addedToken, Source: e.String})
-				case errors.AddedTokens:
-					for _, t := range e.Tokens {
-						t.Kind = addedToken
-						addToken(t)
-					}
-				}
-			}
-			editI++
-		}
-		// Check if this token was deleted
-		isDeleted := false
-		for _, edit := range edits {
-			if dr, ok := edit.(errors.DeletedRange); ok && dr.Range.TokenIntersects(tok) {
-				isDeleted = true
-				break
-			}
-		}
-		if isDeleted {
-			tok.Kind = deletedToken
-			addToken(tok)
-		} else {
-			if tok.Position.Col > currentOriginalCol {
-				virtualPos.Col += (tok.Position.Col - currentOriginalCol)
-			}
-			addToken(tok)
-		}
-		currentOriginalCol = tok.Position.Col + uint32(utf8.RuneCountInString(tok.Source))
-	}
-	// Append remaining additions at the end of the line
-	for editI < len(edits) {
-		edit := edits[editI]
-		if edit.Operation() {
-			switch e := edit.(type) {
-			case errors.AddedString:
-				addToken(lexer.Token{Kind: addedToken, Source: e.String})
-			case errors.AddedTokens:
-				for _, t := range e.Tokens {
-					t.Kind = addedToken
-					addToken(t)
-				}
-			}
-		}
-		editI++
-	}
-	return merged, virtualPos.Line
-}
-
-// printDiffLine prints a single line of a diff with its syntax-highlighted tokens
-// and diff underscores.
-func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token, first *int, added bool) {
-	r.printDiffLineNumber(s, line, added, false)
-	r.printSourceLine(&state{tokens: tokens}, line, first, nil)
-	r.newline()
-	r.printDiffUnderlines(s, tokens, line)
+	return tokens
 }
 
 // printDiffLineNumber prints the line number and diff indicator (+/-) for a line.
@@ -304,84 +190,11 @@ func (r *Reporter) printDiffLineNumber(s *diffState, line uint32, add, fullLine 
 	r.appendf(color, "%*d %c ", s.digitWidth, line, char)
 }
 
-// printDiffUnderlines adds the +/- underlines for each line.
-func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line uint32) {
-	// First check if any token on this line is a diff token
-	var hasChanges bool
-	for _, tok := range tokens {
-		if tok.Position.Line <= line && ranges.TokenEnd(tok).Line >= line {
-			if tok.Kind == addedToken || tok.Kind == deletedToken {
-				hasChanges = true
-				break
-			}
-		}
-	}
-	if !hasChanges {
-		return
-	}
-
-	// Line number prefix (similar to printEmptyLineNumber)
-	r.appendSpace(hintMargin + s.digitWidth + 1)
-	r.appendf(r.ColorPalette.Box, "%c ", r.CharacterSet.HighlightLine)
-
-	var lastCol uint32 = 1
-	for _, tok := range tokens {
-		if tok.Position.Line > line {
-			break
-		}
-		end := ranges.TokenEnd(tok)
-		if end.Line < line {
-			continue
-		}
-
-		if tok.Position.Line == line {
-			// Padding between tokens
-			if pad := int(tok.Position.Col) - int(lastCol); pad > 0 {
-				r.appendSpace(pad)
-				lastCol = tok.Position.Col
-			}
-		}
-
-		// Calculate length on this line
-		partLen := r.tokenLenOnLine(tok, line)
-		switch tok.Kind {
-		case deletedToken:
-			r.appendString(strings.Repeat("-", int(partLen)), r.ColorPalette.DiffDelete)
-		case addedToken:
-			r.appendString(strings.Repeat("+", int(partLen)), r.ColorPalette.DiffAdd)
-		default:
-			r.appendSpace(int(partLen))
-		}
-		lastCol += partLen
-
-		if end.Line > line {
-			break
-		}
-	}
-	r.newline()
-}
-
-// tokenLenOnLine returns the length of the part of tok that is on line.
-func (r *Reporter) tokenLenOnLine(tok lexer.Token, line uint32) uint32 {
-	rang := ranges.FromToken(tok)
-	if rang.IsSingleLine() {
-		return uint32(utf8.RuneCountInString(tok.Source))
-	}
-	// For multiline tokens, find the relevant line
-	lines := strings.Split(tok.Source, "\n")
-	idx := int(line - tok.Position.Line)
-	if idx < 0 || idx >= len(lines) {
-		return 0
-	}
-	return uint32(utf8.RuneCountInString(lines[idx]))
-}
-
-// finishLine advances lastReadTok past all tokens that fully end on or before line.
-func (s *diffState) finishLine(line uint32) {
-	for s.lastReadTok < len(s.tokens) {
-		if ranges.TokenEnd(s.tokens[s.lastReadTok]).Line > line {
-			break
-		}
-		s.lastReadTok++
-	}
+func (r *Reporter) printSkippedDiffLineNumber(s *diffState) {
+	r.appendSpace(hintMargin)
+	r.appendf(r.ColorPalette.Box, "%*c %c %[3]c%[3]c%[3]c\n",
+		s.digitWidth, r.CharacterSet.SkipLine,
+		r.CharacterSet.SkipLineL,
+		r.CharacterSet.CollapsedEllipsis,
+	)
 }

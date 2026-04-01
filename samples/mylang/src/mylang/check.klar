@@ -11,5 +11,6 @@ opaque type Person: Organism {
   }
 
 yeahLetsGo()
-
+removeThisLine(1, 2)
 func abc = Person("John", 32, "Developer (Go)")
+x

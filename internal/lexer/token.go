@@ -5,10 +5,6 @@ import (
 	"io"
 )
 
-func NewToken(pos Position, kind TokenType, src string) *Token {
-	return &Token{pos, kind, src, nil}
-}
-
 type Token struct {
 	Position
 	Kind       TokenType
@@ -18,17 +14,8 @@ type Token struct {
 
 type attrs = map[string]any
 
-func (t *Token) setAttr(key string, value any) *Token {
-	if t.Attributes == nil {
-		t.Attributes = make(map[string]any)
-	}
-	t.Attributes[key] = value
-	return t
-}
-
-func (t *Token) withAttrs(attrs attrs) *Token {
-	t.Attributes = attrs
-	return t
+func NewToken(pos Position, kind TokenType, src string) *Token {
+	return &Token{pos, kind, src, nil}
 }
 
 func (t *Token) Len() uint32 {
@@ -40,8 +27,13 @@ func (t *Token) Len() uint32 {
 	return uint32(len(t.Source))
 }
 
-func (t TokenType) LitterDump(w io.Writer) {
-	w.Write([]byte("{" + t.String() + "}"))
+func (t *Token) End() Position {
+	if t.Attributes != nil {
+		if end, ok := t.Attributes["end"].(Position); ok && end.Line > 0 {
+			return end
+		}
+	}
+	return Position{Line: t.Position.Line, Col: t.Position.Col + t.Len()}
 }
 
 func (t Token) String() string {
@@ -52,8 +44,21 @@ func (t Token) String() string {
 	return s + "}"
 }
 
-func (p Position) LitterDump(w io.Writer) {
-	w.Write([]byte("{" + p.String() + "}"))
+func (t *Token) setAttr(key string, value any) *Token {
+	if t.Attributes == nil {
+		t.Attributes = make(attrs)
+	}
+	t.Attributes[key] = value
+	return t
+}
+
+func (t *Token) withAttrs(attrs attrs) *Token {
+	t.Attributes = attrs
+	return t
+}
+
+func (t TokenType) LitterDump(w io.Writer) {
+	w.Write([]byte("{" + t.String() + "}"))
 }
 
 var TokenTypeString = map[TokenType]string{
@@ -77,9 +82,7 @@ func init() {
 	TokenTypeString[Boolean] = "boolean"
 }
 
-func (k TokenType) String() string {
-	return TokenTypeString[k]
-}
+func (k TokenType) String() string { return TokenTypeString[k] }
 
 // A map of the begin character in an operator and how many bytes
 // to read after to parse an operator

@@ -5,7 +5,6 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // InsertEOS performs statement termination inference by identifying which
@@ -65,7 +64,7 @@ outer:
 				break
 			}
 			next := p.Tokens[i+1]
-			if next.Kind == lexer.In && ranges.HasOffset(next.Position, tok.Position, 0, 1) {
+			if next.Kind == lexer.In && next.Position.HasOffset(tok.Position, 0, 1) {
 				new = append(new, lexer.Token{
 					Kind:     lexer.NotIn,
 					Source:   tok.Source + next.Source, // "!in"

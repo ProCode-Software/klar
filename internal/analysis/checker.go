@@ -141,19 +141,21 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				if !public {
 					err := errors.Node(errors.ErrPrivateOpaque, stmt)
 					err.Label = "This type isn't exported"
+					// TODO: remove when done testing
 					err.Highlights = append(err.Highlights, errors.Highlight{
 						Range: ranges.Range{
 							Start: stmt.GetRange().Start,
-							End:   ranges.Add(stmt.GetRange().End, 0, 3),
+							End:   stmt.GetRange().End.Add(0, 3),
 						},
 						Message: "You found out",
-					},errors.Highlight{
+					}, errors.Highlight{
 						Range: ranges.Range{
 							Start: stmt.GetRange().Start,
-							End:   ranges.Sub(stmt.GetRange().End, 1, 0),
+							End:   stmt.GetRange().End.Sub(1, 0),
 						},
 						Message: "You found out again",
 					})
+
 					c.fileError(err, fid)
 				}
 				opaque = true

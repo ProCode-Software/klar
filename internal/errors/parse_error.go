@@ -52,8 +52,6 @@ const (
 
 	// Assignment =====
 
-	ErrInvalidUpdate         // ++ or -- used as an expression or prefix form
-	ErrInvalidUpdateExpr     // You can only update variables and properties
 	ErrColonEqual            // := used instead of = in default value assignment
 	ErrAssignmentAsExpr      // Assignment used as expression
 	ErrEmptyDestructure      // Empty destructure target: (), #{}, or []
@@ -187,8 +185,6 @@ func (e *ParseError) error() string {
 	case ErrInvalidAssignment:
 		return "You can only assign to a variable, property, list slice, or destructuring pattern"
 		// Can't assign to this kind of expression
-	case ErrInvalidUpdateExpr:
-		return "You can only increment/decrement a variable or property"
 	case ErrInvalidComma:
 		return "Expected an assignment, or a newline to separate multiple statements"
 	case ErrUnderscoreValue:
@@ -357,8 +353,6 @@ func (e *ParseError) error() string {
 		return "Don't use '_' with a rest; use just '...' instead"
 	case ErrReturnOutsideFunc:
 		return "Can't use return statement outside of a function"
-	case ErrInvalidUpdate:
-		return "'++' and '--' can only be used as postfix statements"
 	case ErrReturnPipelineNotLast:
 		return "The 'return' in a pipeline must be the last step"
 	case ErrPublicGoesFirst:
@@ -376,13 +370,13 @@ func (e *ParseError) error() string {
 	case ErrDestructPatAfterColon:
 		return "Only an identifier is allowed after ':' in object destructure"
 	case ErrMultipleKeysInMapRest:
-		return "Expected a single key in map spread"
+		return "You can only spread a single key at a time"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrMixTypeTupleLabels:
 		return "Can't mix 'label: type' and 'type' syntax in tuple or parameters"
 	case ErrNonNameFuncAlias:
-		return "A function alias target must be a function name"
+		return "The right-hand side of a function alias must be a function or method name"
 	case ErrIntfDefaultValue:
 		return "An interface field can't have a default value"
 	case ErrIntfMultiKeyMethod:

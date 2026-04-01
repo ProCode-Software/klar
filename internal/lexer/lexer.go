@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"strings"
 	"unicode"
@@ -10,14 +9,6 @@ import (
 )
 
 type Builder = strings.Builder
-
-type Position struct {
-	Line, Col uint32
-}
-
-func (p Position) String() string {
-	return fmt.Sprintf("%d:%d", p.Line, p.Col)
-}
 
 type Flags uint8
 

@@ -45,4 +45,3 @@ type AllWriter interface {
 	io.StringWriter
 	io.ByteWriter
 }
-

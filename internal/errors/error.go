@@ -3,7 +3,6 @@ package errors
 import (
 	"fmt"
 
-	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -19,7 +18,6 @@ type CompileError interface {
 	GetDetails() []Detail
 	GetLabel() string           // The label of the error highlight
 	GetHighlights() []Highlight // Additional highlights for context
-	addDetail(d Detail)
 }
 
 //go:generate stringer -type=ErrorCode
@@ -40,7 +38,7 @@ type (
 		Diff    *Diff
 	}
 	Diff struct {
-		Tokens []lexer.Token // Not the full file
+		File  string
 		Edits []DiffEdit
 	}
 )
@@ -68,6 +66,7 @@ func TooManyErrors() *ParseError {
 	return &ParseError{ErrorCode: ErrTooManyErrors}
 }
 
-func AddDetail(err CompileError, file string, rang ranges.Range, msg string) {
+/* func AddDetail(err CompileError, file string, rang ranges.Range, msg string) {
 	err.addDetail(Detail{file, Highlight{rang, msg}})
 }
+*/

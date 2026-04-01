@@ -10,3 +10,4 @@ trigger: always_on
 - Use `min(...)` and `max(...)` when appropriate
 - Use `cmp.Or()` when appropriate and possible
 - Up to 90 columns of code. If some parentheses exceed this, it is ok. Try to go no more than 94. Doc comment should be below 90, and up to 95 if the comment is only one line.
+- Use GOEXPERIMENT=jsonv2

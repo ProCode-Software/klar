@@ -155,7 +155,7 @@ loop:
 			}
 		}
 	}
-	if !attrs.Unterminated && targetLine == ranges.TokenEnd(t).Line {
+	if !attrs.Unterminated && targetLine == t.End().Line {
 		r.appendRune(attrs.QuoteStyle, stringColor)
 		n++
 	}

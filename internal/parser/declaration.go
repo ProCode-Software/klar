@@ -371,7 +371,6 @@ func (p *Parser) ParseInterface(
 }
 
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
-	funcTok := p.Index
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
 	// func (p: Parser).
@@ -412,7 +411,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 
 	// Function alias
 	if p.isEqual(p.Curr()) {
-		beforeEqual := p.Index-1
+		beforeEqual := p.Index - 1
 		p.Advance()
 		if f.GenericParams != nil {
 			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
@@ -429,14 +428,24 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			}
 		default:
 			err := errors.Node(errors.ErrNonNameFuncAlias, target)
+			lastLine := p.Curr().Position.Sub(1, 0)
 			err.HintWithDiff(
-				"Or, did you mean to add parentheses after the function name?",
+				"Or, did you mean to define a new function? Add parentheses after the function name.",
 				&errors.Diff{
-					Tokens: p.Tokens[funcTok:p.Index],
-					Edits: []errors.DiffEdit{errors.AddedString{
-						Position: ranges.TokenEnd(p.Tokens[beforeEqual]),
-						String:   "()",
-					}},
+					Edits: []errors.DiffEdit{
+						errors.AddedString{
+							Position: p.Tokens[beforeEqual].End(),
+							String:   "()",
+						},
+						errors.DeletedLine{lastLine.Line},
+						errors.AddedString{
+							Position: lastLine, String: "name := 1", Line: true,
+						},
+						errors.DeletedRange{ranges.Range{
+							p.Tokens[beforeEqual+1].Position,
+							p.Tokens[beforeEqual+1].End(),
+						}},
+					},
 				},
 			)
 			p.Error(err)
