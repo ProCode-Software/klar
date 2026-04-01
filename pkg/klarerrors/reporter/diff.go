@@ -279,7 +279,7 @@ func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token
 	r.printDiffLineNumber(s, line, added, false)
 	r.printSourceLine(&state{tokens: tokens}, line, first, nil)
 	r.newline()
-	r.printDiffUnderlines(tokens, line, added)
+	r.printDiffUnderlines(s, tokens, line)
 }
 
 // printDiffLineNumber prints the line number and diff indicator (+/-) for a line.
@@ -305,8 +305,75 @@ func (r *Reporter) printDiffLineNumber(s *diffState, line uint32, add, fullLine 
 }
 
 // printDiffUnderlines adds the +/- underlines for each line.
-func (r *Reporter) printDiffUnderlines(tokens []lexer.Token, line uint32, added bool) {
-	// Not implemented yet
+func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line uint32) {
+	// First check if any token on this line is a diff token
+	var hasChanges bool
+	for _, tok := range tokens {
+		if tok.Position.Line <= line && ranges.TokenEnd(tok).Line >= line {
+			if tok.Kind == addedToken || tok.Kind == deletedToken {
+				hasChanges = true
+				break
+			}
+		}
+	}
+	if !hasChanges {
+		return
+	}
+
+	// Line number prefix (similar to printEmptyLineNumber)
+	r.appendSpace(hintMargin + s.digitWidth + 1)
+	r.appendf(r.ColorPalette.Box, "%c ", r.CharacterSet.HighlightLine)
+
+	var lastCol uint32 = 1
+	for _, tok := range tokens {
+		if tok.Position.Line > line {
+			break
+		}
+		end := ranges.TokenEnd(tok)
+		if end.Line < line {
+			continue
+		}
+
+		if tok.Position.Line == line {
+			// Padding between tokens
+			if pad := int(tok.Position.Col) - int(lastCol); pad > 0 {
+				r.appendSpace(pad)
+				lastCol = tok.Position.Col
+			}
+		}
+
+		// Calculate length on this line
+		partLen := r.tokenLenOnLine(tok, line)
+		switch tok.Kind {
+		case deletedToken:
+			r.appendString(strings.Repeat("-", int(partLen)), r.ColorPalette.DiffDelete)
+		case addedToken:
+			r.appendString(strings.Repeat("+", int(partLen)), r.ColorPalette.DiffAdd)
+		default:
+			r.appendSpace(int(partLen))
+		}
+		lastCol += partLen
+
+		if end.Line > line {
+			break
+		}
+	}
+	r.newline()
+}
+
+// tokenLenOnLine returns the length of the part of tok that is on line.
+func (r *Reporter) tokenLenOnLine(tok lexer.Token, line uint32) uint32 {
+	rang := ranges.FromToken(tok)
+	if rang.IsSingleLine() {
+		return uint32(utf8.RuneCountInString(tok.Source))
+	}
+	// For multiline tokens, find the relevant line
+	lines := strings.Split(tok.Source, "\n")
+	idx := int(line - tok.Position.Line)
+	if idx < 0 || idx >= len(lines) {
+		return 0
+	}
+	return uint32(utf8.RuneCountInString(lines[idx]))
 }
 
 // finishLine advances lastReadTok past all tokens that fully end on or before line.

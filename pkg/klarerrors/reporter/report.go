@@ -158,7 +158,7 @@ func (r *Reporter) printHint(hint errors.Hint) {
 	r.newline()
 
 	if hint.Diff != nil {
-		// r.newline() // TODO: do we need an extra newline?
+		r.newline() // TODO: do we need an extra newline?
 		r.printDiff(hint.Diff)
 	}
 }
