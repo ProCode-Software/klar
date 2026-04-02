@@ -18,9 +18,8 @@ type Reporter struct {
 	Output       io.Writer     // If set to nil, [os.Stderr] is used.
 	ColorPalette *ColorPalette // If set to nil, colored tokens are disabled.
 	CharacterSet *CharacterSet // If set to nil, [DefaultCharacterSet] is used.
-	// Alternative error titles to display instead of the type name. Keys are error prefixes.
-	ErrorNames     map[int]string
-	alreadyPrinted bool // If true, Reporter prints a separator before the next error
+	// If true, Reporter prints a separator before the next error.
+	alreadyPrinted bool
 	files          map[string]*file
 	buf            *bytes.Buffer
 }

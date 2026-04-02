@@ -10,7 +10,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-var termWidth int
+// Width is the width of the terminal. This may be replaced by [Reporter.Output]'s
+// width if it is a [*os.File].
+var Width int
 
 // Report prints the given error.
 func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
@@ -100,7 +102,7 @@ func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
 	if e.GetCode() != 0 {
 		b.WriteString(ansi.Dim(" (" + e.GetCode().Format() + ")"))
 	}
-	cli.Wrap(b.String(), r.buf, termWidth, 0, 2)
+	cli.Wrap(b.String(), r.buf, Width, 0, 2)
 }
 
 // printHeader prints the file name and position in the header.
@@ -154,7 +156,7 @@ func (r *Reporter) printHint(hint errors.Hint, file string) {
 	r.appendString("Hint", r.ColorPalette.HintColor)
 	r.appendString(": ", ansi.CodeDim)
 
-	cli.Wrap(hint.Message, r.buf, termWidth, termWidth-len("Hint: "), 2)
+	cli.Wrap(hint.Message, r.buf, Width, Width-len("Hint: "), 2)
 	r.newline()
 
 	if hint.Diff != nil {

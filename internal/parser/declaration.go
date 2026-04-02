@@ -428,25 +428,12 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			}
 		default:
 			err := errors.Node(errors.ErrNonNameFuncAlias, target)
-			lastLine := p.Curr().Position.Sub(1, 0)
 			err.HintWithDiff(
 				"Or, did you mean to define a new function? Add parentheses after the function name.",
-				&errors.Diff{
-					Edits: []errors.DiffEdit{
-						errors.AddedString{
-							Position: p.Tokens[beforeEqual].End(),
-							String:   "()",
-						},
-						errors.DeletedLine{lastLine.Line},
-						errors.AddedString{
-							Position: lastLine, String: "name := 1", Line: true,
-						},
-						errors.DeletedRange{ranges.Range{
-							p.Tokens[beforeEqual+1].Position,
-							p.Tokens[beforeEqual+1].End(),
-						}},
-					},
-				},
+				&errors.Diff{Edits: []errors.DiffEdit{errors.AddedString{
+					Position: p.Tokens[beforeEqual].End(),
+					String:   "()",
+				}}},
 			)
 			p.Error(err)
 		}

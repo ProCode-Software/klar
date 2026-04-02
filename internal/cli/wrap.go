@@ -27,6 +27,7 @@ func Wrap(s string, w AllWriter, width, firstRowWith, margin int) {
 // and first row width. The first row is unindented.
 func (wr *Wrapper) Wrap(s string) {
 	if wr.Width <= 0 {
+		wr.WriteString(s)
 		return
 	}
 	var (

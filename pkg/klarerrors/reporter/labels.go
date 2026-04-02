@@ -54,7 +54,7 @@ func (r *Reporter) printArrows(s *state, remHls []errors.Highlight,
 ) {
 	for len(remHls) > 0 {
 		printLineStart()
-		var lastCol uint32 = 1 + uint32(pipeLen)
+		var lastCol uint32 = 1
 		// Print arrow lines
 		for i, hl := range remHls {
 			var (
@@ -98,13 +98,13 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 		}
 		color := s.hlColors[hl]
 		// Draw extra parts that aren't underlined to make up for other active pipes
-		pipeLen := ((len(highlights) - i) * 2) - 1
+		pipeLen := ((len(highlights[:i]) - i) * 2) - 1 // TODO: what is -1 for?
 		r.appendf(color, "%c%s%s",
 			r.CharacterSet.HighlightMultilineBL,
-			char.RepeatRune(r.CharacterSet.BoxT, pipeLen),
+			char.RepeatRune(r.CharacterSet.BoxT, max(0, pipeLen)),
 			char.RepeatRune(r.CharacterSet.HighlightMulti, int(hl.Range.End.Col)),
 		)
-		r.printLabel(hl.Message, color, -1 /* I don't care */, -1, nil)
+		r.printLabel(hl.Message, color, -1 /* I don't care */, -1, nil) // TODO: care
 		r.newline()
 	}
 }
@@ -141,7 +141,7 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []errors.Hig
 		}
 		// Underline the contents of the first line
 		r.appendf(color, "%s", char.RepeatRune(
-			r.CharacterSet.HighlightMulti, max(1, int(lastCol-pos.Col)-ulShift),
+			r.CharacterSet.HighlightMulti, max(0, int(lastCol-pos.Col-1)-ulShift),
 		))
 		r.newline()
 	}
@@ -159,7 +159,7 @@ func (r *Reporter) printLabel(label, color string,
 	}
 	labelLen := utf8.RuneCountInString(label)
 	// If the label doesn't fit within the terminal's width, print it on the next line
-	if ulWidth > 0 && termWidth > 0 && offset+labelLen > termWidth {
+	if ulWidth > 0 && Width > 0 && offset+labelLen > Width {
 		r.newline()
 		printLineStart() // Print pipes
 		// Center the label

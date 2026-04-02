@@ -39,10 +39,9 @@ func (r *Reporter) init() {
 // getTermWidth gets the width of the terminal. If it fails, it sets termWidth to 0.
 func getTermWidth(w io.Writer) {
 	if w, ok := w.(*os.File); ok {
-		var err error
-		termWidth, _, err = term.GetSize(int(w.Fd()))
-		if err != nil {
-			termWidth = 0
+		width, _, err := term.GetSize(int(w.Fd()))
+		if err == nil {
+			Width = width
 		}
 	}
 }
@@ -50,7 +49,7 @@ func getTermWidth(w io.Writer) {
 // printDivider prints a divider line that is the width of the terminal,
 // followed by a newline.
 func (r *Reporter) printDivider() {
-	div := char.RepeatRune(r.CharacterSet.ErrorDivider, max(3, termWidth))
+	div := char.RepeatRune(r.CharacterSet.ErrorDivider, max(3, Width))
 	r.buf.WriteString(ansi.Partial(r.ColorPalette.Divider))
 	r.buf.Write(div)
 	r.buf.WriteString(ansi.Reset())
