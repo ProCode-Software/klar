@@ -115,8 +115,8 @@ type StdParser struct {
 	cwd string
 }
 
-func NewStdParser(cwd string, lexFlags lexer.Flags, parseOpts *parser.Options) *StdParser {
-	return &StdParser{parsePool: newParsePool(lexFlags, parseOpts), cwd: cwd}
+func NewStdParser(cwd string, parseOpts *parser.Options) *StdParser {
+	return &StdParser{parsePool: newParsePool(parseOpts), cwd: cwd}
 }
 
 func (p *StdParser) Reset() {
@@ -197,10 +197,10 @@ type parsePool struct{ parser, lexer sync.Pool }
 
 // newParsePool creates a new [parsePool] with the provided
 // [lexer.Flags] and [pkgparser.Options] as defaults.
-func newParsePool(lexFlags lexer.Flags, parseOpts *parser.Options) *parsePool {
+func newParsePool(parseOpts *parser.Options) *parsePool {
 	return &parsePool{
 		lexer: sync.Pool{New: func() any {
-			return lexer.NewLexer(nil, lexFlags)
+			return lexer.NewLexer(nil)
 		}},
 		parser: sync.Pool{New: func() any {
 			return parser.New(nil, parseOpts)

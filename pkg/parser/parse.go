@@ -22,7 +22,7 @@ func Parse(tokens []lexer.Token, options *parser.Options) (
 }
 
 func ParseString(src string) (program *ast.Program, parseErrs []*ParseError, readErr error) {
-	tokens, err := TokenizeString(src, lexer.IncludeComments)
+	tokens, err := TokenizeString(src)
 	if err != nil {
 		return nil, nil, err
 	}

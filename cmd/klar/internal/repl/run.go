@@ -107,7 +107,7 @@ func (s *Session) Prompt() {
 		s.checkMultilineEnd()
 		return
 	}
-	tokens, err := parser.TokenizeString(input, lexer.IncludeComments)
+	tokens, err := parser.TokenizeString(input)
 	if err != nil {
 		s.handleLexerError(err)
 		return
@@ -230,7 +230,7 @@ func (s *Session) checkMultilineEnd() {
 }
 
 func (s *Session) sendMultiline() {
-	tokens, err := parser.TokenizeBytes(s.buf, lexer.IncludeComments)
+	tokens, err := parser.TokenizeBytes(s.buf)
 	if err != nil {
 		s.handleLexerError(err)
 		return

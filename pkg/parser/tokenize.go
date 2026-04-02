@@ -10,22 +10,15 @@ import (
 	"github.com/ProCode-Software/klar/internal/parser"
 )
 
-type LexerFlags = lexer.Flags
-
-const (
-	// Include comments when tokenizing. Useful for documentation parsing.
-	IncludeComments = lexer.IncludeComments
-)
-
 // TokenizeFile reads from file and converts it into lexer tokens.
-func TokenizeFile(file *os.File, flags LexerFlags) ([]lexer.Token, error) {
+func TokenizeFile(file *os.File) ([]lexer.Token, error) {
 	// Estimate token capacity
 	stat, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
 	byteSize := stat.Size()
-	return Tokenize(file, flags, byteSize/10)
+	return Tokenize(file, byteSize/10)
 }
 
 func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) {
@@ -51,23 +44,23 @@ func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) 
 }
 
 // Tokenize reads from r and converts it into lexer tokens.
-func Tokenize(r io.Reader, flags LexerFlags, cap int64) (
+func Tokenize(r io.Reader, cap int64) (
 	tokens []lexer.Token, err error,
 ) {
-	lex := lexer.NewLexer(r, flags)
+	lex := lexer.NewLexer(r)
 	return TokenizeLexer(lex, cap)
 }
 
 // TokenizeString reads from src and converts it into lexer tokens.
-func TokenizeString(src string, flags LexerFlags) ([]lexer.Token, error) {
+func TokenizeString(src string) ([]lexer.Token, error) {
 	file := strings.NewReader(src)
-	return Tokenize(file, flags, int64(len(src)/3))
+	return Tokenize(file, int64(len(src)/3))
 }
 
 // TokenizeBytes reads from b and converts it into lexer tokens.
-func TokenizeBytes(b []byte, flags LexerFlags) ([]lexer.Token, error) {
+func TokenizeBytes(b []byte) ([]lexer.Token, error) {
 	file := bytes.NewReader(b)
-	return Tokenize(file, flags, int64(len(b)/3))
+	return Tokenize(file, int64(len(b)/3))
 }
 
 // InsertEOS returns tokens with [lexer.Newline] tokens where a newline terminates

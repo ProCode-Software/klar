@@ -10,20 +10,14 @@ import (
 
 type Builder = strings.Builder
 
-type Flags uint8
-
-const (
-	IncludeComments Flags = 1 << iota // For documentation parsers
-)
-
 type Lexer struct {
-	Pos    Position
-	Reader *bufio.Reader
-	Flags  Flags
+	Pos             Position
+	Reader          *bufio.Reader
+	ExcludeComments bool
 }
 
-func NewLexer(reader io.Reader, flags Flags) *Lexer {
-	return &Lexer{Position{1, 1}, bufio.NewReader(reader), flags}
+func NewLexer(reader io.Reader) *Lexer {
+	return &Lexer{Position{1, 1}, bufio.NewReader(reader), false}
 }
 
 func (l *Lexer) Tokenize() *Token {
@@ -59,7 +53,7 @@ func (l *Lexer) Tokenize() *Token {
 			case Regex:
 				tok = l.ReadRegex(pos)
 			}
-			if (l.Flags & IncludeComments) == 0 {
+			if l.ExcludeComments {
 				continue
 			}
 			return tok
@@ -155,7 +149,7 @@ func (l *Lexer) Reset() {
 	l.Reader.Reset(nil)
 	l.Pos.Line = 1
 	l.Pos.Col = 1
-	l.Flags = 0
+	l.ExcludeComments = false
 }
 
 // Utils

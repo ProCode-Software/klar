@@ -92,7 +92,7 @@ func trimNewline(s string) string {
 }
 
 func mustTokenize(s string) []lexer.Token {
-	tokens, err := parser.TokenizeString(s, 0)
+	tokens, err := parser.TokenizeString(s)
 	if err != nil {
 		panic(err)
 	}
