@@ -37,6 +37,12 @@ func (c *Compiler) PrintError(err errors.CompileError) (int64, error) {
 	return c.Reporter.Report(err)
 }
 
+func (c *Compiler) PrintAllErrors(errs []errors.CompileError) {
+	for _, err := range errs {
+		c.PrintError(err)
+	}
+}
+
 // AddInputs adds the given inputs to a new [Options] inside c.
 func (c *Compiler) AddInputs(inputs ...Input) {
 	c.Options = append(c.Options, &Options{Inputs: inputs})

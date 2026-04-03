@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
-	"github.com/ProCode-Software/klar/internal/errors/printer"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/parser"
@@ -20,8 +20,6 @@ import (
 var (
 	defaultPrompt    = ansi.Magenta("> ") // ansi.Magenta("(repl)") + " > "
 	incompletePrompt = ansi.Green("... ")
-
-	ErrPrinter = printer.Printer{MaxLines: 3, Color: true}
 )
 
 type Session struct {
@@ -32,7 +30,7 @@ type Session struct {
 	multiline   bool            // Multiline editing enabled
 	line        uint32          // Current line, greater than 0 if multiline
 	evaluated   [][]lexer.Token // Successfully evaluated lines
-	lastSaveLoc string
+	lastSaveLoc string          // Last provided path to 'save' command
 	*readline.Instance
 }
 
@@ -41,17 +39,20 @@ func NewSession() (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	s := &Session{}
 	rl, err := readline.NewFromConfig(&readline.Config{
-		Prompt:          defaultPrompt,
-		HistoryFile:     hist,
-		InterruptPrompt: ansi.Red("Ctrl+C"),
-		EOFPrompt:       ansi.Red("exit"),
+		Prompt:              defaultPrompt,
+		HistoryFile:         hist,
+		InterruptPrompt:     ansi.Red("Ctrl+C"),
+		EOFPrompt:           ansi.Red("exit"),
+		FuncFilterInputRune: s.handleShortcut,
 	})
 	if err != nil {
 		return nil, err
 	}
+	s.Instance = rl
 	log.SetOutput(rl.Stderr())
-	return &Session{Instance: rl}, nil
+	return s, nil
 }
 
 func Run(*command.Runner) {
@@ -74,7 +75,6 @@ func HistoryFile() (string, error) {
 	return "", nil
 }
 
-// TODO: fix '.' in multiline and incomplete multiline
 func (s *Session) Prompt() {
 	if s.multiline {
 		s.line++
@@ -84,9 +84,6 @@ func (s *Session) Prompt() {
 	switch err {
 	case nil:
 	case readline.ErrInterrupt:
-		/* if len(input) > 0 { // Never true because of the package
-			break // ignore Ctrl+C if there was input
-		} */
 		if s.interrupted {
 			s.Finish()
 			return
@@ -98,12 +95,12 @@ func (s *Session) Prompt() {
 		s.Finish()
 		return
 	default:
-		cli.InternalError(err)
+		cli.Error("Failed to read input: ", err)
 	}
 	s.interrupted = false
 	if s.multiline {
 		s.buf = append(s.buf, input...)
-		s.buf = append(s.buf, '\n')
+		s.buf = append(s.buf, '\n') // For continued lines
 		s.checkMultilineEnd()
 		return
 	}
@@ -138,10 +135,9 @@ func (s *Session) send() {
 	if isIncomplete(t) {
 		s.SetPrompt(incompletePrompt)
 		return
-	} else {
-		s.SetPrompt(defaultPrompt)
-		s.tokens = nil
 	}
+	s.SetPrompt(defaultPrompt)
+	s.tokens = nil
 	s.runTokens(t)
 }
 
@@ -155,6 +151,19 @@ func (s *Session) runTokens(t []lexer.Token) {
 	s.evaluated = append(s.evaluated, t)
 }
 
+func (s *Session) handleShortcut(r rune) (rune, bool) {
+	switch r {
+	case 7: // Ctrl+G
+		s.handleCommand("multiline", nil)
+		s.Prompt()
+		return 0, false
+	case 19: // Ctrl+S
+		s.handleCommand("save", nil)
+		return 0, false
+	}
+	return r, true
+}
+
 func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {
 	switch cmd {
 	case "exit":
@@ -164,7 +173,8 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 	case "load":
 		s.LoadFile(args)
 	case "save":
-	case "multiline":
+		s.SaveFile(args)
+	case "multiline", "ml":
 		if s.multiline = !s.multiline; s.multiline {
 			fmt.Fprintln(s.Stdout(), multilineEnabledMsg)
 		} else {
@@ -223,8 +233,9 @@ func (s *Session) appendTokens(newTokens []lexer.Token) {
 
 func (s *Session) checkMultilineEnd() {
 	// Last byte is the newline
-	if buf, ln := s.buf, len(s.buf); ln >= 2 && buf[ln-2] == '.' {
-		s.buf = buf[:ln-2] // Remove newline and dot
+	trimmed := bytes.TrimSpace(s.buf)
+	if len(trimmed) > 0 && trimmed[len(trimmed)-1] == '.' {
+		s.buf = s.buf[:len(s.buf)-2] // Remove newline and dot
 		s.sendMultiline()
 	}
 }
@@ -242,7 +253,7 @@ func (s *Session) sendMultiline() {
 }
 
 func linePrompt(n uint32) string {
-	return ansi.Blue(fmt.Sprintf("%2d | ", n))
+	return ansi.Magenta(fmt.Sprintf("%2d │ ", n))
 }
 
 func (s *Session) Printf(color, format string, a ...any) {

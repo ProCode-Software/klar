@@ -196,22 +196,22 @@ func (r *Reporter) printHighlights(s *state, line, lastCol uint32,
 
 	// 1. Single-line highlights
 	// ==========
-	remHls := groups.newSingleLine
+	singleLine := groups.newSingleLine
 	pipeLen := len(groups.existing) * 2
 	// Print the underlines
-	if len(remHls) > 0 {
+	if len(singleLine) > 0 {
 		printLineStart()
-		r.printUnderlines(s, pipeLen, remHls, func() {
+		r.printUnderlines(s, pipeLen, singleLine, func() {
 			// If underline line overflows, print the stems of the other highlights
 			// on the next line.
-			r.printArrows(s, remHls[:len(remHls)-1], printLineStart, pipeLen, true)
+			r.printArrows(s, singleLine[:len(singleLine)-1], printLineStart, pipeLen, true)
 		})
 		r.newline()
 		// Cut off the last highlight, which has been labelled
-		remHls = remHls[:len(remHls)-1]
+		singleLine = singleLine[:len(singleLine)-1]
 	}
 	// The arrows and the messages
-	r.printArrows(s, remHls, printLineStart, pipeLen, false)
+	r.printArrows(s, singleLine, printLineStart, pipeLen, false)
 
 	// 2. Ending multiline highlights
 	// ===================

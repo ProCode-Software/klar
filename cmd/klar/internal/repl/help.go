@@ -20,7 +20,10 @@ var actions = []action{
 	{"exit", "", "Exit the REPL", "Ctrl+D"},
 	{"help", "", "Display this help message", ""},
 	{"load", "<file>", "Load and evaluate a Klar file in the REPL session", ""},
-	{"multiline", "", "Toggle multiline editing mode", "Ctrl+M"},
+	{
+		"multiline" + ansi.Reset() + ", " + ansi.Yellow("ml"), "",
+		"Toggle multiline editing mode", "Ctrl+G",
+	},
 	{
 		"save", "[file]",
 		"Save all successfully evaluated commands in this REPL session to a file",
@@ -64,6 +67,6 @@ var ctrlCMessage = ansi.ColorSprintf(ansi.CodeYellow,
 
 var multilineEnabledMsg = ansi.ColorSprintf(ansi.CodeBrightGreen,
 	"Multiline mode enabled. Press %s to disable. End a line with %s to send",
-	ansi.Cyan("Ctrl+M"), ansi.Cyan("."),
+	ansi.Cyan("Ctrl+G"), ansi.Cyan("."),
 )
 var multilineDisabledMsg = ansi.ColorSprintf(ansi.CodeBrightGreen, "Multiline mode disabled.")

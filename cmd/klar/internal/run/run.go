@@ -1,9 +1,7 @@
 package run
 
 import (
-	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
@@ -42,14 +40,7 @@ func RunTokens(tokens []lexer.Token, fileName string) (*build.BuildResult, error
 func compile(c *build.Compiler) (*build.BuildResult, error) {
 	c.StartTime = time.Now()
 	res, err := c.Compile()
-	if len(res.Errors) > 0 {
-		for i, err := range res.Errors {
-			if i > 0 {
-				fmt.Fprintln(os.Stderr)
-			}
-			c.PrintError(err)
-		}
-	}
+	c.PrintAllErrors(res.Errors)
 	if err != nil {
 		if ie, ok := err.(*build.InterfaceError); ok {
 			build.PrintInterfaceErr(ie)

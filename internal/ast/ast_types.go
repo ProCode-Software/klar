@@ -9,9 +9,11 @@ import (
 // All AST tokens implement the Node interface.
 //
 //go:generate stringer -type=PrimitiveTypeName -linecomment
+//go:generate go run ../cmd/asttempl
 type Node interface {
 	GetRange() ranges.Range
 	SetPos(start, end lexer.Position)
+	// Equal(b Node) bool
 }
 
 type BaseNode struct {
@@ -288,7 +290,7 @@ type TypePair struct {
 }
 
 type InterfaceItem struct {
-	TypePair
+	*TypePair
 	Attributes []*Attribute
 }
 

@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/ProCode-Software/klar/internal/char"
-	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"golang.org/x/term"
 )
@@ -50,10 +49,7 @@ func getTermWidth(w io.Writer) {
 // followed by a newline.
 func (r *Reporter) printDivider() {
 	div := char.RepeatRune(r.CharacterSet.ErrorDivider, max(3, Width))
-	r.buf.WriteString(ansi.Partial(r.ColorPalette.Divider))
-	r.buf.Write(div)
-	r.buf.WriteString(ansi.Reset())
-	r.buf.WriteByte('\n')
+	r.appendf(r.ColorPalette.Divider, "%s\n", div)
 }
 
 // digitLen returns the number of digits required to print x.

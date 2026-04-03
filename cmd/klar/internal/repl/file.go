@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -27,10 +28,10 @@ func parseArg(tokens []lexer.Token) (string, bool) {
 
 func (s *Session) fileError(file, op string, err error) {
 	if errors.Is(err, fs.ErrNotExist) {
-		s.Printf(ansi.CodeRed, "File not found: %s", ansi.Cyan(file))
+		s.Printf(ansi.CodeBrightRed, "File not found: %s", ansi.BrightCyan(file))
 		return
 	}
-	s.Printf(ansi.CodeRed, "Failed to %s to %s: %v", op, ansi.Cyan(file), err)
+	s.Printf(ansi.CodeBrightRed, "Failed to %s to %s: %v", op, ansi.BrightCyan(file), err)
 }
 
 func (s *Session) LoadFile(args []lexer.Token) {
@@ -41,6 +42,10 @@ func (s *Session) LoadFile(args []lexer.Token) {
 		return
 	}
 	f, err := os.Open(path)
+	// Implicit file extension
+	if errors.Is(err, fs.ErrNotExist) && !strings.HasSuffix(path, ".klar") {
+		f, err = os.Open(path + ".klar")
+	}
 	if err != nil {
 		s.fileError(path, "open", err)
 		return
@@ -57,7 +62,22 @@ func (s *Session) LoadFile(args []lexer.Token) {
 func (s *Session) SaveFile(args []lexer.Token) {
 	path, ok := parseArg(args)
 	if !ok {
+		// A file path only has to be provided once in a session
 		if path = s.lastSaveLoc; path == "" {
+			if args == nil {
+				// Keyboard shortcut used
+				s.Printf(ansi.CodeBrightRed,
+					"Please provide a file path by manually typing %s",
+					ansi.Cyan("save <file>"),
+				)
+			} else {
+				// Command line arguments used
+				s.Printf(ansi.CodeBrightRed,
+					"Please provide a file path after the %s command",
+					ansi.Cyan("save"),
+				)
+			}
+			return
 		}
 	} else {
 		s.lastSaveLoc = path
@@ -68,7 +88,8 @@ func (s *Session) SaveFile(args []lexer.Token) {
 		return
 	}
 	defer file.Close()
+	// Write successfully evaluated lines to the file
 	for _, tok := range s.evaluated {
-		fmt.Printf("%#q\n", printer.PrintTokens(tok))
+		fmt.Fprintf(file, "%s\n", printer.PrintTokens(tok))
 	}
 }

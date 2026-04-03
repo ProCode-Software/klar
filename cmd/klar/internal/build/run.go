@@ -181,9 +181,7 @@ func printErrors(res *build.BuildResult, b *build.Compiler, jsonOutput bool, err
 		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
-	for _, err := range errs {
-		b.PrintError(err)
-	}
+	b.PrintAllErrors(errs)
 	if isMaxErrors {
 		cli.Error("There are too many errors")
 	}

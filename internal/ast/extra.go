@@ -72,3 +72,7 @@ func (i Identifier) GetRange() ranges.Range {
 
 // SetPos implements [Node]. It does not change i's range.
 func (i Identifier) SetPos(start, end lexer.Position) {}
+
+func (a Identifier) Equal(b Node) bool {
+	return a.Name == b.(Identifier).Name
+}
