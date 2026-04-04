@@ -1,107 +1,166 @@
 package ast
 
-import "fmt"
+import "iter"
 
-var stop bool
+// A Visitor is a function that is called for each node in the AST.
+type Visitor func(c *Cursor) StopCode
 
-func Inspect(t Node, pred func(Node) bool) {
-	if t == nil || pred == nil {
-		return
-	}
-	Walk(t, func(t Node) {
-		stop = !pred(t)
-	})
+// StopCode is a code that is returned by a visitor to control the walk.
+type StopCode int
+
+const (
+	Continue     StopCode = iota
+	Stop                  // Stop the walk
+	SkipChildren          // Skip the children of the current node
+	SkipParent            // Skip the rest of the parent node
+	SkipList              // Skip the rest of the items in the list
+)
+
+// A Cursor points to a node in the AST.
+type Cursor struct {
+	parent      *Cursor
+	node        Node
+	depth       int
+	fieldI      int // Index of the current field in parent struct
+	*cursorList     // If the cursor points to a list item
 }
 
-func walkList[T Node](a []T, visitor func(Node)) {
-	for _, t := range a {
-		Walk(t, visitor)
-	}
+type cursorList struct {
+	index      int
+	prev, next *Cursor
 }
 
-// Walk traverses a type AST in depth-first order. It first calls visitor
-// on t, the on each child [Node] node.
-func Walk(t Node, visitor func(Node)) {
-	if stop || t == nil || visitor == nil {
-		return
-	}
-	visitor(t)
-	switch t := t.(type) {
-	case *OptionalType:
-		Walk(t.Value, visitor)
-	case *ListType:
-		Walk(t.Value, visitor)
-	case *TupleType:
-		walkList(t.Values, visitor)
-	case *UnionType:
-		walkList(t.Options, visitor)
-	case *FunctionType:
-		// walkList(t.Parameters, visitor)
-		Walk(t.ReturnType, visitor)
-	case *GenericType:
-		Walk(t.Name, visitor)
-		walkList(t.Parameters, visitor)
-	case *MethodType:
-		for _, p := range t.Parameters {
-			Walk(p.Type, visitor)
+// Node returns the node c points to.
+func (c *Cursor) Node() Node { return c.node }
+
+// Parent returns the parent cursor.
+func (c *Cursor) Parent() *Cursor { return c.parent }
+
+// Depth returns the depth of the current cursor since the walk started.
+func (c *Cursor) Depth() int { return c.depth }
+
+// IsList reports whether the current cursor points to an item in a slice.
+func (c *Cursor) IsList() bool { return c.cursorList != nil }
+
+// FieldIndex returns the index of the field containing c.Node() in its parent.
+func (c *Cursor) FieldIndex() int { return c.fieldI }
+
+// Contains reports whether c2 is a descendant of c.
+func (c *Cursor) Contains(c2 *Cursor) bool { return false }
+
+// Index returns the index of the current cursor in the list.
+func (l *cursorList) Index() int { return l.index }
+
+// Next returns a [Cursor] to the next item in the list.
+func (l *cursorList) Next() *Cursor { return l.next }
+
+// Prev returns a [Cursor] to the previous item in the list.
+func (l *cursorList) Prev() *Cursor { return l.prev }
+
+// Items returns an iterator over the items in the list.
+func (l *cursorList) Items() iter.Seq2[int, *Cursor] { return nil }
+
+// TODO: delete, replace, insert{Before,After}
+
+type walkItem interface {
+	fieldIndex() int
+	isList() bool
+	items() iter.Seq2[int, Node]
+}
+
+type walkSlice[T Node] struct {
+	index int
+	nodes []T
+}
+
+func (w walkSlice[T]) isList() bool    { return true }
+func (w walkSlice[T]) fieldIndex() int { return w.index }
+func (w walkSlice[T]) items() iter.Seq2[int, Node] {
+	return func(yield func(int, Node) bool) {
+		for i, item := range w.nodes {
+			if !yield(i, item) {
+				return
+			}
 		}
-		Walk(t.ReturnType, visitor)
-	case *TypeAlias, *PrimitiveType, *BadExpression:
-		return
-	case *RestType:
-		Walk(t.Value, visitor)
-	case *TypeAliasDeclaration:
-		Walk(t.Type, visitor)
-	case *StructDeclaration:
-		walkList(t.InheritedTypes, visitor)
-		walkList(t.Fields, visitor)
-	case *InterfaceDeclaration:
-		walkList(t.InheritedTypes, visitor)
-		walkList(t.Items, visitor)
-	case *StructField:
-		Walk(t.Type, visitor)
-		Walk(t.Value, visitor)
-	case *TypePair:
-		Walk(t.Value, visitor)
-	case *VariableDeclaration:
-		for _, v := range t.Variables {
-			Walk(v, visitor)
-		}
-		Walk(t.ExplicitType, visitor)
-		walkList(t.Values, visitor)
-	case *RegexLiteral, *StringLiteral, *BooleanLiteral, *NilLiteral,
-		*EnumLiteral, *FloatLiteral, *IntegerLiteral, *VersionLiteral, *Symbol:
-	default:
-		panic(fmt.Sprintf("Walk: unhandled type %T", t))
 	}
 }
 
-func WalkAll(n Node) (nodes []Node) {
-	Walk(n, func(t Node) {
-		nodes = append(nodes, t)
-	})
-	return nodes
+type walkNode struct {
+	index int
+	node  Node
 }
 
-// CollectTypeNames walks t, returning all [TypeAlias] and [PrimitiveType]
-func CollectTypeNames(t Node) (types []Type) {
-	Walk(t, func(t Node) {
-		switch t := t.(type) {
-		case *TypeAlias:
-			types = append(types, t)
-		case *PrimitiveType:
-			types = append(types, t)
-		}
-	})
-	return types
+func (w walkNode) isList() bool    { return false }
+func (w walkNode) fieldIndex() int { return w.index }
+func (w walkNode) items() iter.Seq2[int, Node] {
+	return func(yield func(int, Node) bool) { yield(w.index, w.node) }
 }
 
-// CollectTypeAliases walks t, returning all [TypeAlias].
-func CollectTypeAliases(t Node) (types []*TypeAlias) {
-	Walk(t, func(t Node) {
-		if t, ok := t.(*TypeAlias); ok {
-			types = append(types, t)
+// TODO
+// indices is a slice of field indices for the fields in parent.
+func walkFields(v Visitor, parent Node, c *Cursor, items ...walkItem) StopCode {
+	// Walk the parent
+	var depth, fieldI int
+	if c != nil {
+		depth = c.depth + 1
+		fieldI = c.fieldI
+	}
+	pc := &Cursor{
+		parent: c,
+		node:   parent,
+		depth:  depth,
+		fieldI: fieldI,
+	}
+	switch v(pc) {
+	case Stop:
+		return Stop
+	case SkipChildren:
+		return Continue
+	case SkipParent:
+		return SkipChildren
+	case SkipList:
+		return SkipList
+	case Continue:
+	}
+
+	// Fields of the node (children)
+childrenLoop:
+	for _, child := range items {
+		if child.isList() {
+			// Slice of Nodes
+		listLoop:
+			for i, li := range child.items() {
+				// Parent cursor of the list
+				c := &Cursor{
+					parent: pc,
+					fieldI: child.fieldIndex(),
+					depth:  pc.depth + 1,
+				}
+				_, _ = i, c
+				switch li.Walk(v, pc) {
+				case Stop:
+					return Stop
+				case SkipChildren:
+					continue listLoop
+				case SkipList:
+					break listLoop
+				case SkipParent:
+					return SkipChildren
+				case Continue:
+				}
+			}
+		} else {
+			// Single Node
+			switch child.(walkNode).node.Walk(v, pc) {
+			case Stop:
+				return Stop
+			case SkipChildren, SkipList:
+				break childrenLoop
+			case SkipParent:
+				return SkipChildren
+			case Continue:
+			}
 		}
-	})
-	return types
+	}
+	return 0
 }

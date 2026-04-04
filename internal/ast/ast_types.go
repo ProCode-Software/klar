@@ -6,31 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// All AST tokens implement the Node interface.
-//
-//go:generate stringer -type=PrimitiveTypeName -linecomment
-//go:generate go run ../cmd/asttempl
-type Node interface {
-	GetRange() ranges.Range
-	SetPos(start, end lexer.Position)
-	// Equal(b Node) bool
-}
-
-type BaseNode struct {
-	Range ranges.Range
-}
-
-// All EOS-terminated statement AST tokens implement the Statement interface.
-type Statement interface {
-	Node
-	stmt()
-}
-
-// All expression AST tokens implement the Expression interface.
-type Expression interface {
-	Node
-	expr()
-}
+type BaseNode struct{ Range ranges.Range }
 
 type BadExpression struct {
 	BaseNode

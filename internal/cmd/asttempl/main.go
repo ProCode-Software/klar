@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"go/format"
 	"go/types"
 	"log"
 	"os"
@@ -8,24 +10,33 @@ import (
 )
 
 type (
-	NodeList  []*types.TypeName
-	Package   *types.Package
-	Generator func(NodeList, Package) error
+	NodeList  = []*types.TypeName
+	Package   = *types.Package
+	Generator func(*bytes.Buffer, NodeList, Package) error
 )
 
 var generators = []Generator{
-	GenerateEqual,
+	GenerateEqual, GenerateWalk,
 }
+
+var outputs = []string{"equal_nodes.go", "walk_nodes.go"}
 
 func main() {
 	nodes, pkg, err := GetASTNodes()
 	if err != nil {
 		log.Fatalf("failed to get AST nodes: %v", err)
 	}
-
 	for i, gen := range generators {
-		if err := gen(nodes, pkg); err != nil {
+		buf := &bytes.Buffer{}
+		if err := gen(buf, nodes, pkg); err != nil {
 			log.Fatalf("generator #%d failed: %v", i, err)
+		}
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			log.Fatalf("failed to format file %s: %v", outputs[i], err)
+		}
+		if err := os.WriteFile(outputs[i], formatted, 0644); err != nil {
+			log.Fatalf("failed to write file %s: %v", outputs[i], err)
 		}
 	}
 }
@@ -46,7 +57,7 @@ var templateFuncs = template.FuncMap{
 		_, ok := t.(*types.Slice)
 		return ok
 	},
-		"HasName": func(t types.Type, name string) bool {
+	"HasName": func(t types.Type, name string) bool {
 		// Unwrap pointer if necessary (handles *Identifier)
 		if ptr, ok := t.(*types.Pointer); ok {
 			t = ptr.Elem()
@@ -65,7 +76,6 @@ var templateFuncs = template.FuncMap{
 		}
 		return false
 	},
-
 }
 
 func newTemplate(name, s string) *template.Template {

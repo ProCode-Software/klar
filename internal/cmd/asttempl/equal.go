@@ -1,12 +1,10 @@
 package main
 
-import (
-	"go/types"
-)
+import "bytes"
 
 const equalTemplate = Header + `
-{{- range .}}
-{{- if eq .Name "Identifier" }} {{continue}} {{end-}}
+{{ range .}}
+{{- if eq .Name "Identifier" "Operator" "BaseNode" }} {{continue}} {{end -}}
 func (a *{{.Name}}) Equal(b2 Node) bool {
 	b, ok := b2.(*{{.Name}})
 	if !ok {
@@ -17,7 +15,7 @@ func (a *{{.Name}}) Equal(b2 Node) bool {
 	}
 	{{- range (ToStruct .).Fields}}
 	{{- if eq .Name "BaseNode"}}
-	{{- else if HasName .Type "ast.Identifier" }}
+	{{- else if or (HasName .Type "ast.Identifier") (HasName .Type "ast.Operator") }}
 	if !a.{{.Name}}.Equal(b.{{.Name}}) {
 		return false
 	}
@@ -37,19 +35,10 @@ func (a *{{.Name}}) Equal(b2 Node) bool {
 	{{- end}}
 	return true
 }
+	
 {{end -}}
 `
 
-func GenerateEqual(nodes NodeList, pkg Package) error {
-	for _, node := range nodes {
-		str, _ := node.Type().Underlying().(*types.Struct)
-		for field := range str.Fields() {
-			_=field
-			// check if field's type is Identifier
-			
-			continue
-			// isSlice := field.Type().(*types.Slice)
-		}
-	}
-	return newTemplate("equal", equalTemplate).Execute(getFile("equal.go"), nodes)
+func GenerateEqual(b *bytes.Buffer, nodes NodeList, pkg Package) error {
+	return newTemplate("equal", equalTemplate).Execute(b, nodes)
 }

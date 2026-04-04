@@ -1,22 +1,31 @@
 package ast
 
+import (
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
 
-func equalSlice[T any](a, b []T) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	/* if _, ok := any(a).([]Node); ok {
-		for i := range a {
-			if !any(a[i]).(Node).Equal(any(b[i]).(Node)) {
-				return false
-			}
-		}
-		return true
-	} */
-	for i := range a {
-		if any(a[i]) != any(b[i]) {
-			return false
-		}
-	}
-	return true
+// All AST tokens implement the Node interface.
+//
+//go:generate stringer -type=PrimitiveTypeName -linecomment
+//go:generate go run ../cmd/asttempl
+type Node interface {
+	GetRange() ranges.Range
+	SetPos(start, end lexer.Position)
+	// Equality checks disregard [BaseNode]s and positions.
+	Equal(b Node) bool
+	Walk(v Visitor, parent *Cursor) StopCode
 }
+
+// All EOS-terminated statement AST tokens implement the Statement interface.
+type Statement interface {
+	Node
+	stmt()
+}
+
+// All expression AST tokens implement the Expression interface.
+type Expression interface {
+	Node
+	expr()
+}
+
