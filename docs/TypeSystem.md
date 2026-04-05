@@ -7,13 +7,13 @@
 - `Float` - signed 64-bit double
 - `Bool` - boolean (`true` | `false`)
 - [`Result<T, E>`](#results) - value of `T` and error type of `E`
-- `T?` - optional value of `T` or `nil`
+- `T?` - [optional](#optionals) value of `T` or `nil`
 - `[T]` - list with values of type `T`
 - `#{K: V}` - map with keys of type `K` and values of type `V`
-- `A | B` - union type; value of either `A` or `B`
+- `A | B` - [union](#unions) type; value of either `A` or `B`
 - [`func (A, B, ...) -> T`](#functions) - function or lambda with params of type `A`, `B`, ..., and return value `T`
-- `Nothing` - return type of functions that don't return anything. Only valid in function return types.
-- [`(A, B, ...)`](#tuples) - tuple with values of type `A`, `B`, ...
+- `Nothing` - return type of functions that don't return anything. Only valid in function return types and not as a value.
+- [`(A, B, ...)`](#tuples) - tuple with values of type `A`, `B`. Tuples can contain any amount of items (including zero)
 
 ## User-Created Types
 
@@ -26,11 +26,17 @@ type Person {
 }
 ```
 
-Here, `Person` is a struct type with two fields, `name`, and `age`. A struct can be created using an initializer:
+Here, `Person` is a struct type with two fields, `name`, and `age`.
+
+#### Initializers
+
+A struct can be created using an initializer:
 
 ```klar
 person := Person("John", 32)
-// With explicit keys: Person(name: "John", age: "32")
+
+// With explicit keys
+Person(name: "John", age: "32")
 ```
 
 This uses a default initializer found on all struct types. Explicit keys are optional, but following the rules of labelled parameters in functions.
@@ -43,17 +49,18 @@ Person(name: "John", age: 32)
 Person(age: 32, name: "John")
 Person("John", age: 32)
 ```
-All unlabelled parameters must be in order, but labelled parameters can be in any order.
 
-All fields that don't have default values or optional types must be present in the initializer.
-Though they cannot be skipped when parameters are unlabelled, they can be skipped if they are the
-last parameters.
+All unlabelled parameters must be in order, but labelled parameters can be in any order. All fields that don't have default values or optional types must be present in the initializer. With unlabelled parameters, fields
+with default values or optional types must be provided if they precede required fields. If they are the
+last fields, they can be skipped.
 
 #### Private Fields
 
-Fields and methods starting with an underscore `_` cannot be referred to from outside modules.
+Fields and methods starting with an underscore `_` cannot be referred to from outside modules. All other
+fields are public.
 
 #### Optional Fields
+
 ```klar
 type Person {
     name: String
@@ -62,6 +69,7 @@ type Person {
 ```
 
 If a field has an optional type, it may be omitted in its initializer.
+
 ```klar
 john := Person("John")
 ```
@@ -79,7 +87,6 @@ type Person {
 
 jane := Person("Jane", 31)
 ```
-
 
 A default value may reference a struct field via the `self` object. A default value may not contain a function call, though they may contain initializers for other types.
 
@@ -121,7 +128,9 @@ func Person.foo() { self.greeting = func {...} } // Error
 ```
 
 #### Casting Structs
+
 Suppose we have two structs with a common field:
+
 ```klar
 type A {
     x: Int
@@ -134,6 +143,7 @@ type B {
 ```
 
 Klar allows casting `B` to `A` via a default initializer.
+
 ```klar
 b := B(1, 2)
 a := A(b)
@@ -141,6 +151,36 @@ a := A(b)
 
 Because `A` lacks one of `B`'s fields, type `A` cannot be cast to `B`. However, f `B.y` was
 an optional `Int?` or had a default value, casting from `A` would be allowed.
+
+### Interfaces
+
+```klar
+type #Readable {
+    read(n: Int?) -> Result<String>
+    offset: Int
+}
+```
+
+Interfaces are similar to [union types](#unions), but explicitly define common fields and methods.
+
+Interface method definitions are allowed to use the `Nothing` type in a union for return types:
+
+```klar
+type #Writable {
+    write(String) -> Result<Int> | Nothing
+}
+```
+
+```klar
+writer: Writable := myWritable
+
+when writer.write("Hello, World!") {
+    Nothing -> {...}
+    Error -> {...}
+    Int as n -> { print("Bytes written: {n}") }
+}
+
+```
 
 ### Tags
 
@@ -155,7 +195,9 @@ type MyStruct: MyTag {
     ...
 }
 ```
+
 Now, `MyStruct` is assignable to `MyTag`:
+
 ```klar
 obj: MyTag := MyStruct(...)
 ```
@@ -214,10 +256,6 @@ Modifiers can be applied to top-level declarations. If more than one are provide
 ### `public`
 
 When applied to a declaration, the declaration will be accessible and importable by outside modules.
-
-### `opaque`
-
-Allowed on struct and interface type declarations only. For structs, this modifier restricts the type from being initialized from outside the current module. Fields can be accessed, but not set. For interfaces, it declares an interface that can only be implemented by types in the current module.
 
 ## Tuples
 
@@ -293,7 +331,7 @@ Rest destructuring is allowed, with the following restrictions:
 
 ## Functions
 
-### Labelled parameters
+### Labelled Parameters
 
 A labelled parameter is declared with another name before the name of the parameter/variable used internally.
 
@@ -363,8 +401,36 @@ when maybeInt {
 }
 ```
 
+## Unions
+
+```klar
+type A { x, y: Int }
+type B { x: Int }
+
+type Union = A | B
+```
+
+A union type can be two or more types. They may only access common fields, methods, and operations. In the example above, `Union` can access field `x: Int` because all types in the union have the common field.
+
+## Results
+
+`Result<T, E>` is a union between `T` and error type `E`.
+
 ## Assertions
 
 The assert operator (`!!`) may be used with `Result` and [optional](#optionals) values to crash the program if the value is an error or `nil` respectively.
 
 Assertions should be used carefully, especially in production. It is more useful to show a better error message to the user or handle the special case. Klar has options for the typechecker to restrict the use of assertions to avoid hidden program crashes.
+
+## Operators
+
+|         Name          |                Operator                 |                        Types                        |
+| :-------------------: | :-------------------------------------: | :-------------------------------------------------: |
+|       Addition        |                   `+`                   |         `Int`, `Float`, `String`, map, list         |
+|      Arithmetic       | `-` (infix/postfix), `*`, `/`, `^`, `%` |                   `Int`, `Float`                    |
+| String multiplication |                   `*`                   |            `String * Int` (exact order)             |
+|       Assertion       |                  `!!`                   |                 `Result`, optional                  |
+|          Try          |                  `try`                  |                      `Result`                       |
+|          In           |               `in`, `!in`               |             `K in #{K, V}`, `T in [T]`              |
+|         Range         |          `...` (infix), `..<`           | `Int`, `Float`, `String` (single A-Z/0-9 character) |
+|         Rest          |             `...` (postfix)             |                      list, map                      |
