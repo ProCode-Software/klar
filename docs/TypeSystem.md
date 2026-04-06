@@ -378,6 +378,58 @@ greet("John") // formal = false
 greet("John", formally: false) // Same as above
 ```
 
+### Variadic Parameters
+
+### Function Overloads
+Functions may have more than one set of parameters, as long as they return the same parameter types.
+
+<!-- TODO: Should we allow Results of the same type? -->
+
+```klar
+func greet(person: Person) -> String
+func greet(name: String) -> String
+
+greet("John")
+greet(Person("Jane", 31))
+```
+
+To avoid ambiguity, there are some restrictions for overloads with closely related parameters:
+
+1. Variadic vs. positional params of compatible types
+```klar
+func String(charCodes: ...Int)
+func String(charCode: Int)
+
+String(67) // Which overload is this referring to?
+``` 
+
+2. Unions
+```klar
+func sum(n1, n2: Int) -> Float
+func sum(n1, n2: Int | Float) -> Float
+
+sum(2.0) // Overload #2
+sum(2) // Which overload?
+```
+
+3. Optionals
+```klar
+func sum(n1, n2: Int) -> Int
+func sum(n1, n2: Int?) -> Int
+
+sum(nil, nil) // Overload #2
+sum(5, 8) // Which overload?
+```
+
+4. Overloads with exact or compatible parameters
+```klar
+type #Readable {}
+type File: Readable {}
+
+func readAmount(reader: Readable, n: Int) -> Result<String>
+func readAmount(reader: File, n: Int) -> Result<String>
+```
+
 ## Optionals
 
 An optional is composed of an underlying type, but its value could be `nil`. For safety, optionals cannot be indexed and their underlying values cannot be used, without unwrapping the optional.
