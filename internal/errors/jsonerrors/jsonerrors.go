@@ -11,7 +11,7 @@ import (
 )
 
 // WriteTo writes the build result and error information to w in JSON format.
-func WriteTo(w io.Writer, res *build.BuildResult, fatalErr error, isMaxErrors bool) error {
+func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) error {
 	// TODO: add error params
 	format := struct {
 		ElapsedTime   time.Duration `json:"elapsedTime,format:units"`

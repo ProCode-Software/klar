@@ -11,5 +11,6 @@
         "request": "launch",
         "showGlobalVariables": true,
         "args": ["build", "./samples/mylang"],
+        "mode": "debug",
     },
 ]

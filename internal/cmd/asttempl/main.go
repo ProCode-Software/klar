@@ -35,7 +35,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to format file %s: %v", outputs[i], err)
 		}
-		if err := os.WriteFile(outputs[i], formatted, 0644); err != nil {
+		if err := os.WriteFile(outputs[i], formatted, 0o644); err != nil {
 			log.Fatalf("failed to write file %s: %v", outputs[i], err)
 		}
 	}

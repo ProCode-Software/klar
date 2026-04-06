@@ -28,4 +28,3 @@ type Expression interface {
 	Node
 	expr()
 }
-

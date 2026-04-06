@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	nodeIface               *types.Interface
-	statementIface          *types.Interface
-	expressionIface         *types.Interface
-	assignableIface         *types.Interface
-	typeIface               *types.Interface
-	typeDeclarationIface    *types.Interface
+	nodeIface                *types.Interface
+	statementIface           *types.Interface
+	expressionIface          *types.Interface
+	assignableIface          *types.Interface
+	typeIface                *types.Interface
+	typeDeclarationIface     *types.Interface
 	modifierDeclarationIface *types.Interface
 	destructureIface         *types.Interface
 )
