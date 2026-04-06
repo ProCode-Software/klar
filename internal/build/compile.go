@@ -10,10 +10,10 @@ import (
 // Compilation stops after exceeding this number of errors.
 const MaxErrors = 10
 
-type BuildResult struct {
+type Result struct {
 	Errors []errors.CompileError
 	// Time from [Compiler.StartTime] to finish time.
-	Elapsed time.Duration
+	Elapsed time.Duration `json:"elapsedTime,format:units"`
 	Modules []*Module
 }
 
@@ -29,9 +29,9 @@ type processContext struct {
 
 // Compile compiles c's Inputs, returing the result and any critical error
 // that occurred. err == nil does not mean the build was successful; syntax
-// and typecheck errors are stored in [*BuildResult.Errors]
-func (c *Compiler) Compile() (res *BuildResult, err error) {
-	res = &BuildResult{}
+// and typecheck errors are stored in [*Result.Errors]
+func (c *Compiler) Compile() (res *Result, err error) {
+	res = &Result{}
 	defer func() {
 		res.Elapsed = time.Since(c.StartTime)
 		res.Modules = c.Modules

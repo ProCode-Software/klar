@@ -103,3 +103,8 @@ func PrintInterfaceErr(err *InterfaceError) {
 	main, detail := err.PrettyError()
 	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
+
+func IsMaxErrors(err error) bool {
+	ie, ok := err.(*InterfaceError)
+	return ok && ie.Code == ErrTooManyErrors
+}
