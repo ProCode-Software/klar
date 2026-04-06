@@ -7,6 +7,7 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 ## Goals
 
+- ⏩ **Progressive.** Unafraid to redesign features from other languages.
 - 👓 **Clear.** What you read is what it does.
 - 🛡️ **Safe.** All errors must be handled. Type-safe. No null exceptions.
 - 🔮 **Modern.** Klar is a language designed from scratch, without the C nonsense.
