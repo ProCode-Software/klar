@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -93,14 +94,23 @@ func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32)
 func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
 	var b strings.Builder
 	msgParts := strings.SplitAfterN(e.GetMessage(), ": ", 2)
-	b.WriteString(ansi.Color(hlc, e.GetName()))
-	b.WriteString(ansi.Color(ansi.CodeBoldDim, ": "))
-	b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
+	if r.UseColor {
+		b.WriteString(ansi.Color(hlc, e.GetName()))
+		b.WriteString(ansi.Color(ansi.CodeBoldDim, ": "))
+		b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
+	} else {
+		fmt.Fprintf(&b, "%s: %s", e.GetName(), msgParts[0])
+	}
 	if len(msgParts) > 1 {
 		b.WriteString(msgParts[1])
 	}
 	if e.GetCode() != 0 {
-		b.WriteString(ansi.Dim(" (" + e.GetCode().Format() + ")"))
+		code := " (" + e.GetCode().Format() + ")"
+		if r.UseColor {
+			b.WriteString(ansi.Dim(code))
+		} else {
+			b.WriteString(code)
+		}
 	}
 	cli.Wrap(b.String(), r.buf, Width, 0, 2)
 }
@@ -115,11 +125,15 @@ func (r *Reporter) printHeader(file string, rang ranges.Range, digitWidth int) {
 	if rel == "" {
 		rel = file
 	}
+	var dim string
+	if r.UseColor {
+		dim = ansi.CodeDim
+	}
 	r.appendString(rel, r.ColorPalette.FileName)
 	if pos := rang.Start; pos.Line > 0 {
-		r.appendRune(':', ansi.CodeDim)
+		r.appendRune(':', dim)
 		r.appendNumber(pos.Line, r.ColorPalette.FilePos)
-		r.appendRune(':', ansi.CodeDim)
+		r.appendRune(':', dim)
 		r.appendNumber(pos.Col, r.ColorPalette.FilePos)
 	}
 	r.newline()
@@ -130,7 +144,11 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	const detailMargin = 2
 	// Title
 	r.appendSpace(detailMargin)
-	r.appendString(det.Message, ansi.CodeBold) // Should we use bold? Yellow?
+	var textColor string
+	if r.UseColor {
+		textColor = ansi.CodeBold
+	}
+	r.appendString(det.Message, textColor) // TODO: Should we use bold? Yellow?
 	r.newline()
 
 	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
@@ -154,7 +172,11 @@ const hintMargin = 4
 // printHint prints a hint message and an optional diff.
 func (r *Reporter) printHint(hint errors.Hint, file string) {
 	r.appendString("Hint", r.ColorPalette.HintColor)
-	r.appendString(": ", ansi.CodeDim)
+	if r.UseColor {
+		r.appendString(": ", ansi.CodeDim)
+	} else {
+		r.buf.WriteString(": ")
+	}
 
 	cli.Wrap(hint.Message, r.buf, Width, Width-len("Hint: "), 2)
 	r.newline()
