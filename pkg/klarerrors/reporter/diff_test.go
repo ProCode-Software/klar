@@ -1,5 +1,3 @@
 package reporter
 
-var diffTestCases = []reporterTestCase{
-	
-}
+var diffTestCases = []reporterTestCase{}

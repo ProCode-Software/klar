@@ -9,25 +9,36 @@ import (
 )
 
 // printUnderlines prints the underlines for the single-line highlights, as well
-// as the label for the righmost highlight. pipeLen is the number of spaces
-// to add in order to account for the pipes of the multiline highlights.
+// as the label for overflowing highlights and the rightmost highlight. pipeLen
+// is the number of spaces to add in order to account for the pipes of the multiline highlights.
 func (r *Reporter) printUnderlines(s *state, pipeLen int,
-	highlights []errors.Highlight, printLineStart func(),
-) {
+	highlights []errors.Highlight, printLineStart func(rem []errors.Highlight),
+) (remHls []errors.Highlight) {
 	var lastCol uint32 = 1
 	for i, hl := range highlights {
 		rang := hl.Range
-		ulLen := int(rang.LineLength())
-		r.padding(lastCol, rang.Start.Col)
-		if ulLen <= 1 {
+		if rang.Start.Col >= lastCol {
+			r.padding(lastCol, rang.Start.Col)
+		} else {
+			// We need to underline on a new line
+			r.newline()
+			printLineStart(remHls)
+			r.padding(1, rang.Start.Col)
+		}
+
+		shouldPrintLabel := i == len(highlights)-1 ||
+			rang.End.Col > highlights[i+1].Range.Start.Col
+
+		if ulLen := int(rang.LineLength()); ulLen <= 1 {
 			// Use '^'
 			r.appendRune(r.CharacterSet.HighlightSingle, s.hlColors[hl])
 		} else {
 			// Draw an underline with a stem
 			stemOffset := getStemOffset(ulLen)
 			stemChar := r.CharacterSet.ArrowT
-			// Don't draw a stem for the rightmost highlight
-			if i == len(highlights)-1 {
+			// Don't draw a stem for the rightmost highlight or if the next
+			// highlight must start on a new line
+			if shouldPrintLabel {
 				stemChar = r.CharacterSet.HighlightMulti
 			}
 			r.appendf(s.hlColors[hl], "%s%c%s",
@@ -36,15 +47,21 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 				char.RepeatRune(r.CharacterSet.HighlightMulti, ulLen-stemOffset-1),
 			)
 		}
+
+		// Print the label for the rightmost highlight or if the next
+		// highlight can't fit on this line
+		if shouldPrintLabel {
+			// Number of spaces to add after the line number
+			startCol := pipeLen + int(hl.Range.Start.Col-1)
+			r.printLabel(hl.Message, s.hlColors[hl],
+				startCol, int(hl.Range.LineLength()), func() { printLineStart(remHls) },
+			)
+		} else {
+			remHls = append(remHls, hl)
+		}
 		lastCol = rang.End.Col
 	}
-	// Print the label for the rightmost highlight
-	hl := highlights[len(highlights)-1]
-	// Number of spaces to add after the line number
-	startCol := pipeLen + int(hl.Range.Start.Col-1)
-	r.printLabel(hl.Message, s.hlColors[hl],
-		startCol, int(hl.Range.LineLength()), printLineStart,
-	)
+	return remHls
 }
 
 // printArrows prints the arrows for the single-line highlights.
