@@ -6,12 +6,12 @@ import (
 	"io"
 	"log"
 
-	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
+	"github.com/ProCode-Software/klar/internal/run"
 	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/ergochat/readline"
 	"github.com/sanity-io/litter"

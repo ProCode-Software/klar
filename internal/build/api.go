@@ -5,6 +5,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
@@ -17,7 +19,7 @@ import (
 func NewCompiler(mode BuildMode) (*Compiler, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, &FilesystemError{"get", "working directory", err}
+		cwd, err = "", &FilesystemError{"get", "working directory", err}
 	}
 	return &Compiler{
 		Mode:    mode,
@@ -27,9 +29,10 @@ func NewCompiler(mode BuildMode) (*Compiler, error) {
 			Output:       os.Stderr,
 			ColorPalette: reporter.DefaultColorPalette(),
 			CharacterSet: reporter.DefaultCharacterSet(),
+			UseColor:     true,
 		},
 		Logger: slog.New(slog.DiscardHandler),
-	}, nil
+	}, err
 }
 
 // PrintError prints an error to the error printer.
@@ -142,4 +145,14 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 			Errors:  pa.Errors,
 		}, nil
 	}
+}
+
+func CompileString(s, fileName string) (c *Compiler, res *Result, err error) {
+	c, _ = NewCompiler(ModeBuild)
+	c.Parser = NewStaticParser(fileName, &StaticParserFile{Reader: strings.NewReader(s)})
+	c.AddInputs(Input{Kind: KindFile, Name: fileName, Path: fileName})
+
+	c.StartTime = time.Now()
+	res, err = c.Compile()
+	return
 }

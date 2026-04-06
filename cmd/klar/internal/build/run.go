@@ -155,15 +155,14 @@ func Build(r *command.Runner) {
 // printErrors prints the "Build failed" message to standard error with the
 // compile errors from res. isMaxErrors is whether compilation stopped early
 // due to too many errors. Errors are printed using b's errorPrinter.
-func printErrors(res *build.BuildResult, b *build.Compiler, jsonOutput bool, err error) {
+func printErrors(res *build.Result, b *build.Compiler, jsonOutput bool, err error) {
 	errs := res.Errors
 	// Format error count
 	var count strings.Builder
 	count.WriteString(strconv.Itoa(len(errs)))
 	// Check to see if there were too many errors
-	var isMaxErrors bool
-	if err, ok := err.(*build.InterfaceError); ok && err.Code == build.ErrTooManyErrors {
-		isMaxErrors = true
+	isMaxErrors := build.IsMaxErrors(err)
+	if isMaxErrors {
 		count.WriteByte('+')
 	}
 	count.WriteString(" error")
@@ -187,7 +186,7 @@ func printErrors(res *build.BuildResult, b *build.Compiler, jsonOutput bool, err
 	}
 }
 
-func printJSONErrors(res *build.BuildResult, err error, isMaxErrors bool) {
+func printJSONErrors(res *build.Result, err error, isMaxErrors bool) {
 	if err := jsonerrors.WriteTo(os.Stdout, res, err, isMaxErrors); err != nil {
 		cli.Error("Failed to write JSON errors: ", err)
 	}
