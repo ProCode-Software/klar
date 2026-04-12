@@ -28,32 +28,6 @@ type Person {
 
 Here, `Person` is a struct type with two fields, `name`, and `age`.
 
-#### Initializers
-
-A struct can be created using an initializer:
-
-```klar
-person := Person("John", 32)
-
-// With explicit keys
-Person(name: "John", age: "32")
-```
-
-This uses a default initializer found on all struct types. Explicit keys are optional, but following the rules of labelled parameters in functions.
-
-These are all valid:
-
-```klar
-Person("John", 32)
-Person(name: "John", age: 32)
-Person(age: 32, name: "John")
-Person("John", age: 32)
-```
-
-All unlabelled parameters must be in order, but labelled parameters can be in any order. All fields that don't have default values or optional types must be present in the initializer. With unlabelled parameters, fields
-with default values or optional types must be provided if they precede required fields. If they are the
-last fields, they can be skipped.
-
 #### Private Fields
 
 Fields and methods starting with an underscore `_` cannot be referred to from outside modules. All other
@@ -121,7 +95,7 @@ type Person {
 }
 ```
 
-Fields can't be mutated by name
+Methods can't be mutated:
 
 ```klar
 func Person.foo() { self.greeting = func {...} } // Error
@@ -259,9 +233,18 @@ When applied to a declaration, the declaration will be accessible and importable
 
 ## Tuples
 
+A tuple groups two or more values of any type into a single value. The length of the tuple and the types for each item are annotated with a tuple.
+
+```klar
+(1, 2, "hello") // Inferred as (Int, Int, String)
+x: (Int, Bool) := (2, true)
+type RGB = (r, g, b: Int)
+color: RGB := (255, 42, 30)
+```
+
 ### Spreading Tuples
 
-A tuple can spread unlabelled parameters into a function call if the items in each have the same types.
+A tuple can spread unlabelled parameters into a function call if the items in each have corresponding types.
 
 ```klar
 type MyTuple = (Int, Int)
@@ -272,6 +255,13 @@ volume(tuple..., 6)
 ```
 
 None of the function parameters may be labelled where the tuple is being spread.
+
+A tuple may also be spread into lists or variadic functions:
+
+```klar
+_ = [(1, 2, 3)...]
+_: [Int | String] = [(1, "hello", 2, "world")...]
+```
 
 ### Indexing Tuples
 
@@ -331,15 +321,50 @@ Rest destructuring is allowed, with the following restrictions:
 
 ## Functions
 
+Functions may take parameters to execute statements and/or return values.
+
+A function may have zero or more parameters. Each parameter must have an explicit type annotation.
+
+Statements may be executed with the context of parameters. A function may return a value using `return` statements. The return type of a function must be explicitly labelled after `->`, unless the function returns `Nothing`.
+
+```klar
+func add(n1: Int, n2: Int) -> Int {
+    return n1 + n2
+}
+```
+
+If multiple parameters in a row have the same type, you may provide the type only after the last parameter.
+
+```klar
+func add(n1, n2: Int) -> Int
+```
+
+Or, if a function only returns an expression, that can be provided after `=`. If `=` is used for the function body, an explicit return type is not required. The expression is allowed to return `Nothing`.
+
+```klar
+func add(n1, n2: Int) = n1 + n2
+```
+
+Function parameter and return types always stay the same, however, they may be set to a union.
+
+All functions must have bodies, either using `=` or in curly braces, unless the function is annotated as [external]().
+
+Functions with generics or parameters that are labelled or have defaults cannot be type-annotated.
+
+### Nothing
+The `Nothing` type indicates that the function doesn't return any value. `return` statements don't have expressions after them or are not present in the function body.
+
+The `Nothing` type cannot be used in any union type (except in interface method return types).
+
 ### Labelled Parameters
 
 A labelled parameter is declared with another name before the name of the parameter/variable used internally.
 
 ```klar
-func String.replace(substring: String, with replacement: String) -> String
+func String.replace(substr: String, with rep: String) -> String
 ```
 
-The second parameter requires the label `with`, and `replacement` is the name of the variable used by the function. It would be called like:
+The second parameter requires the label `with`, and `rep` is the name of the variable used by the function. It would be called like:
 
 ```klar
 "Hello, World!".replace("World", with: "John")
@@ -356,8 +381,8 @@ replace := "Hello, World!".replace
 The `replace` variable must wrap the function:
 
 ```klar
-replace := func(substring, replacement: String)
-    -> "Hello, World!".replace(substring, with: replacement)
+replace := func(old, new: String)
+    -> "Hello, World!".replace(old, with: new)
 ```
 
 ### Optional Parameters
@@ -374,11 +399,33 @@ And:
 
 ```klar
 func greet(person: Bool, formally formal: Bool = false)
+
 greet("John") // formal = false
 greet("John", formally: false) // Same as above
 ```
 
 ### Variadic Parameters
+Variadic parameters are syntax sugar for lists. A variadic parameter has the list type, but its items can be provided outside a list literal.
+Only the last parameter or a labelled parameter can be variadic. Zero or more items may be passed to a variadic parameter.
+
+```klar
+func print(items: ...Any)
+
+print(1, 2, 3)
+print([1, 2, 3]...)
+print()
+```
+
+### Parameters with Default Values
+
+### Generics
+Functions may declare generics, which are type parameters. One or more generics can be defined in angle brackets, and used in parameter types and the return type.
+
+```klar
+func first<T>(of list: [T]) -> T
+```
+
+All generics are inferred, along with comparible operations. Each declared generic must be used in function parameters.
 
 ### Function Overloads
 Functions may have more than one set of parameters, as long as they return the same parameter types.
@@ -429,6 +476,60 @@ type File: Readable {}
 func readAmount(reader: Readable, n: Int) -> Result<String>
 func readAmount(reader: File, n: Int) -> Result<String>
 ```
+
+## Initializers and Type Casts
+
+### Struct Initializers
+A struct can be created using an initializer:
+
+```klar
+person := Person("John", 32)
+
+// With explicit keys
+Person(name: "John", age: "32")
+```
+
+This uses a default initializer found on all struct types. Explicit keys are optional, but following the rules of labelled parameters in functions.
+
+These are all valid:
+
+```klar
+Person("John", 32)
+Person(name: "John", age: 32)
+Person(age: 32, name: "John")
+Person("John", age: 32)
+```
+
+All unlabelled parameters must be in order, but labelled parameters can be in any order. All fields that don't have default values or optional types must be present in the initializer. With unlabelled parameters, fields
+with default values or optional types must be provided if they precede required fields. If they are the
+last fields, they can be skipped.
+
+#### Inferred Initializers
+Similar to [enums], if the expected type is known (a concrete type), the type's name can be substituted with a dot.
+
+```klar
+person: Person := .("John", 32)
+```
+
+### Cast Initializers
+Type casts are initializers that take a single, unlabelled value to convert it to the target type.
+
+All structs can be initialized using a type cast that takes a compatible value:
+
+```klar
+type A { x, y: Int }
+type B { x: Int }
+
+a := A(1, 2)
+b := B(a)
+```
+
+
+
+### Primitive Initializers
+
+
+### Custom Initializers
 
 ## Optionals
 
