@@ -479,6 +479,11 @@ func readAmount(reader: File, n: Int) -> Result<String>
 
 ## Initializers and Type Casts
 
+An initializer takes zero or more parameters and returns a new instance of a given type.
+
+
+[Type casts]() are initializers that take a single, unlabelled value to convert it to the target type.
+
 ### Struct Initializers
 A struct can be created using an initializer:
 
@@ -505,14 +510,13 @@ with default values or optional types must be provided if they precede required 
 last fields, they can be skipped.
 
 #### Inferred Initializers
-Similar to [enums], if the expected type is known (a concrete type), the type's name can be substituted with a dot.
+Similar to [enums](), if the expected type is known (a concrete type), the type's name can be substituted with a dot.
 
 ```klar
 person: Person := .("John", 32)
 ```
 
 ### Cast Initializers
-Type casts are initializers that take a single, unlabelled value to convert it to the target type.
 
 All structs can be initialized using a type cast that takes a compatible value:
 
@@ -527,7 +531,15 @@ b := B(a)
 
 
 ### Primitive Initializers
+Primitive, list, and map types have initializers and cast functions available. Some return `Result`.
 
+```klar
+try Int("24")
+try Int("c0ffee", base: 16)
+String(2.68)
+[Any]([1, 2, 3])
+#{String: Int}()
+```
 
 ### Custom Initializers
 
