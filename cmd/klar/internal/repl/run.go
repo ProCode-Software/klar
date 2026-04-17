@@ -178,6 +178,7 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 		if s.multiline = !s.multiline; s.multiline {
 			fmt.Fprintln(s.Stdout(), multilineEnabledMsg)
 		} else {
+			s.line = 0
 			fmt.Fprintln(s.Stdout(), multilineDisabledMsg)
 			s.sendMultiline()
 		}

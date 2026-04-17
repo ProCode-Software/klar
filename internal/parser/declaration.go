@@ -36,7 +36,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		}
 	}()
 	// Enum value type
-	maybeParseArrow := func() {
+	tryParseArrow := func() {
 		if p.CurrKind() == lexer.Arrow {
 			arrow = p.Advance()
 			valType = p.ParseType(DefaultTypeBindingPower)
@@ -58,7 +58,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			// Inherited struct, interface, or enum
 			inherited = p.parseInheritedTypes()
 		}
-		maybeParseArrow()
+		tryParseArrow()
 		fallthrough
 	case lexer.LeftCurlyBrace:
 		// Struct, enum, or interface
@@ -74,7 +74,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 				InheritedTypes: inherited,
 			}
 		}
-		attrs := p.maybeParseAttributes()
+		attrs := p.tryParseAttributes()
 		if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
 			isEnum = true
 			return p.ParseEnum(name, nil, inherited, valType, attrs)
@@ -91,12 +91,12 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		if p.CurrKind() == lexer.Colon {
 			inherited = p.parseInheritedTypes()
 		}
-		maybeParseArrow()
+		tryParseArrow()
 		p.Expect(lexer.LeftCurlyBrace)
 		if isIntf {
 			res = p.ParseInterface(name, inherited)
 		} else {
-			attrs := p.maybeParseAttributes()
+			attrs := p.tryParseAttributes()
 			if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
 				isEnum = true
 				return p.ParseEnum(name, generics, inherited, valType, attrs)
@@ -151,7 +151,7 @@ func (p *Parser) ParseEnum(
 		itemMap = make(map[string]struct{})
 	)
 	for p.WhileNot(lexer.RightCurlyBrace) {
-		if a := p.maybeParseAttributes(); len(a) > 0 {
+		if a := p.tryParseAttributes(); len(a) > 0 {
 			attrs = a
 		}
 		p.ExpectNoAdvance(lexer.Dot)
@@ -201,7 +201,7 @@ func (p *Parser) ParseEnum(
 	}
 }
 
-func (p *Parser) maybeParseAttributes() (attrs []*ast.Attribute) {
+func (p *Parser) tryParseAttributes() (attrs []*ast.Attribute) {
 	for p.HasTokens() && p.CurrKind() == lexer.At {
 		attrs = append(attrs, p.ParseAttribute())
 		if curr := p.CurrKind(); curr == lexer.Newline {
@@ -220,7 +220,7 @@ func (p *Parser) ParseStruct(
 	str := &ast.StructDeclaration{Identifier: typeName, InheritedTypes: inherited}
 
 	parseSeries(p, &str.Fields, func() *ast.StructField {
-		if a := p.maybeParseAttributes(); a != nil {
+		if a := p.tryParseAttributes(); a != nil {
 			attrs = a
 		}
 		f := &ast.StructField{Attributes: attrs}
@@ -325,7 +325,10 @@ func (p *Parser) ParseInterface(
 	intf := &ast.InterfaceDeclaration{Identifier: typeName, InheritedTypes: inherited}
 
 	parseSeries(p, &intf.Items, func() *ast.InterfaceItem {
-		f := &ast.InterfaceItem{Attributes: p.maybeParseAttributes()}
+		f := &ast.InterfaceItem{
+			Attributes: p.tryParseAttributes(),
+			TypePair:   &ast.TypePair{},
+		}
 		// Names
 		parseSeries(p, &f.Keys, func() ast.Identifier {
 			name := p.ParseMapIdentifier(0)

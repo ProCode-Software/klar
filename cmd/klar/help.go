@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"math/rand"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -12,7 +13,7 @@ func ShowHelp(w io.Writer, full bool) {
 	hb := NewHelpBuilder(w)
 
 	hb.ShortTitleNoNewline(ansi.BoldBrightWhite("Klar"))
-	hb.Print("A simple, modern, and clean programming language ",
+	hb.Print(randomDescriptions[rand.Intn(len(randomDescriptions))], " ",
 		ansi.Gray("v"+cli.KlarVersion), "\n")
 
 	klar := ansi.BoldGreen("klar ")
@@ -107,7 +108,7 @@ func (hb *HelpBuilder) Command(name, desc string) {
 	hb.TW.WriteCells(hb.Color(name), desc)
 }
 
-// Print writes to the output [io.Writer]. Spaces are added between arguments.
+// Print writes to the output [io.Writer].
 func (hb *HelpBuilder) Print(s ...any) {
 	fmt.Fprint(hb.TW.Output, s...)
 }
@@ -120,3 +121,9 @@ func (hb *HelpBuilder) Flush() {
 }
 
 const helpTemplate = ``
+
+var randomDescriptions = []string{
+	"A simple, modern, and clean programming language",
+	"The progressive programming language",
+	"Not another C-based programming language",
+}
