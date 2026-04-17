@@ -1,6 +1,33 @@
 # Klar Type System
 
-## Builtin Types
+## About the Klar Type System
+
+Klar's type system is strongly-typed and statically-typed. All types are known at compile-time. For increased developer experience, Klar's type system also includes:
+
+- A type system based on type structure and compatibility
+- Types for variables can be inferenced
+- Generics functions
+
+## Glossary
+
+1. **Compatible type** - Compatibility can be either one-way or two-way.
+   - **One-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted. This may not mean that _type `B` is compatible with `A`_.
+
+   ```klar
+   x: B := A()
+   y: A := B() // May not be true
+   ```
+
+   - **Two-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted, AND vice versa.
+
+   ```klar
+   x: B := A()
+   y: A := B() // True
+   ```
+
+2. **Concrete type** - A type whose structure is fully known at compile-time, and can be directly initialized. Primitives such as `Int`, `String`, `Error`, and lists, maps, structs, functions, and enums are concrete types. `Result`s, unions, optionals, tags, and interfaces aren't concrete types.
+
+## Builtin Types & Primitives
 
 - `String` - array of characters
 - `Int` - signed 64-bit integer
@@ -135,7 +162,7 @@ type #Readable {
 }
 ```
 
-Interfaces are similar to [union types](#unions), but explicitly define common fields and methods.
+Interfaces are similar to [union types](#unions), but explicitly define common fields and methods. A type with fields and methods compatible with ALL fields in an interface is an *implementation* of that interface.
 
 Interface method definitions are allowed to use the `Nothing` type in a union for return types:
 
@@ -352,6 +379,7 @@ All functions must have bodies, either using `=` or in curly braces, unless the 
 Functions with generics or parameters that are labelled or have defaults cannot be type-annotated.
 
 ### Nothing
+
 The `Nothing` type indicates that the function doesn't return any value. `return` statements don't have expressions after them or are not present in the function body.
 
 The `Nothing` type cannot be used in any union type (except in interface method return types).
@@ -405,6 +433,7 @@ greet("John", formally: false) // Same as above
 ```
 
 ### Variadic Parameters
+
 Variadic parameters are syntax sugar for lists. A variadic parameter has the list type, but its items can be provided outside a list literal.
 Only the last parameter or a labelled parameter can be variadic. Zero or more items may be passed to a variadic parameter.
 
@@ -419,6 +448,7 @@ print()
 ### Parameters with Default Values
 
 ### Generics
+
 Functions may declare generics, which are type parameters. One or more generics can be defined in angle brackets, and used in parameter types and the return type.
 
 ```klar
@@ -428,6 +458,7 @@ func first<T>(of list: [T]) -> T
 All generics are inferred, along with comparible operations. Each declared generic must be used in function parameters.
 
 ### Function Overloads
+
 Functions may have more than one set of parameters, as long as they return the same parameter types.
 
 <!-- TODO: Should we allow Results of the same type? -->
@@ -443,14 +474,16 @@ greet(Person("Jane", 31))
 To avoid ambiguity, there are some restrictions for overloads with closely related parameters:
 
 1. Variadic vs. positional params of compatible types
+
 ```klar
 func String(charCodes: ...Int)
 func String(charCode: Int)
 
 String(67) // Which overload is this referring to?
-``` 
+```
 
 2. Unions
+
 ```klar
 func sum(n1, n2: Int) -> Float
 func sum(n1, n2: Int | Float) -> Float
@@ -460,6 +493,7 @@ sum(2) // Which overload?
 ```
 
 3. Optionals
+
 ```klar
 func sum(n1, n2: Int) -> Int
 func sum(n1, n2: Int?) -> Int
@@ -469,6 +503,7 @@ sum(5, 8) // Which overload?
 ```
 
 4. Overloads with exact or compatible parameters
+
 ```klar
 type #Readable {}
 type File: Readable {}
@@ -481,10 +516,10 @@ func readAmount(reader: File, n: Int) -> Result<String>
 
 An initializer takes zero or more parameters and returns a new instance of a given type.
 
-
 [Type casts]() are initializers that take a single, unlabelled value to convert it to the target type.
 
 ### Struct Initializers
+
 A struct can be created using an initializer:
 
 ```klar
@@ -510,6 +545,7 @@ with default values or optional types must be provided if they precede required 
 last fields, they can be skipped.
 
 #### Inferred Initializers
+
 Similar to [enums](), if the expected type is known (a concrete type), the type's name can be substituted with a dot.
 
 ```klar
@@ -528,9 +564,8 @@ a := A(1, 2)
 b := B(a)
 ```
 
-
-
 ### Primitive Initializers
+
 Primitive, list, and map types have initializers and cast functions available. Some return `Result`.
 
 ```klar
