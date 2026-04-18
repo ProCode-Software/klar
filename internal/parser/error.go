@@ -70,3 +70,20 @@ func (p *Parser) skipUntilBoundary() {
 		p.Advance()
 	}
 }
+
+func mismatchedLabelFormat(err *errors.ParseError,
+	prevIsTypeOnly bool, prevRange ranges.Range,
+) {
+	var msg string
+	if prevIsTypeOnly {
+		err.Label = "This parameter shouldn't have a label"
+		msg = "This parameter already only has a type"
+	} else {
+		err.Label = "This parameter should have a label"
+		msg = "This parameter already has a label"
+	}
+	err.Highlights = append(err.Highlights, errors.Highlight{
+		Range:   prevRange,
+		Message: msg,
+	})
+}

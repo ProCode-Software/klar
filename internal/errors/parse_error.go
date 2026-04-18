@@ -94,7 +94,6 @@ const (
 	ErrParenAroundLambdaDefault   // Default value for param is not in parentheses
 	ErrChainedNotEqual            // Can't use '!=' operator in chained comparison
 	ErrMultiDirectionCompareChain // Inconsistent direction of operators in chain: e.g. < and >
-	ErrInequalityWithEqualChain   // Use of ==/!= with >/< in comparison chain
 	ErrStepInListSlice            // Step not allowed in list slice
 	ErrExpectedInterpolationEnd   // Expected end of string/regex interpolation
 	ErrInvalidForExprOperator     // Invalid or expected an operator in for expression
@@ -107,6 +106,7 @@ const (
 	ErrParenFuncTypeParams     // Parentheses required for params: (Int) -> Int instead of Int -> Int
 	ErrIntfDefaultValue        // Interface items can't have a default value
 	ErrMixTypeTupleLabels      // Mix of 'label: type' and 'type' in type tuple
+	ErrMissingLabelsType       // Labels don't have a type
 	ErrIntfMultiKeyMethod      // Comma label syntax that includes a method: x, y, z()
 	ErrInvalidGenericType      // Only enums can be generic (for now)
 	ErrInvalidArrow            // -> can only be used with enum
@@ -391,14 +391,12 @@ func (e *ParseError) error() string {
 	case ErrFuncDotAfterSelf:
 		return "Expected a '.' between ')' and the name in function declaration"
 	case ErrMultiDirectionCompareChain:
-		return "'<'/'<=' and '>'/'>=' can't be mixed in a single comparison chain"
+		return "'<'/'<=' and '>'/'>=' can't be mixed in a single comparison chain: they must follow the same direction"
 	case ErrChainedNotEqual:
 		return "The '!=' operator isn't allowed to be chained in a comparison chain"
 	case ErrStepInListSlice:
 		e.Hint("A step requires the entire list to be iterated over and copied, defeating the purpose of slicing. Instead, manually iterate over the list.")
 		return "A step is not allowed in the range of a list slice"
-	case ErrInequalityWithEqualChain:
-		return "Can't use an equality operator when inequality operators are used in a comparison chain"
 	case ErrExpectedInterpolationEnd:
 		kind := "string"
 		if e.optionalBoolParam("regex") {
@@ -457,6 +455,11 @@ func (e *ParseError) error() string {
 		return "Byte order mark must be the first character in the file"
 	case ErrSelfLabelInFuncAlias:
 		return "Function aliases can't have a named self"
+	case ErrMissingLabelsType:
+		if e.intParam("length") == 1 {
+			return "Missing type for this label"
+		}
+		return "Missing type for these labels"
 	case ErrRedeclared:
 		/*
 			"existing":       existing.FileRange(),

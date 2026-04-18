@@ -261,63 +261,6 @@ func (p *Parser) ParseStruct(
 	return str
 }
 
-// Similar to [*Parser.ParseTupleType]
-// TODO: rewrite
-func (p *Parser) ParseInterfaceFuncParams() (params []*ast.MethodTypeParam) {
-	var names [][2]ast.Identifier
-	var isType, hasColon, hasLabel bool
-	for p.WhileNotEndOr(lexer.RightParenthesis) {
-		if k := p.CurrKind(); !isType && (hasLabel || isValidIdentOrDiscard(k) ||
-			isValidIdentOrDiscard(p.PeekKind())) && p.PeekKind() != lexer.Dot {
-			var name [2]ast.Identifier
-			if hasLabel || isValidIdentifier(p.PeekKind()) {
-				name[0] = p.ParseMapIdentifier(isLabel)
-			}
-			name[1] = p.ParseValidIdent()
-			names = append(names, name)
-			if p.CurrKind() == lexer.Colon {
-				if isType {
-					p.Error(errors.Token(errors.ErrMixTypeTupleLabels, p.Curr()))
-				}
-				p.Advance() // :
-				params = append(params, &ast.MethodTypeParam{
-					Names: names, Type: p.ParseType(DefaultTypeBindingPower),
-				})
-				names = names[:0]
-				hasColon = true
-			}
-		} else {
-			isType = true
-			t := p.ParseType(DefaultTypeBindingPower)
-			if hasColon {
-				p.Error(errors.Node(errors.ErrMixTypeTupleLabels, t))
-			}
-			params = append(params, &ast.MethodTypeParam{Type: t})
-		}
-		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
-			p.Expect(lexer.Comma)
-		}
-	}
-	p.Expect(lexer.RightParenthesis)
-	if len(names) > 0 {
-		// TODO: can improve error
-		if peek := p.PeekBehind(); hasColon {
-			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, peek))
-		} else if hasLabel {
-			p.Error(errors.Token(errors.ErrMixTypeTupleLabels, peek))
-		}
-		for _, name := range names {
-			params = append(params, &ast.MethodTypeParam{
-				Type: &ast.TypeAlias{
-					BaseNode:   name[1].BaseNode(),
-					Identifier: name[1].Name,
-				},
-			})
-		}
-	}
-	return params
-}
-
 func (p *Parser) ParseInterface(
 	typeName ast.Identifier, inherited []ast.Type,
 ) *ast.InterfaceDeclaration {
@@ -351,7 +294,7 @@ func (p *Parser) ParseInterface(
 				BaseNode: ast.BaseNode{Range: ranges.Range{
 					Start: p.Advance().Position, // (
 				}},
-				Parameters: p.ParseInterfaceFuncParams(),
+				Parameters: p.ParseMethodParams(),
 			}
 			if p.CurrKind() == lexer.Arrow {
 				p.Advance()

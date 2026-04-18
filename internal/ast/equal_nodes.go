@@ -778,6 +778,23 @@ func (a *MapType) Equal(b2 Node) bool {
 	return true
 }
 
+func (a *MethodParam) Equal(b2 Node) bool {
+	b, ok := b2.(*MethodParam)
+	if !ok {
+		return false
+	}
+	if a == nil || b == nil {
+		return a == b
+	}
+	if !equalSlice(a.Names, b.Names) {
+		return false
+	}
+	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
+		return false
+	}
+	return true
+}
+
 func (a *MethodType) Equal(b2 Node) bool {
 	b, ok := b2.(*MethodType)
 	if !ok {
@@ -790,23 +807,6 @@ func (a *MethodType) Equal(b2 Node) bool {
 		return false
 	}
 	if !equalSlice(a.Parameters, b.Parameters) {
-		return false
-	}
-	return true
-}
-
-func (a *MethodTypeParam) Equal(b2 Node) bool {
-	b, ok := b2.(*MethodTypeParam)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if !equalSlice(a.Names, b.Names) {
-		return false
-	}
-	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
 		return false
 	}
 	return true

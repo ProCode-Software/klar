@@ -54,19 +54,16 @@ loop:
 						"'a != b && b != c && a != c'.\n" + "* Otherwise, split the chain into " +
 						"multiple comparisons: 'a != b && b != c' if this is intentional.",
 				)
-				p.Error(err)
+				p.ErrorLabelled(err, "Can't chain '!='")
 			}
 			fallthrough
 		case lexer.EqualEqual:
-			if dir != dirNeutral {
-				p.Error(errors.Token(errors.ErrInequalityWithEqualChain, p.Curr()))
-			}
 			// Hint for use of JavaScript === or !==
 			if p.PeekKind() == lexer.Equal {
-				p.Error(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
+				p.ErrorLabelled(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
 					p.Curr().Position,
 					p.Advance().Position.Add(0, 3),
-				)).SetParam("op", p.CurrKind()))
+				)).SetParam("op", p.CurrKind()), "Remove the last '=' character")
 			}
 		// Check for multidirectional comparisons (</<= with >/>=)
 		case lexer.GreaterThan, lexer.GreaterEqualTo:
@@ -90,18 +87,18 @@ loop:
 
 func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 	err := errors.Token(errors.ErrMultiDirectionCompareChain, p.Curr())
+	var next lexer.TokenType
+	switch got {
+	case lexer.GreaterThan:
+		next = lexer.LessThan
+	case lexer.GreaterEqualTo:
+		next = lexer.LessEqualTo
+	case lexer.LessThan:
+		next = lexer.GreaterThan
+	case lexer.LessEqualTo:
+		next = lexer.GreaterEqualTo
+	}
 	if len(ops) == 1 { // 3 operands
-		var next lexer.TokenType
-		switch got {
-		case lexer.GreaterThan:
-			next = lexer.LessThan
-		case lexer.GreaterEqualTo:
-			next = lexer.LessEqualTo
-		case lexer.LessThan:
-			next = lexer.GreaterThan
-		case lexer.LessEqualTo:
-			next = lexer.GreaterEqualTo
-		}
 		err.Hintf("Reorder the comparison: (e.g. 'a %s c %s b')\n"+
 			"Or, split it into multiple comparisons: (e.g. 'a %[1]s b && b %[3]s c')",
 			ops[0], next, got,
@@ -111,7 +108,7 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 			" (e.g. 'a < b > c' to 'a < b && b > c')",
 		)
 	}
-	p.Error(err)
+	p.ErrorLabelled(err, errors.Quote(next.String())+" must be used")
 }
 
 func (p *Parser) ParseParamList() *ast.AssignableTuple {
@@ -185,7 +182,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			if rest, ok := entry.Keys[len(entry.Keys)-1].(*ast.RestExpression); ok {
 				if len(entry.Keys) > 1 {
 					// There must be exactly 1 key
-					p.Error(errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys))
+					p.ErrorLabelled(errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys), "There can only be 1 key")
 					entry.Keys = entry.Keys[:len(entry.Keys)-1]
 				}
 				entry.Rest = true
@@ -241,10 +238,10 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			r.To = p.ParseExpression(RangeBindingPower)
 		} else if k == lexer.DotDotLessThan {
 			// '..<' must have end
-			p.Error(errors.Token(errors.ErrExpectedExprAfterOpenRange, p.PeekBehind()))
+			p.ErrorLabelled(errors.Token(errors.ErrExpectedExprAfterOpenRange, p.PeekBehind()), "Expected an upper bound after this")
 		}
 		if p.CurrKind() == lexer.Ellipsis {
-			p.Error(errors.Token(errors.ErrStepInListSlice, p.Advance()))
+			p.ErrorLabelled(errors.Token(errors.ErrStepInListSlice, p.Advance()), "List slices must be continuous")
 			r.Step = p.ParseExpression(RangeBindingPower)
 		}
 		p.Expect(lexer.RightBracket)
@@ -256,7 +253,7 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 
 	if rang, ok := item.(*ast.RangeExpression); ok {
 		if rang.Step != nil {
-			p.Error(errors.Node(errors.ErrStepInListSlice, rang.Step))
+			p.ErrorLabelled(errors.Node(errors.ErrStepInListSlice, rang.Step), "List slices must be continuous")
 		}
 		return &ast.SliceExpression{
 			Object:   left,
@@ -348,12 +345,18 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 			d := &ast.AssignableTypePair{Keys: []ast.Assignable{p.ParseAssignable()}}
 			if p.CurrKind() == lexer.Colon {
 				// Non-parenthesized type
-				p.Error(errors.Token(errors.ErrParenAroundLambdaType, p.Advance()))
+				p.ErrorLabelled(
+					errors.Token(errors.ErrParenAroundLambdaType, p.Advance()),
+					"This parameter must be in parentheses",
+				)
 				d.Type = p.ParseType(DefaultTypeBindingPower) // Still parse it
 			}
 			if c := p.CurrKind(); c == lexer.Equal || c == lexer.ColonEqual {
 				// Non-parenthesized default
-				p.Error(errors.Token(errors.ErrParenAroundLambdaDefault, p.Advance()))
+				p.ErrorLabelled(
+					errors.Token(errors.ErrParenAroundLambdaDefault, p.Advance()),
+					"This parameter must be in parentheses",
+				)
 				d.Value = p.ParseExpression(ExpressionBindingPower) // Still parse it
 			}
 			return d
@@ -366,7 +369,10 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	case lexer.LeftCurlyBrace:
 		l.Block = p.ParseBlock()
 	default:
-		p.Error(errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
+		p.ErrorLabelled(
+			errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()),
+			"Expected a block or an arrow '->'",
+		)
 	}
 	return l
 }
@@ -407,7 +413,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		}
 		curr := p.CurrKind()
 		if curr == lexer.DotDotLessThan {
-			p.Error(errors.Token(errors.ErrEllipsisForOpenRangeStep, p.Curr()))
+			p.ErrorLabelled(errors.Token(errors.ErrEllipsisForOpenRangeStep, p.Curr()), "Steps are defined using '...'")
 			curr = lexer.Ellipsis
 		}
 		if curr == lexer.Ellipsis {
@@ -419,12 +425,18 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 	}
 	if op.Kind == lexer.DotDotLessThan {
 		// Expression required
-		p.Error(errors.Token(errors.ErrExpectedExprAfterOpenRange, op))
+		p.ErrorLabelled(
+			errors.Token(errors.ErrExpectedExprAfterOpenRange, op),
+			"Open ranges must have an upper bound",
+		)
 	}
 	// Rest if no expression on the right: [items...]
 	if _, ok := left.(*ast.Discard); ok {
 		// _... not allowed
-		p.Error(errors.Node(errors.ErrUnderscoreWithRest, left))
+		p.ErrorLabelled(
+			errors.Node(errors.ErrUnderscoreWithRest, left),
+			"Remove this discard",
+		)
 	}
 	return &ast.RestExpression{Expression: left}
 }
@@ -448,7 +460,10 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 	// Return must be the last step. The type checker will also make sure this
 	// pipeline is not used as an expression.
 	if returnIndex >= 0 && returnIndex != len(steps)-1 {
-		p.Error(errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]))
+		p.ErrorLabelled(
+			errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]),
+			"'return' must be the last step",
+		)
 	}
 	return &ast.PipelineExpression{Steps: steps}
 }
@@ -584,8 +599,10 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 	} else {
 		g := &ast.GoExpression{Expression: p.ParseExpression(UnaryBindingPower)}
 		if _, ok := g.Expression.(*ast.CallExpression); !ok {
-			p.Error(errors.Node(errors.ErrMustBeFuncCall, g.Expression).
-				SetParam("expr", lexer.Go),
+			p.ErrorLabelled(
+				errors.Node(errors.ErrMustBeFuncCall, g.Expression).
+					SetParam("expr", lexer.Go),
+				"This must be a function call",
 			)
 		}
 		return g
@@ -602,14 +619,15 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	t := &ast.TryExpression{}
 	// Invalid try-catch block: try {}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		p.Error(errors.Token(errors.ErrTryBlock, p.Curr()))
+		p.ErrorLabelled(errors.Token(errors.ErrTryBlock, p.Curr()), "Klar doesn't have try-catch")
 		p.ParseBlock() // Just parse it
 		return t
 	}
 	t.Expression = p.ParseExpression(UnaryBindingPower)
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
-		p.Error(errors.Node(errors.ErrMustBeFuncCall, t.Expression).
+		p.ErrorLabelled(errors.Node(errors.ErrMustBeFuncCall, t.Expression).
 			SetParam("expr", lexer.Try),
+			"This must be a function call",
 		)
 	}
 	return t

@@ -229,6 +229,12 @@ type TupleType struct {
 	Single bool // If 1 item without trailing comma
 }
 
+type TypePair struct {
+	Keys  []Identifier
+	Value Type
+	BaseNode
+}
+
 // Used for lambda parameters
 type AssignableTuple struct {
 	BaseNode
@@ -259,12 +265,6 @@ type GenericType struct {
 	Parameters []Type
 }
 
-type TypePair struct {
-	Keys  []Identifier
-	Value Type
-	BaseNode
-}
-
 type InterfaceItem struct {
 	*TypePair
 	Attributes []*Attribute
@@ -278,10 +278,10 @@ type UnionType struct {
 type MethodType struct {
 	BaseNode
 	ReturnType Type
-	Parameters []*MethodTypeParam
+	Parameters []*MethodParam
 }
 
-type MethodTypeParam struct {
+type MethodParam struct {
 	Names [][2]Identifier // label, name
 	Type  Type
 	BaseNode

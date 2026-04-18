@@ -44,7 +44,7 @@ func (i Identifier) IsDiscard() bool { return i.Name == "_" }
 func (i Identifier) BaseNode() BaseNode { return BaseNode{Range: i.Range()} }
 
 // End returns the end position of i.
-func (i Identifier) End() lexer.Position { return i._range.End }
+func (i Identifier) End() lexer.Position { return i.Range().End }
 
 // String returns i.Name.
 func (i Identifier) String() string { return i.Name }
@@ -61,8 +61,11 @@ func (i Identifier) Range() ranges.Range {
 
 // Symbol returns i as a [Symbol].
 func (i Identifier) Symbol() *Symbol {
-	return &Symbol{Identifier: i.Name, BaseNode: BaseNode{Range: i.Range()}}
+	return &Symbol{Identifier: i.Name, BaseNode: i.BaseNode()}
 }
+
+// TypeAlias returns i as a [TypeAlias].
+func (i Identifier) TypeAlias() *TypeAlias { return (*TypeAlias)(i.Symbol()) }
 
 // Implementing [Node] just for error reporting
 // =========

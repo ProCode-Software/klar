@@ -202,6 +202,11 @@ func (p *Parser) Error(err *errors.ParseError) {
 	}
 }
 
+func (p *Parser) ErrorLabelled(err *errors.ParseError, label string) {
+	err.Label = label
+	p.Error(err)
+}
+
 // AdvanceNonBoundary returns the current token advances the parser and returns
 // the current token if it is not a boundary, otherwise returns the current token.
 // Useful when an expected token is missing.

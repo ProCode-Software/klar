@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
@@ -29,7 +30,7 @@ func NewCompiler(mode BuildMode) (*Compiler, error) {
 			Output:       os.Stderr,
 			ColorPalette: reporter.DefaultColorPalette(),
 			CharacterSet: reporter.DefaultCharacterSet(),
-			UseColor:     true,
+			UseColor:     !ansi.DisableColor,
 		},
 		Logger: slog.New(slog.DiscardHandler),
 	}, err

@@ -169,12 +169,12 @@ func (n *MapType) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Key}, walkNode{2, n.Value})
 }
 
-func (n *MethodType) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.ReturnType}, walkSlice[*MethodTypeParam]{2, n.Parameters})
+func (n *MethodParam) Walk(v Visitor, c *Cursor) StopCode {
+	return walkFields(v, n, c, walkNode{1, n.Type})
 }
 
-func (n *MethodTypeParam) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Type})
+func (n *MethodType) Walk(v Visitor, c *Cursor) StopCode {
+	return walkFields(v, n, c, walkNode{1, n.ReturnType}, walkSlice[*MethodParam]{2, n.Parameters})
 }
 
 func (n *NextStatement) Walk(v Visitor, c *Cursor) StopCode {
