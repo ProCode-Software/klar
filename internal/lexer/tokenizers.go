@@ -57,12 +57,12 @@ func (l *Lexer) ReadOperator(r rune) (TokenType, string) {
 func (l *Lexer) ReadShebang(pos Position) *Token {
 	tok := l.ReadLineComment(pos)
 	tok.Kind = Hashbang
-	tok.Source = "#!" + tok.Source[2:] // "//"
+	tok.Source = "#!" + tok.Source[2:] // Replace "//"
 	return tok
 }
 
 func (l *Lexer) ReadLineComment(pos Position) *Token {
-	var leng uint32
+	var leng uint32 = 2
 	t := l.NewTokenizer(true)
 	for r, b := range t.Tokenize {
 		// Beginning // is already parsed
@@ -77,10 +77,10 @@ func (l *Lexer) ReadLineComment(pos Position) *Token {
 
 func (l *Lexer) ReadBlockComment(pos Position) *Token {
 	var (
-		cmtLevel = 1
+		t               = l.NewTokenizer(false)
+		leng     uint32 = 2
+		cmtLevel        = 1
 		last     rune
-		leng     uint32
-		t        = l.NewTokenizer(false)
 	)
 	for r, b := range t.Tokenize {
 		leng++
@@ -94,7 +94,7 @@ func (l *Lexer) ReadBlockComment(pos Position) *Token {
 		}
 		last = r
 	}
-	return NewToken(pos, BlockComment, t.String()).
+	return NewToken(pos, BlockComment, "/*"+t.String()).
 		withAttrs(attrs{"unterm": t.EOF(), "end": l.Pos, "length": leng})
 }
 
