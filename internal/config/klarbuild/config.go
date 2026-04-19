@@ -96,10 +96,6 @@ type JSOptions struct {
 	// created alongside built JavaScript files. If set to `'inline'`, source maps are
 	// stored as data URIs at the end of JavaScript files.
 	Sourcemap SourceMapMode
-	// The module format to compile JavaScript files in. The file extension does not
-	// change unless you modify your outputs. ESM is the standard JavaScript format, and
-	// is the default and recommended option. CommonJS (`require()`) is not supported.
-	Format ModuleFormat
 	// Add JSDoc comments to exports in the resulting JavaScript files.
 	JSDoc bool
 	// Enable experimental ECMAScript libraries. If enabled, generated JavaScript files
@@ -197,17 +193,6 @@ const (
 	BundlePerModule
 	// Bundle everything including the standard library into one file
 	BundleStd
-)
-
-// The module format to emit when compiling to JavaScript. CommonJS is not
-// supported by Klar in order to promote the use of more modern module formats.
-type ModuleFormat int
-
-const (
-	// Standard JavaScript format. Recommended.
-	ModuleESM ModuleFormat = iota
-	// Keep all exports under a single global namespace. Intended for use in browsers.
-	ModuleUMD
 )
 
 // The JavaScript type for global objects.

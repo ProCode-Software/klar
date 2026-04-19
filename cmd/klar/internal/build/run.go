@@ -244,8 +244,6 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 				o.JS.Bundle = v.Value.(klarbuild.BundleMode)
 			case "declaration-path":
 				o.JS.DeclarationPath = v.String()
-			case "format":
-				o.JS.Format = v.Value.(klarbuild.ModuleFormat)
 			default:
 				panic("unhandled flag: " + flag)
 			}
