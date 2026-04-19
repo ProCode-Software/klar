@@ -6,21 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) countConsecutiveNot() (n int) {
-	for p.HasTokens() {
-		switch p.Curr().Kind {
-		case lexer.Not:
-			n++
-		case lexer.NotNot:
-			n += 2
-		default:
-			return
-		}
-		p.Advance()
-	}
-	return
-}
-
 func (p *Parser) unknownTokenError() {
 	p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
 	p.skipUntilBoundary()
@@ -51,6 +36,22 @@ func (p *Parser) nudError() {
 	p.skipUntilBoundary()
 }
 
+// countConsecutiveNot counts the number of consecutive `!` tokens.
+func (p *Parser) countConsecutiveNot() (n int) {
+	for p.HasTokens() {
+		switch p.Curr().Kind {
+		case lexer.Not:
+			n++
+		case lexer.NotNot:
+			n += 2
+		default:
+			return
+		}
+		p.Advance()
+	}
+	return
+}
+
 func (p *Parser) skipUntilBoundary() {
 	brackCount := 1
 	for p.HasTokens() {
@@ -71,7 +72,9 @@ func (p *Parser) skipUntilBoundary() {
 	}
 }
 
-func mismatchedLabelFormat(err *errors.ParseError,
+// mismatchedLabelFormatError formats an error for a mismatch between type-only
+// and labels-and-types parameters.
+func mismatchedLabelFormatError(err *errors.ParseError,
 	prevIsTypeOnly bool, prevRange ranges.Range,
 ) {
 	var msg string
@@ -85,5 +88,22 @@ func mismatchedLabelFormat(err *errors.ParseError,
 	err.Highlights = append(err.Highlights, errors.Highlight{
 		Range:   prevRange,
 		Message: msg,
+	})
+}
+
+// missingParamTypeAnnotError formats an error for a missing type annotation for
+// a parameter or tuple item. missingParamTypeAnnotError sets err.Label.
+func (p *Parser) missingParamTypeAnnotError(err *errors.ParseError,
+	kind string, labelCount int, lastParamRange ranges.Range,
+) {
+	err.SetParam("length", labelCount)
+	if labelCount > 1 {
+		err.Label = "These " + kind + "s need type annotations"
+	} else {
+		err.Label = "This " + kind + " needs a type annotation"
+	}
+	err.Highlights = append(err.Highlights, errors.Highlight{
+		Range:   lastParamRange,
+		Message: "This " + kind + " already has a type",
 	})
 }

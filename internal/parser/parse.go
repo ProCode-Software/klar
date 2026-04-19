@@ -34,7 +34,7 @@ func (p *Parser) Parse() *ast.Program {
 	}
 }
 
-func (p *Parser) ParseStatement(flags uint8) ast.Statement {
+func (p *Parser) ParseStatement(flags parseFlags) ast.Statement {
 	kind := p.CurrKind()
 	expectEOS := func() {
 		if (flags & allowCommaTerminator) != 0 {
@@ -171,37 +171,36 @@ func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {
 	return left
 }
 
-// ParseExpressionWithout parses an expression, stopping if exclude returns
+// ParseExpressionFilter parses an expression, stopping if exclude returns
 // true for the current token type.
-func (p *Parser) ParseExpressionWithout(
-	exclude func(lexer.TokenType) bool, initialBP BindingPower, flags uint8,
-) ast.Expression {
-	expr := p.ParseExpression(initialBP)
-	if exclude(p.CurrKind()) &&
-		(flags&allowIfSameLine == 0 || p.Curr().Line != expr.GetRange().End.Line) {
-		return expr
-	}
-	if (flags & try) != 0 {
+func (p *Parser) ParseExpressionFilter(
+	exclude func(lexer.TokenType) bool, initialBP BindingPower, flags parseFlags,
+) (expr ast.Expression) {
+	expr = p.ParseExpression(initialBP)
+	kind := p.CurrKind()
+	switch {
+	case exclude(kind):
+		if flags&allowIfSameLine == 0 || p.Curr().Line != expr.GetRange().End.Line {
+			return expr
+		}
+		fallthrough
+	case bpOf(kind) <= initialBP:
+		expr = p.ParseLED(expr, ExpressionBindingPower)
+	case (flags & try) != 0:
 		expr, _ = p.TryParseLED(expr, ExpressionBindingPower)
-		return expr
+	default:
 	}
-	return p.ParseLED(expr, ExpressionBindingPower)
+	return
 }
 
 func excludeIf(kind lexer.TokenType) func(lexer.TokenType) bool {
 	return func(t lexer.TokenType) bool { return t == kind }
 }
 
-func parseFlags(flgs []uint8) uint8 {
-	var flags uint8
-	for _, flag := range flgs {
-		flags |= flag
-	}
-	return flags
-}
+type parseFlags uint8
 
 const (
-	noEOS uint8 = 1 << iota
+	noEOS parseFlags = 1 << iota
 	allowCommaTerminator
 	try
 	allowIfSameLine
@@ -209,13 +208,13 @@ const (
 	isLabel
 )
 
-func parseExprSeries[T ast.Node](
-	p *Parser, arr *[]T,
+func parseExprSeries(
+	p *Parser, arr *[]ast.Expression,
 	bp BindingPower, until, sepBy lexer.TokenType,
 ) {
 	parseSeries(
 		p, arr,
-		func() T { return p.ParseExpression(bp).(T) },
+		func() ast.Expression { return p.ParseExpression(bp) },
 		until, sepBy, false,
 	)
 }

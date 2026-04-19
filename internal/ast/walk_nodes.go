@@ -170,7 +170,7 @@ func (n *MapType) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *MethodParam) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Type})
+	return walkFields(v, n, c, walkSlice[*IdentifierPair]{0, n.Names}, walkNode{1, n.Type})
 }
 
 func (n *MethodType) Walk(v Visitor, c *Cursor) StopCode {

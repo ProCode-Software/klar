@@ -18,6 +18,13 @@ var (
 	profiler prof
 )
 
+var RandomDescriptions = []string{
+	"A simple, modern, and clean programming language",
+	"The progressive programming language",
+	"Not another C-based programming language",
+	"A koala-approved programming language!",
+}
+
 func main() {
 	defer cli.HandleSignalExit()
 	// startProf()

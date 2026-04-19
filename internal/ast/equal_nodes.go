@@ -1332,7 +1332,7 @@ func (a *TupleType) Equal(b2 Node) bool {
 	if !equalSlice(a.Values, b.Values) {
 		return false
 	}
-	if a.Single != b.Single {
+	if a.ParenOnly != b.ParenOnly {
 		return false
 	}
 	return true

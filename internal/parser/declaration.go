@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"cmp"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -171,7 +173,7 @@ func (p *Parser) ParseEnum(
 		}
 		if p.isEqual(p.Curr()) {
 			p.Advance()
-			item.Value = p.ParseExpressionWithout(excludeIf(lexer.Dot),
+			item.Value = p.ParseExpressionFilter(excludeIf(lexer.Dot),
 				MemberBindingPower, allowIfSameLine,
 			)
 		}
@@ -294,7 +296,7 @@ func (p *Parser) ParseInterface(
 				BaseNode: ast.BaseNode{Range: ranges.Range{
 					Start: p.Advance().Position, // (
 				}},
-				Parameters: p.ParseMethodParams(),
+				Parameters: p.parseMethodParams(),
 			}
 			if p.CurrKind() == lexer.Arrow {
 				p.Advance()
@@ -319,9 +321,11 @@ func (p *Parser) ParseInterface(
 func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	p.Expect(lexer.Func)
 	f := &ast.FunctionDeclaration{}
+
 	// func (p: Parser).
 	if p.CurrKind() == lexer.LeftParenthesis {
 		// Method declaration with receiver alias
+		// 	func (t: Type).method()
 		p.Advance() // (
 		if p.PeekKind() == lexer.Colon {
 			if p.CurrKind() == lexer.Underscore {
@@ -336,11 +340,13 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else if p.PeekKind() == lexer.Dot {
 		// Method declaration
+		// 	func Type.method()
 		f.Struct = new(p.ParseIdentifier())
 		p.Expect(lexer.Dot)
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else {
 		// Normal function declaration
+		// 	func fn()
 		f.Identifier = p.ParseIdentifier()
 	}
 
@@ -349,91 +355,25 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// Can't be assigned, only inferred
 	if p.CurrKind() == lexer.LessThan {
 		p.Advance()
-		parseSeries(p, &f.GenericParams, p.ParseIdentifier, lexer.GreaterThan, lexer.Comma, false)
+		parseSeries(p, &f.GenericParams, p.ParseIdentifier,
+			lexer.GreaterThan, lexer.Comma, false,
+		)
 		if len(f.GenericParams) == 0 {
 			p.Error(errors.Token(errors.ErrEmptyGeneric, p.PeekBehind()))
 		}
 	}
 
 	// Function alias
+	// 	func fn = otherFn
 	if p.isEqual(p.Curr()) {
-		beforeEqual := p.Index - 1
-		p.Advance()
-		if f.GenericParams != nil {
-			p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
-		}
-		if f.SelfName != nil {
-			p.Error(errors.Node(errors.ErrSelfLabelInFuncAlias, f.Identifier))
-		}
-		target := p.ParseExpression(ExpressionBindingPower)
-		switch target := target.(type) {
-		case *ast.Symbol:
-		case *ast.IndexExpression:
-			if target.Computed {
-				p.Error(errors.Node(errors.ErrComputedFuncAlias, target))
-			}
-		default:
-			err := errors.Node(errors.ErrNonNameFuncAlias, target)
-			err.HintWithDiff(
-				"Or, did you mean to define a new function? Add parentheses after the function name.",
-				&errors.Diff{Edits: []errors.DiffEdit{errors.AddedString{
-					Position: p.Tokens[beforeEqual].End(),
-					String:   "()",
-				}}},
-			)
-			p.Error(err)
-		}
-		return &ast.FuncAliasDeclaration{
-			Identifier: f.Identifier,
-			Struct:     f.Struct,
-			Target:     target,
-		}
+		return p.ParseFuncAlias(f)
 	}
 
 	// Params
 	p.Expect(lexer.LeftParenthesis)
-	parseSeries(p, &f.Parameters, func() *ast.FunctionParam {
-		param := &ast.FunctionParam{}
-		param.Range.Start = p.Curr().Position
+	parseSeries(p, &f.Parameters, p.parseFuncParam, lexer.RightParenthesis, lexer.Comma, false)
 
-		// Trailing type params
-		parseSeries(p, &param.Names, func() *ast.IdentifierPair {
-			key := &ast.IdentifierPair{}
-			switch peek := p.PeekKind(); peek {
-			case lexer.Colon, lexer.Equal, lexer.ColonEqual,
-				lexer.Comma, lexer.RightParenthesis:
-			default:
-				// Optional label:
-				// 	func replace(src, with replacement: String)
-				key.Label = p.ParseMapIdentifier(isLabel)
-				if peek == lexer.Newline {
-					p.Advance()
-				}
-			}
-			// Normal identifier
-			key.Name = p.ParseIdentOrDiscard()
-			return key
-		}, 0, lexer.Comma, true)
-
-		// Type
-		p.ExpectErrorCode(errors.ErrMissingFuncParamType, lexer.Colon)
-		if isAssignment(p.PeekBehind().Kind) {
-			p.Backup()
-		} else {
-			param.Type = p.ParseType(DefaultTypeBindingPower)
-		}
-		// Default value:
-		// 	func List.join(by by: String = ", ")
-		if p.isEqual(p.Curr()) {
-			p.Advance()
-			param.Default = p.ParseExpression(ExpressionBindingPower)
-		}
-		markEndPos(p, param)
-		f.Parameters = append(f.Parameters, param)
-		return param
-	}, lexer.RightParenthesis, lexer.Comma, false)
-
-	// Return type: the arrow. Can be inferred
+	// Return type: after the arrow. Not required if returns Nothing
 	if p.CurrKind() == lexer.Arrow {
 		p.Advance()
 		f.ReturnType = p.ParseType(DefaultTypeBindingPower)
@@ -445,10 +385,90 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		f.Body = p.ParseBlock()
 	} else if p.isEqual(p.Curr()) {
+		// Expression body
+		// 	func fn() = 2
 		p.Advance()
 		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}
 	return f
+}
+
+func (p *Parser) parseFuncParam() *ast.FunctionParam {
+	param := &ast.FunctionParam{}
+	param.Range.Start = p.Curr().Position
+
+	// Trailing params
+	parseSeries(p, &param.Names, func() *ast.IdentifierPair {
+		key := &ast.IdentifierPair{}
+		// Optional label:
+		// 	func replace(src, with replacement: String)
+		if k := p.PeekKind(); isValidIdentOrDiscard(k) || k == lexer.Newline {
+			key.Label = p.ParseMapIdentifier(isLabel)
+			if k == lexer.Newline {
+				p.Advance()
+			}
+		}
+		// Normal identifier
+		key.Name = p.ParseIdentOrDiscard()
+		markStartEndPos(p, key, cmp.Or(key.Label.Position, key.Name.Position))
+		return key
+	}, 0, lexer.Comma, true)
+
+	// Type
+	p.ExpectErrorCodeNoAdvance(errors.ErrMissingFuncParamType, lexer.Colon)
+	if !isAssignment(p.PeekBehind().Kind) {
+		param.Type = p.ParseType(DefaultTypeBindingPower)
+	}
+
+	// Default value:
+	// 	func List.join(by by: String = ", ")
+	if p.isEqual(p.Curr()) {
+		if len(param.Names) > 1 {
+			p.ErrorLabelled(
+				errors.Range(errors.ErrChainedDefault, ranges.Range{
+					Start: param.Names[len(param.Names)-1].Range.Start,
+					End:   param.Type.GetRange().End,
+				}), "Unchain this parameter",
+			)
+		}
+		p.Advance()
+		param.Default = p.ParseExpression(ExpressionBindingPower)
+	}
+	return markEndPos(p, param)
+}
+
+func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclaration {
+	beforeEqual := p.Index - 1
+	p.Advance() // =
+	if f.GenericParams != nil {
+		p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
+	}
+	if f.SelfName != nil {
+		p.Error(errors.Node(errors.ErrSelfLabelInFuncAlias, f.Identifier))
+	}
+	target := p.ParseExpression(ExpressionBindingPower)
+	switch target := target.(type) {
+	case *ast.Symbol:
+	case *ast.IndexExpression:
+		if target.Computed {
+			p.Error(errors.Node(errors.ErrComputedFuncAlias, target))
+		}
+	default:
+		err := errors.Node(errors.ErrNonNameFuncAlias, target)
+		err.HintWithDiff(
+			"Or, did you mean to define a new function? Add parentheses after the function name.",
+			&errors.Diff{Edits: []errors.DiffEdit{errors.AddedString{
+				Position: p.Tokens[beforeEqual].End(),
+				String:   "()",
+			}}},
+		)
+		p.Error(err)
+	}
+	return &ast.FuncAliasDeclaration{
+		Identifier: f.Identifier,
+		Struct:     f.Struct,
+		Target:     target,
+	}
 }
 
 func (p *Parser) ParseAttribute() *ast.Attribute {

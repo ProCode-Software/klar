@@ -60,10 +60,10 @@ loop:
 		case lexer.EqualEqual:
 			// Hint for use of JavaScript === or !==
 			if p.PeekKind() == lexer.Equal {
-				p.ErrorLabelled(errors.Range(errors.ErrTripleEqual, ranges.FromPosition(
-					p.Curr().Position,
-					p.Advance().Position.Add(0, 3),
-				)).SetParam("op", p.CurrKind()), "Remove the last '=' character")
+				p.ErrorLabelled(errors.Range(errors.ErrTripleEqual, ranges.Range{
+					Start: p.Curr().Position,
+					End:   p.Advance().Position.Add(0, 3),
+				}).SetParam("op", p.CurrKind()), "Remove the last '=' character")
 			}
 		// Check for multidirectional comparisons (</<= with >/>=)
 		case lexer.GreaterThan, lexer.GreaterEqualTo:
@@ -109,28 +109,6 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 		)
 	}
 	p.ErrorLabelled(err, errors.Quote(next.String())+" must be used")
-}
-
-func (p *Parser) ParseParamList() *ast.AssignableTuple {
-	p.Expect(lexer.LeftParenthesis)
-	tuple := &ast.AssignableTuple{}
-	if p.CurrKind() != lexer.RightParenthesis {
-		parseSeries(p, &tuple.Values, func() *ast.AssignableTypePair {
-			pair := &ast.AssignableTypePair{}
-			parseSeries(p, &pair.Keys, func() ast.Assignable { return p.ParseAssignable() }, 0, lexer.Comma, false)
-			if p.CurrKind() == lexer.Colon {
-				p.Advance()
-				pair.Type = p.ParseType(DefaultTypeBindingPower)
-			}
-			if p.isEqual(p.Curr()) {
-				p.Advance()
-				pair.Value = p.ParseExpression(ExpressionBindingPower)
-			}
-			return pair
-		}, 0, lexer.Comma, false)
-	}
-	p.Expect(lexer.RightParenthesis)
-	return tuple
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
@@ -335,7 +313,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 		// Params and optional type/default in parens
 		p.Advance()
 		if p.CurrKind() != lexer.RightParenthesis {
-			p.parseAssignableTypePairs(&l.Params)
+			p.parseAssignableTypePairs(&l.Params, nil, false)
 		}
 		l.InParen = true
 		p.Expect(lexer.RightParenthesis)
@@ -343,16 +321,16 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	default:
 		parseSeries(p, &l.Params, func() *ast.AssignableTypePair {
 			d := &ast.AssignableTypePair{Keys: []ast.Assignable{p.ParseAssignable()}}
+			// Non-parenthesized type
 			if p.CurrKind() == lexer.Colon {
-				// Non-parenthesized type
 				p.ErrorLabelled(
 					errors.Token(errors.ErrParenAroundLambdaType, p.Advance()),
 					"This parameter must be in parentheses",
 				)
 				d.Type = p.ParseType(DefaultTypeBindingPower) // Still parse it
 			}
+			// Non-parenthesized default
 			if c := p.CurrKind(); c == lexer.Equal || c == lexer.ColonEqual {
-				// Non-parenthesized default
 				p.ErrorLabelled(
 					errors.Token(errors.ErrParenAroundLambdaDefault, p.Advance()),
 					"This parameter must be in parentheses",
@@ -375,25 +353,6 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 		)
 	}
 	return l
-}
-
-// parseAssignableTypePairs parses a series of assignable expressions, optionally
-// followed by an optional type and/or a default value. An item in pairs may
-// have multiple keys and no type or value.
-func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair) {
-	parseSeries(p, pairs, func() *ast.AssignableTypePair {
-		pair := &ast.AssignableTypePair{}
-		parseSeries(p, &pair.Keys, p.ParseAssignable, 0, lexer.Comma, false)
-		if p.CurrKind() == lexer.Colon {
-			p.Advance()
-			pair.Type = p.ParseType(DefaultTypeBindingPower)
-		}
-		if p.isEqual(p.Curr()) {
-			p.Advance()
-			pair.Value = p.ParseExpression(ExpressionBindingPower)
-		}
-		return pair
-	}, 0, lexer.Comma, false)
 }
 
 // When case only: [...]
@@ -585,7 +544,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		// -> or any assignment except := or =
 		f.Operator = newOperator(p.Advance())
 		// Allow spread (...) to be included at the end, to spread entire loop.
-		f.Value = p.ParseExpressionWithout(excludeIf(lexer.Ellipsis), RangeBindingPower, try)
+		f.Value = p.ParseExpressionFilter(excludeIf(lexer.Ellipsis), RangeBindingPower, try)
 	case k == lexer.LeftCurlyBrace:
 		f.Block = p.ParseBlock()
 	}

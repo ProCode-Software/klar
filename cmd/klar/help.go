@@ -12,8 +12,8 @@ import (
 func ShowHelp(w io.Writer, full bool) {
 	hb := NewHelpBuilder(w)
 
-	hb.ShortTitleNoNewline(ansi.BoldBrightWhite("Klar"))
-	hb.Print(randomDescriptions[rand.Intn(len(randomDescriptions))], " ",
+	hb.ShortTitleNoNewline(ansi.BoldBrightCyan("Klar"))
+	hb.Print(RandomDescriptions[rand.Intn(len(RandomDescriptions))], " ",
 		ansi.Gray("v"+cli.KlarVersion), "\n")
 
 	klar := ansi.BoldGreen("klar ")
@@ -121,9 +121,3 @@ func (hb *HelpBuilder) Flush() {
 }
 
 const helpTemplate = ``
-
-var randomDescriptions = []string{
-	"A simple, modern, and clean programming language",
-	"The progressive programming language",
-	"Not another C-based programming language",
-}

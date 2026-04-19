@@ -76,6 +76,7 @@ const (
 	ErrFuncDotAfterSelf  // Expected . after (self: type). This is unlike Go
 	ErrSelfNameDiscard   // Can't discard self name in method declaration
 	ErrPrivateOpaque     // Opaque on private type
+	ErrChainedDefault    // Default value specified with multiple keys
 
 	// Expression =====
 
@@ -313,6 +314,9 @@ func (e *ParseError) error() string {
 		return "A number can't be used as a parameter label"
 	case ErrUnderscoreLabel:
 		return "Can't use _ as a parameter label"
+	case ErrChainedDefault:
+		e.Hint("If you're trying to assign a default value to the last parameter, separate the parameter from the other chained parameters.")
+		return "A default value can't be specified with chained variables"
 	case ErrInvalidLabelShorthand:
 		if e.Params["computed"] == true {
 			return "A parameter label shorthand can't be a computed property"

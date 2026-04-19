@@ -225,8 +225,8 @@ type RestType struct {
 
 type TupleType struct {
 	BaseNode
-	Values []*TypePair
-	Single bool // If 1 item without trailing comma
+	Values    []*TypePair
+	ParenOnly bool // If 1 item without trailing comma
 }
 
 type TypePair struct {
@@ -282,7 +282,7 @@ type MethodType struct {
 }
 
 type MethodParam struct {
-	Names [][2]Identifier // label, name
+	Names []*IdentifierPair
 	Type  Type
 	BaseNode
 }

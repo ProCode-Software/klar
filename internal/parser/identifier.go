@@ -65,7 +65,7 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 }
 
 // opt1: includingNumber, opt2: isLabel (for a better error)
-func (p *Parser) ParseMapIdentifier(opts uint8) ast.Identifier {
+func (p *Parser) ParseMapIdentifier(opts parseFlags) ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	kind := tok.Kind
 	switch {

@@ -167,34 +167,15 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 func (p *Parser) parseForVariables() (
 	vars []*ast.AssignableTypePair, iter ast.Expression,
 ) {
-	for p.HasTokens() {
-		var expr ast.Expression
-		if peek := p.PeekKind(); p.CurrKind() == lexer.Underscore &&
-			(peek == lexer.In || peek == lexer.Comma || peek == lexer.Colon) {
-			// Allow '_' only as a variable name
-			expr = rangeFromToken(&ast.Discard{}, p.Advance())
-		} else {
-			expr = p.ParseExpressionWithout(excludeIf(lexer.In), bpOf(lexer.In), 0)
-		}
+	var first ast.Expression
+	if p.CurrKind() != lexer.Underscore {
+		first = p.ParseExpressionFilter(excludeIf(lexer.In), bpOf(lexer.In), 0)
 		if p.CurrKind() == lexer.LeftCurlyBrace {
 			// for 5 {}
-			return nil, expr
+			return nil, first
 		}
-		pair := &ast.AssignableTypePair{
-			Keys: []ast.Assignable{p.validateAssignable(expr)},
-		}
-		// for k: Int in ...
-		// TODO: for k, v: Int in ...
-		if p.CurrKind() == lexer.Colon {
-			p.Advance()
-			pair.Type = p.ParseType(DefaultTypeBindingPower)
-		}
-		vars = append(vars, pair)
-		if p.CurrKind() != lexer.Comma {
-			break
-		}
-		p.Advance()
 	}
+	p.parseAssignableTypePairs(&vars, p.validateAssignable(first), true)
 	p.Expect(lexer.In)
 	return vars, p.ParseExpression(ExpressionBindingPower)
 }
