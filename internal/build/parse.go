@@ -165,10 +165,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	defer p.PutLexer(lex)
 	l.Info("Tokenizing file")
 
-	if res.Tokens, err = pkgparser.TokenizeLexer(lex, sizeEst); err != nil {
-		l.Error("Error while tokenizing file", slog.Any("error", err))
-		return shortPath, res, &InterfaceError{Code: ErrLexer, Err: err}
-	}
+	pkgparser.TokenizeLexer(lex, sizeEst)
 
 	// Parse
 	// ========

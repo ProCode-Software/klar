@@ -16,7 +16,6 @@ type StringAttrs struct {
 
 // Note: Interpolations are [StringEscape].
 type StringEscape struct {
-	Offset       int // TODO: do we need this?
 	Pos          Position
 	Type         EscapeType
 	Value        string
@@ -199,26 +198,23 @@ There are three types of strings in Klar:
 	Single-quote '': Raw, no escapes
 	Backtick ``: Interpolation, escapes, multiline
 */
+// TODO: leng doesn't include escapes
 func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 	var (
 		fragStart                   int
 		leng, firstOffset           uint32
 		isEscape, isNewline, unterm bool
-		escapes                     map[Position]StringEscape
 		escStart                    Position
 		frags                       []StringFragment
 		t                           = l.NewTokenizer(false)
 	)
 	newEscape := func(e StringEscape) {
-		if escapes == nil {
-			escapes = map[Position]StringEscape{}
-		}
 		if e.Type == EscInterpolation {
 			t.Builder.WriteString(e.Value)
 		} else {
 			t.Builder.WriteString(e.Value[1:]) // Character after \
 		}
-		e.Offset, e.Pos = fragStart, escStart
+		e.Pos = escStart
 		frags = append(frags, e)
 		isEscape, fragStart = false, t.Builder.Len()
 	}

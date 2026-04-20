@@ -104,11 +104,7 @@ func (s *Session) Prompt() {
 		s.checkMultilineEnd()
 		return
 	}
-	tokens, err := parser.TokenizeString(input)
-	if err != nil {
-		s.handleLexerError(err)
-		return
-	}
+	tokens := parser.TokenizeString(input)
 	if len(tokens) > 1 && tokens[0].Kind == lexer.Identifier {
 		valid, exit := s.handleCommand(tokens[0].Source, tokens[1:len(tokens)-1])
 		if exit {
@@ -124,10 +120,11 @@ func (s *Session) Prompt() {
 
 func (s *Session) handleLexerError(err error) {
 	s.Error("Failed to read tokens", err)
+	panic(err)
 }
 
 func (s *Session) Error(msg string, err error) {
-	ansi.Fprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v", msg, err)
+	ansi.Fprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v\n", msg, err)
 }
 
 func (s *Session) send() {
@@ -242,12 +239,7 @@ func (s *Session) checkMultilineEnd() {
 }
 
 func (s *Session) sendMultiline() {
-	tokens, err := parser.TokenizeBytes(s.buf)
-	if err != nil {
-		s.handleLexerError(err)
-		return
-	}
-	s.tokens = tokens
+	s.tokens = parser.TokenizeBytes(s.buf)
 	s.send()
 	s.line = 0
 	s.buf = nil

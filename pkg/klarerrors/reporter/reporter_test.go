@@ -91,18 +91,12 @@ func trimNewline(s string) string {
 	return s
 }
 
-func mustTokenize(s string) []lexer.Token {
-	tokens, err := parser.TokenizeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return tokens
-}
+
 
 var testCases = []reporterTestCase{
 	{
 		name:  "SingleLine",
-		files: fileMap{"main.klar": mustTokenize("x := 1")},
+		files: fileMap{"main.klar": parser.TokenizeString("x := 1")},
 		error: &errors.ParseError{
 			ErrorCode: errors.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
@@ -113,7 +107,7 @@ var testCases = []reporterTestCase{
 	},
 	{
 		name:  "SingleLine_1Highlight",
-		files: fileMap{"main2.klar": mustTokenize("x := 1")},
+		files: fileMap{"main2.klar": parser.TokenizeString("x := 1")},
 		error: &errors.ParseError{
 			ErrorCode: errors.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
@@ -127,7 +121,7 @@ var testCases = []reporterTestCase{
 	},
 	{
 		name:  "SingleLine_2Highlights",
-		files: fileMap{"main.klar": mustTokenize("x := 1")},
+		files: fileMap{"main.klar": parser.TokenizeString("x := 1")},
 		error: &errors.ParseError{
 			ErrorCode: errors.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
@@ -142,7 +136,7 @@ var testCases = []reporterTestCase{
 	},
 	{
 		name:  "Multiline_2Highlights",
-		files: fileMap{"main.klar": mustTokenize("deleteThisLine()\nx := 1")},
+		files: fileMap{"main.klar": parser.TokenizeString("deleteThisLine()\nx := 1")},
 		error: &errors.ParseError{
 			ErrorCode: errors.ErrRequiredBraces,
 			Range:     ranges.NewRange(2, 3, 2, 5),

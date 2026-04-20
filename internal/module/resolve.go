@@ -31,8 +31,8 @@ const (
 	DistDir      = "dist"
 	ExternalDir  = "external"
 	SharedDir    = "shared"
-	GeneratedDir = "generated"
 	CmdDir       = "cmd"
+	TestDir      = "test"
 )
 
 func IsProjectDir(name string) bool {

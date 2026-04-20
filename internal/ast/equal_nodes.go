@@ -1080,6 +1080,9 @@ func (a *RegexLiteral) Equal(b2 Node) bool {
 	if !equalSlice(a.Flags, b.Flags) {
 		return false
 	}
+	if !equalSlice(a.Fragments, b.Fragments) {
+		return false
+	}
 	if a.Multiline != b.Multiline {
 		return false
 	}

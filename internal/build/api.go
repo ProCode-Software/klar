@@ -130,10 +130,7 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 		case *bytes.Buffer:
 			size = int64(r.Len())
 		}
-		f.Tokens, err = pkgparse.Tokenize(f.Reader, size/10)
-		if err != nil {
-			return path, nil, err
-		}
+		f.Tokens = pkgparse.Tokenize(f.Reader, size/10)
 		fallthrough
 	default:
 		// Need to parse

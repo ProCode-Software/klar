@@ -112,14 +112,14 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 				token.End(),
 			))
 		} else {
-			err := errors.Position(errors.ErrUnterminatedString,
-				token.End().Add(0, 1),
-			)
-			err.Label = "Expected " + errors.Quote(string(a.QuoteStyle))
+			// TODO: End() is wrong
+			err := errors.Position(errors.ErrUnterminatedString, token.End() /* .Add(0, 1) */)
+			err.Label = "Expected closing " + errors.Quote(string(a.QuoteStyle))
 			err.Highlights = append(err.Highlights, errors.Highlight{
 				Range:   ranges.Offset(token.Position, 0, 1),
 				Message: "It was started here",
 			})
+			err.SetParam("start", token.Position)
 			p.Error(err)
 		}
 	} else {
@@ -147,11 +147,37 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	re := p.Advance()
 	params := re.Attributes["params"].(lexer.RegexAttrs)
 	if params.Unterminated {
-		p.Error(errors.Position(errors.ErrUnterminatedRegex, re.Position))
+		// TODO: End() is wrong
+		err := errors.Position(errors.ErrUnterminatedRegex, re.End())
+		err.Highlights = append(err.Highlights, errors.Highlight{
+			Range:   ranges.SingleChar(re.Position),
+			Message: "It was started here",
+		})
+		err.SetParam("start", re.Position)
+		p.ErrorLabelled(err, "Expected closing '/'")
+	}
+	frags := make([]ast.StringFragment, len(params.Fragments))
+	for i, frag := range params.Fragments {
+		switch frag := frag.(type) {
+		case lexer.TextFragment:
+			frags[i] = frag
+		case lexer.StringEscape:
+			// The only escape in regex should be interpolation
+			if frag.Type != lexer.EscInterpolation {
+				panic(fmt.Sprintf(
+					"invalid escape in regex: expected EscInterpolation, but got %d",
+					frag.Type,
+				))
+			}
+			frags[i] = ast.InterpolationFragment{
+				Expression: p.parseStringInterpolation(*frag.Interpolated),
+			}
+		}
 	}
 	return &ast.RegexLiteral{
 		Source:    params.Source,
 		Flags:     params.Flags,
 		Multiline: params.Multiline,
+		Fragments: frags,
 	}
 }

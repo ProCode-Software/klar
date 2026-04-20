@@ -4,7 +4,7 @@ type #X
 type #X
 import invalidHere
 // Supposed to be public
-opaque type Person: Organism {
+/* public */ opaque type Person: Organism {
     name: String
     age: Int
     job: String
@@ -12,5 +12,7 @@ opaque type Person: Organism {
 
 yeahLetsGo()
 removeThisLine(1, 2)
-func abc = Person("John", 32, "Developer (Go)")
-x
+
+// Remove the () for an error with a hint + diff
+func abc() = Person("John", 32, "Developer (Go)")
+/* _ = */x

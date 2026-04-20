@@ -228,11 +228,15 @@ func (e *ParseError) error() string {
 			return "I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf("The string starting at %s was left open", e.Range.Start)
+		return fmt.Sprintf("The string starting at %s was left open",
+			e.Params["start"].(lexer.Position),
+		)
 	case ErrMultilineQuotedString:
 		return "Only strings quoted with backticks '`' can contain line breaks"
 	case ErrUnterminatedRegex:
-		return fmt.Sprintf("The regular expression starting at %s was left open", e.Range.Start)
+		return fmt.Sprintf("The regular expression starting at %s was left open",
+			e.Params["start"].(lexer.Position),
+		)
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.Newline {
 			return "A type must be assigned a value"
@@ -444,8 +448,10 @@ func (e *ParseError) error() string {
 		e.Hint("Remember that 'opaque' allows a type to be exported without allowing external modules to create instances of it. If the type is not exported, it still can't be used by external modules, so 'opaque' has no effect.")
 		return "The 'opaque' modifier has no effect on a non-public type"
 	case ErrPositiveSign:
-		e.Hint("Remove it.")
-		return "A '+' prefix is not allowed in Klar"
+		e.Hint("A leading '+' sign doesn't affect a number's value. Remove it.\n" +
+			"To convert a number to an integer or float, use the 'Int()' or 'Float()' function.",
+		)
+		return "A '+' prefix isn't allowed in Klar"
 	case ErrDoubleNot:
 		if e.intParam("count")%2 == 0 {
 			e.Hint("Remove all of them.")

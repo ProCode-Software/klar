@@ -42,6 +42,7 @@ const (
 	ErrFileInPkgDir     // File in 'pkg' directory
 	ErrNoKlarFiles      // No Klar files to compile in input
 	ErrNothingToCompile // No inputs
+	ErrMisplacedTest    // Test file in a non-test directory
 	ErrLexer            // Lexer error
 )
 
@@ -94,6 +95,8 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return "There's nothing to compile", ""
 	case ErrLexer:
 		return "An error occurred during tokenization: ", err.Err.Error()
+	case ErrMisplacedTest:
+		return "Test files must be in the <c>test</c> directory", ""
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

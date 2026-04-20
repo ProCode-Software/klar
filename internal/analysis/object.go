@@ -100,7 +100,7 @@ func (o *Object) FilePathRange() ranges.FileRange {
 type Kind int
 
 const (
-	_ Kind = iota
+	KindInvalid Kind = iota
 	KindInt
 	KindString
 	KindBool
@@ -122,7 +122,6 @@ const (
 	KindModule
 
 	KindGeneric
-	KindInvalid
 	KindUnreachable // Nothing
 )
 

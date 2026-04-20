@@ -100,6 +100,7 @@ const (
 	While
 )
 
+// List of operators in the Klar language. Punctuation is also included in this map.
 var OperatorMap = map[string]TokenType{
 	"...": Ellipsis,
 	"..<": DotDotLessThan,
@@ -152,6 +153,8 @@ var OperatorMap = map[string]TokenType{
 	"#/": Regex,
 }
 
+// List of keywords in the Klar language. All keys are reserved and cannot be used
+// as identifiers.
 var KeywordMap = map[string]TokenType{
 	"and":    And,
 	"as":     As,

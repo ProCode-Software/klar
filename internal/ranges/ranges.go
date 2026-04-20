@@ -57,6 +57,9 @@ func Between(r1, r2 Range) Range {
 	return Range{Start: r1.Start, End: r2.End}
 }
 
+// SingleChar returns a [Range] for a single character starting at p.
+func SingleChar(p Position) Range { return Offset(p, 0, 1) }
+
 // In reports whether p is in the range r.
 func (r Range) PosIn(p Position) bool {
 	if p.Line < r.Start.Line || p.Line > r.End.Line {

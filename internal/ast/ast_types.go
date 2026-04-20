@@ -67,6 +67,7 @@ type RegexLiteral struct {
 	BaseNode
 	Source    string
 	Flags     []byte
+	Fragments []StringFragment
 	Multiline bool
 }
 

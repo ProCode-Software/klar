@@ -21,11 +21,6 @@ func Parse(tokens []lexer.Token, options *parser.Options) (
 	return
 }
 
-func ParseString(src string) (program *ast.Program, parseErrs []*ParseError, readErr error) {
-	tokens, err := TokenizeString(src)
-	if err != nil {
-		return nil, nil, err
-	}
-	program, parseErrs = Parse(tokens, nil)
-	return
+func ParseString(src string) (program *ast.Program, errs []*ParseError) {
+	return Parse(TokenizeString(src), nil)
 }

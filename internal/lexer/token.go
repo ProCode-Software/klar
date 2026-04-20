@@ -61,6 +61,9 @@ func (t TokenType) LitterDump(w io.Writer) {
 	w.Write([]byte("{" + t.String() + "}"))
 }
 
+// TokenTypeString maps [TokenType] values to their string names.
+// If a TokenType is not present in this map, its string representation is
+// its source code representation, added during initialization.
 var TokenTypeString = map[TokenType]string{
 	0:          "<unknown>",
 	String:     "string",
@@ -85,7 +88,7 @@ func init() {
 func (k TokenType) String() string { return TokenTypeString[k] }
 
 // A map of the begin character in an operator and how many bytes
-// to read after to parse an operator
+// to read after to parse an operator.
 var opPrefixes = make(map[rune]int, len(OperatorMap)/2)
 
 func init() {

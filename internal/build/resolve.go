@@ -181,9 +181,9 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 // (non-Klar files). moduleFromDir reports an error if it encounters a
 // submodule when depth is [MaxModuleDepth], per the Klar Project Structure spec.
 func (c *Compiler) moduleFromDir(
-	name, dir string, modules *[]*Module, depth int, info *InputOptions,
+	moduleName, dir string, modules *[]*Module, depth int, info *InputOptions,
 ) (klarFiles int, err error) {
-	m := &Module{Name: name, Path: dir}
+	m := &Module{Name: moduleName, Path: dir}
 	c.Modules = append(c.Modules, m)
 	*modules = append(*modules, m)
 	c.moduleInputs[m] = info
@@ -209,6 +209,13 @@ func (c *Compiler) moduleFromDir(
 			if err != nil {
 				return klarFiles, err
 			}
+		case strings.HasSuffix(name, ".test.klar"):
+			if moduleName != module.TestDir {
+				// Test files must be in test/ folders
+				err = &InterfaceError{Value: path, Code: ErrMisplacedTest}
+				return
+			}
+			fallthrough
 		case IsKlarFile(name):
 			m.Files = append(m.Files, path)
 			klarFiles++
@@ -281,7 +288,10 @@ func (c *Compiler) resolvePackage(
 				return
 			}
 			fallthrough
-		case module.SrcDir, module.CmdDir, module.GeneratedDir: // src, cmd, generated
+		case module.SrcDir, module.CmdDir, module.TestDir: // src, cmd, test
+			if name == module.TestDir && c.Mode != ModeTest {
+				break
+			}
 			// The only Klar project directories that contain buildable modules
 			c.Info("Resolving modules in", slog.String("path", fullPath))
 			n, err := c.moduleFromDir(name, fullPath, modules, 0, info)

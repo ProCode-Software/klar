@@ -1,6 +1,9 @@
 package lexer
 
-import "unicode"
+import (
+	"fmt"
+	"unicode"
+)
 
 // ReadIdentifier reads an identifier or keyword. Underscores and
 // letters and digits in any language are allowed in identifiers.
@@ -100,20 +103,37 @@ func (l *Lexer) ReadBlockComment(pos Position) *Token {
 
 type RegexAttrs struct {
 	Flags        []byte
-	Source       string // Actual expression contents
+	Source       string // Deprecated: Use Fragements instead. Actual expression contents
 	Unterminated bool
 	Multiline    bool
-	DoubleSlash  bool
+	// Fragments end before an interpolation or after a newline. The only
+	// [StringEscape] used is [StringInterpolation].
+	Fragments []RegexFragment
 }
 
+// RegexFragment is StringFragment
+type RegexFragment = StringFragment
+
 // TODO: check on this after RFC is approved
+// TODO: length doesn't include interpolations
 func (l *Lexer) ReadRegex(startPos Position) *Token {
 	var (
+		t                     = l.NewTokenizer(false)
 		slashEnd              = startPos.Col + 1
 		hasNewline, isNewline bool
-		leng                  uint32
-		t                     = l.NewTokenizer(false)
+		isEscape              bool
+		leng, firstOffset     uint32 = 2, 0
+		frags                 []RegexFragment
+		fragStart             int
 	)
+	endTextFragment := func() {
+		frags = append(frags, TextFragment{
+			Source:     t.Builder.String()[fragStart:],
+			LineOffset: firstOffset,
+		})
+		firstOffset = 0
+		fragStart = t.Builder.Len()
+	}
 	// Regex contents
 	// ============
 	const prefix = "#/"
@@ -122,37 +142,76 @@ loop:
 	for r, b := range t.Tokenize {
 		switch r {
 		case '/':
-			b.WriteRune(r)
-			leng++
-			break loop
+			if !isEscape {
+				endTextFragment()
+				b.WriteRune(r)
+				leng++
+				break loop
+			}
 		case '\n':
 			hasNewline, isNewline = true, true
+			endTextFragment()
 			continue
+		case '\\':
+			isEscape = !isEscape
+			isNewline = false
+			b.WriteRune(r)
+			leng++
+		case '{':
+			// Interpolation
+			if !isEscape {
+				endTextFragment()
+
+				startPos := l.prevCol()
+				esc := l.readStrInterp()
+				esc.Pos = startPos
+
+				t.Builder.WriteString(esc.Value)
+				frags = append(frags, esc)
+				fragStart = t.Builder.Len()
+				firstOffset = 0
+				break
+			}
+			fallthrough
 		default:
 			// Trim whitespace at the beginning of each line, similar to strings
 			if isNewline && unicode.IsSpace(r) && l.Pos.Col-1 <= slashEnd {
+				firstOffset++
 				continue
 			}
+			fragStart = t.Builder.Len()
 			b.WriteRune(r)
 			leng++
-			isNewline = false
+			isEscape = false
 		}
+		isNewline = false
 	}
+
 	unterm := t.EOF()
+	if unterm {
+		endTextFragment()
+	}
 	srcEnd := t.Builder.Len() - 1
 
 	// Flags
 	// =======
+	endPos := t.EndPos()
 	t.ResetKeepBuilder(true)
 	var flags []byte
 	for r, b := range t.Tokenize {
 		if !IsASCIILetter(r) {
+			fmt.Println("2.5 =", t.Pos)
 			break
 		}
 		c := byte(r)
 		b.WriteByte(c) // Append to full source
 		flags = append(flags, c)
 		leng++
+	}
+	// Bug with Tokenizer that adds an extra column
+	// TODO: Idk if this will work
+	if t.EOF() {
+		t.endPos = endPos
 	}
 
 	str := t.String()
@@ -164,7 +223,7 @@ loop:
 			Multiline:    hasNewline,
 			Flags:        flags,
 			Unterminated: unterm,
-			DoubleSlash:  false,
+			Fragments:    frags,
 		},
 	})
 }

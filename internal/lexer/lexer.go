@@ -197,19 +197,18 @@ func (t *Tokenizer) Tokenize(yield func(rune, *Builder) bool) {
 	for {
 		r, _, err := t.Reader.ReadRune()
 		t.Pos.Col++
-		if handleReadError(err) {
+		switch {
+		case handleReadError(err):
 			t.eof = true
 			t.endPos = t.Pos
 			return
-		}
-		if !yield(r, &t.Builder) {
+		case !yield(r, &t.Builder):
 			if t.BackupLast {
 				t.Backup()
 			}
 			t.endPos = t.Pos
 			return
-		}
-		if r == '\n' {
+		case r == '\n':
 			t.ResetPosition()
 		}
 	}
@@ -230,7 +229,7 @@ func (t *Tokenizer) Reset(backupLast bool) {
 	t.eof = false
 }
 
-// ResetKeepBuilder resets the tokenizer without clearing the builder.
+// ResetKeepBuilder resets the tokenizer without clearing the builder or end position.
 func (t *Tokenizer) ResetKeepBuilder(backupLast bool) {
 	t.BackupLast = backupLast
 	t.eof = false

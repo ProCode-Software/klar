@@ -22,9 +22,11 @@ func (p *Parser) nudError() {
 		p.unknownTokenError()
 		return
 	case lexer.If:
-		p.Error(errors.Token(errors.ErrIfStatement, curr))
+		p.ErrorLabelled(errors.Token(errors.ErrIfStatement, curr), "Use a 'when' block instead")
 	case lexer.Plus:
-		p.Error(errors.Token(errors.ErrPositiveSign, curr))
+		p.ErrorLabelled(errors.Token(errors.ErrPositiveSign, curr),
+			"A leading '+' sign doesn't change a number",
+		)
 	case lexer.NotNot:
 		count := p.countConsecutiveNot()
 		err := errors.Range(errors.ErrDoubleNot,

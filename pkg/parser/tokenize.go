@@ -11,28 +11,22 @@ import (
 )
 
 // TokenizeFile reads from file and converts it into lexer tokens.
-func TokenizeFile(file *os.File) ([]lexer.Token, error) {
+func TokenizeFile(file *os.File) []lexer.Token {
 	// Estimate token capacity
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
+	var est int64
+	if stat, err := file.Stat(); err == nil {
+		est = stat.Size() / 10
 	}
-	byteSize := stat.Size()
-	return Tokenize(file, byteSize/10)
+	return Tokenize(file, est)
 }
 
-func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) {
+func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token) {
 	if cap > 0 {
 		tokens = make([]lexer.Token, 0, cap)
 	} else {
 		tokens = make([]lexer.Token, 0)
 	}
 	// Recover if the lexer panics (read error)
-	defer func() {
-		if r := recover(); r != nil {
-			err, _ = r.(error)
-		}
-	}()
 	for {
 		token := l.Tokenize()
 		tokens = append(tokens, *token)
@@ -40,25 +34,23 @@ func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token, err error) 
 			break
 		}
 	}
-	return tokens, nil
+	return tokens
 }
 
 // Tokenize reads from r and converts it into lexer tokens.
-func Tokenize(r io.Reader, cap int64) (
-	tokens []lexer.Token, err error,
-) {
+func Tokenize(r io.Reader, cap int64) []lexer.Token {
 	lex := lexer.NewLexer(r)
 	return TokenizeLexer(lex, cap)
 }
 
 // TokenizeString reads from src and converts it into lexer tokens.
-func TokenizeString(src string) ([]lexer.Token, error) {
+func TokenizeString(src string) []lexer.Token {
 	file := strings.NewReader(src)
 	return Tokenize(file, int64(len(src)/3))
 }
 
 // TokenizeBytes reads from b and converts it into lexer tokens.
-func TokenizeBytes(b []byte) ([]lexer.Token, error) {
+func TokenizeBytes(b []byte) []lexer.Token {
 	file := bytes.NewReader(b)
 	return Tokenize(file, int64(len(b)/3))
 }
