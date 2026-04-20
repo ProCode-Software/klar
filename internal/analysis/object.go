@@ -17,6 +17,7 @@ type Object struct {
 	typ     Type
 	order   uint32
 	flags   Flag
+	attrs   any // TODO
 }
 
 // NewObject returns a new [Object] without context information.

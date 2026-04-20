@@ -21,7 +21,7 @@ type Module struct {
 	KlarVersion *version.Version // Minimum required Klar version
 	Context     *Context         // Root non-builtin context
 	Flags       Flag
-	TopLevel    FileID // The file containing top-level statements, or -1. // TODO: should there be a slice of statements?
+	TopLevel    []ast.Statement
 }
 
 // NewModule returns a new Module. The module is not complete.
@@ -41,7 +41,6 @@ func NewModule(
 		Target:      target,
 		KlarVersion: klarVersion,
 		Context:     ctx,
-		TopLevel:    -1,
 	}
 }
 

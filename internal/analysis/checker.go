@@ -105,26 +105,31 @@ func (c *Checker) initFileContexts() map[string]*Context {
 	return fileContexts
 }
 
-func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
-	type methodInfo struct {
-		self *ast.Identifier
-		decl *ast.FunctionDeclaration
-		obj  *Object
-	}
-	var (
-		methods   []methodInfo
-		overloads map[string][]*Object
-		topLevel  []ast.Statement
-	)
-	for name, program := range c.Programs {
+type methodInfo struct {
+	self *ast.Identifier
+	decl *ast.FunctionDeclaration
+	obj  *Object
+}
+
+type funcAliasInfo struct {
+	decl   *ast.FuncAliasDeclaration
+	fid    FileID
+	public bool
+}
+
+func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
+	methods map[string][]methodInfo, funcAliases []funcAliasInfo,
+) {
+	var overloads map[string][]*Object
+	for fileName, program := range c.Programs {
 		var (
-			fileContext = fileContexts[name]
+			fileContext = fileContexts[fileName]
 			fid         = fileContext.getAttribute(ContextFile).(FileID)
 			// First statement after imports. Any import after this is misplaced.
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _ = fileContext.getAttribute(firstStmtIndex).(int)
 		)
-		for _, stmt := range program.Body[firstStmt:] {
+		for i, stmt := range program.Body[firstStmt:] {
 			var public bool
 			if s, ok := stmt.(*ast.PublicDeclaration); ok {
 				public = true
@@ -137,6 +142,17 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				err.Label = "Put this import at the top of the file"
 				c.fileError(err, fid)
 				continue
+			case *ast.Attribute:
+				for _, attr := range program.Body[i:] {
+					var nextStmt ast.Statement
+					attr, ok := attr.(*ast.Attribute)
+					if !ok {
+						nextStmt = attr
+						break
+					}
+					// TODO: store a slice of Attr for the node after
+					_ = nextStmt
+				}
 			case *ast.FunctionDeclaration:
 				name := stmt.Identifier.Name
 				fn := NewObject(name, fid, stmt.GetRange(), c.module, &Function{})
@@ -148,7 +164,12 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 					// c.declare(fileContext, fn)
 				} else if !stmt.Struct.IsDiscard() {
 					// Method - ignore discarded names, though they will still be typechecked
-					methods = append(methods, methodInfo{stmt.Struct, stmt, fn})
+					if methods == nil {
+						methods = make(map[string][]methodInfo)
+					}
+					methods[stmt.Struct.Name] = append(methods[stmt.Struct.Name],
+						methodInfo{stmt.Struct, stmt, fn},
+					)
 				}
 				info := &DeclarationInfo{file: fileContext, node: stmt}
 				c.moduleDecls[fn] = info
@@ -157,9 +178,7 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				continue
 			case *ast.FuncAliasDeclaration:
 				// Will be resolved later
-				fn := NewObject(name, fid, stmt.Range, c.module, &Function{})
-				c.declareTopLevelObject(fn, &DeclarationInfo{file: fileContext, node: stmt})
-				fn.public = public
+				funcAliases = append(funcAliases, funcAliasInfo{stmt, fid, public})
 				continue
 			case ast.TypeDeclaration:
 				name := stmt.Name()
@@ -171,7 +190,6 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			case *ast.VariableDeclaration:
 				// TODO: some but not all var declarations are top level (contain function calls in
 				// values). Call a function that should also determine if the declaration is top level.
-				// handlePublicOpaque(fn, public, opaque)
 				continue
 			case *ast.BadExpression:
 				// Shouldn't be here. Invalid ASTs should't be typechecked.
@@ -183,21 +201,19 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				// Only 'when' and call expressions are allowed as statements.
 				// TODO: move this to statement checking, not top-level
 				switch stmt.Expression.(type) {
-				case *ast.WhenExpression, *ast.CallExpression, *ast.BadExpression:
+				case *ast.WhenExpression, *ast.CallExpression:
+				case *ast.BadExpression:
+					panic("typechecking invalid AST")
 				default:
 					c.fileError(errors.Node(errors.ErrUnusedValue, stmt), fid)
 					continue
 				}
 			}
-			// Top-level statement
-			if c.module.TopLevel != -1 && c.module.TopLevel != fid {
-				// Only one file can have top-level statements
-				c.fileError(errors.Node(errors.ErrTopLevel, stmt).
-					SetParam("other", c.module.ResolveFile(c.module.TopLevel)), fid,
-				)
+			// Top-level statement: only allowed in main.klar or single-file modules
+			if fileName == "main" || c.module.Flags.Has(SingleFileModule) {
+				c.module.TopLevel = append(c.module.TopLevel, stmt)
 			} else {
-				c.module.TopLevel = fid
-				topLevel = append(topLevel, stmt)
+				c.fileError(errors.Node(errors.ErrTopLevel, stmt), fid)
 			}
 		}
 	}
@@ -218,6 +234,7 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				namespace = impObj.module.ImportPathString()
 			}
 			err := errors.Range(errors.ErrImportShadow, impObj.rang)
+			err.Label = errors.Quote(name) + " was already declared in the module"
 			err.Params = errors.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
 			err.Details = append(err.Details, errors.Detail{
@@ -227,4 +244,5 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			c.fileError(err, impObj.file)
 		}
 	}
+	return
 }

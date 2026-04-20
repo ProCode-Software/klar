@@ -477,8 +477,7 @@ func (e *ParseError) error() string {
 		return Quote(e.stringParam("name")) + " was already declared " + asAType +
 			"at " + existingRange.FilePos().Rel(e.File)
 	case ErrTopLevel:
-		return "Only a single file in a module can have top-level statements. I already found them in " +
-			e.stringParam("other")
+		return "Only 'main.klar' and single-file modules can have top-level statements"
 	case ErrImportShadow:
 		name := e.stringParam("name")
 		importPath := e.stringParam("import")
