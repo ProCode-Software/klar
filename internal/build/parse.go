@@ -165,7 +165,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	defer p.PutLexer(lex)
 	l.Info("Tokenizing file")
 
-	pkgparser.TokenizeLexer(lex, sizeEst)
+	res.Tokens = pkgparser.TokenizeLexer(lex, sizeEst)
 
 	// Parse
 	// ========

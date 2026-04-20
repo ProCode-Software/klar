@@ -75,6 +75,7 @@ const (
 	ErrFuncDotAfterSelf  // Expected . after (self: type). This is unlike Go
 	ErrSelfNameDiscard   // Can't discard self name in method declaration
 	ErrChainedDefault    // Default value specified with multiple keys
+	ErrDiscardIntfField  // Interface field/method can't be '_'
 
 	// Expression =====
 
@@ -434,6 +435,9 @@ func (e *ParseError) error() string {
 		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
 		return "This value is never used"
+	case ErrDiscardIntfField:
+		e.Hint("Remove the field")
+		return "An interface field can't be '_'"
 	case ErrComputedFuncAlias:
 		return "The target of a function alias can't be computed"
 	case ErrInvalidCharacter:

@@ -157,7 +157,7 @@ func (p *Parser) ParseEnum(
 			attrs = a
 		}
 		p.ExpectNoAdvance(lexer.Dot)
-		id := p.ParseMapIdentifier(0)
+		id := p.ParseMapIdentOrDiscard(0)
 
 		// Check if exists
 		if _, ok := itemMap[id.Name]; ok {
@@ -228,7 +228,7 @@ func (p *Parser) ParseStruct(
 		f := &ast.StructField{Attributes: attrs}
 		// Keys
 		parseSeries(p, &f.Names, func() ast.Identifier {
-			name := p.ParseMapIdentifier(0)
+			name := p.ParseMapIdentOrDiscard(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
@@ -276,7 +276,10 @@ func (p *Parser) ParseInterface(
 		}
 		// Names
 		parseSeries(p, &f.Keys, func() ast.Identifier {
-			name := p.ParseMapIdentifier(0)
+			if p.CurrKind() == lexer.Underscore {
+				p.ErrorLabelled(errors.Token(errors.ErrDiscardIntfField, p.Curr()), "Remove the field")
+			}
+			name := p.ParseMapIdentOrDiscard(0)
 			if _, ok := fieldMap[name.Name]; ok {
 				err := errors.Node(errors.ErrRedeclaredField, name)
 				err.SetParam("kind", "interface")
@@ -347,7 +350,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	} else {
 		// Normal function declaration
 		// 	func fn()
-		f.Identifier = p.ParseIdentifier()
+		f.Identifier = p.ParseIdentOrDiscard()
 	}
 
 	// Generic:

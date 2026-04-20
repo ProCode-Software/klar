@@ -13,7 +13,8 @@ before the curly braces.
 instead of `Void`.
 5. Inheritance for the `Player` struct uses `: User` rather than `(User)`.
 6. Interface `type Reader = {...}` has been changed to `type #Reader {...}`.
-7. `_ :=` was added before the pipe expression at the bottom.
+7. `_ :=` was added before the pipe expression at the bottom, all surrounded
+by a function call.
 
 Everything else was unchanged! The original was written around April/May
 (most likely May) 2025.
@@ -56,4 +57,4 @@ type #Reader {
     Read() -> String
 }
 
-_ := fn1(p) |> doThis |> .name // Pipe
+func _() { _ := fn1(p) |> doThis |> .name } // Pipe

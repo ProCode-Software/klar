@@ -11,19 +11,19 @@ Klar's type system is strongly-typed and statically-typed. All types are known a
 ## Glossary
 
 1. **Compatible type** - Compatibility can be either one-way or two-way.
-   - **One-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted. This may not mean that _type `B` is compatible with `A`_.
+    - **One-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted. This may not mean that _type `B` is compatible with `A`_.
 
-   ```klar
-   x: B := A()
-   y: A := B() // May not be true
-   ```
+    ```klar
+    x: B := A()
+    y: A := B() // May not be true
+    ```
 
-   - **Two-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted, AND vice versa.
+    - **Two-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted, AND vice versa.
 
-   ```klar
-   x: B := A()
-   y: A := B() // True
-   ```
+    ```klar
+    x: B := A()
+    y: A := B() // True
+    ```
 
 2. **Concrete type** - A type whose structure is fully known at compile-time, and can be directly initialized. Primitives such as `Int`, `String`, `Error`, and lists, maps, structs, functions, and enums are concrete types. `Result`s, unions, optionals, tags, and interfaces aren't concrete types.
 
@@ -162,7 +162,7 @@ type #Readable {
 }
 ```
 
-Interfaces are similar to [union types](#unions), but explicitly define common fields and methods. A type with fields and methods compatible with ALL fields in an interface is an *implementation* of that interface.
+Interfaces are similar to [union types](#unions), but explicitly define common fields and methods. A type with fields and methods compatible with ALL fields in an interface is an _implementation_ of that interface.
 
 Interface method definitions are allowed to use the `Nothing` type in a union for return types:
 
@@ -209,6 +209,17 @@ Types declared in another module can't mark themselves or implement the tag.
 
 Because tags don't require implementations to have specific fields or methods, indexing a tag is not
 allowed. In order to reference any of `MyStruct`'s fields or references, `obj` must be explicitly downcasted.
+
+## Type Aliases
+
+Type aliases allow providing a different name for an existing type. Aliases can also reference other aliases, but cyclic aliases are not allowed.
+
+```klar
+type MyAlias = Int
+type Point = (Float, Float)
+type MyResult = Result<String>
+type Number = MyAlias
+```
 
 ## Attributes
 
@@ -510,6 +521,26 @@ type File: Readable {}
 func readAmount(reader: Readable, n: Int) -> Result<String>
 func readAmount(reader: File, n: Int) -> Result<String>
 ```
+
+## Function Aliases
+
+A function alias can alias another function or method. Parameters and generics cannot be declared on an alias.
+The target must only be a name of a function or method. It can be on a type or another module.
+
+```klar
+func add = sum
+func Person.sayHello = Person.greet
+
+// Existing functions
+func sum(n1, n2: Int) = n1 + n2
+func Person.greet(name: String) -> String
+
+// Alias are called the same way and return the same type
+sum(1, 2) == add(1, 2)
+Person("John").sayHello("Jane") == Person("John").greet("Jane")
+```
+
+An error is raised if the target of an alias isn't a function or method, or if it cannot be resolved due to alias cycles.
 
 ## Initializers and Type Casts
 

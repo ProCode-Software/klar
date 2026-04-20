@@ -60,6 +60,10 @@ func (obj *Object) String() string {
 	return obj.typ.StringWithName(obj.name)
 }
 
+func (obj *Object) StringWithName(name string) string {
+	return obj.typ.StringWithName(name) // TODO
+}
+
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
 	// TODO: should use '/' instead?
@@ -160,11 +164,9 @@ func (n *TypeName) StringWithName(name string) string { return name }
 
 // Function represents a function type, either a declared function or a lambda.
 type Function struct {
-	Self     *Variable // If method
-	Generics []*Generic
-	Params   []*Variable
-	Return   Type
-	Origin   *Object // If function alias
+	Self      *Variable // If method
+	Overloads []*Overload
+	Return    Type
 }
 
 func (fn *Function) Kind() Kind     { return KindFunction }
@@ -176,14 +178,9 @@ func (fn *Function) StringWithName(name string) string {
 		b.WriteByte(' ')
 		b.WriteString(name)
 	}
-	b.WriteByte('(')
-	for i, param := range fn.Params {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(param.String())
+	if len(fn.Overloads) == 1 {
+		b.WriteString(fn.Overloads[0].String())
 	}
-	b.WriteByte(')')
 	if fn.Return != nil {
 		switch fn.Return.Kind() {
 		case KindNothing, KindInvalid, KindUnreachable:
@@ -195,14 +192,72 @@ func (fn *Function) StringWithName(name string) string {
 	return b.String()
 }
 
-// OverloadedFunction represents a [Function] with multiple overloads.
-type OverloadedFunction struct {
-	Self      *Variable
-	Overloads []*Function
+// TODO: params with defaults
+type Overload struct {
+	Generics       []*Generic
+	Params         []*Variable
+	LabelledParams []*LabelledParam
 }
 
-func (f *OverloadedFunction) String() string                    { return "func" }
-func (f *OverloadedFunction) StringWithName(name string) string { return "func " + name }
+func (o *Overload) StringWithName(name string) string {
+	return "func " + name + o.String()
+}
+
+func (o *Overload) String() string {
+	var b strings.Builder
+	// Generics
+	if len(o.Generics) > 0 {
+		b.WriteByte('<')
+		for i, g := range o.Generics {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(g.Name)
+		}
+		b.WriteByte('>')
+	}
+	// Params
+	b.WriteByte('(')
+	for i, param := range o.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.String())
+	}
+	// Labelled params
+	for i, param := range o.LabelledParams {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.String())
+	}
+	b.WriteByte(')')
+	return b.String()
+}
+
+type LabelledParam struct {
+	Name string
+	Type Type
+}
+
+func (p *LabelledParam) String() string { return p.Name + ": " + p.Type.String() }
+
+func (p *LabelledParam) StringWithName(string) string { return p.String() }
+
+type FunctionAlias struct {
+	Self   *Variable // If method
+	Origin *Object
+}
+
+func (a *FunctionAlias) Kind() Kind { return KindFunction }
+
+func (a *FunctionAlias) String() string {
+	return "func = " + "" // TODO
+}
+
+func (a *FunctionAlias) StringWithName(name string) string {
+	return "func " + name + " = " + ""
+}
 
 // Generic represents a generic type parameter.
 type Generic struct{ Name string }

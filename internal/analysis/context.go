@@ -71,6 +71,20 @@ func (ctx *Context) initDecls() {
 	}
 }
 
+// Lookup returns the object with the given name in the 
+// current context, or nil if not found.
 func (ctx *Context) Lookup(name string) *Object {
+	if ctx.Declarations == nil {
+		return nil
+	}
 	return ctx.Declarations[name]
+}
+
+func (ctx *Context) LookupRecursive(name string) *Object {
+	for ; ctx != nil; ctx = ctx.Parent {
+		if obj := ctx.Lookup(name); obj != nil {
+			return obj
+		}
+	}
+	return nil
 }

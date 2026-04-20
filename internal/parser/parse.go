@@ -54,8 +54,7 @@ func (p *Parser) ParseStatement(flags parseFlags) ast.Statement {
 	if next := p.PeekKind(); kind == lexer.Underscore &&
 		(isAssignment(next) || next == lexer.Comma || next == lexer.Colon) {
 		// Allow discard assignments
-		p.Advance()
-		expr = &ast.Discard{}
+		expr = rangeFromToken(&ast.Discard{}, p.Advance())
 	} else if expr, ok = p.handleNUD(kind); !ok { // Expression NUD
 		p.nudError()
 		// expectEOS() // TODO: should we?

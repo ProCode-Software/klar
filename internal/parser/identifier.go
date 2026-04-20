@@ -84,6 +84,13 @@ func (p *Parser) ParseMapIdentifier(opts parseFlags) ast.Identifier {
 	return newIdentifier(tok)
 }
 
+func (p *Parser) ParseMapIdentOrDiscard(opts parseFlags) ast.Identifier {
+	if p.CurrKind() == lexer.Underscore {
+		return p.ParseValidIdent()
+	}
+	return p.ParseMapIdentifier(opts)
+}
+
 func symbolToIdentifier(s *ast.Symbol) ast.Identifier {
 	return ast.Identifier{
 		Name:     s.Identifier,
