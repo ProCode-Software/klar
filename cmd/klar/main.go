@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	commands = klarcmd.KlarCommands
-	aliases  = klarcmd.KlarCommandAliases
-	profiler prof
+	commands    = klarcmd.KlarCommands
+	aliases     = klarcmd.KlarCommandAliases
+	profiler    prof
 )
 
 var RandomDescriptions = []string{
@@ -26,6 +26,7 @@ var RandomDescriptions = []string{
 }
 
 func main() {
+	// debug.SetCrashOutput(crashOutput, debug.CrashOptions{})
 	defer cli.HandleSignalExit()
 	// startProf()
 	// defer stopProf()

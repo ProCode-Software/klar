@@ -205,8 +205,7 @@ obj: MyTag := MyStruct(...)
 
 Tags are useful for interfaces with the sole purpose of restricting implementations to specific objects.
 
-Tags are also implicitly opaque, so types declared in another module can't mark themselves or implement the tag.
-Explicitly applying the `opaque` modifier to a tag is a compile-time error.
+Types declared in another module can't mark themselves or implement the tag.
 
 Because tags don't require implementations to have specific fields or methods, indexing a tag is not
 allowed. In order to reference any of `MyStruct`'s fields or references, `obj` must be explicitly downcasted.

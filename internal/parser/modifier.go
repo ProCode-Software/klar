@@ -13,27 +13,10 @@ func (p *Parser) validatePublic() {
 	}
 }
 
-func (p *Parser) ParseOpaqueModifier() ast.Statement {
-	p.Advance() // opaque
-	p.validatePublic()
-	stmt := p.ParseStatement(noEOS)
-	switch stmt := stmt.(type) {
-	case *ast.InterfaceDeclaration, *ast.StructDeclaration:
-		return &ast.OpaqueDeclaration{Declaration: stmt.(ast.TypeDeclaration)}
-	case *ast.PublicDeclaration: // Already checked and invalid
-	default:
-		p.Error(errors.Node(errors.ErrInvalidOpaque, stmt))
-	}
-	return &ast.BadExpression{Value: stmt}
-}
-
 func (p *Parser) ParsePublicModifier() ast.Statement {
 	firstPublic := p.Expect(lexer.Public)
 	var stmt ast.Statement
 	switch curr := p.Curr(); curr.Kind {
-	case lexer.Opaque:
-		stmt = p.ParseOpaqueModifier()
-		markStartEndPos(p, stmt, curr.Position)
 	case lexer.Public:
 		err := errors.Token(errors.ErrDuplicateModifier, curr)
 		err.SetParam("modifier", lexer.Public)

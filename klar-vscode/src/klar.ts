@@ -137,7 +137,7 @@ const repository: Repository = {
         // List of keywords: https://github.com/ProCode-Software/klar/blob/main/internal/lexer/token_types.go#L81
         // Some that are part of declarations aren't present here
         patterns: [
-            match(/\b(public|opaque)\b/, 'storage.modifier.klar'),
+            match(/\b(public)\b/, 'storage.modifier.klar'),
             match(/\b(type)\b/, 'storage.type.type.klar'),
             match(/\b(func)\b/, 'storage.type.function.klar'),
             match(/\b(for|while|next|stop)\b/, 'keyword.control.loop.klar'),

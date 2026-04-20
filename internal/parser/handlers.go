@@ -191,8 +191,6 @@ func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statemen
 		res = p.ParseImportStatement()
 	case lexer.Public:
 		res = p.ParsePublicModifier()
-	case lexer.Opaque:
-		res = p.ParseOpaqueModifier()
 	case lexer.At:
 		res = p.ParseAttribute()
 	}

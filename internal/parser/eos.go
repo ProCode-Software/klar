@@ -175,7 +175,7 @@ func CanEndStatement(t lexer.TokenType) bool {
 		// Keywords
 		lexer.Func, lexer.For, lexer.When, lexer.Type,
 		lexer.Go, lexer.Await, lexer.While, lexer.Not,
-		lexer.Try, lexer.Opaque, lexer.Public:
+		lexer.Try, lexer.Readonly, lexer.Public:
 		return false
 	case lexer.RightParenthesis, lexer.RightBracket,
 		lexer.NotNot, lexer.GreaterThan:

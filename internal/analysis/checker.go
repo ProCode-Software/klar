@@ -6,7 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/errors"
-	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -125,41 +124,11 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _ = fileContext.getAttribute(firstStmtIndex).(int)
 		)
-		handlePublicOpaque := func(obj *Object, public, opaque bool) {
-			obj.public = public
-			if opaque {
-				obj.flags |= OpaqueType
-			}
-		}
 		for _, stmt := range program.Body[firstStmt:] {
-			var public, opaque bool
+			var public bool
 			if s, ok := stmt.(*ast.PublicDeclaration); ok {
 				public = true
 				stmt = s.Declaration
-			}
-			if o, ok := stmt.(*ast.OpaqueDeclaration); ok {
-				if !public {
-					err := errors.Node(errors.ErrPrivateOpaque, stmt)
-					err.Label = "This type isn't exported"
-					// TODO: remove when done testing
-					err.Highlights = append(err.Highlights, errors.Highlight{
-						Range: ranges.Range{
-							Start: stmt.GetRange().Start,
-							End:   stmt.GetRange().End.Add(0, 3),
-						},
-						Message: "You found out",
-					}, errors.Highlight{
-						Range: ranges.Range{
-							Start: stmt.GetRange().Start,
-							End:   stmt.GetRange().End.Sub(1, 0),
-						},
-						Message: "You found out again",
-					})
-
-					c.fileError(err, fid)
-				}
-				opaque = true
-				stmt = o.Declaration
 			}
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
@@ -184,19 +153,19 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) {
 				info := &DeclarationInfo{file: fileContext, node: stmt}
 				c.moduleDecls[fn] = info
 				fn.order = uint32(len(c.moduleDecls))
-				handlePublicOpaque(fn, public, opaque)
+				fn.public = public
 				continue
 			case *ast.FuncAliasDeclaration:
 				// Will be resolved later
 				fn := NewObject(name, fid, stmt.Range, c.module, &Function{})
 				c.declareTopLevelObject(fn, &DeclarationInfo{file: fileContext, node: stmt})
-				handlePublicOpaque(fn, public, opaque)
+				fn.public = public
 				continue
 			case ast.TypeDeclaration:
 				name := stmt.Name()
 				obj := NewObject(name, fid, stmt.GetRange(), c.module, &TypeName{nil, name})
 				c.declareTopLevelObject(obj, &DeclarationInfo{node: stmt, file: fileContext})
-				handlePublicOpaque(obj, public, opaque)
+				obj.public = public
 				continue
 
 			case *ast.VariableDeclaration:

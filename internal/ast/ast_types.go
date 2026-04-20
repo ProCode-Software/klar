@@ -176,9 +176,7 @@ var ReservedIdent = []lexer.TokenType{
 }
 
 // Keywords that are used before declarations.
-var Modifiers = []lexer.TokenType{
-	lexer.Opaque, lexer.Public,
-}
+var Modifiers = []lexer.TokenType{lexer.Public}
 
 type Type interface {
 	Node
@@ -691,13 +689,6 @@ type ObjectDestructureEntry struct {
 type AssignableVars struct {
 	BaseNode
 	Values []Assignable
-}
-
-// Declares a struct that can only be initialized within a module
-// or an interface that can only be implemented within a module
-type OpaqueDeclaration struct {
-	BaseNode
-	Declaration TypeDeclaration
 }
 
 // Waits for one or more tasks to complete

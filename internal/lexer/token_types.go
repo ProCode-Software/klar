@@ -89,9 +89,9 @@ const (
 	Import
 	In
 	Next
-	Opaque
 	Or
 	Public
+	Readonly
 	Return
 	Stop
 	Try
@@ -156,26 +156,26 @@ var OperatorMap = map[string]TokenType{
 // List of keywords in the Klar language. All keys are reserved and cannot be used
 // as identifiers.
 var KeywordMap = map[string]TokenType{
-	"and":    And,
-	"as":     As,
-	"await":  Await,
-	"for":    For,
-	"func":   Func,
-	"go":     Go,
-	"import": Import,
-	"if":     If,
-	"in":     In,
-	"!in":    NotIn,
-	"next":   Next,
-	"opaque": Opaque,
-	"or":     Or,
-	"public": Public,
-	"return": Return,
-	"stop":   Stop,
-	"try":    Try,
-	"type":   Type,
-	"when":   When,
-	"while":  While,
+	"and":      And,
+	"as":       As,
+	"await":    Await,
+	"for":      For,
+	"func":     Func,
+	"go":       Go,
+	"import":   Import,
+	"if":       If,
+	"in":       In,
+	"!in":      NotIn,
+	"next":     Next,
+	"or":       Or,
+	"public":   Public,
+	"readonly": Readonly,
+	"return":   Return,
+	"stop":     Stop,
+	"try":      Try,
+	"type":     Type,
+	"when":     When,
+	"while":    While,
 
 	"_":     Underscore,
 	"true":  Boolean,

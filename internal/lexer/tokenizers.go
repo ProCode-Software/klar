@@ -142,14 +142,16 @@ loop:
 	for r, b := range t.Tokenize {
 		switch r {
 		case '/':
+			leng++
 			if !isEscape {
 				endTextFragment()
 				b.WriteRune(r)
-				leng++
 				break loop
 			}
+			b.WriteRune(r)
 		case '\n':
 			hasNewline, isNewline = true, true
+			isEscape = false
 			endTextFragment()
 			continue
 		case '\\':
@@ -157,6 +159,7 @@ loop:
 			isNewline = false
 			b.WriteRune(r)
 			leng++
+			continue
 		case '{':
 			// Interpolation
 			if !isEscape {
@@ -172,6 +175,7 @@ loop:
 				firstOffset = 0
 				break
 			}
+			// TODO: len not counted
 			fallthrough
 		default:
 			// Trim whitespace at the beginning of each line, similar to strings
@@ -182,16 +186,17 @@ loop:
 			fragStart = t.Builder.Len()
 			b.WriteRune(r)
 			leng++
-			isEscape = false
 		}
 		isNewline = false
+		isEscape = false
 	}
 
 	unterm := t.EOF()
+	srcEnd := t.Builder.Len() - 1
 	if unterm {
 		endTextFragment()
+		srcEnd = t.Builder.Len()
 	}
-	srcEnd := t.Builder.Len() - 1
 
 	// Flags
 	// =======

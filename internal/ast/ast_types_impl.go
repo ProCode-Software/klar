@@ -80,7 +80,6 @@ func (Attribute) stmt()            {}
 func (FuncAliasDeclaration) stmt() {}
 func (PublicDeclaration) stmt()    {}
 func (WhileStatement) stmt()       {}
-func (OpaqueDeclaration) stmt()    {}
 
 // Type
 func (PrimitiveType) _type()      {}
@@ -132,4 +131,3 @@ func (RestExpression) destruct()    {}
 
 // Modifiers
 func (PublicDeclaration) modif() {}
-func (OpaqueDeclaration) modif() {}

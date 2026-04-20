@@ -894,20 +894,6 @@ func (a *ObjectPipeline) Equal(b2 Node) bool {
 	return true
 }
 
-func (a *OpaqueDeclaration) Equal(b2 Node) bool {
-	b, ok := b2.(*OpaqueDeclaration)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if a.Declaration != nil && b.Declaration != nil && !a.Declaration.Equal(b.Declaration) {
-		return false
-	}
-	return true
-}
-
 func (a *OptionalType) Equal(b2 Node) bool {
 	b, ok := b2.(*OptionalType)
 	if !ok {

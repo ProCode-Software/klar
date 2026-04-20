@@ -197,10 +197,6 @@ func (n *ObjectPipeline) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Object}, walkSlice[Node]{2, n.Steps})
 }
 
-func (n *OpaqueDeclaration) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Declaration})
-}
-
 func (n *OptionalType) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Value})
 }

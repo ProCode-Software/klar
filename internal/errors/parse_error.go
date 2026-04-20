@@ -69,13 +69,11 @@ const (
 	ErrMissingFuncParamType // Required function parameter type
 	ErrNonNameFuncAlias     // Function alias target is not symbol or member
 	ErrComputedFuncAlias
-	ErrInvalidOpaque     // Opaque on non-struct or interface
 	ErrInvalidPublic     // Public modifier applied to non-declaration
 	ErrPublicGoesFirst   // Public modifier always goes first
 	ErrDuplicateModifier // More than 1 of the same modifier
 	ErrFuncDotAfterSelf  // Expected . after (self: type). This is unlike Go
 	ErrSelfNameDiscard   // Can't discard self name in method declaration
-	ErrPrivateOpaque     // Opaque on private type
 	ErrChainedDefault    // Default value specified with multiple keys
 
 	// Expression =====
@@ -310,8 +308,6 @@ func (e *ParseError) error() string {
 		return "A shebang must be on the first line of the file (without any lines or spaces before)"
 	case ErrMissingFuncParamType:
 		return "A function parameter must have an explicit type"
-	case ErrInvalidOpaque:
-		return "The 'opaque' modifier can only be applied to a struct or interface"
 	case ErrImportsGoFirst:
 		return "'import' statements must go before other statements in the file"
 	case ErrNumericLabel:
@@ -444,9 +440,6 @@ func (e *ParseError) error() string {
 		return "This isn't a valid Unicode character"
 	case ErrEmptyRegexInterpolation:
 		return "A regex interpolation can't be empty"
-	case ErrPrivateOpaque:
-		e.Hint("Remember that 'opaque' allows a type to be exported without allowing external modules to create instances of it. If the type is not exported, it still can't be used by external modules, so 'opaque' has no effect.")
-		return "The 'opaque' modifier has no effect on a non-public type"
 	case ErrPositiveSign:
 		e.Hint("A leading '+' sign doesn't affect a number's value. Remove it.\n" +
 			"To convert a number to an integer or float, use the 'Int()' or 'Float()' function.",
