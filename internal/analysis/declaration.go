@@ -82,4 +82,45 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
+	if _, ok := c.objPathIndex[o]; ok {
+		switch typ := o.typ.(type) {
+		case *Variable, *Constant:
+			if !c.isValidCycle(o) || typ.(Underlyer).Underlying() == nil {
+				o.typ = KindInvalid
+			}
+		case *TypeName:
+			if !c.isValidCycle(o) {
+				o.typ = KindInvalid
+			}
+		case *Function:
+			c.isValidCycle(o) // TODO: is this needed?
+		default:
+			panic("unreachable")
+		}
+	}
+
+	if ut, ok := o.typ.(Underlyer); ok && ut.Underlying() != nil {
+		return // Blue, already checked
+	}
+
+	// White, not checked yet
+	c.pushToPath(o)
+	defer c.popPath()
+
+	decl := c.moduleDecls[o]
+	switch o.typ.(type) {
+	case *Variable:
+		c.checkVarDecl(o, decl)
+	case *Constant:
+		c.checkConstDecl(o, decl)
+	case *TypeName:
+		c.checkTypeDecl(o, decl)
+	case *Function:
+	default:
+		panic("unreachable")
+	}
+}
+
+func (c *Checker) isValidCycle(o *Object) bool {
+	return true
 }

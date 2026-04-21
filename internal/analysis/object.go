@@ -273,6 +273,8 @@ type Variable struct {
 	Type
 }
 
+func (v *Variable) Underlying() Type { return v.Type }
+
 type VariableKind uint8
 
 const (
@@ -283,3 +285,19 @@ const (
 	FuncParamVar                // Function parameter
 	StructFieldVar              // Struct field
 )
+
+type Constant struct {
+	Type  Type
+	Value any // TODO
+}
+
+func (c *Constant) Kind() Kind                        { return c.Type.Kind() }
+func (c *Constant) Underlying() Type                  { return c.Type }
+func (c *Constant) String() string                    { return "" }
+func (c *Constant) StringWithName(name string) string { return "name := " + c.String() }
+
+// Underlyer is implemented by variables and constants that have an underlying type.
+type Underlyer interface {
+	Type
+	Underlying() Type
+}

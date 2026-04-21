@@ -42,6 +42,10 @@ type Checker struct {
 	importMap    map[string]*Module
 	nodeContexts map[ast.Node]*Context
 	moduleDecls  map[*Object]*DeclarationInfo // Declaration info for top-level objects
+
+	// For tracking cycles
+	objPath      []*Object       // Path of object deps
+	objPathIndex map[*Object]int // Indices of objects in objPath
 }
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
@@ -106,3 +110,17 @@ func (c *Checker) initFileContexts() map[string]*Context {
 	return fileContexts
 }
 
+func (c *Checker) pushToPath(o *Object) {
+	if c.objPathIndex == nil {
+		c.objPathIndex = make(map[*Object]int)
+	}
+	c.objPathIndex[o] = len(c.objPath)
+	c.objPath = append(c.objPath, o)
+}
+
+func (c *Checker) popPath() {
+	i := len(c.objPath) - 1
+	c.objPath[i] = nil
+	c.objPath = c.objPath[:i]
+	delete(c.objPathIndex, c.objPath[i])
+}
