@@ -115,7 +115,9 @@ func (c *Checker) checkDeclaration(o *Object) {
 		c.checkConstDecl(o, decl)
 	case *TypeName:
 		c.checkTypeDecl(o, decl)
+		// TODO: collect methods
 	case *Function:
+		c.checkFuncDecl(o, decl)
 	default:
 		panic("unreachable")
 	}

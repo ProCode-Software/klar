@@ -1,14 +1,46 @@
 package parser
 
 import (
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (p *Parser) unknownTokenError() {
-	p.Error(errors.UnexpectedToken(p.AdvanceNonBoundary()))
-	p.skipUntilBoundary()
+	tok := p.AdvanceNonBoundary()
+	p.Error(errors.UnexpectedToken(tok))
+	// p.skipUntilBoundary()
+}
+
+func (p *Parser) handleStatementError(stmt *ast.Statement) {
+	if r := recover(); r != nil {
+		if _, ok := r.(stmtError); ok {
+			start := p.Curr().Position
+			end := p.skipRestOfStatement()
+			*stmt = &ast.BadExpression{BaseNode: newBaseNode(start, end)}
+			return
+		}
+		panic(r)
+	}
+}
+
+func (p *Parser) skipRestOfStatement() (end lexer.Position) {
+	var brackCount int
+	for p.HasTokens() {
+		tok := p.Advance()
+		switch tok.Kind {
+		case lexer.Newline:
+			if brackCount == 0 {
+				return tok.End()
+			}
+		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace:
+			brackCount++
+		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
+			brackCount--
+		}
+	}
+	return
 }
 
 func (p *Parser) nudError() {

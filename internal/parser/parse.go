@@ -34,7 +34,9 @@ func (p *Parser) Parse() *ast.Program {
 	}
 }
 
-func (p *Parser) ParseStatement(flags parseFlags) ast.Statement {
+func (p *Parser) ParseStatement(flags parseFlags) (stmt ast.Statement) {
+	defer p.handleStatementError(&stmt)
+
 	kind := p.CurrKind()
 	expectEOS := func() {
 		if (flags & allowCommaTerminator) != 0 {

@@ -71,7 +71,7 @@ func (ctx *Context) initDecls() {
 	}
 }
 
-// Lookup returns the object with the given name in the 
+// Lookup returns the object with the given name in the
 // current context, or nil if not found.
 func (ctx *Context) Lookup(name string) *Object {
 	if ctx.Declarations == nil {

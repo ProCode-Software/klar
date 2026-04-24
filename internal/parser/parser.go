@@ -189,6 +189,8 @@ func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
 // If stopParsing is passed to panic, the parser will immediately stop parsing.
 type stopParsing struct{}
 
+type stmtError struct{}
+
 // Error adds an error to the parser.
 func (p *Parser) Error(err *errors.ParseError) {
 	err.File = p.Options.File
@@ -200,6 +202,7 @@ func (p *Parser) Error(err *errors.ParseError) {
 		p.Errors = append(p.Errors, errors.TooManyErrors())
 		panic(stopParsing{})
 	}
+	panic(stmtError{})
 }
 
 func (p *Parser) ErrorLabelled(err *errors.ParseError, label string) {

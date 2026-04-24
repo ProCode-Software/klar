@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	commands    = klarcmd.KlarCommands
-	aliases     = klarcmd.KlarCommandAliases
-	profiler    prof
+	commands = klarcmd.KlarCommands
+	aliases  = klarcmd.KlarCommandAliases
+	profiler prof
 )
 
 var RandomDescriptions = []string{

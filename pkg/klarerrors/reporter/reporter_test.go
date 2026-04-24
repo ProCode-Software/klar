@@ -91,8 +91,6 @@ func trimNewline(s string) string {
 	return s
 }
 
-
-
 var testCases = []reporterTestCase{
 	{
 		name:  "SingleLine",

@@ -120,7 +120,7 @@ func (c *Checker) pushToPath(o *Object) {
 
 func (c *Checker) popPath() {
 	i := len(c.objPath) - 1
+	delete(c.objPathIndex, c.objPath[i])
 	c.objPath[i] = nil
 	c.objPath = c.objPath[:i]
-	delete(c.objPathIndex, c.objPath[i])
 }

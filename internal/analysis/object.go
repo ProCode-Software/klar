@@ -155,12 +155,13 @@ type Type interface {
 
 // TypeName represents a type declaration.
 type TypeName struct {
-	Type
-	Name string
+	Underlying Type
+	Name       string
 }
 
 func (n *TypeName) String() string                    { return n.Name }
 func (n *TypeName) StringWithName(name string) string { return name }
+func (n *TypeName) Kind() Kind                        { return n.Underlying.Kind() }
 
 // Function represents a function type, either a declared function or a lambda.
 type Function struct {
