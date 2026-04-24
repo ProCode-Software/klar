@@ -8,6 +8,7 @@ import (
 type Build int
 
 // Higher is newer
+// TODO: rename Release to Stable
 const (
 	Release Build = iota
 	RC
