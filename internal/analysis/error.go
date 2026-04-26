@@ -39,3 +39,7 @@ func (c *Checker) fileError(err errors.CompileError, fid FileID) {
 	}
 	c.error(err)
 }
+
+func (c *Checker) redeclaredError() {
+	// TODO
+}

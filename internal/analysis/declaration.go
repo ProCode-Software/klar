@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
 )
@@ -8,6 +10,7 @@ import (
 type DeclarationInfo struct {
 	file *Context
 	node ast.Statement
+	rhs  ast.Expression // for variable/const declaration
 }
 
 func (c *Checker) declareTopLevelObject(obj *Object, info *DeclarationInfo) {
@@ -73,6 +76,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 					Message: errors.Quote(meth.decl.Identifier.Name) + " was already declared here",
 				},
 			})
+			err.SetParam("kind", "method")
 			c.error(err)
 			continue
 		}
@@ -86,16 +90,16 @@ func (c *Checker) checkDeclaration(o *Object) {
 		switch typ := o.typ.(type) {
 		case *Variable, *Constant:
 			if !c.isValidCycle(o) || typ.(Underlyer).Underlying() == nil {
-				o.typ = KindInvalid
+				o.typ = InvalidType
 			}
 		case *TypeName:
 			if !c.isValidCycle(o) {
-				o.typ = KindInvalid
+				o.typ = InvalidType
 			}
 		case *Function:
 			c.isValidCycle(o) // TODO: is this needed?
 		default:
-			panic("unreachable")
+			panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 		}
 	}
 
@@ -117,9 +121,11 @@ func (c *Checker) checkDeclaration(o *Object) {
 		c.checkTypeDecl(o, decl)
 		// TODO: collect methods
 	case *Function:
-		c.checkFuncDecl(o, decl)
+		c.checkFuncDecl(o)
+	case *Overload:
+		return // Overloads are part of functions
 	default:
-		panic("unreachable")
+		panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 	}
 }
 

@@ -105,23 +105,24 @@ func (o *Object) FilePathRange() ranges.FileRange {
 type Kind int
 
 const (
-	KindInvalid Kind = iota
-	KindInt
-	KindString
-	KindBool
-	KindFloat
+	InvalidType Kind = iota
+	IntType
+	StringType
+	BoolType
+	FloatType
+	AnyType
+	ErrorType
+	NothingType
+	TagType
+
 	KindList
 	KindMap
 	KindResult
-	KindAny
 	KindFunction
-	KindError
-	KindNothing
 
 	KindEnum
 	KindStruct
 	KindInterface
-	KindTag
 	KindUnion
 	KindOptional
 	KindModule
@@ -165,9 +166,9 @@ func (n *TypeName) Kind() Kind                        { return n.Underlying.Kind
 
 // Function represents a function type, either a declared function or a lambda.
 type Function struct {
-	Self      *Variable // If method
 	Overloads []*Overload
 	Return    Type
+	Arity     Arity
 }
 
 func (fn *Function) Kind() Kind     { return KindFunction }
@@ -184,7 +185,7 @@ func (fn *Function) StringWithName(name string) string {
 	}
 	if fn.Return != nil {
 		switch fn.Return.Kind() {
-		case KindNothing, KindInvalid, KindUnreachable:
+		case NothingType, InvalidType, KindUnreachable:
 		default:
 			b.WriteString(" -> ")
 			b.WriteString(fn.Return.String())
@@ -195,10 +196,17 @@ func (fn *Function) StringWithName(name string) string {
 
 // TODO: params with defaults
 type Overload struct {
+	*Object
+	Self           *Variable
 	Generics       []*Generic
 	Params         []*Variable
 	LabelledParams []*LabelledParam
+	labelMap       map[string]*Variable
+	Arity          Arity
+	InnerContext   *Context
 }
+
+func (o *Overload) Kind() Kind { return KindFunction }
 
 func (o *Overload) StringWithName(name string) string {
 	return "func " + name + o.String()
@@ -237,11 +245,11 @@ func (o *Overload) String() string {
 }
 
 type LabelledParam struct {
-	Name string
-	Type Type
+	Label string
+	*Variable
 }
 
-func (p *LabelledParam) String() string { return p.Name + ": " + p.Type.String() }
+func (p *LabelledParam) String() string { return p.Label + ": " + p.Type.String() }
 
 func (p *LabelledParam) StringWithName(string) string { return p.String() }
 
@@ -260,8 +268,17 @@ func (a *FunctionAlias) StringWithName(name string) string {
 	return "func " + name + " = " + ""
 }
 
+type Arity struct {
+	// The minimum and maximum number of parameters the function accepts,
+	// excluding labelled parametees. MaxParams can be -1 if there is no maximum.
+	MinParams, MaxParams int
+}
+
 // Generic represents a generic type parameter.
-type Generic struct{ Name string }
+type Generic struct {
+	*Object
+	Name string
+}
 
 func (g *Generic) Kind() Kind                        { return KindGeneric }
 func (g *Generic) String() string                    { return "<" + g.Name + ">" }
@@ -269,9 +286,9 @@ func (g *Generic) StringWithName(name string) string { return "<" + name + ">" }
 
 // Variable represents a variable type.
 type Variable struct {
-	Name    string
+	*Object
 	VarKind VariableKind
-	Type
+	Type    Type
 }
 
 func (v *Variable) Underlying() Type { return v.Type }
@@ -302,3 +319,9 @@ type Underlyer interface {
 	Type
 	Underlying() Type
 }
+
+type List struct{ Elem Type }
+
+func (l *List) Kind() Kind                        { return KindList }
+func (l *List) String() string                    { return "[" + l.Elem.String() + "]" }
+func (l *List) StringWithName(name string) string { return l.String() }

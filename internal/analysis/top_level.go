@@ -9,9 +9,10 @@ import (
 )
 
 type methodInfo struct {
-	self *ast.Identifier
-	decl *ast.FunctionDeclaration
-	obj  *Object
+	self   *ast.Identifier
+	decl   *ast.FunctionDeclaration
+	obj    *Object
+	public bool
 }
 
 type funcAliasInfo struct {
@@ -25,7 +26,6 @@ type funcAliasInfo struct {
 func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 	methods map[string][]methodInfo, funcAliases []funcAliasInfo,
 ) {
-	var overloads map[string][]*Object
 	for fileName, program := range c.Programs {
 		var (
 			fileContext = fileContexts[fileName]
@@ -61,27 +61,57 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 				continue
 			case *ast.FunctionDeclaration:
 				name := stmt.Identifier.Name
-				fn := NewObject(name, fid, stmt.GetRange(), c.module, &Function{})
-				if stmt.Struct == nil {
-					// Normal function
-					if overloads == nil {
-						overloads = make(map[string][]*Object)
-					}
-					overloads[name] = append(overloads[name], fn)
-					// c.declare(fileContext, fn)
-				} else if !stmt.Struct.IsDiscard() {
+				ov := NewObject(name, fid, stmt.GetRange(), c.module, &Overload{})
+				ov.typ.(*Overload).Object = ov
+				if name == "_" {
+					// TODO: do something else
+				}
+				if stmt.Struct != nil {
 					// Method - ignore discarded names, though they will still be typechecked
 					if methods == nil {
 						methods = make(map[string][]methodInfo)
 					}
-					methods[stmt.Struct.Name] = append(methods[stmt.Struct.Name],
-						methodInfo{stmt.Struct, stmt, fn},
-					)
+					methods[stmt.Struct.Name] = append(methods[stmt.Struct.Name], methodInfo{
+						self:   stmt.Struct,
+						decl:   stmt,
+						obj:    ov,
+						public: public,
+					})
+					continue
 				}
+
+				// Normal function
+				// ====
+
+				// The parent function we're adding overloads to
+				parent := fileContext.Lookup(name)
+				if parent == nil {
+					// If this is the first overload, declare a new parent function
+					fn := NewObject(name, fid, stmt.GetRange(), c.module, &Function{})
+					// The parent's node is the first overload
+					c.declareTopLevelObject(fn, &DeclarationInfo{file: fileContext, node: stmt})
+					parent = fn
+					continue
+				}
+				// If at least one overload is public, mark the parent as public
+				if public {
+					parent.public = true
+				}
+
+				fnType, ok := parent.typ.(*Function)
+				if !ok {
+					// If parent's type isn't a function, it's redeclared
+					err := errors.Range(errors.ErrRedeclared, stmt.GetRange())
+					err.Details = append(err.Details, errors.Detail{})
+					c.fileError(err, fid)
+				}
+				fnType.Overloads = append(fnType.Overloads, ov.typ.(*Overload))
+
+				// Declare the overload as a top-level object
 				info := &DeclarationInfo{file: fileContext, node: stmt}
-				c.moduleDecls[fn] = info
-				fn.order = uint32(len(c.moduleDecls))
-				fn.public = public
+				c.moduleDecls[ov] = info
+				ov.order = uint32(len(c.moduleDecls))
+				ov.public = public
 				continue
 			case *ast.FuncAliasDeclaration:
 				// Will be resolved later
@@ -99,6 +129,27 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 				// values). Call a function that should also determine if the declaration is top level.
 				if fileName == "main.klar" {
 					break
+				}
+				for i, dest := range stmt.Variables {
+					for name := range DestructureNames(dest) {
+						var value ast.Expression
+						if len(stmt.Values) < len(stmt.Variables) {
+							value = stmt.Values[0]
+						} else {
+							value = stmt.Values[i]
+						}
+						obj := NewObject(name.Name, fid, name.Range(), c.module, nil)
+						if IsConst(name.Name) {
+							typ := &Constant{}
+							obj.typ = typ
+						} else {
+							typ := &Variable{VarKind: LocalVar}
+							typ.Object = obj
+							obj.typ = typ
+						}
+						info := &DeclarationInfo{node: stmt, file: fileContext, rhs: value}
+						c.declareTopLevelObject(obj, info)
+					}
 				}
 			case *ast.BadExpression:
 				// Shouldn't be here. Invalid ASTs should't be typechecked.

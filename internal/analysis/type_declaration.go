@@ -12,14 +12,14 @@ func (c *Checker) checkTypeDecl(o *Object, decl *DeclarationInfo) {
 	case *ast.StructDeclaration:
 	case *ast.EnumDeclaration:
 	case *ast.TypeAliasDeclaration:
-	
+
 	case *ast.InterfaceDeclaration:
 		if node.Tag {
 			typ := o.typ.(*TypeName)
-			typ.Underlying = KindTag
+			typ.Underlying = TagType
 			return
 		}
-		
+
 	default:
 		panic(fmt.Sprintf("unknown type declaration: %T", node))
 	}

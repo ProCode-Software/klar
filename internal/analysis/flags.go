@@ -6,6 +6,7 @@ const (
 	SingleFileModule Flag = 1 << iota
 	BootstrapModule       // Module used inside the Klar compiler
 	REPLModule            // Module used for the REPL. Allow unused values
+	VariadicParam         // *Variable is a variadic function param
 )
 
 func parseFlags(flags []Flag) (flag Flag) {

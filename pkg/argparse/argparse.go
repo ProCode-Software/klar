@@ -279,7 +279,7 @@ func (p *Parser) parseValue(
 		items, err := p.parseList(name, def, next)
 		return newDeclaredFlag(TypeList, i, items), i + 1, err
 	default:
-		panic("unreachable")
+		panic(fmt.Sprintf("unhandled flag type: %v", kind))
 	}
 }
 

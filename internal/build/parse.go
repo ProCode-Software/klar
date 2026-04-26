@@ -75,6 +75,9 @@ func (c *Compiler) parseFile(pc *processContext,
 		panic("Parser not set up")
 	}
 	shortPath, res, err := c.Parser.Parse(filePath, l)
+	if filePath == "" && shortPath == stdinName {
+		filePath = stdinName
+	}
 	if err != nil {
 		select {
 		case pc.fatalErrCh <- err:
@@ -124,6 +127,8 @@ func (p *StdParser) Reset() {
 	p.cwd = ""
 }
 
+const stdinName = "standardInput"
+
 func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	shortPath string, res *ParseResult, err error,
 ) {
@@ -133,7 +138,6 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	var sizeEst int64
 	if filePath == "" {
 		// Read from standard input
-		const stdinName = "standardInput"
 		f = os.Stdin
 		filePath, shortPath = stdinName, stdinName
 		l.Info("Reading file from stdin")

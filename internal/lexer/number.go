@@ -1,9 +1,5 @@
 package lexer
 
-import (
-	"unicode"
-)
-
 type NumberAttrs struct {
 	Format IntFormat
 	Flags  NumberFlags
@@ -60,7 +56,6 @@ func (l *Lexer) ReadNumber(pos Position) *Token {
 	t := l.NewTokenizer(true)
 readNumber:
 	for r, b := range t.Tokenize {
-		lower := unicode.ToLower(r)
 		// 0 prefix
 		if b.String() == "0" {
 			switch r {
@@ -74,9 +69,8 @@ readNumber:
 				format = NumberFormatDecimal
 			}
 		}
-
-		switch lower {
-		case 'e':
+		switch r {
+		case 'e', 'E':
 			// Exponent or hex digit
 			if format == NumberFormatDecimal {
 				if isExp {
@@ -92,7 +86,7 @@ readNumber:
 				break
 			}
 			fallthrough // Hex or invalid digit
-		case 'a', 'b', 'c', 'd', 'f':
+		case 'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'f', 'F':
 			if format != NumberFormatHex {
 				// Hex letter or e on other format
 				newError(ErrIntIncompatibleDigit, b)
@@ -147,7 +141,7 @@ readNumber:
 		// Last digit can't be a separator
 		newError(ErrIntMisplacedSeparator, nil)
 		errPos = len(num) - 1
-	} else if !IsDigit(last) {
+	} else if format != NumberFormatHex && !IsDigit(last) {
 		// "1e-" .. EOF
 		newError(ErrIntIncompatibleDigit, nil)
 		errPos = len(num)

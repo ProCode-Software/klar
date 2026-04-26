@@ -89,7 +89,7 @@ const (
 	ErrExpectedExprAfterOpenRange // Invalid: 1..<
 	ErrEllipsisForOpenRangeStep   // ..< instead of ... in 1..<10...5
 	ErrMustBeFuncCall             // Expression after go or try must be a function call
-	ErrSelfExecFuncNotAllowed     // Self-executing functions are not allowed in Klar
+	ErrSelfExecFunc               // Self-executing functions are not allowed in Klar
 	ErrParenAroundLambdaType      // Type for param is not in parentheses
 	ErrParenAroundLambdaDefault   // Default value for param is not in parentheses
 	ErrChainedNotEqual            // Can't use '!=' operator in chained comparison
@@ -247,7 +247,7 @@ func (e *ParseError) error() string {
 		return "The expression after '" + e.tokenTypeParam("expr").String() +
 			"' must be a function call"
 	case ErrExpectedHex:
-		return "I expected 2 hexadecimal digits (0-9, a-f or A-F) after"
+		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
 	case ErrExpectedBinary:
 		return "I expected a binary digit (0-1)"
 	case ErrExpectedDecimal:
@@ -258,12 +258,11 @@ func (e *ParseError) error() string {
 		kind := e.Params["type"].(lexer.EscapeType)
 		switch code := e.Params["reason"].(lexer.EscapeErrorCode); code {
 		case lexer.ErrEscapeExpHex:
-			msg := "I expected 2 hexadecimal digits (0-9, a-f or A-F) "
 			if kind == lexer.EscHex {
-				return msg + `after '\x'`
+				return "I expected 2 hexadecimal digits (0-9, a-f or A-F) " + `after '\x'`
 			}
 			// Unicode
-			return msg + "between { }"
+			return "I expected 1-6 hexadecimal digits (0-9, a-f or A-F) between { }"
 		case lexer.ErrCharEscapeUnknown:
 			esc := e.stringParam("escape")
 			return "Unknown character escape " + Quote(esc)
@@ -332,8 +331,8 @@ func (e *ParseError) error() string {
 		return fmt.Sprintf("'%s' isn't a valid version",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
-	case ErrSelfExecFuncNotAllowed:
-		return "Self-executing functions are not allowed in Klar"
+	case ErrSelfExecFunc:
+		return "Self-executing functions aren't allowed in Klar"
 	case ErrParenFuncTypeParams:
 		return "Parentheses are required around function parameter types"
 	case ErrInvalidObjectPipeStep:

@@ -252,10 +252,10 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 	switch left := left.(type) {
 	case *ast.ParenExpression:
 		if left, ok := left.Expression.(*ast.LambdaExpression); ok {
-			p.Error(errors.Node(errors.ErrSelfExecFuncNotAllowed, left))
+			p.Error(errors.Node(errors.ErrSelfExecFunc, left))
 		}
 	case *ast.LambdaExpression:
-		p.Error(errors.Node(errors.ErrSelfExecFuncNotAllowed, left))
+		p.Error(errors.Node(errors.ErrSelfExecFunc, left))
 	}
 	var args []*ast.CallParam
 	for p.WhileNotEndOr(lexer.RightParenthesis) {

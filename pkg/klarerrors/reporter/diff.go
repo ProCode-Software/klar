@@ -184,7 +184,7 @@ func (r *Reporter) printDiffLineNumber(s *diffState, line uint32, add, fullLine 
 		char = '-'
 		color = r.ColorPalette.DiffDelete
 	default:
-		panic("unreachable")
+		panic(fmt.Sprintf("unhandled diff line type: add = %v, fullLine = %v", add, fullLine))
 	}
 	r.appendSpace(hintMargin)
 	r.appendf(color, "%*d %c ", s.digitWidth, line, char)

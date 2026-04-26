@@ -28,6 +28,8 @@ type Options struct {
 	IsTest bool
 	// If MaxErrors > 0, the type checker will terminate when this limit is reached.
 	MaxErrors int
+	// Whether to skip type checking function bodies.
+	IgnoreFuncBodies bool
 	// Type checker options from klar.build
 	*klarbuild.CheckerOptions
 }
@@ -46,6 +48,8 @@ type Checker struct {
 	// For tracking cycles
 	objPath      []*Object       // Path of object deps
 	objPathIndex map[*Object]int // Indices of objects in objPath
+
+	delayed []func()
 }
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
@@ -123,4 +127,8 @@ func (c *Checker) popPath() {
 	delete(c.objPathIndex, c.objPath[i])
 	c.objPath[i] = nil
 	c.objPath = c.objPath[:i]
+}
+
+func (c *Checker) queue(f func()) {
+	c.delayed = append(c.delayed, f)
 }

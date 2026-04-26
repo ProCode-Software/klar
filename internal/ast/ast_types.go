@@ -195,6 +195,7 @@ type TypeAlias struct {
 	Identifier string
 }
 
+// A QualifiedTypeAlias is similar to [TypeAlias] but is qualified by a namespace.
 type QualifiedTypeAlias struct {
 	BaseNode
 	Namespace, Identifier Identifier
@@ -286,6 +287,7 @@ type MethodParam struct {
 	BaseNode
 }
 
+// Only used before parsing variable declarations.
 type TypeAnnotation struct {
 	BaseNode
 	Variable *AssignableVars
