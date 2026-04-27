@@ -138,6 +138,7 @@ const (
 	ErrUnusedValue          // Unused literal expression statement
 	ErrReturnOutsideFunc    // Return statement not allowed outside of function
 	ErrImportShadow         // Import shadows top-level object
+	ErrVarConstMixInDecl    // Var and const declared in the same declaration
 )
 
 // A ParseError is a basic Klar parse error.
@@ -496,6 +497,8 @@ func (e *ParseError) error() string {
 			return "Item " + Quote(name) + " was already declared in this enum"
 		}
 		return "The field " + Quote(name) + " was already declared in this " + kind
+	case ErrVarConstMixInDecl:
+		return "Can't declare variable and constants in the same statement"
 	}
 }
 
@@ -557,11 +560,10 @@ func Range(err ErrorCode, rang ranges.Range) *ParseError {
 }
 
 func Slice[T ast.Node](err ErrorCode, nodes []T) *ParseError {
-	start := nodes[0].GetRange().Start
 	return &ParseError{
 		ErrorCode: err,
 		Range: ranges.Range{
-			Start: start,
+			Start: nodes[0].GetRange().Start,
 			End:   nodes[len(nodes)-1].GetRange().End,
 		},
 	}

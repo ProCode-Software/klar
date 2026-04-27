@@ -43,3 +43,24 @@ func (c *Checker) fileError(err errors.CompileError, fid FileID) {
 func (c *Checker) redeclaredError() {
 	// TODO
 }
+
+func objectError[T errors.CompileError](code errors.ErrorCode, obj *Object) T {
+	var x T
+	switch errors.CompileError(x).(type) {
+	case *errors.ParseError:
+		err := &errors.ParseError{}
+		err.Range = obj.rang
+		err.File = obj.FilePath()
+		err.ErrorCode = code
+		return errors.CompileError(err).(T)
+	case *errors.TypeError:
+		err := &errors.TypeError{}
+		err.Range = obj.rang
+		err.File = obj.FilePath()
+		err.ErrorCode = code
+		return errors.CompileError(err).(T)
+	default:
+		panic("unhandled error type")
+	}
+	// return nil
+}

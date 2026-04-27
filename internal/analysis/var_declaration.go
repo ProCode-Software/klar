@@ -1,8 +1,6 @@
 package analysis
 
 import (
-	"fmt"
-	"iter"
 	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -14,21 +12,6 @@ func (c *Checker) checkVarDecl(o *Object, decl *DeclarationInfo) {
 
 func (c *Checker) checkConstDecl(o *Object, decl *DeclarationInfo) {
 	_ = decl.node.(*ast.VariableDeclaration)
-}
-
-func DestructureNames(a ast.Assignable) iter.Seq[ast.Identifier] {
-	switch a := a.(type) {
-	case *ast.Symbol:
-	case *ast.Discard:
-	case *ast.ListLiteral:
-	case *ast.TupleLiteral:
-	case *ast.MapLiteral:
-	case *ast.BadExpression:
-
-	default:
-		panic(fmt.Sprintf("unhandled destructure node: %T", a))
-	}
-	return func(yield func(ast.Identifier) bool) {}
 }
 
 // IsConst returns true if the given name is a constant name

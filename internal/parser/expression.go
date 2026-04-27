@@ -270,7 +270,7 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			// 	person2.greet(person: person)
 			p.Advance()
 			key, val := p.expectShorthand()
-			label := symbolToIdentifier(key)
+			label := key.ToIdentifier()
 			arg.Label, arg.Value = &label, val
 		case p.PeekKind() == lexer.Colon:
 			// Label (allow keywords)

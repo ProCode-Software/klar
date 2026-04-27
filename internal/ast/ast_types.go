@@ -2,6 +2,8 @@
 package ast
 
 import (
+	"iter"
+
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -142,6 +144,12 @@ type Assignable interface {
 	Node
 	Expression
 	assignable()
+}
+
+type Destructurable interface {
+	Assignable
+	// Items that aren't assignable yield a non-nil BadExpression
+	Names() iter.Seq2[Identifier, *BadExpression]
 }
 
 type PublicDeclaration struct {

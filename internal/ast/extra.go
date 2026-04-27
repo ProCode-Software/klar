@@ -104,3 +104,11 @@ func equalSlice[T any](a, b []T) bool {
 	}
 	return true
 }
+
+func (s *Symbol) ToIdentifier() Identifier {
+	return Identifier{
+		Name:     s.Identifier,
+		Position: s.Range.Start,
+		Len:      s.Range.LineLength(),
+	}
+}

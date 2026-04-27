@@ -117,6 +117,7 @@ func _() {
 	_ = x[ErrUnusedValue-95]
 	_ = x[ErrReturnOutsideFunc-96]
 	_ = x[ErrImportShadow-97]
+	_ = x[ErrVarConstMixInDecl-98]
 	_ = x[ErrVarUndefined-301]
 	_ = x[ErrEnumUndefined-302]
 	_ = x[ErrTypeUndefined-303]
@@ -153,7 +154,7 @@ func _() {
 }
 
 const (
-	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadow"
+	_ErrorCode_name_0 = "ErrTooManyErrorsSyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrRedeclaredEnumErrMethAndFieldSameNameErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadowErrVarConstMixInDecl"
 	_ErrorCode_name_1 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_ErrorCode_name_2 = "TypeErrorPrefixErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_ErrorCode_name_3 = "ReferenceErrorPrefixErrVarUndefinedErrEnumUndefinedErrTypeUndefinedErrEnumCycle"
@@ -162,7 +163,7 @@ const (
 )
 
 var (
-	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 365, 387, 410, 431, 451, 465, 482, 500, 517, 535, 561, 583, 596, 615, 634, 654, 675, 699, 723, 746, 769, 790, 813, 836, 855, 875, 891, 909, 929, 948, 966, 983, 1002, 1020, 1044, 1059, 1077, 1101, 1125, 1149, 1178, 1205, 1222, 1237, 1261, 1288, 1306, 1335, 1353, 1380, 1405, 1430, 1456, 1471, 1493, 1512, 1533, 1553, 1574, 1595, 1610, 1628, 1644, 1665, 1684, 1701, 1712, 1726, 1740, 1754, 1769, 1781, 1794, 1805, 1822, 1845, 1866, 1886, 1900, 1920, 1935}
+	_ErrorCode_index_0 = [...]uint16{0, 16, 33, 51, 67, 90, 114, 140, 165, 182, 203, 227, 249, 269, 288, 303, 316, 335, 350, 365, 387, 410, 431, 451, 465, 482, 500, 517, 535, 561, 583, 596, 615, 634, 654, 675, 699, 723, 746, 769, 790, 813, 836, 855, 875, 891, 909, 929, 948, 966, 983, 1002, 1020, 1044, 1059, 1077, 1101, 1125, 1149, 1178, 1205, 1222, 1237, 1261, 1288, 1306, 1335, 1353, 1380, 1405, 1430, 1456, 1471, 1493, 1512, 1533, 1553, 1574, 1595, 1610, 1628, 1644, 1665, 1684, 1701, 1712, 1726, 1740, 1754, 1769, 1781, 1794, 1805, 1822, 1845, 1866, 1886, 1900, 1920, 1935, 1955}
 	_ErrorCode_index_1 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_ErrorCode_index_2 = [...]uint16{0, 15, 28, 47, 61, 81, 99, 117, 135, 150, 162, 175, 195, 214, 239, 260, 280, 297, 313, 328, 346, 363, 384, 404, 424, 441, 460}
 	_ErrorCode_index_3 = [...]uint8{0, 20, 35, 51, 67, 79}
@@ -171,7 +172,7 @@ var (
 
 func (i ErrorCode) String() string {
 	switch {
-	case -1 <= i && i <= 97:
+	case -1 <= i && i <= 98:
 		i -= -1
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case 100 <= i && i <= 104:

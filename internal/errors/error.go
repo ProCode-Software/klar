@@ -31,7 +31,8 @@ type (
 	}
 	Detail struct {
 		File string
-		Highlight
+		Range   ranges.Range
+		Message string
 	}
 	Hint struct {
 		Message string

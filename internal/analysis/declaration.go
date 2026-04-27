@@ -8,9 +8,10 @@ import (
 )
 
 type DeclarationInfo struct {
-	file *Context
-	node ast.Statement
-	rhs  ast.Expression // for variable/const declaration
+	file    *Context
+	node    ast.Statement
+	rhs     ast.Expression // for variable/const declaration
+	rhsType *Type          // for variable/const declaration
 }
 
 func (c *Checker) declareTopLevelObject(obj *Object, info *DeclarationInfo) {
@@ -46,11 +47,9 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 		// typeName was declared in a different scope from the method
 		orig := ctx.LookupRecursive(typeName)
 		det := errors.Detail{
-			File: orig.FilePath(),
-			Highlight: errors.Highlight{
-				Range:   orig.Range(),
-				Message: errors.Quote(typeName) + " was declared here",
-			},
+			File:    orig.FilePath(),
+			Range:   orig.Range(),
+			Message: errors.Quote(typeName) + " was declared here",
 		}
 		for _, meth := range methods {
 			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
@@ -70,11 +69,9 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 			// Already declared
 			err := errors.Range(errors.ErrRedeclared, meth.decl.Range)
 			err.Details = append(err.Details, errors.Detail{
-				File: existing.FileName(),
-				Highlight: errors.Highlight{
-					Range:   existing.Range(),
-					Message: errors.Quote(meth.decl.Identifier.Name) + " was already declared here",
-				},
+				File:    existing.FileName(),
+				Range:   existing.Range(),
+				Message: errors.Quote(meth.decl.Identifier.Name) + " was already declared here",
 			})
 			err.SetParam("kind", "method")
 			c.error(err)

@@ -130,8 +130,15 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 				if fileName == "main.klar" {
 					break
 				}
-				for i, dest := range stmt.Variables {
-					for name := range DestructureNames(dest) {
+				var lastDecl *Object
+				var varKind int // 1 = var, 2 = const
+				for i, assg := range stmt.Variables {
+					dest, ok := assg.(ast.Destructurable)
+					if !ok {
+						// Not a destructure
+						c.fileError(errors.Node(errors.ErrNonNameDeclaration, dest), fid)
+					}
+					for name := range dest.Names() {
 						var value ast.Expression
 						if len(stmt.Values) < len(stmt.Variables) {
 							value = stmt.Values[0]
@@ -139,16 +146,34 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 							value = stmt.Values[i]
 						}
 						obj := NewObject(name.Name, fid, name.Range(), c.module, nil)
+						oldVarKind := varKind
 						if IsConst(name.Name) {
 							typ := &Constant{}
 							obj.typ = typ
+							varKind = 2
 						} else {
-							typ := &Variable{VarKind: LocalVar}
+							typ := &Variable{VarKind: TopLevelVar}
 							typ.Object = obj
 							obj.typ = typ
+							varKind = 1
+						}
+						if oldVarKind != 0 && oldVarKind != varKind {
+							// Vars and consts declared in the same declaration
+							kindString := []string{1: "variable", 2: "constant"}
+							err := objectError[*errors.ParseError](errors.ErrVarConstMixInDecl, obj)
+							err.Label = "This is a " + kindString[varKind]
+							err.Highlights = append(err.Highlights, errors.Highlight{
+								Range:   lastDecl.rang,
+								Message: "This was already declared as a " + kindString[varKind],
+							})
+							// TODO: hint with diff
+							err.Hint("Declare the variables and constants in separate declarations.")
+							c.fileError(err, fid)
+							varKind = oldVarKind
 						}
 						info := &DeclarationInfo{node: stmt, file: fileContext, rhs: value}
 						c.declareTopLevelObject(obj, info)
+						lastDecl = obj
 					}
 				}
 			case *ast.BadExpression:
@@ -198,8 +223,8 @@ func (c *Checker) collectTopLevelObjects(fileContexts map[string]*Context) (
 			err.Params = errors.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
 			err.Details = append(err.Details, errors.Detail{
-				File:      modObj.FilePath(),
-				Highlight: errors.Highlight{modObj.rang, "It was already declared here"},
+				File:  modObj.FilePath(),
+				Range: modObj.rang, Message: "It was already declared here",
 			})
 			c.fileError(err, impObj.file)
 		}

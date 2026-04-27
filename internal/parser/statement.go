@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -47,6 +48,18 @@ func (p *Parser) ParseAssignment(lhs []ast.Assignable, explicitType ast.Type) as
 	rhs = slices.Clip(rhs)
 	if gotLen := len(rhs); gotLen > 1 && gotLen != expLen {
 		err := errors.Slice(errors.ErrMismatchedAssignment, rhs)
+		err.Label = fmt.Sprintf("%d values were provided", gotLen)
+		plural := "s were"
+		if expLen == 1 {
+			plural = " was"
+		}
+		err.Highlights = append(err.Highlights, errors.Highlight{
+			Range: ranges.Range{
+				Start: lhs[0].GetRange().Start,
+				End:   lhs[len(lhs)-1].GetRange().End,
+			},
+			Message: fmt.Sprintf("%d variable%s provided", expLen, plural),
+		})
 		err.Params = errors.ErrorParams{"left": expLen, "right": gotLen}
 		p.Error(err)
 	}

@@ -159,8 +159,7 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 		r.printHeader(det.File, ranges.Range{}, digitWidth)
 	}
 	// Box. Only the range is highlighted (no text)
-	hl := det.Highlight
-	hl.Message = ""
+	hl := errors.Highlight{Range: det.Range}
 	r.printBox(det.File,
 		[]errors.Highlight{hl}, &hl, startLine, endLine,
 		digitWidth, detailMargin, r.ColorPalette.HintColor,

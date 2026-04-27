@@ -91,10 +91,3 @@ func (p *Parser) ParseMapIdentOrDiscard(opts parseFlags) ast.Identifier {
 	return p.ParseMapIdentifier(opts)
 }
 
-func symbolToIdentifier(s *ast.Symbol) ast.Identifier {
-	return ast.Identifier{
-		Name:     s.Identifier,
-		Position: s.Range.Start,
-		Len:      s.Range.LineLength(),
-	}
-}
