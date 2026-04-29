@@ -30,7 +30,7 @@ type (
 		Message string
 	}
 	Detail struct {
-		File string
+		File    string
 		Range   ranges.Range
 		Message string
 	}

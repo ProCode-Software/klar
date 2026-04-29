@@ -255,7 +255,7 @@ func (p *LabelledParam) StringWithName(string) string { return p.String() }
 
 type FunctionAlias struct {
 	Self   *Variable // If method
-	Origin *Object
+	Target *Object
 }
 
 func (a *FunctionAlias) Kind() Kind { return KindFunction }

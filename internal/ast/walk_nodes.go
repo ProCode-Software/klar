@@ -309,10 +309,6 @@ func (n *TypeAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkNode{1, n.Type})
 }
 
-func (n *TypeAnnotation) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Variable}, walkNode{2, n.Type})
-}
-
 func (n *TypePair) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Identifier]{0, n.Keys}, walkNode{1, n.Value})
 }

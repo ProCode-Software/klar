@@ -18,11 +18,12 @@ var (
 	profiler prof
 )
 
+// TODO: bold and/or bright, or no?
 var RandomDescriptions = []string{
-	"A simple, modern, and clean programming language",
-	"The progressive programming language",
-	"Not another C-based programming language",
-	"A koala-approved programming language!",
+	ansi.BoldMagenta("✨ A simple, modern, and clean programming language"),
+	ansi.BoldGreen("⏩ The progressive programming language"),
+	ansi.BoldYellow("Not another C-based programming language"),
+	ansi.BoldCyan("🐨 A koala-approved programming language!"),
 }
 
 func main() {

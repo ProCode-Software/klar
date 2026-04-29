@@ -14,8 +14,10 @@ func (a *TypeAlias) Resolve() Type {
 func (a *TypeAlias) Kind() Kind                        { return a.Resolve().Kind() }
 func (a *TypeAlias) String() string                    { return a.Resolve().String() }
 func (a *TypeAlias) StringWithName(name string) string { return name }
+func (a *TypeAlias) Underlying() Type                  { return a.Resolve() }
 
-func (c *Checker) resolveFuncAlias(info funcAliasInfo) {
+// TODO
+func (c *Checker) resolveFuncAlias(fa *Object) {
 }
 
 func Unalias(t Type) Type {

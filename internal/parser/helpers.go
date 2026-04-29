@@ -26,6 +26,9 @@ func (p *Parser) isEqual(t lexer.Token) bool {
 }
 
 func (p *Parser) ParseAssignable() ast.Assignable {
+	if p.CurrKind() == lexer.Underscore {
+		return rangeFromToken(&ast.Discard{}, p.Advance())
+	}
 	return p.validateAssignable(p.ParseExpression(ExpressionBindingPower))
 }
 

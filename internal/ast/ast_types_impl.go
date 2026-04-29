@@ -27,7 +27,6 @@ func (IntegerLiteral) expr()       {}
 func (FloatLiteral) expr()         {}
 func (BooleanLiteral) expr()       {}
 func (Symbol) expr()               {}
-func (TypeAnnotation) expr()       {}
 func (MapLiteral) expr()           {}
 func (TupleLiteral) expr()         {}
 func (ListLiteral) expr()          {}

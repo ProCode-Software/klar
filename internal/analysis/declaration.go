@@ -8,15 +8,24 @@ import (
 )
 
 type DeclarationInfo struct {
-	file    *Context
-	node    ast.Statement
-	rhs     ast.Expression // for variable/const declaration
-	rhsType *Type          // for variable/const declaration
+	Attributes *Attributes
+	file       *Context
+	node       ast.Statement
+	// For variable/const declaration. Not destructured
+	rhs ast.Expression
+	// For variable/const declaration. Set when rhs is checked.
+	rhsType *Type
 }
 
-func (c *Checker) declareTopLevelObject(obj *Object, info *DeclarationInfo) {
+func (c *Checker) declareTopLevelObject(obj *Object,
+	attrs *[]ast.Statement, info *DeclarationInfo,
+) {
 	c.declare(c.rootContext, obj)
 	c.moduleDecls[obj] = info
+	if attrs != nil {
+		info.Attributes = c.parseAttributes(*attrs)
+		*attrs = nil
+	}
 	obj.order = uint32(len(c.moduleDecls))
 }
 
@@ -63,8 +72,9 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 		println("Method resolution: DEFINED TYPE is nil")
 		return
 	}
-	var methMap objectMap
-	for _, meth := range methods {
+	// TODO: wrap Overloads in Functions
+	var methMap mapObject
+	addMethod := func(meth methodInfo) {
 		if existing := methMap.Insert(meth.obj); existing != nil {
 			// Already declared
 			err := errors.Range(errors.ErrRedeclared, meth.decl.Range)
@@ -73,12 +83,25 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 				Range:   existing.Range(),
 				Message: errors.Quote(meth.decl.Identifier.Name) + " was already declared here",
 			})
-			err.SetParam("kind", "method")
+			err.SetParam("kind", "method") // TODO
 			c.error(err)
-			continue
+			return
 		}
 		// TODO: make sure method doesn't have same name as a field
 		def.AddMethod(meth.obj)
+	}
+	// Non-aliases are declared before aliases
+	var aliases []methodInfo
+	for _, meth := range methods {
+		if meth.alias != nil {
+			aliases = append(aliases, meth)
+		} else {
+			addMethod(meth)
+		}
+	}
+	// Now, method aliases
+	for _, meth := range methods {
+		addMethod(meth)
 	}
 }
 

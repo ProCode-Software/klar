@@ -26,6 +26,7 @@ const (
 	CodeBoldYellow   = "\033[1;33m"
 	CodeBoldGreen    = "\033[1;32m"
 	CodeBoldMagenta  = "\033[1;35m"
+	CodeBoldCyan     = "\033[1;36m"
 	CodeBoldDim      = "\033[1;2m"
 	CodeBoldBlue     = "\033[1;34m"
 	CodeResetBold    = "\033[0;1m"
@@ -83,6 +84,7 @@ func BoldRed(s string) string     { return Color(CodeBoldRed, s) }
 func BoldYellow(s string) string  { return Color(CodeBoldYellow, s) }
 func BoldGreen(s string) string   { return Color(CodeBoldGreen, s) }
 func BoldMagenta(s string) string { return Color(CodeBoldMagenta, s) }
+func BoldCyan(s string) string    { return Color(CodeBoldCyan, s) }
 func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
 func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
 func DimCyan(s string) string     { return Color(CodeDimCyan, s) }

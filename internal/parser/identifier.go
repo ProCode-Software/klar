@@ -90,4 +90,3 @@ func (p *Parser) ParseMapIdentOrDiscard(opts parseFlags) ast.Identifier {
 	}
 	return p.ParseMapIdentifier(opts)
 }
-

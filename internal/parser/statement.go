@@ -84,14 +84,13 @@ func (p *Parser) ParseCommaStatement(first ast.Expression) ast.Statement {
 		p.Advance()
 		items = append(items, p.ParseAssignable())
 	}
-	d := &ast.AssignableVars{Values: items}
 	if curr := p.CurrKind(); isAssignment(curr) {
 		return p.ParseAssignment(items, nil)
 	} else if curr == lexer.Colon {
 		return p.ParseVarTypeAnnotation(items)
 	}
 	p.Error(errors.Slice(errors.ErrInvalidComma, items))
-	return &ast.BadExpression{Value: d}
+	return &ast.BadExpression{Value: items[0]}
 }
 
 // Soft keywords are not allowed in module names

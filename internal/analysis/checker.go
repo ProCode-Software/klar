@@ -1,7 +1,9 @@
 package analysis
 
 import (
+	"maps"
 	"path/filepath"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
@@ -90,13 +92,14 @@ func (c *Checker) filePath(name string) string {
 }
 
 func (c *Checker) Check() {
+	sortedFiles := slices.Sorted(maps.Keys(c.Programs))
 	// Initialize contexts for each file
 	fileContexts := c.initFileContexts()
 	// Perform imports
-	c.performFileImports(fileContexts)
+	c.performFileImports(sortedFiles, fileContexts)
 	// Collect top-level objects in each file and put them in the module
-	methods, funcAliases := c.collectTopLevelObjects(fileContexts)
-	c.checkTopLevelObjects(methods, funcAliases)
+	methods := c.collectTopLevelObjects(sortedFiles, fileContexts)
+	c.checkTopLevelObjects(methods)
 }
 
 func (c *Checker) initFileContexts() map[string]*Context {
@@ -105,6 +108,7 @@ func (c *Checker) initFileContexts() map[string]*Context {
 	if c.nodeContexts == nil {
 		c.nodeContexts = make(map[ast.Node]*Context, len(c.Programs))
 	}
+	// TODO: should we sort the programs beforehand
 	var i FileID
 	for name := range c.Programs {
 		c.module.fileID[i] = name

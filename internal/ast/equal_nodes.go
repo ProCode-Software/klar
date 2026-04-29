@@ -1358,23 +1358,6 @@ func (a *TypeAliasDeclaration) Equal(b2 Node) bool {
 	return true
 }
 
-func (a *TypeAnnotation) Equal(b2 Node) bool {
-	b, ok := b2.(*TypeAnnotation)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if a.Variable != nil && b.Variable != nil && !a.Variable.Equal(b.Variable) {
-		return false
-	}
-	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
-		return false
-	}
-	return true
-}
-
 func (a *TypePair) Equal(b2 Node) bool {
 	b, ok := b2.(*TypePair)
 	if !ok {

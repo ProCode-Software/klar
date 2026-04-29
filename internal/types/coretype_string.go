@@ -25,9 +25,9 @@ const _CoreType_name = "AnyStringIntFloatBoolNothingErrorInvalidSelfRegex"
 var _CoreType_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 33, 40, 44, 49}
 
 func (i CoreType) String() string {
-	i -= 1
-	if i < 0 || i >= CoreType(len(_CoreType_index)-1) {
-		return "CoreType(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	idx := int(i) - 1
+	if i < 1 || idx >= len(_CoreType_index)-1 {
+		return "CoreType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _CoreType_name[_CoreType_index[i]:_CoreType_index[i+1]]
+	return _CoreType_name[_CoreType_index[idx]:_CoreType_index[idx+1]]
 }

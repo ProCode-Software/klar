@@ -295,13 +295,6 @@ type MethodParam struct {
 	BaseNode
 }
 
-// Only used before parsing variable declarations.
-type TypeAnnotation struct {
-	BaseNode
-	Variable *AssignableVars
-	Type     Type
-}
-
 // Primitives
 type PrimitiveTypeName int
 

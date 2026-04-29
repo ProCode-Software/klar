@@ -26,23 +26,6 @@ type importQueueEntry struct {
 	ctx        *Context
 }
 
-func (c *Checker) importModule(
-	importPath imports.ImportPath, importPathString string,
-	mods chan importKey, errs chan importErrorKey,
-) {
-	if c.Options.Importer == nil {
-		// Importer not set up
-		errs <- importErrorKey{importPathString, &errors.ModuleError{}}
-		return
-	}
-	mod, err := c.Options.Importer.Import(importPath, c.Options.Target)
-	if err != nil {
-		errs <- importErrorKey{importPathString, err}
-		return
-	}
-	mods <- importKey{importPathString, mod}
-}
-
 type importKey struct {
 	importPath string
 	module     *Module
@@ -55,72 +38,75 @@ type importErrorKey struct {
 
 // performFileImports creates a new [Context] for each file
 // and performs imports.
-func (c *Checker) performFileImports(fileContexts map[string]*Context) {
+func (c *Checker) performFileImports(files []string, fileContexts map[string]*Context) {
 	// Create contexts for each file and collect all imports
-	queue := make([]*importQueueEntry, 0, len(c.Programs))
-	cache := make(map[string]*Module)
-	mods := make(chan importKey)
-	errs := make(chan importErrorKey)
-	var wg sync.WaitGroup
-
-	for fileName, prog := range c.Programs {
+	type imported struct {
+		mod *Module
+		err error
+	}
+	var (
+		queue = make([]*importQueueEntry, 0, len(c.Programs)) //
+		mods  = make(map[string]imported)
+		wg    sync.WaitGroup
+	)
+	for _, fileName := range files {
 		ctx := fileContexts[fileName]
 		// Perform imports for the file
-		for i, stmt := range prog.Body {
+		for i, stmt := range c.Programs[fileName].Body {
 			imp, ok := stmt.(*ast.ImportStatement)
 			if !ok {
 				ctx.setAttribute(firstStmtIndex, i)
 				break
 			}
-			impPath := imports.ImportPath.String(imp.Module)
+			impPathStr := imports.ImportPath.String(imp.Module)
 			queue = append(queue, &importQueueEntry{
 				stmt:       imp,
-				importPath: impPath,
+				importPath: impPathStr,
 				fileName:   fileName,
 				ctx:        ctx,
 			})
 			// Do an import if it's not already in cache
-			if _, ok := cache[impPath]; !ok {
-				wg.Go(func() { c.importModule(imp.Module, impPath, mods, errs) })
+			if _, ok := mods[impPathStr]; !ok {
+				wg.Go(func() {
+					mod, err := c.importModule(imp.Module)
+					mods[impPathStr] = imported{mod, err} // TODO: concurrent map write error?
+				})
 			}
 		}
 	}
-	go func() {
-		wg.Wait()
-		close(mods)
-		close(errs)
-	}()
+	wg.Wait()
 
-	// Errors are reported when the import is attempted to be applied per file
-	importsWithErrors := make(map[string]error)
-	for err := range errs {
-		importsWithErrors[err.importPath] = err.err
-	}
-	// Store imported modules in cache
-	for modKey := range mods {
-		cache[modKey.importPath] = modKey.module
-	}
 	// Apply the imports
 	for _, item := range queue {
-		if err, ok := importsWithErrors[item.importPath]; ok {
+		m := mods[item.importPath]
+		if m.err != nil {
 			// Report module error for the file
-			c.reportImportError(item.fileName, item.importPath, err)
+			c.reportImportError(item.fileName, item.importPath, m.err)
 			continue
 		}
-		c.applyImportedModule(cache[item.importPath], item)
+		c.applyImportedModule(m.mod, item)
 	}
+}
+
+func (c *Checker) importModule(p imports.ImportPath) (*Module, error) {
+	if c.Options.Importer == nil {
+		// Importer not set up
+		return nil, &errors.ModuleError{}
+	}
+	return c.Options.Importer.Import(p, c.Options.Target)
 }
 
 func (c *Checker) applyImportedModule(mod *Module, queueEntry *importQueueEntry,
 ) {
 	stmt := queueEntry.stmt
+	if stmt.Alias.IsDiscard() {
+		return // Don't do anything
+	}
 	if stmt.Wildcard {
 		// We have to import the submodules
 	}
 	ns := mod.ImportPath[len(mod.ImportPath)-1]
-	if stmt.Alias.IsDiscard() {
-		return // Don't do anything
-	} else if !stmt.Alias.IsZero() {
+	if !stmt.Alias.IsZero() {
 		ns = stmt.Alias.Name
 	}
 	_ = ns
