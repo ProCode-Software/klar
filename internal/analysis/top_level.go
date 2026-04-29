@@ -239,9 +239,6 @@ func (c *Checker) checkTopLevelObjects(methods map[string][]methodInfo) {
 func (c *Checker) getOverloadParent(
 	f *ast.FunctionDeclaration, fid FileID, fctx *Context,
 ) *Object {
-	// Normal function
-	// ====
-
 	// The p function we're adding overloads to
 	p := c.rootContext.Lookup(f.Identifier.Name)
 	if p == nil {
