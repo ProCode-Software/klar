@@ -442,7 +442,8 @@ type FunctionDeclaration struct {
 }
 
 // func x = y
-// func Parser.x = Parser.y
+// func Parser.x = .y
+// func x = module.y
 type FuncAliasDeclaration struct {
 	BaseNode
 	Struct     *Identifier

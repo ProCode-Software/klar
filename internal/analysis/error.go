@@ -40,8 +40,22 @@ func (c *Checker) fileError(err errors.CompileError, fid FileID) {
 	c.error(err)
 }
 
-func (c *Checker) redeclaredError() {
+func redeclaredError(new, old *Object) *errors.ParseError {
 	// TODO
+	err := errors.Range(errors.ErrRedeclared, new.rang)
+	err.Details = append(err.Details, errors.Detail{
+		File:    old.FileName(),
+		Range:   old.Range(),
+		Message: errors.Quote(old.name) + " was originally declared here",
+	})
+	err.Label = errors.Quote(old.name) + "already exists"
+	err.SetParam("oldKind", kindOf(old.typ))
+	err.SetParam("newKind", kindOf(new.typ))
+	return err
+}
+
+func kindOf(typ Type) string {
+return ""
 }
 
 func objectError[T errors.CompileError](code errors.ErrorCode, obj *Object) T {

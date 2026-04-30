@@ -456,6 +456,7 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 		if target.Computed {
 			p.Error(errors.Node(errors.ErrComputedFuncAlias, target))
 		}
+		// LHS checked at analysis-time
 	default:
 		err := errors.Node(errors.ErrNonNameFuncAlias, target)
 		err.HintWithDiff(

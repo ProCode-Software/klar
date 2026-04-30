@@ -5,6 +5,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type DeclarationInfo struct {
@@ -50,59 +51,78 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	if len(methods) == 0 {
 		return
 	}
-	// TODO: check that the method is in the same scope as the declaration
-	self := ctx.Lookup(typeName)
-	if self == nil {
-		// typeName was declared in a different scope from the method
-		orig := ctx.LookupRecursive(typeName)
-		det := errors.Detail{
-			File:    orig.FilePath(),
-			Range:   orig.Range(),
-			Message: errors.Quote(typeName) + " was declared here",
-		}
-		for _, meth := range methods {
-			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
-			err.Details = append(err.Details, det)
-			c.error(err)
-		}
+	selfObj := ctx.Lookup(typeName)
+	if selfObj == nil {
+		c.validateReceiver(typeName, ctx.LookupRecursive(typeName), methods, true)
 		return
 	}
-	def := getDefined(self.typ)
-	if def == nil {
-		println("Method resolution: DEFINED TYPE is nil")
+	if !c.validateReceiver(typeName, selfObj, methods, false) {
 		return
 	}
-	// TODO: wrap Overloads in Functions
-	var methMap mapObject
-	addMethod := func(meth methodInfo) {
-		if existing := methMap.Insert(meth.obj); existing != nil {
+	self := selfObj.typ.(MethodAdder)
+	for _, meth := range methods {
+		// TODO: check field/method name collisions later. Struct has
+		// not been checked yet.
+		// TODO: wrap Overloads in Functions
+		if existing := self.AddMethod(meth.obj); existing != nil {
 			// Already declared
-			err := errors.Range(errors.ErrRedeclared, meth.decl.Range)
-			err.Details = append(err.Details, errors.Detail{
-				File:    existing.FileName(),
-				Range:   existing.Range(),
-				Message: errors.Quote(meth.decl.Identifier.Name) + " was already declared here",
-			})
-			err.SetParam("kind", "method") // TODO
-			c.error(err)
+			err := redeclaredError(meth.obj, existing)
+			c.fileError(err, meth.obj.file)
 			return
 		}
-		// TODO: make sure method doesn't have same name as a field
-		def.AddMethod(meth.obj)
+		// Function body / alias target is checked later
 	}
-	// Non-aliases are declared before aliases
-	var aliases []methodInfo
-	for _, meth := range methods {
-		if meth.alias != nil {
-			aliases = append(aliases, meth)
-		} else {
-			addMethod(meth)
+}
+
+// TODO
+func (c *Checker) validateReceiver(name string, self *Object,
+	methods []methodInfo, isOtherScope bool,
+) bool {
+	// Error if:
+	// Object is nil
+	// Object is declared in another scope
+	// Object is in another module or is a builtin (TODO)
+	// Object is a type alias
+	// Object doesn't accept methods
+	if self == nil {
+		// Self type doesn't exist
+		for _, meth := range methods {
+			var rang ranges.Range
+			if meth.decl != nil {
+				rang = meth.decl.Range
+			} else {
+				rang = meth.alias.Range
+			}
+			err := errors.Undefined(errors.ErrTypeUndefined, name, rang)
+			c.error(err)
 		}
 	}
-	// Now, method aliases
-	for _, meth := range methods {
-		addMethod(meth)
+	if isOtherScope {
+		// typeName was declared in a different scope from the method
+		det := []errors.Detail{{
+			File:    self.FilePath(),
+			Range:   self.Range(),
+			Message: errors.Quote(name) + " was declared here",
+		}}
+		for _, meth := range methods {
+			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
+			err.Details = det
+			c.error(err)
+		}
+		return false
 	}
+	if self.module != methods[0].obj.module {
+		// TODO: is this possible?
+	}
+	switch self.typ.(type) {
+	case nil /* *Alias */ :
+		// Self type is a type alias
+	case MethodAdder:
+		return true
+	default:
+		// Self type doesn't support methods
+	}
+	return false
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
