@@ -1,0 +1,19 @@
+{
+    "extends": ["./tsconfig.node.json"],
+    "compilerOptions": {
+        "lib": ["ESNext"],
+        "target": "ESNext",
+        "strict": true,
+        "skipLibCheck": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+        "noEmit": true,
+
+        // Some stricter flags (disabled by default)
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noPropertyAccessFromIndexSignature": true,
+        "noImplicitAny": false
+    }
+}

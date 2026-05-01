@@ -2,6 +2,7 @@
     "name": "klar",
     "version": "0.0.1",
     "description": "A programming language",
+    "private": true,
     "workspaces": [
         "klar-vscode"
     ],
@@ -12,5 +13,9 @@
     "license": "Apache-2.0",
     "trustedDependencies": [
         "@vscode/vsce-sign"
-    ]
+    ],
+    "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^6.0.3"
+    }
 }

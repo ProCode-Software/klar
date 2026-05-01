@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        // Environment setup & latest features
+        "module": "Preserve",
+        "moduleDetection": "force",
+        "jsx": "react-jsx",
+        "allowJs": true,
+        "checkJs": true,
+        "types": ["bun"],
+
+        // Bundler mode
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "verbatimModuleSyntax": true
+    },
+    "include": ["./scripts"]
+}
