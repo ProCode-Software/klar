@@ -70,5 +70,6 @@ func Undefined(code ErrorCode, name string, rang ranges.Range) *ReferenceError {
 		ErrorCode: code,
 		Name:      name,
 		Range:     rang,
+		Label:     "I couldn't find " + Quote(name),
 	}
 }

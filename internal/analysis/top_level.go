@@ -16,7 +16,8 @@ type methodInfo struct {
 }
 
 // collectTopLevelObjects collects all top-level objects from
-// each program and declares objects in the module's context.
+// each program and declares placeholder objects in the module's context.
+// Contents of each objects are not checked yet.
 func (c *Checker) collectTopLevelObjects(
 	files []string,
 	fileContexts map[string]*Context,
@@ -86,7 +87,7 @@ func (c *Checker) collectTopLevelObjects(
 					c.moduleDecls[ov] = &DeclarationInfo{
 						file:       fctx,
 						node:       stmt,
-						Attributes: c.parseAttributes(attrs),
+						Attributes: c.parseAttributes2(attrs, funcAttribute),
 					}
 					attrs = nil
 				}
@@ -198,11 +199,7 @@ func (c *Checker) checkTopLevelObjects(methods map[string][]methodInfo) {
 		nonTypes    []*Object // Variable/function declaration
 		funcAliases []*Object // Guaranteed to be FunctionAlias
 	)
-	// 1. Associate methods with receiver types
-	for typeName, methods := range methods {
-		c.collectMethods(c.rootContext, typeName, methods)
-	}
-	// 2. Check new type declarations (not aliases)
+	// 1. Check new type declarations (not aliases)
 	for _, obj := range objs {
 		switch obj.typ.(type) {
 		case *TypeName:
@@ -217,19 +214,23 @@ func (c *Checker) checkTopLevelObjects(methods map[string][]methodInfo) {
 			nonTypes = append(nonTypes, obj)
 		}
 	}
-	// 3. Type aliases
+	// 2. Type aliases
 	for _, obj := range typeAliases {
 		c.checkDeclaration(obj)
 	}
-	// 4. Non-types
+	// 3. Non-types (no methods)
 	for _, obj := range nonTypes {
 		if _, ok := obj.typ.(*FunctionAlias); !ok {
 			c.checkDeclaration(obj)
 		}
 	}
-	// 5. Function aliases
+	// 4. Function aliases (no methods)
 	for _, info := range funcAliases {
 		c.resolveFuncAlias(info)
+	}
+	// 5. Methods: Associate methods with receiver types
+	for typeName, methods := range methods {
+		c.collectMethods(c.rootContext, typeName, methods)
 	}
 }
 
@@ -265,15 +266,20 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 	fid FileID, fctx *Context,
 	attrs *[]ast.Statement, public bool,
 ) {
-	var lastDecl *Object
-	var varKind int // 1 = var, 2 = const
+	var (
+		lastDecl     *Object
+		varKind      int // 1 = var, 2 = const
+		explicitType Type
+	)
+	if d.ExplicitType != nil {
+		explicitType = c.parseType(d.ExplicitType, fctx)
+	}
 	for i, assg := range d.Variables {
 		dest, ok := assg.(ast.Destructurable)
 		if !ok {
 			// Not a destructure
 			c.fileError(errors.Node(errors.ErrNonNameDeclaration, dest), fid)
 		}
-
 		// Undestructured value
 		var value ast.Expression
 		if len(d.Values) < len(d.Variables) {
@@ -288,6 +294,9 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 		}
 		// Pointer value will be set when `value` is first inferred
 		rhsType := new(Type(nil))
+		if explicitType != nil {
+			*rhsType = explicitType
+		}
 
 		// Find every variable name in the destructure pattern
 		for name, err := range dest.Names() {

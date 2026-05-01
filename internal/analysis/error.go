@@ -55,7 +55,11 @@ func redeclaredError(new, old *Object) *errors.ParseError {
 }
 
 func kindOf(typ Type) string {
-return ""
+	switch typ := typ.(type) {
+	default:
+		_ = typ
+	}
+	return ""
 }
 
 func objectError[T errors.CompileError](code errors.ErrorCode, obj *Object) T {
@@ -76,5 +80,4 @@ func objectError[T errors.CompileError](code errors.ErrorCode, obj *Object) T {
 	default:
 		panic("unhandled error type")
 	}
-	// return nil
 }

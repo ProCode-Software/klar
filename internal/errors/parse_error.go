@@ -129,16 +129,16 @@ const (
 
 	// Analysis-time syntax errors =====
 
-	ErrRedeclared           // Can't redeclare variable or function
-	ErrTopLevel             // Multiple files in a module have top-level statements
-	ErrRedeclaredEnum       // Redeclared enum member
-	ErrMethAndFieldSameName // Field and method have the same name
-	ErrMethodInOtherScope   // Method must be in the same scope as struct definition
-	ErrProvenUnreachable    // Unreachable statement after return/break/next
-	ErrUnusedValue          // Unused literal expression statement
-	ErrReturnOutsideFunc    // Return statement not allowed outside of function
-	ErrImportShadow         // Import shadows top-level object
-	ErrVarConstMixInDecl    // Var and const declared in the same declaration
+	ErrRedeclared         // Can't redeclare variable or function
+	ErrTopLevel           // Multiple files in a module have top-level statements
+	ErrMethodInOtherScope // Method must be in the same scope as struct definition
+	ErrProvenUnreachable  // Unreachable statement after return/break/next
+	ErrUnusedValue        // Unused literal expression statement
+	ErrReturnOutsideFunc  // Return statement not allowed outside of function
+	ErrImportShadow       // Import shadows top-level object
+	ErrVarConstMixInDecl  // Var and const declared in the same declaration
+	ErrMultipleVariadic   // Variadic parameter already declared
+	ErrVariadicNotLast    // Variadic parameter must be the last param (if unlabelled)
 )
 
 // A ParseError is a basic Klar parse error.

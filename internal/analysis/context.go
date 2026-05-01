@@ -1,5 +1,7 @@
 package analysis
 
+import "github.com/ProCode-Software/klar/internal/errors"
+
 type (
 	DeclKind         uint8
 	ContextAttribute uint8
@@ -31,7 +33,8 @@ func NewContext(parent *Context, flags ...Flag) *Context {
 }
 
 const (
-	ContextFile ContextAttribute = iota
+	_ ContextAttribute = iota
+	ContextFile
 	firstStmtIndex
 )
 
@@ -58,7 +61,7 @@ func (ctx *Context) Declare(obj *Object, flag ...Flag) (existing *Object) {
 		return
 	}
 	ctx.Declarations[name] = obj
-	if obj.context == nil {
+	if obj.context == nil { // TODO: should this be changed?
 		obj.context = ctx
 	}
 	_ = flags
@@ -87,4 +90,20 @@ func (ctx *Context) LookupRecursive(name string) *Object {
 		}
 	}
 	return nil
+}
+
+func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
+	if obj.name == "_" {
+		return
+	}
+	if existing := ctx.Declare(obj, flags...); existing != nil {
+		// Declared already
+		err := errors.Range(errors.ErrRedeclared, obj.rang)
+		err.Params = errors.ErrorParams{
+			"existing":       existing.FileRange(),
+			"name":           obj.name,
+			"existingIsType": existing.IsTypeDecl() && !obj.IsTypeDecl(),
+		}
+		c.fileError(err, obj.file)
+	}
 }

@@ -11,7 +11,7 @@ import (
 func (r *Reporter) getFile(name string) *file {
 	file, ok := r.files[name]
 	if !ok {
-		panic("file not loaded into Reporter: " + name)
+		panic(fmt.Sprintf("file not loaded into Reporter: %s", name))
 	}
 	return file
 }

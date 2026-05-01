@@ -9,6 +9,9 @@ import (
 // TODO: shoul we accept a file id?
 func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 	switch expr := expr.(type) {
+	case nil:
+		panic("parseType(nil)")
+		// return InvalidType
 	case *ast.BadExpression:
 	case *ast.TypeAlias:
 	case *ast.MapType:

@@ -24,105 +24,10 @@ func (c *Checker) declareTopLevelObject(obj *Object,
 	c.declare(c.rootContext, obj)
 	c.moduleDecls[obj] = info
 	if attrs != nil {
-		info.Attributes = c.parseAttributes(*attrs)
+		info.Attributes = c.parseAttributes2(*attrs, attrTargetKindOf(info.node))
 		*attrs = nil
 	}
 	obj.order = uint32(len(c.moduleDecls))
-}
-
-func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
-	if obj.name == "_" {
-		return
-	}
-	if existing := ctx.Declare(obj, flags...); existing != nil {
-		// Declared already
-		err := errors.Range(errors.ErrRedeclared, obj.rang)
-		err.Params = errors.ErrorParams{
-			"existing":       existing.FileRange(),
-			"name":           obj.name,
-			"existingIsType": existing.IsTypeDecl() && !obj.IsTypeDecl(),
-		}
-		c.fileError(err, obj.file)
-	}
-}
-
-// TODO
-func (c *Checker) collectMethods(ctx *Context, typeName string, methods []methodInfo) {
-	if len(methods) == 0 {
-		return
-	}
-	selfObj := ctx.Lookup(typeName)
-	if selfObj == nil {
-		c.validateReceiver(typeName, ctx.LookupRecursive(typeName), methods, true)
-		return
-	}
-	if !c.validateReceiver(typeName, selfObj, methods, false) {
-		return
-	}
-	self := selfObj.typ.(MethodAdder)
-	for _, meth := range methods {
-		// TODO: check field/method name collisions later. Struct has
-		// not been checked yet.
-		// TODO: wrap Overloads in Functions
-		if existing := self.AddMethod(meth.obj); existing != nil {
-			// Already declared
-			err := redeclaredError(meth.obj, existing)
-			c.fileError(err, meth.obj.file)
-			return
-		}
-		// Function body / alias target is checked later
-	}
-}
-
-// TODO
-func (c *Checker) validateReceiver(name string, self *Object,
-	methods []methodInfo, isOtherScope bool,
-) bool {
-	// Error if:
-	// Object is nil
-	// Object is declared in another scope
-	// Object is in another module or is a builtin (TODO)
-	// Object is a type alias
-	// Object doesn't accept methods
-	if self == nil {
-		// Self type doesn't exist
-		for _, meth := range methods {
-			var rang ranges.Range
-			if meth.decl != nil {
-				rang = meth.decl.Range
-			} else {
-				rang = meth.alias.Range
-			}
-			err := errors.Undefined(errors.ErrTypeUndefined, name, rang)
-			c.error(err)
-		}
-	}
-	if isOtherScope {
-		// typeName was declared in a different scope from the method
-		det := []errors.Detail{{
-			File:    self.FilePath(),
-			Range:   self.Range(),
-			Message: errors.Quote(name) + " was declared here",
-		}}
-		for _, meth := range methods {
-			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
-			err.Details = det
-			c.error(err)
-		}
-		return false
-	}
-	if self.module != methods[0].obj.module {
-		// TODO: is this possible?
-	}
-	switch self.typ.(type) {
-	case nil /* *Alias */ :
-		// Self type is a type alias
-	case MethodAdder:
-		return true
-	default:
-		// Self type doesn't support methods
-	}
-	return false
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
@@ -144,7 +49,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 	}
 
 	if ut, ok := o.typ.(Underlyer); ok && ut.Underlying() != nil {
-		return // Blue, already checked
+		return // Blue, already checked (TODO: is this correct?)
 	}
 
 	// White, not checked yet
@@ -158,8 +63,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 	case *Constant:
 		c.checkConstDecl(o, decl)
 	case *TypeName:
-		c.checkTypeDecl(o, decl)
-		// TODO: collect methods
+		c.checkCustomTypeDecl(o, decl)
 	case *Function:
 		c.checkFuncDecl(o)
 	case *Overload:
@@ -171,4 +75,95 @@ func (c *Checker) checkDeclaration(o *Object) {
 
 func (c *Checker) isValidCycle(o *Object) bool {
 	return true
+}
+
+// TODO
+func (c *Checker) collectMethods(ctx *Context, typeName string, methods []methodInfo) {
+	if len(methods) == 0 {
+		return
+	}
+	selfObj := ctx.Lookup(typeName)
+	if selfObj == nil {
+		c.validateReceiver(typeName, ctx.LookupRecursive(typeName), methods, true)
+		return
+	}
+	if !c.validateReceiver(typeName, selfObj, methods, false) {
+		return
+	}
+	self := selfObj.typ.(MethodAdder)
+	for _, meth := range methods {
+		// TODO: wrap Overloads in Functions
+		if existing := self.AddMethod(meth.obj); existing != nil {
+			// Already declared
+			err := redeclaredError(meth.obj, existing)
+			c.fileError(err, meth.obj.file)
+			return
+		}
+		// Function body / alias target is checked later
+	}
+}
+
+// TODO
+func (c *Checker) validateReceiver(name string, self *Object,
+	methods []methodInfo, isOtherScope bool,
+) bool {
+	selfRange := func(meth methodInfo) ranges.Range {
+		if meth.decl != nil {
+			return meth.decl.Struct.Range()
+		} else {
+			return meth.alias.Struct.Range()
+		}
+	}
+	// Error if:
+	// Object is nil
+	// Object is declared in another scope
+	// Object is in another module or is a builtin (TODO)
+	// Object is a type alias
+	// Object doesn't accept methods
+	switch {
+	case self == nil:
+		// Self type doesn't exist
+		for _, meth := range methods {
+			err := errors.Undefined(errors.ErrTypeUndefined, name, selfRange(meth))
+			c.fileError(err, meth.obj.file)
+		}
+	case isOtherScope:
+		// typeName was declared in a different scope from the method
+		det := []errors.Detail{{
+			File:    self.FilePath(),
+			Range:   self.Range(),
+			Message: errors.Quote(name) + " was declared here",
+		}}
+		for _, meth := range methods {
+			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
+			err.Details = det
+			c.error(err)
+		}
+	case self.module != methods[0].obj.module:
+		return false
+	default:
+		switch self.typ.(type) {
+		case *TypeAlias:
+			// Self type is a type alias
+			for _, m := range methods {
+				err := errors.RangedTypeError(errors.ErrAliasSelfType,
+					selfRange(m), nil,
+				)
+				err.Label = "Self type can't be an alias"
+				c.fileError(err, m.obj.file)
+			}
+		default:
+			// Self type doesn't support methods
+			for _, m := range methods {
+				err := errors.RangedTypeError(errors.ErrUnsupportedSelfType,
+					selfRange(m), nil,
+				)
+				err.Label = "Can't declare methods on this kind of type"
+				c.fileError(err, m.obj.file)
+			}
+		case MethodAdder:
+			return true
+		}
+	}
+	return false
 }

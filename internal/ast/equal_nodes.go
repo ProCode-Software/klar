@@ -1256,9 +1256,6 @@ func (a *StructField) Equal(b2 Node) bool {
 	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
 		return false
 	}
-	if a.Constant != b.Constant {
-		return false
-	}
 	if a.Value != nil && b.Value != nil && !a.Value.Equal(b.Value) {
 		return false
 	}

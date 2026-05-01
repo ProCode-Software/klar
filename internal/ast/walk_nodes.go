@@ -282,7 +282,7 @@ func (n *StructDotInit) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *StructField) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Identifier]{0, n.Names}, walkNode{1, n.Type}, walkNode{3, n.Value}, walkSlice[*Attribute]{4, n.Attributes})
+	return walkFields(v, n, c, walkSlice[Identifier]{0, n.Names}, walkNode{1, n.Type}, walkNode{2, n.Value}, walkSlice[*Attribute]{3, n.Attributes})
 }
 
 func (n *Symbol) Walk(v Visitor, c *Cursor) StopCode {

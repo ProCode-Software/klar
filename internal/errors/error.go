@@ -46,6 +46,7 @@ type (
 
 const (
 	SyntaxErrorPrefix ErrorCode = iota * 100
+	_
 	WarningPrefix
 	TypeErrorPrefix
 	ReferenceErrorPrefix

@@ -31,3 +31,7 @@ func (m *mapObject) ContainsName(name string) bool {
 	_, ok := (*m)[name]
 	return ok
 }
+
+func TypeToString(t Type) string {
+	return ""
+}

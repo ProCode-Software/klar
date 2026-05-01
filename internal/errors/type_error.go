@@ -12,6 +12,11 @@ import (
 const (
 	_ ErrorCode = TypeErrorPrefix + iota
 
+	ErrAliasSelfType       // Method self type can't be a type alias
+	ErrUnsupportedSelfType // Self type doesn't support methods
+
+	// Old errors
+
 	ErrUntypedNil       // nil requires contextual type
 	ErrUntypedEmptyList // Can't infer type from empty list
 	ErrUntypedEnum      // Shorthand enum syntax without enum type
@@ -79,6 +84,14 @@ func (e *TypeError) Error() string {
 	switch e.ErrorCode {
 	default:
 		return "TypeError: " + e.GetCode().String()
+
+	case ErrAliasSelfType:
+		return "TypeError: A method self type can't be a type alias"
+	case ErrUnsupportedSelfType:
+		return "TypeError: You can only declare methods on enum and struct types"
+
+	// OLD ERRORS
+	// =======
 	case ErrTypeMismatch:
 		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T",
 			expType, gotType,

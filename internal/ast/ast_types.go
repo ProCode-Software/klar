@@ -368,7 +368,6 @@ type StructDeclaration struct {
 type StructField struct {
 	Names      []Identifier
 	Type       Type
-	Constant   bool
 	Value      Expression
 	Attributes []*Attribute
 	BaseNode

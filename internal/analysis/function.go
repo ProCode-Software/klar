@@ -1,6 +1,53 @@
 package analysis
 
-import "github.com/ProCode-Software/klar/internal/ast"
+import (
+	"strings"
+
+	"github.com/ProCode-Software/klar/internal/ast"
+)
+
+// Function represents a function type, either a declared function or a lambda.
+// A Function can take multiple sets of parameters using [Overload]s.
+type Function struct {
+	Overloads []*Overload
+	Return    Type
+	Arity     Arity
+}
+
+// Overload represents a single overload or parameter set of a function.
+// TODO: params with defaults
+type Overload struct {
+	*Object
+	Self           *Variable
+	Generics       []*Generic
+	Params         []*Variable
+	LabelledParams []*LabelledParam
+	labelMap       map[string]*Variable
+	Arity          Arity
+	InnerContext   *Context
+}
+
+// LabelledParam represents a labelled function parameter, e.g. `label: string`.
+type LabelledParam struct {
+	Label string
+	*Variable
+}
+
+type FunctionAlias struct {
+	Target *Object // Should be [Function]
+}
+
+type Arity struct {
+	// The minimum and maximum number of parameters the function accepts,
+	// excluding labelled parametees. MaxParams can be -1 if there is no maximum.
+	MinParams, MaxParams int
+}
+
+// Generic represents a generic type parameter.
+type Generic struct {
+	*Object
+	Name string
+}
 
 func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
@@ -28,6 +75,7 @@ func (c *Checker) checkFuncDecl(o *Object) {
 		ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.file, ctx)
 
 		// 3. Params
+		var restParam *Variable // Unlabelled
 		ov.Params = make([]*Variable, 0, len(stmt.Parameters))
 		ov.Arity = Arity{}
 		for _, param := range stmt.Parameters {
@@ -49,6 +97,10 @@ func (c *Checker) checkFuncDecl(o *Object) {
 						// If there is a variadic parameter, there is no max number of params
 						ov.Arity.MaxParams = -1
 						fn.Arity.MaxParams = -1
+						if restParam != nil {
+							// Variadic exists
+						}
+						restParam = vr
 					} else {
 						optional := false // TODO: check if typ is optional
 						if !optional {
@@ -58,10 +110,7 @@ func (c *Checker) checkFuncDecl(o *Object) {
 					}
 				} else {
 					// Labelled param
-					lp := &LabelledParam{
-						Label:    pn.Label.Name,
-						Variable: vr,
-					}
+					lp := &LabelledParam{pn.Label.Name, vr}
 					ov.LabelledParams = append(ov.LabelledParams, lp)
 					if ov.labelMap == nil {
 						ov.labelMap = make(map[string]*Variable)
@@ -77,7 +126,9 @@ func (c *Checker) checkFuncDecl(o *Object) {
 		if ov.Arity.MaxParams != -1 && fn.Arity.MaxParams != -1 {
 			fn.Arity.MaxParams = max(fn.Arity.MaxParams, ov.Arity.MaxParams)
 		}
-		// TODO: verify that the variadic param is the last unlabelled param
+		// Verify that the variadic param is the last unlabelled param
+		if restParam != nil && ov.Params[len(ov.Params)-1] != restParam {
+		}
 
 		// 4. Return type
 		var ret Type
@@ -121,9 +172,73 @@ func (c *Checker) parseGenerics(names []ast.Identifier,
 	return generics
 }
 
+// parseTypeOrVariadic parses [*ast.RestType], returning a [*List]. If t is
+// not [*ast.RestType], parseTypeOrVariadic is the same as [Checker.parseType].
+// This should be the only function that accepts variadic types.
 func (c *Checker) parseTypeOrVariadic(t ast.Type, ctx *Context) (typ Type, variadic bool) {
 	if dt, ok := t.(*ast.RestType); ok {
 		return &List{c.parseType(dt.Value, ctx)}, true
 	}
 	return c.parseType(t, ctx), false
 }
+
+func (fn *Function) Kind() Kind     { return KindFunction }
+func (fn *Function) String() string { return fn.StringWithName("") }
+func (fn *Function) StringWithName(name string) string {
+	var b strings.Builder
+	b.WriteString("func")
+	if name != "" {
+		b.WriteByte(' ')
+		b.WriteString(name)
+	}
+	if len(fn.Overloads) == 1 {
+		b.WriteString(fn.Overloads[0].String())
+	}
+	if fn.Return != nil {
+		switch fn.Return.Kind() {
+		case NothingType, InvalidType, KindUnreachable:
+		default:
+			b.WriteString(" -> ")
+			b.WriteString(TypeToString(fn.Return))
+		}
+	}
+	return b.String()
+}
+
+func (o *Overload) Kind() Kind { return KindFunction }
+
+func (o *Overload) String() string {
+	var b strings.Builder
+	// Generics
+	if len(o.Generics) > 0 {
+		b.WriteByte('<')
+		for i, g := range o.Generics {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(g.Name)
+		}
+		b.WriteByte('>')
+	}
+	// Params
+	b.WriteByte('(')
+	for i, param := range o.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.String())
+	}
+	// Labelled params
+	for i, param := range o.LabelledParams {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.String())
+	}
+	b.WriteByte(')')
+	return b.String()
+}
+
+func (g *Generic) Kind() Kind { return KindGeneric }
+
+func (a *FunctionAlias) Kind() Kind { return KindFunction }

@@ -1,6 +1,9 @@
 package analysis
 
+import "github.com/ProCode-Software/klar/internal/ast"
+
 type TypeAlias struct {
+	Type
 	resolved Type
 }
 
@@ -11,10 +14,15 @@ func (a *TypeAlias) Resolve() Type {
 	return nil
 }
 
-func (a *TypeAlias) Kind() Kind                        { return a.Resolve().Kind() }
-func (a *TypeAlias) String() string                    { return a.Resolve().String() }
-func (a *TypeAlias) StringWithName(name string) string { return name }
-func (a *TypeAlias) Underlying() Type                  { return a.Resolve() }
+func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
+func (a *TypeAlias) Underlying() Type { return a.Resolve() }
+
+func (c *Checker) checkTypeAlias(
+	o *Object, node *ast.TypeAliasDeclaration, fileCtx *Context,
+) {
+	rhs := c.parseType(node.Type, fileCtx)
+	o.typ.(*TypeName).Type = &TypeAlias{Type: rhs}
+}
 
 // TODO
 func (c *Checker) resolveFuncAlias(fa *Object) {
@@ -25,9 +33,4 @@ func Unalias(t Type) Type {
 		return a.Resolve()
 	}
 	return t
-}
-
-func getDefined(t Type) *DefinedType {
-	named, _ := t.(*DefinedType)
-	return named
 }

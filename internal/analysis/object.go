@@ -1,8 +1,6 @@
 package analysis
 
 import (
-	"strings"
-
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -54,37 +52,26 @@ func (obj *Object) Type() Type { return obj.typ }
 // Kind returns the kind of the object. Kind is equivalent to obj.Type().Kind().
 func (obj *Object) Kind() Kind { return obj.typ.Kind() }
 
-// String returns a human-readable representation of the object
-func (obj *Object) String() string {
-	// TODO
-	return obj.typ.StringWithName(obj.name)
-}
-
-func (obj *Object) StringWithName(name string) string {
-	return obj.typ.StringWithName(name) // TODO
-}
+// String returns a human-readable representation of the object.
+func (obj *Object) String() string { return TypeToString(obj.typ) }
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
 	// TODO: should use '/' instead?
-	return obj.Module().ImportPathString() + "." + obj.name
+	return obj.Module().ImportPathString() + "/" + obj.name
 }
 
-// IsTypeDecl reports whether o represents a type declaration.
+// IsTypeDecl reports whether o represents a type declaration, including a type alias.
 func (o *Object) IsTypeDecl() bool {
 	_, ok := o.typ.(*TypeName)
 	return ok
 }
 
 // FileName returns the base name of the file o was declared in.
-func (o *Object) FileName() string {
-	return o.module.ResolveFile(o.file)
-}
+func (o *Object) FileName() string { return o.module.ResolveFile(o.file) }
 
 // FileName returns the full path of the file o was declared in.
-func (o *Object) FilePath() string {
-	return o.module.ResolveFilePath(o.file)
-}
+func (o *Object) FilePath() string { return o.module.ResolveFilePath(o.file) }
 
 // FileRange returns a [ranges.FileRange] representing the range of o's declaration
 // and the base name of the containing file.
@@ -105,6 +92,7 @@ func (o *Object) FilePathRange() ranges.FileRange {
 type Kind int
 
 const (
+	// Kinds that can be used as standalone [Type]s.
 	InvalidType Kind = iota
 	IntType
 	StringType
@@ -143,185 +131,49 @@ func (k Kind) StringWithName(string) string { return k.String() }
 // Types
 // ==========
 
+// Type represents a Klar object type or data type.
 type Type interface {
 	// Kind returns the kind of the type.
 	Kind() Kind
 	// String returns a human-readable string representation of the type
 	// without a name.
-	String() string
+	// String() string
 	// StringWithName returns a human-readable string representation
 	// of the type with the given name.
-	StringWithName(string) string
+	// StringWithName(string) string
 }
 
 // TypeName represents a type declaration.
+//
+// Type is one of these types:
+//   - [*TypeAlias]
+//   - [*Struct]
+//   - [*Interface]
+//   - [*Enum]
+//   - [*TagType]
 type TypeName struct {
-	Underlying Type
-	Name       string
-}
-
-func (n *TypeName) String() string                    { return n.Name }
-func (n *TypeName) StringWithName(name string) string { return name }
-func (n *TypeName) Kind() Kind                        { return n.Underlying.Kind() }
-
-// Function represents a function type, either a declared function or a lambda.
-type Function struct {
-	Overloads []*Overload
-	Return    Type
-	Arity     Arity
-}
-
-func (fn *Function) Kind() Kind     { return KindFunction }
-func (fn *Function) String() string { return fn.StringWithName("") }
-func (fn *Function) StringWithName(name string) string {
-	var b strings.Builder
-	b.WriteString("func")
-	if name != "" {
-		b.WriteByte(' ')
-		b.WriteString(name)
-	}
-	if len(fn.Overloads) == 1 {
-		b.WriteString(fn.Overloads[0].String())
-	}
-	if fn.Return != nil {
-		switch fn.Return.Kind() {
-		case NothingType, InvalidType, KindUnreachable:
-		default:
-			b.WriteString(" -> ")
-			b.WriteString(fn.Return.String())
-		}
-	}
-	return b.String()
-}
-
-// TODO: params with defaults
-type Overload struct {
-	*Object
-	Self           *Variable
-	Generics       []*Generic
-	Params         []*Variable
-	LabelledParams []*LabelledParam
-	labelMap       map[string]*Variable
-	Arity          Arity
-	InnerContext   *Context
-}
-
-func (o *Overload) Kind() Kind { return KindFunction }
-
-func (o *Overload) StringWithName(name string) string {
-	return "func " + name + o.String()
-}
-
-func (o *Overload) String() string {
-	var b strings.Builder
-	// Generics
-	if len(o.Generics) > 0 {
-		b.WriteByte('<')
-		for i, g := range o.Generics {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString(g.Name)
-		}
-		b.WriteByte('>')
-	}
-	// Params
-	b.WriteByte('(')
-	for i, param := range o.Params {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(param.String())
-	}
-	// Labelled params
-	for i, param := range o.LabelledParams {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(param.String())
-	}
-	b.WriteByte(')')
-	return b.String()
-}
-
-type LabelledParam struct {
-	Label string
-	*Variable
-}
-
-func (p *LabelledParam) String() string { return p.Label + ": " + p.Type.String() }
-
-func (p *LabelledParam) StringWithName(string) string { return p.String() }
-
-type FunctionAlias struct {
-	Self   *Variable // If method
-	Target *Object
-}
-
-func (a *FunctionAlias) Kind() Kind { return KindFunction }
-
-func (a *FunctionAlias) String() string {
-	return "func = " + "" // TODO
-}
-
-func (a *FunctionAlias) StringWithName(name string) string {
-	return "func " + name + " = " + ""
-}
-
-type Arity struct {
-	// The minimum and maximum number of parameters the function accepts,
-	// excluding labelled parametees. MaxParams can be -1 if there is no maximum.
-	MinParams, MaxParams int
-}
-
-// Generic represents a generic type parameter.
-type Generic struct {
-	*Object
+	Type
 	Name string
 }
 
-func (g *Generic) Kind() Kind                        { return KindGeneric }
-func (g *Generic) String() string                    { return "<" + g.Name + ">" }
-func (g *Generic) StringWithName(name string) string { return "<" + name + ">" }
+// String returns the name of the type.
+func (n *TypeName) String() string   { return n.Name }
+func (n *TypeName) Underlying() Type { return n.Type }
 
-// Variable represents a variable type.
-type Variable struct {
-	*Object
-	VarKind VariableKind
-	Type    Type
-}
-
-func (v *Variable) Underlying() Type { return v.Type }
-
-type VariableKind uint8
-
-const (
-	_              VariableKind = iota
-	TopLevelVar                 // Module-level variable
-	LocalVar                    // Locally declared variable
-	SelfVar                     // self
-	FuncParamVar                // Function parameter
-	StructFieldVar              // Struct field
-)
-
-type Constant struct {
-	Type  Type
-	Value any // TODO
-}
-
-func (c *Constant) Kind() Kind                        { return c.Type.Kind() }
-func (c *Constant) Underlying() Type                  { return c.Type }
-func (c *Constant) String() string                    { return "" }
-func (c *Constant) StringWithName(name string) string { return "name := " + c.String() }
-
-// Underlyer is implemented by variables and constants that have an underlying type.
+// Underlyer is implemented by types or objects that have an underlying type.
 type Underlyer interface {
 	Type
 	Underlying() Type
 }
 
-type List struct{ Elem Type }
+// MethodAdder is implemented by types that can have methods added to them.
+// Per the spec, this is implemented by [*Struct] and [*Enum].
+type MethodAdder interface {
+	// Method returns the method with the given name, or nil if it doesn't exist.
+	// Method(name string) *Function
 
-func (l *List) Kind() Kind                        { return KindList }
-func (l *List) String() string                    { return "[" + l.Elem.String() + "]" }
-func (l *List) StringWithName(name string) string { return l.String() }
+	// AddMethod adds the method m to the type. If a method with the same name
+	// already exists on the type, the existing method is returned instead.
+	// m should have type [*Function], however, existing's type may not be [*Function].
+	AddMethod(m *Object) (existing *Object)
+}

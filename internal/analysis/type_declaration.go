@@ -6,20 +6,22 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 )
 
-func (c *Checker) checkTypeDecl(o *Object, decl *DeclarationInfo) {
+// o's Type should be [*TypeName]
+func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 	node := decl.node.(ast.TypeDeclaration)
 	switch node := node.(type) {
 	case *ast.StructDeclaration:
+		c.checkStructDecl(o, node, decl.file)
 	case *ast.EnumDeclaration:
+		c.checkEnumDecl(o, node, decl.file)
 	case *ast.TypeAliasDeclaration:
-
+		c.checkTypeAlias(o, node, decl.file)
 	case *ast.InterfaceDeclaration:
 		if node.Tag {
-			typ := o.typ.(*TypeName)
-			typ.Underlying = TagType
+			o.typ.(*TypeName).Type = TagType
 			return
 		}
-
+		c.checkInterfaceDecl(o, node, decl.file)
 	default:
 		panic(fmt.Sprintf("unknown type declaration: %T", node))
 	}
