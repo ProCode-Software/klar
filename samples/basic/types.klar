@@ -20,7 +20,8 @@ type Point {
     WHATEVR: Int
 }
 
-func Point(x, y: Int = 10) {
+// TODO: add explicit annot to 'x' so parse error with `}` is avoided
+func Point(x: Int, y: Int = 10) {
     self.x = x
     self.y = y
 }
