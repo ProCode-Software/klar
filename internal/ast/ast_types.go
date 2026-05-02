@@ -295,31 +295,6 @@ type MethodParam struct {
 	BaseNode
 }
 
-// Primitives
-type PrimitiveTypeName int
-
-const (
-	PrimitiveAny     PrimitiveTypeName = iota // Any
-	PrimitiveString                           // String
-	PrimitiveInt                              // Int
-	PrimitiveFloat                            // Float
-	PrimitiveBool                             // Bool
-	PrimitiveNothing                          // Nothing
-	PrimitiveResult                           // Result
-	PrimitiveError                            // Error
-)
-
-var PrimitiveTypeMap = map[string]PrimitiveTypeName{
-	"Any":     PrimitiveAny,
-	"String":  PrimitiveString,
-	"Int":     PrimitiveInt,
-	"Float":   PrimitiveFloat,
-	"Bool":    PrimitiveBool,
-	"Nothing": PrimitiveNothing,
-	"Result":  PrimitiveResult,
-	"Error":   PrimitiveError,
-}
-
 type IdentifierPair struct {
 	BaseNode
 	Label, Name Identifier
@@ -353,8 +328,13 @@ type ModifierDeclaration interface {
 type InterfaceDeclaration struct {
 	Identifier     Identifier
 	InheritedTypes []Type
-	Tag            bool // If no fields
 	Items          []*InterfaceItem
+	BaseNode
+}
+
+type TagDeclaration struct {
+	Identifier Identifier
+	InheritedTypes []Type
 	BaseNode
 }
 
@@ -377,7 +357,6 @@ type EnumDeclaration struct {
 	Identifier Identifier
 	Generics   []Identifier
 	Inherited  []Type
-	ValueType  Type // after '->'
 	Values     []*EnumItem
 	BaseNode
 }

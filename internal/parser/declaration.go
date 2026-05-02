@@ -24,26 +24,8 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	if isIntf {
 		p.Advance()
 	}
-	var (
-		name      = p.ParseIdentOrDiscard()
-		inherited []ast.Type
-		valType   ast.Type
-		arrow     lexer.Token
-		isEnum    bool
-	)
-	// Check if '->' was used on non-enum
-	defer func() {
-		if valType != nil && !isEnum {
-			p.Error(errors.Token(errors.ErrInvalidArrow, arrow))
-		}
-	}()
-	// Enum value type
-	tryParseArrow := func() {
-		if p.CurrKind() == lexer.Arrow {
-			arrow = p.Advance()
-			valType = p.ParseType(DefaultTypeBindingPower)
-		}
-	}
+	name := p.ParseIdentOrDiscard()
+	var inherited []ast.Type
 	switch p.CurrKind() {
 	case lexer.Equal:
 		if isIntf {
@@ -55,12 +37,15 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			Identifier: name,
 			Type:       p.ParseType(DefaultTypeBindingPower),
 		}
-	case lexer.Colon, lexer.Arrow:
-		if p.CurrKind() == lexer.Colon {
-			// Inherited struct, interface, or enum
-			inherited = p.parseInheritedTypes()
+	case lexer.Colon:
+		// Inherited struct, interface, tag, or enum
+		inherited = p.parseInheritedTypes()
+		if isIntf && p.CurrKind() == lexer.Newline {
+			return &ast.TagDeclaration{
+				Identifier:     name,
+				InheritedTypes: inherited,
+			}
 		}
-		tryParseArrow()
 		fallthrough
 	case lexer.LeftCurlyBrace:
 		// Struct, enum, or interface
@@ -78,8 +63,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		}
 		attrs := p.tryParseAttributes()
 		if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
-			isEnum = true
-			return p.ParseEnum(name, nil, inherited, valType, attrs)
+			return p.ParseEnum(name, nil, inherited, attrs)
 		}
 		return p.ParseStruct(name, inherited, attrs)
 	case lexer.LessThan:
@@ -93,15 +77,13 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		if p.CurrKind() == lexer.Colon {
 			inherited = p.parseInheritedTypes()
 		}
-		tryParseArrow()
 		p.Expect(lexer.LeftCurlyBrace)
 		if isIntf {
 			res = p.ParseInterface(name, inherited)
 		} else {
 			attrs := p.tryParseAttributes()
 			if p.CurrKind() == lexer.Dot || p.PeekKind() == lexer.LeftParenthesis {
-				isEnum = true
-				return p.ParseEnum(name, generics, inherited, valType, attrs)
+				return p.ParseEnum(name, generics, inherited, attrs)
 			}
 			res = p.ParseStruct(name, inherited, attrs)
 		}
@@ -111,8 +93,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	case lexer.Newline:
 		// Type tag if interface
 		if isIntf {
-			return &ast.InterfaceDeclaration{
-				Tag:            true,
+			return &ast.TagDeclaration{
 				Identifier:     name,
 				InheritedTypes: inherited,
 			}
@@ -146,7 +127,7 @@ func (p *Parser) parseInheritedTypes() (inherited []ast.Type) {
 
 func (p *Parser) ParseEnum(
 	typeName ast.Identifier, generics []ast.Identifier,
-	inherited []ast.Type, valType ast.Type, attrs []*ast.Attribute,
+	inherited []ast.Type, attrs []*ast.Attribute,
 ) *ast.EnumDeclaration {
 	var (
 		items   []*ast.EnumItem
@@ -198,7 +179,6 @@ func (p *Parser) ParseEnum(
 		Identifier: typeName,
 		Generics:   generics,
 		Inherited:  inherited,
-		ValueType:  valType,
 		Values:     items,
 	}
 }

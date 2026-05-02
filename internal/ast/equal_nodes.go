@@ -261,9 +261,6 @@ func (a *EnumDeclaration) Equal(b2 Node) bool {
 	if !equalSlice(a.Inherited, b.Inherited) {
 		return false
 	}
-	if a.ValueType != nil && b.ValueType != nil && !a.ValueType.Equal(b.ValueType) {
-		return false
-	}
 	if !equalSlice(a.Values, b.Values) {
 		return false
 	}
@@ -611,9 +608,6 @@ func (a *InterfaceDeclaration) Equal(b2 Node) bool {
 		return false
 	}
 	if !equalSlice(a.InheritedTypes, b.InheritedTypes) {
-		return false
-	}
-	if a.Tag != b.Tag {
 		return false
 	}
 	if !equalSlice(a.Items, b.Items) {
@@ -1274,6 +1268,23 @@ func (a *Symbol) Equal(b2 Node) bool {
 		return a == b
 	}
 	if a.Identifier != b.Identifier {
+		return false
+	}
+	return true
+}
+
+func (a *TagDeclaration) Equal(b2 Node) bool {
+	b, ok := b2.(*TagDeclaration)
+	if !ok {
+		return false
+	}
+	if a == nil || b == nil {
+		return a == b
+	}
+	if !a.Identifier.Equal(b.Identifier) {
+		return false
+	}
+	if !equalSlice(a.InheritedTypes, b.InheritedTypes) {
 		return false
 	}
 	return true

@@ -26,6 +26,8 @@ func GenerateWalk(b *bytes.Buffer, nodes NodeList, pkg Package) error {
 				l, isList = f.Type().(*types.Slice)
 			)
 			switch {
+			case f.Name() == "BaseNode":
+				continue
 			case isList && IsNode(l.Elem()):
 				// Type parameter
 				elm := strings.Replace(l.Elem().String(), pkg.Path()+".", "", 1)

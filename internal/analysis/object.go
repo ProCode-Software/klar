@@ -101,18 +101,18 @@ const (
 	AnyType
 	ErrorType
 	NothingType
-	TagType
 
 	KindList
 	KindMap
 	KindResult
 	KindFunction
+	KindUnion
+	KindOptional
 
 	KindEnum
 	KindStruct
 	KindInterface
-	KindUnion
-	KindOptional
+	KindTag
 	KindModule
 
 	KindGeneric

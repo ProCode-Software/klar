@@ -13,6 +13,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 		panic("parseType(nil)")
 		// return InvalidType
 	case *ast.BadExpression:
+		return InvalidType
 	case *ast.TypeAlias:
 	case *ast.MapType:
 	case *ast.FunctionType:
@@ -22,6 +23,24 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 	case *ast.ParenType:
 	case *ast.QualifiedTypeAlias:
 	case *ast.PrimitiveType:
+		switch expr.Primitive {
+		case ast.PrimitiveInt:
+			return IntType
+		case ast.PrimitiveString:
+			return StringType
+		case ast.PrimitiveBool:
+			return BoolType
+		case ast.PrimitiveAny:
+			return AnyType
+		case ast.PrimitiveFloat:
+			return FloatType
+		case ast.PrimitiveNothing:
+			return NothingType
+		case ast.PrimitiveResult:
+			return nil
+		case ast.PrimitiveError:
+			return ErrorType
+		}
 	case *ast.RestType:
 	// Invalid outside of function. RestType is already explicitly handled
 	// when function signatures are checked.

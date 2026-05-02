@@ -28,3 +28,28 @@ type Expression interface {
 	Node
 	expr()
 }
+
+// Primitives
+type PrimitiveTypeName int
+
+const (
+	PrimitiveAny     PrimitiveTypeName = iota // Any
+	PrimitiveString                           // String
+	PrimitiveInt                              // Int
+	PrimitiveFloat                            // Float
+	PrimitiveBool                             // Bool
+	PrimitiveNothing                          // Nothing
+	PrimitiveResult                           // Result
+	PrimitiveError                            // Error
+)
+
+var PrimitiveTypeMap = map[string]PrimitiveTypeName{
+	"Any":     PrimitiveAny,
+	"String":  PrimitiveString,
+	"Int":     PrimitiveInt,
+	"Float":   PrimitiveFloat,
+	"Bool":    PrimitiveBool,
+	"Nothing": PrimitiveNothing,
+	"Result":  PrimitiveResult,
+	"Error":   PrimitiveError,
+}

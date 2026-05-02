@@ -62,7 +62,7 @@ func (n *Discard) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *EnumDeclaration) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkSlice[Identifier]{1, n.Generics}, walkSlice[Type]{2, n.Inherited}, walkNode{3, n.ValueType}, walkSlice[*EnumItem]{4, n.Values})
+	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkSlice[Identifier]{1, n.Generics}, walkSlice[Type]{2, n.Inherited}, walkSlice[*EnumItem]{3, n.Values})
 }
 
 func (n *EnumItem) Walk(v Visitor, c *Cursor) StopCode {
@@ -130,7 +130,7 @@ func (n *IntegerLiteral) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *InterfaceDeclaration) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkSlice[Type]{1, n.InheritedTypes}, walkSlice[*InterfaceItem]{3, n.Items})
+	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkSlice[Type]{1, n.InheritedTypes}, walkSlice[*InterfaceItem]{2, n.Items})
 }
 
 func (n *InterfaceItem) Walk(v Visitor, c *Cursor) StopCode {
@@ -287,6 +287,10 @@ func (n *StructField) Walk(v Visitor, c *Cursor) StopCode {
 
 func (n *Symbol) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c)
+}
+
+func (n *TagDeclaration) Walk(v Visitor, c *Cursor) StopCode {
+	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkSlice[Type]{1, n.InheritedTypes})
 }
 
 func (n *TryExpression) Walk(v Visitor, c *Cursor) StopCode {

@@ -12,8 +12,9 @@ import (
 const (
 	_ ErrorCode = TypeErrorPrefix + iota
 
-	ErrAliasSelfType       // Method self type can't be a type alias
-	ErrUnsupportedSelfType // Self type doesn't support methods
+	ErrAliasSelfType        // Method self type can't be a type alias
+	ErrUnsupportedSelfType  // Self type doesn't support methods
+	ErrInvalidInheritedType // Invalid inherited type in declaration
 
 	// Old errors
 
@@ -89,6 +90,10 @@ func (e *TypeError) Error() string {
 		return "TypeError: A method self type can't be a type alias"
 	case ErrUnsupportedSelfType:
 		return "TypeError: You can only declare methods on enum and struct types"
+	case ErrInvalidInheritedType:
+		allowed := param[string](p, "allowedTypes")
+		kind := param[string](p, "kind")
+		return "TypeError: " + kind + " can only inherit from " + allowed
 
 	// OLD ERRORS
 	// =======

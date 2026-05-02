@@ -129,16 +129,17 @@ const (
 
 	// Analysis-time syntax errors =====
 
-	ErrRedeclared         // Can't redeclare variable or function
-	ErrTopLevel           // Multiple files in a module have top-level statements
-	ErrMethodInOtherScope // Method must be in the same scope as struct definition
-	ErrProvenUnreachable  // Unreachable statement after return/break/next
-	ErrUnusedValue        // Unused literal expression statement
-	ErrReturnOutsideFunc  // Return statement not allowed outside of function
-	ErrImportShadow       // Import shadows top-level object
-	ErrVarConstMixInDecl  // Var and const declared in the same declaration
-	ErrMultipleVariadic   // Variadic parameter already declared
-	ErrVariadicNotLast    // Variadic parameter must be the last param (if unlabelled)
+	ErrRedeclared             // Can't redeclare variable or function
+	ErrTopLevel               // Multiple files in a module have top-level statements
+	ErrMethodInOtherScope     // Method must be in the same scope as struct definition
+	ErrProvenUnreachable      // Unreachable statement after return/break/next
+	ErrUnusedValue            // Unused literal expression statement
+	ErrReturnOutsideFunc      // Return statement not allowed outside of function
+	ErrImportShadow           // Import shadows top-level object
+	ErrVarConstMixInDecl      // Var and const declared in the same declaration
+	ErrMultipleVariadic       // Variadic parameter already declared
+	ErrVariadicNotLast        // Variadic parameter must be the last param (if unlabelled)
+	ErrDuplicateInheritedType // Inherited type specified twice
 )
 
 // A ParseError is a basic Klar parse error.
@@ -499,6 +500,9 @@ func (e *ParseError) error() string {
 		return "The field " + Quote(name) + " was already declared in this " + kind
 	case ErrVarConstMixInDecl:
 		return "Can't declare variable and constants in the same statement"
+	case ErrDuplicateInheritedType:
+		name := e.stringParam("name")
+		return "Type " + Quote(name) + " was already inherited"
 	}
 }
 

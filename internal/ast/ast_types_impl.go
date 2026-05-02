@@ -79,6 +79,7 @@ func (Attribute) stmt()            {}
 func (FuncAliasDeclaration) stmt() {}
 func (PublicDeclaration) stmt()    {}
 func (WhileStatement) stmt()       {}
+func (TagDeclaration) stmt()       {}
 
 // Type
 func (PrimitiveType) _type()      {}
@@ -101,10 +102,12 @@ func (TypeAliasDeclaration) typeDecl()      {}
 func (StructDeclaration) typeDecl()         {}
 func (EnumDeclaration) typeDecl()           {}
 func (InterfaceDeclaration) typeDecl()      {}
+func (TagDeclaration) typeDecl()            {}
 func (d TypeAliasDeclaration) Name() string { return d.Identifier.Name }
 func (d StructDeclaration) Name() string    { return d.Identifier.Name }
 func (d EnumDeclaration) Name() string      { return d.Identifier.Name }
 func (d InterfaceDeclaration) Name() string { return d.Identifier.Name }
+func (d TagDeclaration) Name() string       { return d.Identifier.Name }
 
 // Can be used on left side of = or in a destructure
 func (Symbol) assignable()            {}
