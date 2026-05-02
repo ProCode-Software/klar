@@ -202,7 +202,6 @@ func (p *Parser) Error(err *errors.ParseError) {
 		p.Errors = append(p.Errors, errors.TooManyErrors())
 		panic(stopParsing{})
 	}
-	panic(stmtError{})
 }
 
 func (p *Parser) ErrorLabelled(err *errors.ParseError, label string) {
