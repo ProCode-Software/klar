@@ -146,10 +146,11 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	r.appendSpace(detailMargin)
 	var textColor string
 	if r.UseColor {
-		textColor = ansi.CodeBold
+		textColor = ansi.CodeMagenta
 	}
-	r.appendString(det.Message, textColor) // TODO: Should we use bold? Yellow?
-	r.newline()
+	r.appendString(det.Message + ":", textColor) // TODO: Should we use bold? Yellow?
+	// TODO: change colour of the box
+	r.blankLine()
 
 	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
 	digitWidth := digitLen(endLine)
