@@ -20,7 +20,7 @@ type methodInfo struct {
 // Contents of each objects are not checked yet.
 func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
-) (methods map[string][]methodInfo, inits map[string]*Object) {
+) (methods map[string][]methodInfo, inits map[string][]*Object) {
 	declareMethod := func(s *ast.Identifier, info methodInfo) {
 		if methods == nil {
 			methods = make(map[string][]methodInfo)
@@ -78,10 +78,11 @@ func (c *Checker) collectTopLevelObjects(
 					}
 					attrs = nil
 				} else if isInit {
+					// If `name` refers to a type, this overload is an initializer.
 					if inits == nil {
-						inits = make(map[string]*Object)
+						inits = make(map[string][]*Object)
 					}
-					inits[name] = append(inits[name], ) // TODO
+					inits[name] = append(inits[name], ov) // TODO
 				}
 				continue
 			case *ast.FuncAliasDeclaration:
@@ -194,7 +195,8 @@ func (c *Checker) collectTopLevelObjects(
 // checkTopLevelObjects typechecks all top-level objects, but not function bodies.
 // TODO: take a context
 func (c *Checker) checkTopLevelObjects(
-	methods map[string][]methodInfo, inits map[string]*Object) {
+	methods map[string][]methodInfo, inits map[string][]*Object,
+) {
 	var (
 		objs        = slices.SortedFunc(maps.Keys(c.moduleDecls), sortByOrder)
 		typeAliases []*Object // Guaranteed to be TypeName
@@ -230,9 +232,12 @@ func (c *Checker) checkTopLevelObjects(
 	for _, info := range funcAliases {
 		c.resolveFuncAlias(info)
 	}
-	// 5. Methods: Associate methods with receiver types
+	// 5. Methods and initializers: Associate methods/initializers with receiver types
 	for typeName, methods := range methods {
 		c.collectMethods(c.rootContext, typeName, methods)
+	}
+	for typeName, inits := range inits {
+		c.collectInitializers(c.rootContext, typeName, inits)
 	}
 }
 

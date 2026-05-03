@@ -142,7 +142,6 @@ type actionOrder int
 const (
 	beforeFinish actionOrder = iota
 	afterTypes
-	
 )
 
 type action struct {

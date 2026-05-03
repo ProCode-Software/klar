@@ -77,7 +77,8 @@ func (c *Checker) isValidCycle(o *Object) bool {
 	return true
 }
 
-// TODO
+// collectMethods associates methods with the type with name typeName. The
+// receiver for the methods is looked up within the context and validated.
 func (c *Checker) collectMethods(ctx *Context, typeName string, methods []methodInfo) {
 	if len(methods) == 0 {
 		return
@@ -99,11 +100,69 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 			c.fileError(err, meth.obj.file)
 			return
 		}
-		// Function body / alias target is checked later
+		// TODO: check Function body / alias target
 	}
 }
 
-// TODO
+// collectInitializers checks the signature of each initalizer function and
+// associates them with the type with name typeName. Each [*Object] in inits
+// should have type [*Overload]. The type with name typeName is looked up
+// within the context and validated.
+func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Object) {
+	identRange := func(obj *Object) ranges.Range {
+		return c.moduleDecls[obj].node.(*ast.FunctionDeclaration).Identifier.Range()
+	}
+	selfObj := ctx.Lookup(typeName)
+	if selfObj == nil {
+		selfObj = ctx.LookupRecursive(typeName)
+		if selfObj == nil {
+			// Undefined
+			for _, o := range inits {
+				err := errors.Undefined(typeName, identRange(o))
+				c.fileError(err, o.file)
+			}
+			return
+		}
+		// Found, but in a different scope
+		det := []errors.Detail{{
+			File:    selfObj.FilePath(),
+			Range:   selfObj.Range(),
+			Message: errors.Quote(typeName) + " was declared here",
+		}}
+		for _, o := range inits {
+			node := c.moduleDecls[o].node.(*ast.FunctionDeclaration)
+			err := errors.Node(errors.ErrMethodInOtherScope, node)
+			err.SetParam("initializer", true)
+			err.Details = det
+			c.error(err)
+		}
+		return
+	}
+	switch self := selfObj.typ.(*TypeName).Type.(type) {
+	case *Struct:
+		self.Initializers = inits
+	case *Enum:
+		self.Initializers = inits
+	case *TypeAlias:
+		// Similar to method receivers, this can't be an alias
+		for _, o := range inits {
+			err := errors.RangedTypeError(errors.ErrAliasSelfType, identRange(o), nil)
+			err.SetParam("initializer", true)
+			err.Label = "Initializer target can't be an alias"
+			c.fileError(err, o.file)
+		}
+		return
+	default:
+		// Type doesn't support initializers
+		for _, o := range inits {
+			err := errors.RangedTypeError(errors.ErrUnsupportedInitType, identRange(o), nil)
+			err.Label = "Can't create initializers on this kind of type"
+			c.fileError(err, o.file)
+		}
+	}
+	// TODO: check Function body
+}
+
 func (c *Checker) validateReceiver(name string, self *Object,
 	methods []methodInfo, isOtherScope bool,
 ) bool {

@@ -14,6 +14,7 @@ const (
 
 	ErrAliasSelfType        // Method self type can't be a type alias
 	ErrUnsupportedSelfType  // Self type doesn't support methods
+	ErrUnsupportedInitType  // Initializer target doesn't support initializers
 	ErrInvalidInheritedType // Invalid inherited type in declaration
 
 	// Old errors
@@ -87,9 +88,14 @@ func (e *TypeError) Error() string {
 		return e.GetCode().String()
 
 	case ErrAliasSelfType:
-		return "A method self type can't be a type alias"
+		if param[bool](e.Params, "initializer") {
+			return "The target of an initializer can't be a type alias"
+		}
+		return "A method's self type can't be a type alias"
 	case ErrUnsupportedSelfType:
-		return "You can only declare methods on enum and struct types"
+		return "You can only declare methods on struct and enum types"
+	case ErrUnsupportedInitType:
+		return "You can only create initalizers for struct and enum types"
 	case ErrInvalidInheritedType:
 		allowed := param[string](p, "allowedTypes")
 		kind := param[string](p, "kind")

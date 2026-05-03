@@ -55,8 +55,8 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 
 	// 3. Box (file content and highlights)
 	r.printBox(e.GetFile(),
-		highlights, &msgHighlight,
-		startLine, endLine, digitWidth, 0, hlc,
+		highlights, &msgHighlight, hlc,
+		startLine, endLine, digitWidth, 0,
 	)
 
 	// 4. Details
@@ -144,12 +144,7 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	const detailMargin = 2
 	// Title
 	r.appendSpace(detailMargin)
-	var textColor string
-	if r.UseColor {
-		textColor = ansi.CodeMagenta
-	}
-	r.appendString(det.Message + ":", textColor) // TODO: Should we use bold? Yellow?
-	// TODO: change colour of the box
+	r.appendf(r.ColorPalette.DetailColor, "%s:", det.Message)
 	r.blankLine()
 
 	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
@@ -160,10 +155,16 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 		r.printHeader(det.File, ranges.Range{}, digitWidth)
 	}
 	// Box. Only the range is highlighted (no text)
+	// TODO: should we repeat the detail text in the undeline? Or even show
+	// an underline only?
+	oldBoxColor := r.ColorPalette.Box
+	r.ColorPalette.Box = r.ColorPalette.DetailBox
+	defer func() { r.ColorPalette.Box = oldBoxColor }()
+
 	hl := errors.Highlight{Range: det.Range}
 	r.printBox(det.File,
-		[]errors.Highlight{hl}, &hl, startLine, endLine,
-		digitWidth, detailMargin, r.ColorPalette.HintColor,
+		[]errors.Highlight{hl}, &hl, r.ColorPalette.HintColor,
+		startLine, endLine, digitWidth, detailMargin+2,
 	)
 }
 

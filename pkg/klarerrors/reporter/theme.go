@@ -12,14 +12,16 @@ type ColorPalette struct {
 	BuiltinFunc  string // The color of built-in function names
 	StringEscape string // The color of string escapes
 
-	Divider  string // The color of error dividers
-	Box      string // The color of the container and line numbers
-	FileName string // The color of the file name in the header
-	FilePos  string // The color of the line and column numbers in the header
+	Divider   string // The color of error dividers
+	Box       string // The color of the container and line numbers
+	DetailBox string // The color of the detail box and line numbers
+	FileName  string // The color of the file name in the header
+	FilePos   string // The color of the line and column numbers in the header
 
 	ErrorColor   string // The color of error highlights
 	WarningColor string // The color of warning highlights
 	HintColor    string // The color of the hint label and hint highlights
+	DetailColor  string // The color of detail messages
 
 	Highlight1, Highlight2, Highlight3 string // The color of secondary highlights
 
@@ -38,14 +40,16 @@ func DefaultColorPalette() *ColorPalette {
 		StringEscape: ansi.CodeCyan,
 		BuiltinFunc:  ansi.CodeBlue,
 
-		Divider:  ansi.CodeDim,
-		Box:      ansi.CodeBlue,
-		FileName: ansi.CodeCyan,
-		FilePos:  ansi.CodeYellow,
+		Divider:   ansi.CodeDim,
+		Box:       ansi.CodeBlue,
+		DetailBox: ansi.CodeMagenta,
+		FileName:  ansi.CodeCyan,
+		FilePos:   ansi.CodeYellow,
 
 		ErrorColor:   ansi.CodeBoldBrightRed,
 		WarningColor: ansi.CodeBoldBrightYellow,
 		HintColor:    ansi.CodeBrightBlue,
+		DetailColor:  ansi.CodeBrightMagenta,
 
 		Highlight1: ansi.CodeBrightGreen,
 		Highlight2: ansi.CodeBrightMagenta,

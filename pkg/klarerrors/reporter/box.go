@@ -26,8 +26,8 @@ type groupedHighlights struct {
 // All other highlights will be colored with colors from r's ColorPalette.
 // All lines, including the first line, contain the margin.
 func (r *Reporter) printBox(fileName string,
-	highlights []errors.Highlight, mainHl *errors.Highlight,
-	startLine, endLine uint32, digitWidth, margin int, mainHlColor string,
+	highlights []errors.Highlight, mainHl *errors.Highlight, mainHlColor string,
+	startLine, endLine uint32, digitWidth, margin int, 
 ) {
 	var (
 		file = r.getFile(fileName)

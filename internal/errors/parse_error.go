@@ -326,10 +326,10 @@ func (e *ParseError) error() string {
 		}
 		return "Only a variable or property can be used as a label shorthand"
 	case ErrMethodInOtherScope:
-		return fmt.Sprintf(
-			"Method %s must be declared in the same scope as type %s",
-			e.Params["name"], e.Params["structName"],
-		)
+		if e.Params["initializer"] == true {
+			return "An initializer must be declared in the same scope as the type"
+		}
+		return "A method must be declared in the same scope as its self type"
 	case ErrInvalidVersion:
 		return fmt.Sprintf("'%s' isn't a valid version",
 			e.Node.(*ast.VersionLiteral).Version,

@@ -4,10 +4,11 @@ import "github.com/ProCode-Software/klar/internal/ast"
 
 // Not a value.
 type Enum struct {
-	ItemType Type
-	Items    []*EnumItem
-	itemMap  map[string]*EnumItem
-	Methods  []*Object // Type [*Function]
+	ItemType     Type
+	Items        []*EnumItem
+	itemMap      map[string]*EnumItem
+	Methods      []*Object // Type [*Function]
+	Initializers []*Object // Type [*Overload]
 }
 
 // Can be used as a value.

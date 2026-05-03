@@ -333,7 +333,7 @@ type InterfaceDeclaration struct {
 }
 
 type TagDeclaration struct {
-	Identifier Identifier
+	Identifier     Identifier
 	InheritedTypes []Type
 	BaseNode
 }
