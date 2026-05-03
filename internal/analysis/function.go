@@ -149,7 +149,7 @@ func (c *Checker) checkFuncDecl(o *Object) {
 
 		// 5. Body
 		if !c.Options.IgnoreFuncBodies {
-			c.queue(func() { c.checkFuncBody(stmt, fn, ov) })
+			c.queue(func() { c.checkFuncBody(stmt, fn, ov) }, beforeFinish)
 		}
 	}
 }

@@ -82,6 +82,8 @@ func (l *Lexer) Tokenize() *Token {
 			return NewToken(pos, Comma, ",")
 		case '?':
 			return NewToken(pos, Question, "?")
+		case '@':
+			return NewToken(pos, At, "@")
 		}
 		switch {
 		case unicode.IsSpace(r):

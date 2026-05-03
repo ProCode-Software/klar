@@ -19,9 +19,8 @@ type methodInfo struct {
 // each program and declares placeholder objects in the module's context.
 // Contents of each objects are not checked yet.
 func (c *Checker) collectTopLevelObjects(
-	files []string,
-	fileContexts map[string]*Context,
-) (methods map[string][]methodInfo) {
+	files []string, fileContexts map[string]*Context,
+) (methods map[string][]methodInfo, inits map[string]*Object) {
 	declareMethod := func(s *ast.Identifier, info methodInfo) {
 		if methods == nil {
 			methods = make(map[string][]methodInfo)
@@ -37,13 +36,13 @@ func (c *Checker) collectTopLevelObjects(
 			// First statement after imports. Any import after this is misplaced.
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _ = fctx.getAttribute(firstStmtIndex).(int)
-			attrs        []ast.Statement // All items are *ast.Attribute
+			attrs        []*ast.Attribute // All items are *ast.Attribute
 		)
-		for i, stmt := range program.Body[firstStmt:] {
+		for _, stmt := range program.Body[firstStmt:] {
 			var public bool
-			if s, ok := stmt.(*ast.PublicDeclaration); ok {
+			if ps, ok := stmt.(*ast.PublicDeclaration); ok {
 				public = true
-				stmt = s.Declaration
+				stmt = ps.Declaration
 			}
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
@@ -53,19 +52,7 @@ func (c *Checker) collectTopLevelObjects(
 				c.fileError(err, fid)
 				continue
 			case *ast.Attribute:
-				nextStmt := 1
-				if i < len(program.Body[firstStmt:])-1 {
-					for _, attr := range program.Body[i+1:] {
-						if _, ok := attr.(*ast.Attribute); ok {
-							nextStmt++
-						} else {
-							attrs = program.Body[i:nextStmt]
-							break
-						}
-					}
-				} else {
-					// Attribute with no declaration after
-				}
+				attrs = append(attrs, stmt)
 				continue
 			case *ast.FunctionDeclaration:
 				name := stmt.Identifier.Name
@@ -76,7 +63,7 @@ func (c *Checker) collectTopLevelObjects(
 				if stmt.Struct != nil {
 					// Method
 					declareMethod(stmt.Struct, methodInfo{decl: stmt, obj: ov})
-				} else if par := c.getOverloadParent(stmt, fid, fctx); par != nil {
+				} else if par, isInit := c.getOverloadParent(stmt, fid, fctx); par != nil {
 					// Normal function. Declare the overload as a top-level object. par
 					// will be nil if an error is reported for par not being a function.
 
@@ -87,9 +74,14 @@ func (c *Checker) collectTopLevelObjects(
 					c.moduleDecls[ov] = &DeclarationInfo{
 						file:       fctx,
 						node:       stmt,
-						Attributes: c.parseAttributes2(attrs, funcAttribute),
+						Attributes: c.parseAttributes(attrs, funcAttribute),
 					}
 					attrs = nil
+				} else if isInit {
+					if inits == nil {
+						inits = make(map[string]*Object)
+					}
+					inits[name] = append(inits[name], ) // TODO
 				}
 				continue
 			case *ast.FuncAliasDeclaration:
@@ -159,6 +151,15 @@ func (c *Checker) collectTopLevelObjects(
 				c.fileError(errors.Node(errors.ErrTopLevel, stmt), fid)
 			}
 		}
+		if len(attrs) > 0 {
+			// Attribute with no declaration after
+			err := errors.Slice(errors.ErrNoDeclAfterAttr, attrs)
+			err.Label = "Missing declaration after attribute"
+			if len(attrs) > 1 {
+				err.Label += "s"
+			}
+			c.fileError(err, fid)
+		}
 	}
 	// Ensure no top-level objects were shadowed by imports
 	for _, fileCtx := range fileContexts {
@@ -187,12 +188,13 @@ func (c *Checker) collectTopLevelObjects(
 			c.fileError(err, impObj.file)
 		}
 	}
-	return methods
+	return methods, inits
 }
 
 // checkTopLevelObjects typechecks all top-level objects, but not function bodies.
 // TODO: take a context
-func (c *Checker) checkTopLevelObjects(methods map[string][]methodInfo) {
+func (c *Checker) checkTopLevelObjects(
+	methods map[string][]methodInfo, inits map[string]*Object) {
 	var (
 		objs        = slices.SortedFunc(maps.Keys(c.moduleDecls), sortByOrder)
 		typeAliases []*Object // Guaranteed to be TypeName
@@ -239,7 +241,7 @@ func (c *Checker) checkTopLevelObjects(methods map[string][]methodInfo) {
 // name exists and is not a [*Function].
 func (c *Checker) getOverloadParent(
 	f *ast.FunctionDeclaration, fid FileID, fctx *Context,
-) *Object {
+) (_ *Object, isInit bool) {
 	// The p function we're adding overloads to
 	p := c.rootContext.Lookup(f.Identifier.Name)
 	if p == nil {
@@ -251,20 +253,22 @@ func (c *Checker) getOverloadParent(
 			node: f,
 		})
 	} else if _, ok := p.typ.(*Function); !ok {
+		if _, ok := p.typ.(*TypeName); ok {
+			return nil, true
+		}
 		// If the parent isn't a function, it's redeclared
-		err := errors.Range(errors.ErrRedeclared, f.GetRange())
-		err.Details = append(err.Details, errors.Detail{})
+		err := redeclaredError(&Object{rang: f.Range}, p, false)
 		c.fileError(err, fid)
-		return nil
+		return nil, false
 	}
-	return p
+	return p, false
 }
 
 // createVarPlaceholders declares placeholder [*Object]s for each variable
 // declared in d. Types and values aren't checked yet.
 func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 	fid FileID, fctx *Context,
-	attrs *[]ast.Statement, public bool,
+	attrs *[]*ast.Attribute, public bool,
 ) {
 	var (
 		lastDecl     *Object

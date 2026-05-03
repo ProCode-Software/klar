@@ -1,7 +1,5 @@
 package analysis
 
-import "github.com/ProCode-Software/klar/internal/errors"
-
 type (
 	DeclKind         uint8
 	ContextAttribute uint8
@@ -15,6 +13,7 @@ type Context struct {
 	Flags        Flag
 	Attrs        map[ContextAttribute]any
 	Used         map[string]struct{}
+	File         FileID
 }
 
 type Declaration struct {
@@ -98,12 +97,7 @@ func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
 	}
 	if existing := ctx.Declare(obj, flags...); existing != nil {
 		// Declared already
-		err := errors.Range(errors.ErrRedeclared, obj.rang)
-		err.Params = errors.ErrorParams{
-			"existing":       existing.FileRange(),
-			"name":           obj.name,
-			"existingIsType": existing.IsTypeDecl() && !obj.IsTypeDecl(),
-		}
+		err := redeclaredError(obj, existing, true)
 		c.fileError(err, obj.file)
 	}
 }

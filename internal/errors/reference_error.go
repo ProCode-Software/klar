@@ -9,9 +9,8 @@ import (
 const (
 	_ ErrorCode = ReferenceErrorPrefix + iota
 
-	ErrVarUndefined  // Variable doesn't exist
+	ErrUndefined
 	ErrEnumUndefined // Enum item doesn't exist
-	ErrTypeUndefined // Type doesn't exist
 	ErrEnumCycle     // Enum items refer to each other
 )
 
@@ -44,32 +43,30 @@ func (e *ReferenceError) Error() string {
 	name := Quote(e.Name)
 	switch e.ErrorCode {
 	default:
-		return "ReferenceError: " + e.ErrorCode.String()
+		return e.ErrorCode.String()
 	case ErrEnumUndefined:
 		return fmt.Sprintf(
-			"ReferenceError: Can't find item %s in enum %s",
+			"Can't find item %s in enum %s",
 			name,
 			Quote(param[string](e.Params, "enumName")),
 		)
-	case ErrTypeUndefined:
-		return fmt.Sprintf("ReferenceError: Can't find type %s in scope", name)
-	case ErrVarUndefined:
-		return fmt.Sprintf("ReferenceError: Can't find %s in scope", name)
+	case ErrUndefined:
+		return fmt.Sprintf("Can't find %s in scope", name)
 	case ErrEnumCycle:
 		cycle := param[[]CycleItem](e.Params, "cycle")
 		return fmt.Sprintf(
-			"ReferenceError: Enum items %s and %s recursively reference each other",
+			"Enum items %s and %s recursively reference each other",
 			name,
 			Quote(cycle[len(cycle)-1].Name),
 		)
 	}
 }
 
-func Undefined(code ErrorCode, name string, rang ranges.Range) *ReferenceError {
+func Undefined(name string, rang ranges.Range) *ReferenceError {
 	return &ReferenceError{
-		ErrorCode: code,
+		ErrorCode: ErrUndefined,
 		Name:      name,
 		Range:     rang,
-		Label:     "I couldn't find " + Quote(name),
+		Label:     "I can't find " + Quote(name),
 	}
 }

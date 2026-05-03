@@ -84,16 +84,16 @@ func (e *TypeError) Error() string {
 	)
 	switch e.ErrorCode {
 	default:
-		return "TypeError: " + e.GetCode().String()
+		return e.GetCode().String()
 
 	case ErrAliasSelfType:
-		return "TypeError: A method self type can't be a type alias"
+		return "A method self type can't be a type alias"
 	case ErrUnsupportedSelfType:
-		return "TypeError: You can only declare methods on enum and struct types"
+		return "You can only declare methods on enum and struct types"
 	case ErrInvalidInheritedType:
 		allowed := param[string](p, "allowedTypes")
 		kind := param[string](p, "kind")
-		return "TypeError: " + kind + " can only inherit from " + allowed
+		return kind + " can only inherit from " + allowed
 
 	// OLD ERRORS
 	// =======

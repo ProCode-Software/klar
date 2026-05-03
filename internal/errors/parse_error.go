@@ -140,6 +140,7 @@ const (
 	ErrMultipleVariadic       // Variadic parameter already declared
 	ErrVariadicNotLast        // Variadic parameter must be the last param (if unlabelled)
 	ErrDuplicateInheritedType // Inherited type specified twice
+	ErrNoDeclAfterAttr        // Attribute must be followed by a declaration
 )
 
 // A ParseError is a basic Klar parse error.
@@ -474,13 +475,16 @@ func (e *ParseError) error() string {
 			"name":           obj.name,
 			"existingIsType": existing.IsTypeDecl(),
 		*/
-		var asAType string
-		if e.boolParam("existingIsType") {
-			asAType = "as a type "
+		var (
+			name    = e.stringParam("name")
+			oldKind = e.stringParam("oldKind")
+			newKind = e.stringParam("newKind")
+			as      string
+		)
+		if oldKind != newKind {
+			as = " as a " + oldKind
 		}
-		existingRange := e.Params["existing"].(ranges.FileRange)
-		return Quote(e.stringParam("name")) + " was already declared " + asAType +
-			"at " + existingRange.FilePos().Rel(e.File)
+		return Quote(name) + " was already declared" + as
 	case ErrTopLevel:
 		return "Only 'main.klar' and single-file modules can have top-level statements"
 	case ErrImportShadow:
@@ -503,6 +507,8 @@ func (e *ParseError) error() string {
 	case ErrDuplicateInheritedType:
 		name := e.stringParam("name")
 		return "Type " + Quote(name) + " was already inherited"
+	case ErrNoDeclAfterAttr:
+		return "Attributes must be followed by a declaration"
 	}
 }
 

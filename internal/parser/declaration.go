@@ -407,12 +407,17 @@ func (p *Parser) parseFuncParam() *ast.FunctionParam {
 	// 	func List.join(by by: String = ", ")
 	if p.isEqual(p.Curr()) {
 		if len(param.Names) > 1 {
-			p.ErrorLabelled(
-				errors.Range(errors.ErrChainedDefault, ranges.Range{
-					Start: param.Names[len(param.Names)-1].Range.Start,
-					End:   param.Type.GetRange().End,
-				}), "Unchain this parameter",
-			)
+			err := errors.Range(errors.ErrChainedDefault, ranges.Range{
+				Start: param.Names[len(param.Names)-1].Range.Start,
+				End:   param.Type.GetRange().End,
+			})
+			err.Highlights = append(err.Highlights, errors.Highlight{
+				Range: ranges.Between(
+					param.Names[0].Range,
+					param.Names[len(param.Names)-2].Range,
+				),
+			})
+			p.ErrorLabelled(err, "Separate these parameters")
 		}
 		p.Advance()
 		param.Default = p.ParseExpression(ExpressionBindingPower)

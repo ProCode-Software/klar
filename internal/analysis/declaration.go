@@ -19,12 +19,12 @@ type DeclarationInfo struct {
 }
 
 func (c *Checker) declareTopLevelObject(obj *Object,
-	attrs *[]ast.Statement, info *DeclarationInfo,
+	attrs *[]*ast.Attribute, info *DeclarationInfo,
 ) {
 	c.declare(c.rootContext, obj)
 	c.moduleDecls[obj] = info
 	if attrs != nil {
-		info.Attributes = c.parseAttributes2(*attrs, attrTargetKindOf(info.node))
+		info.Attributes = c.parseAttributes(*attrs, attrTargetKindOf(info.node))
 		*attrs = nil
 	}
 	obj.order = uint32(len(c.moduleDecls))
@@ -90,12 +90,12 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	if !c.validateReceiver(typeName, selfObj, methods, false) {
 		return
 	}
-	self := selfObj.typ.(MethodAdder)
+	self := Underlying(selfObj.typ).(MethodAdder)
 	for _, meth := range methods {
 		// TODO: wrap Overloads in Functions
 		if existing := self.AddMethod(meth.obj); existing != nil {
 			// Already declared
-			err := redeclaredError(meth.obj, existing)
+			err := redeclaredError(meth.obj, existing, false)
 			c.fileError(err, meth.obj.file)
 			return
 		}
@@ -124,7 +124,7 @@ func (c *Checker) validateReceiver(name string, self *Object,
 	case self == nil:
 		// Self type doesn't exist
 		for _, meth := range methods {
-			err := errors.Undefined(errors.ErrTypeUndefined, name, selfRange(meth))
+			err := errors.Undefined(name, selfRange(meth))
 			c.fileError(err, meth.obj.file)
 		}
 	case isOtherScope:
@@ -140,9 +140,15 @@ func (c *Checker) validateReceiver(name string, self *Object,
 			c.error(err)
 		}
 	case self.module != methods[0].obj.module:
+		// TODO: check that receiver is not a primitive
 		return false
 	default:
-		switch self.typ.(type) {
+		tn, ok := self.typ.(*TypeName)
+		if !ok {
+			panic("receiver type is not *TypeName")
+			// return false
+		}
+		switch tn.Type.(type) {
 		case *TypeAlias:
 			// Self type is a type alias
 			for _, m := range methods {

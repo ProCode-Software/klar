@@ -177,3 +177,10 @@ type MethodAdder interface {
 	// m should have type [*Function], however, existing's type may not be [*Function].
 	AddMethod(m *Object) (existing *Object)
 }
+
+func Underlying(t Type) Type {
+	if u, ok := t.(Underlyer); ok {
+		return u.Underlying()
+	}
+	return t
+}

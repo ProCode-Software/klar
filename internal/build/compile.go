@@ -76,6 +76,8 @@ func (pc *processContext) wait() error {
 	select {
 	case <-pc.done:
 		return nil
+	case <-pc.ctx.Done():
+		return pc.ctx.Err()
 	case err := <-pc.fatalErrCh:
 		return err
 	}

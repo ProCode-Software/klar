@@ -45,9 +45,10 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 		err error
 	}
 	var (
-		queue = make([]*importQueueEntry, 0, len(c.Programs)) //
-		mods  = make(map[string]imported)
-		wg    sync.WaitGroup
+		queue  = make([]*importQueueEntry, 0, len(c.Programs)) //
+		mods   = make(map[string]imported)
+		wg     sync.WaitGroup
+		modsMu sync.Mutex
 	)
 	for _, fileName := range files {
 		ctx := fileContexts[fileName]
@@ -69,7 +70,9 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 			if _, ok := mods[impPathStr]; !ok {
 				wg.Go(func() {
 					mod, err := c.importModule(imp.Module)
-					mods[impPathStr] = imported{mod, err} // TODO: concurrent map write error?
+					modsMu.Lock()
+					mods[impPathStr] = imported{mod, err}
+					modsMu.Unlock()
 				})
 			}
 		}

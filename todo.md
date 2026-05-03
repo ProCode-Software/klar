@@ -1,4 +1,9 @@
 # TODO
+- When `klar build ./samples/basic` is run (as a folder), it shows an error that Klar files aren't allowed in the root. Show a different error such as:
+    - No manifest found
+    - Run individual files instead
+
+- Error reporter: Don't draw arrows if there is no message. Underline only.
 ## Lexer
 
 ## Parser

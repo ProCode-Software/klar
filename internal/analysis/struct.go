@@ -1,6 +1,8 @@
 package analysis
 
-import "github.com/ProCode-Software/klar/internal/ast"
+import (
+	"github.com/ProCode-Software/klar/internal/ast"
+)
 
 type Struct struct {
 	Fields       []*Object          // Type is [*StructField]
@@ -9,13 +11,17 @@ type Struct struct {
 	Initializers []*Object          // Type is [*Overload]
 }
 
+var _ MethodAdder = (*Struct)(nil)
+
 type StructField struct {
 	*Variable
 	Optional   bool // Has default param or Optional type
 	Attributes *Attributes
 }
 
-func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, fileCtx *Context) {
+// checkStructDecl checks a struct declaration and sets o's underlying type
+// to a [*Struct]. o's Type should be [*TypeName].
+func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *Context) {
 	str := &Struct{}
 	o.typ.(*TypeName).Type = str
 	// TODO: inherited types
@@ -24,18 +30,17 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, fileCt
 	}
 	str.fieldMap = make(map[string]*Object)
 	str.Fields = make([]*Object, 0, len(node.Fields))
-	for _, fldNode := range node.Fields {
+	for _, field := range node.Fields {
 		var (
-			typ   = c.parseType(fldNode.Type, fileCtx)
-			attrs = c.parseAttributes(fldNode.Attributes, structFieldAttribute)
+			typ   = c.parseType(field.Type, ctx)
+			attrs = c.parseAttributes(field.Attributes, structFieldAttribute)
 		)
-		for _, id := range fldNode.Names {
+		for _, id := range field.Names {
 			f := &StructField{
 				Variable:   &Variable{VarKind: StructFieldVar, Type: typ},
 				Attributes: attrs,
-				Optional:   typ.Kind() == KindOptional || fldNode.Value != nil,
 			}
-			obj := NewObject(id.Name, o.file, fldNode.Range, o.module, f)
+			obj := NewObject(id.Name, o.file, field.Range, o.module, f)
 			f.Variable.Object = obj
 			str.Fields = append(str.Fields, obj)
 			if _, ok := str.fieldMap[id.Name]; ok {
@@ -43,7 +48,13 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, fileCt
 				panic("field '" + id.Name + "' already exists in struct " + o.name)
 			}
 			str.fieldMap[id.Name] = obj
-			// TODO: default values
+			c.queue(func() {
+				// The type may not be initialized by the time we initialize this struct
+				if Underlying(typ) != nil {
+					f.Optional = typ.Kind() == KindOptional || field.Value != nil
+				}
+				// TODO: default values
+			}, afterTypes)
 		}
 	}
 }

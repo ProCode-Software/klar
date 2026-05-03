@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/errors"
 )
 
-// TODO: shoul we accept a file id?
 func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 	switch expr := expr.(type) {
 	case nil:
@@ -15,6 +15,13 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 	case *ast.BadExpression:
 		return InvalidType
 	case *ast.TypeAlias:
+		name := expr.Identifier
+		target := ctx.LookupRecursive(name)
+		if target == nil {
+			c.fileError(errors.Undefined(name, expr.GetRange()), ctx.File)
+			return InvalidType
+		}
+		return target.typ
 	case *ast.MapType:
 	case *ast.FunctionType:
 	case *ast.OptionalType:

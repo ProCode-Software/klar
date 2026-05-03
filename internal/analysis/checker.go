@@ -51,7 +51,7 @@ type Checker struct {
 	objPath      []*Object       // Path of object deps
 	objPathIndex map[*Object]int // Indices of objects in objPath
 
-	delayed []func()
+	delayed []action
 }
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
@@ -98,8 +98,8 @@ func (c *Checker) Check() {
 	// Perform imports
 	c.performFileImports(sortedFiles, fileContexts)
 	// Collect top-level objects in each file and put them in the module
-	methods := c.collectTopLevelObjects(sortedFiles, fileContexts)
-	c.checkTopLevelObjects(methods)
+	methods, inits := c.collectTopLevelObjects(sortedFiles, fileContexts)
+	c.checkTopLevelObjects(methods, inits)
 }
 
 func (c *Checker) initFileContexts() map[string]*Context {
@@ -133,6 +133,19 @@ func (c *Checker) popPath() {
 	c.objPath = c.objPath[:i]
 }
 
-func (c *Checker) queue(f func()) {
-	c.delayed = append(c.delayed, f)
+func (c *Checker) queue(f func(), order actionOrder) {
+	c.delayed = append(c.delayed, action{order, f})
+}
+
+type actionOrder int
+
+const (
+	beforeFinish actionOrder = iota
+	afterTypes
+	
+)
+
+type action struct {
+	order actionOrder
+	f     func()
 }
