@@ -5,6 +5,7 @@
     "publisher": "procode-software",
     "version": "0.0.1",
     "license": "Apache-2.0",
+    "type": "module",
     "engines": {
         "vscode": "^1.99.0"
     },
@@ -12,7 +13,7 @@
         "Programming Languages"
     ],
     "devDependencies": {
-        "vsxtools": "link:vsxtools",
+        "vsxtools": "latest",
         "@vscode/vsce": "^3.7.0"
     },
     "scripts": {

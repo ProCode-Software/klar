@@ -1,0 +1,100 @@
+// This file uses all syntax features in Klar. This can be
+// used to test the parser and type checker.
+// TODO: fix reference errors
+
+// Imports
+import klar.io // Standard library import
+import klar.io.{Readable, Writable}
+import klar.io.{Readable as MyName, Writable}
+import klar.*
+import system = klar.os
+
+// Declarations
+basicVar := "Hello"
+basicVarWithAnnot: String := "World"
+
+func function() {}
+func function(param: Int) -> ReturnType {}
+func function(label param: Int) = 1 + param
+func function(label1 param1, label2 param2: Int) -> Int {}
+
+func alias = function
+func Struct.alias = .function
+
+// Assignment
+basicVar += ", World!"
+basicVar = "Klar is awesome!"
+basicVar += " "
+basicVar *= 3
+
+// Type Declarations
+type #Tag
+type Struct {
+    field: Int
+    field2, field3: String
+    fieldWithDefault: Int = 1
+}
+type #Interface {
+    field: Int
+    field2, field3: String
+    method()
+    methodWithParam(param: String)
+    methodWithParam2(String)
+    methodWithLabelledParam(label param: String)
+    methodWithLabelledParam2(label _: String) -> ReturnType
+    methodWithReturn() -> Bool
+}
+type Enum {
+    .some
+    .none
+    .withParams(String, Int)
+    .withLabelledParams(a: String, b: Int)
+    .withLabelledParams2(a, b: Int)
+}
+type GenericEnum<T> { .some(T) }
+type Alias = String
+
+// Types
+type Union = Int | Float
+type StringList = [String]
+type StringMap = #{String: String}
+type StringResult = Result<String>
+type StringResult2 = Result<String, Error>
+type StringResultOrCustomError = Result<String, CustomError>
+type Outcome = Result<Nothing>
+type Optional = Int?
+type Tuple = (Int, String)
+type Tuple2 = (k: Int, v: String)
+type Tuple3 = (k, v: Int)
+type _ = GenericEnum<Int>
+type Function = func()
+type Function2 = func(String)
+type Function3 = func(a, b: Int) -> Nothing
+type Function4 = func(a: Int, b: String)
+
+// Attributes
+@deprecated
+func deprecatedFunc() {}
+
+@external(.js, file: "#/myfunc.js", export: "default")
+func myFunc()
+
+@external(.js, file: "#/myfunc.js", export: "default")
+func myFuncWithFallback() { crashout("Unsupported") }
+
+// Operators
+arithmetic := (
+    1 + 1, 2 - 1,
+    3 * 5, 12 / 4, 11 % 10,
+    2 ^ 3, -2 ^ 4 /* Should be -16 */, (-2) ^ 4 /* 16 */,
+)
+logical := (true && false, true || false, !true, 1 + 1 == 2 || 1 * 3 > 6)
+relational := (
+    1 == 1, 1 != 2,
+    1 < 2, 2 > 1,
+    1 <= 1, 2 >= 1,
+    1 < 2 < 3,
+    1 >= 2 >= 3,
+    1 < 2 == 2 < 3,
+)
+distributive := (x == 3 or 4, x != 1 and 5, x == 3 or 4 or 5)
