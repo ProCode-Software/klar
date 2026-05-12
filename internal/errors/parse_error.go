@@ -209,6 +209,9 @@ func (e *ParseError) error() string {
 		if endType, ok := endTypeMap[expToken]; ok {
 			return fmt.Sprintf("Missing closing %s %s", endType, expected)
 		}
+		if msg, ok := e.Params["msg"].(string); ok {
+			return fmt.Sprintf("Expected %s %s", expected, msg)
+		}
 		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
 	case ErrWildcardWithUnqualified:
 		return "Can't have both '*' and unqualified import in import statement"
@@ -534,14 +537,21 @@ func UnexpectedToken(token lexer.Token) *ParseError {
 	}
 }
 
+func ExpectedTokenf(msg string, exp lexer.TokenType, got lexer.Token) *ParseError {
+	return &ParseError{
+		Range:     ranges.FromToken(got),
+		Token:     got,
+		ErrorCode: ErrExpectedToken,
+		Params:    ErrorParams{"expected": exp, "msg": msg},
+	}
+}
+
 func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *ParseError {
 	return &ParseError{
 		Range:     ranges.FromToken(gotToken),
 		Token:     gotToken,
 		ErrorCode: ErrExpectedToken,
-		Params: ErrorParams{
-			"expected": expTokenKind,
-		},
+		Params:    ErrorParams{"expected": expTokenKind},
 	}
 }
 

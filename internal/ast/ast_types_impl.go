@@ -46,6 +46,7 @@ func (ParenExpression) expr()      {}
 func (RegexLiteral) expr()         {}
 func (VersionLiteral) expr()       {}
 func (ListCastExpression) expr()   {}
+func (MapCastExpression) expr()   {}
 func (ObjectPipeline) expr()       {}
 func (ForExpression) expr()        {}
 func (StructDotInit) expr()        {}

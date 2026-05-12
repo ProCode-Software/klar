@@ -123,10 +123,16 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		p.Advance()
 		// Tuple (requires at least one comma)
 		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
-		parseExprSeries(
-			p, &tuple.Values, ExpressionBindingPower,
-			lexer.RightParenthesis, lexer.Comma,
-		)
+		for p.WhileNot(lexer.RightParenthesis) {
+			tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
+			if p.CurrKind() != lexer.RightParenthesis {
+				p.ExpectNoAdvancef("between tuple items", lexer.Comma)
+				if p.CurrKind() == lexer.Newline {
+					p.Advance() // Missing comma
+				}
+			}
+		}
+		p.ExpectNoAdvance(lexer.RightParenthesis)
 		// TODO: better message for missing ','
 		return tuple
 	}
@@ -489,6 +495,17 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	p.Expect(lexer.RightBracket)
 	return &ast.ListCastExpression{
 		Type: typ,
+		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
+	}
+}
+func (p *Parser) ParseMapCast() *ast.MapCastExpression {
+	p.Expect(lexer.HashLeftCurlyBrace)
+	key := p.ParseType(DefaultTypeBindingPower)
+	p.Expect(lexer.Colon)
+	val := p.ParseType(DefaultTypeBindingPower)
+	p.Expect(lexer.RightCurlyBrace)
+	return &ast.MapCastExpression{
+		KeyType: key, ValueType: val,
 		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
 	}
 }

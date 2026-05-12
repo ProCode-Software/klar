@@ -157,6 +157,10 @@ func (n *ListType) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Value})
 }
 
+func (n *MapCastExpression) Walk(v Visitor, c *Cursor) StopCode {
+	return walkFields(v, n, c, walkNode{1, n.KeyType}, walkNode{2, n.ValueType}, walkSlice[*CallParam]{3, n.Args})
+}
+
 func (n *MapItem) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Expression]{0, n.Keys}, walkNode{1, n.Value})
 }

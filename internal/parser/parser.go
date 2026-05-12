@@ -111,6 +111,13 @@ func (p *Parser) ExpectNoAdvance(need ...lexer.TokenType) lexer.Token {
 	return p.ExpectErrorNoAdvance(nil, need...)
 }
 
+func (p *Parser) ExpectNoAdvancef(s string, need ...lexer.TokenType) lexer.Token {
+	return p.ExpectErrorNoAdvance(
+		errors.ExpectedTokenf(s, need[0], p.Curr()),
+		need...,
+	)
+}
+
 // WhileNot reports whether the current token kind is not kind and the parser is not at EOF.
 func (p *Parser) WhileNot(kind lexer.TokenType) bool {
 	return p.HasTokens() && p.CurrKind() != kind

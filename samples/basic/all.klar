@@ -2,6 +2,15 @@
 // used to test the parser and type checker.
 // TODO: Fix reference errors
 
+
+// This is a line comment
+/* This is a 
+    block comment
+*/
+/* This
+    is /* a nested
+    block comment */ */
+
 // Imports
 import klar.io // Standard library import
 import klar.io.{Readable, Writable}
@@ -13,10 +22,17 @@ import system = klar.os
 basicVar := "Hello"
 basicVarWithAnnot: String := "World"
 
+var1, var2 := 1
+var3, var4 := 2, 3
+var5, var6: Int := 4, 5
+var7, var8: Int := 6
+var9, var10, var11 := 7
+
 func function() {}
 func function(param: Int) -> ReturnType {}
 func function(label param: Int) = 1 + param
 func function(label1 param1, label2 param2: Int) -> Int {}
+func withResult() -> Result<Int> {}
 
 func alias = function
 func Struct.alias = .function
@@ -26,7 +42,7 @@ basicVar += ", World!"
 basicVar = "Klar is awesome!"
 basicVar += " "
 basicVar *= 3
-
+// Compound assignments
 _ = 1
 _ := 1
 _ += 1
@@ -92,9 +108,15 @@ func deprecatedFunc() {}
 func myFunc()
 
 @external(.js, file: "#/myfunc.js", export: "default")
+@deprecated(since: v1.4.2)
 func myFuncWithFallback() { crashout("Unsupported") }
 
+@added(v1)
+@deprecated(since: v1.4)
+func _()
+
 // Literals
+function()
 nilValue: Int? := nil
 _ = (
     // String
@@ -114,7 +136,11 @@ _ = (
     [], [1, 2, 3], [[1, 2, 3]..., whatever...],
     // Maps
     #{}, #{a: 1, b: 2, "c": 3, ("Hello" + " World!"): 4},
-    #{#{a: 1}..., :nilValue}
+    #{
+        #{a: 1}..., // Rest
+        :b, // Shorthand
+        c: 1,
+    },
 )
 
 // Tuples
@@ -149,6 +175,33 @@ distributive := (
     x != 1 and 5,
     x == 3 or 4 or 5,
 )
+list := [1, 2, 3, 4, 5]
+contains2 := 2 in list
+excludes6 := 6 !in list
+
+// Index
+object.name = "John"
+_ = (
+    object.name.length,
+    map['key1']['key2'],
+    map.key1["key2"],
+    map['key1'].key2,
+)
+
+// List slicing
+_ = (
+    list[1..<3],
+    list[1...],
+    list[1...3],
+    list[...6],
+)
+
+// Ranges
+closedRange := 1...10 // 11 items
+openRange := 1..<10 // 10 items
+
+// Try
+_ = try withResult()
 
 // Assertion
 optional: Int? := 1
@@ -157,6 +210,7 @@ print(optional!!, result!!)
 
 // Casts
 _ = [Int]()
+_ = #{String: Int}()
 
 // Lambdas
 _ = (
@@ -166,3 +220,14 @@ _ = (
     func (x: Int = 1) -> x,
 )
 _: func(Int, Int) -> Int := func x, y -> x + y
+
+// Enum literals
+_: (Enum, Enum) := (Enum.some, .some)
+
+// Go/Await
+task := go fn()
+await task
+_ = await task
+
+// Pipeline
+// Object pipeline

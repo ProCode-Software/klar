@@ -102,8 +102,9 @@ outer:
 			if lastBrackI < 0 { // Unmatched bracket
 				break
 			}
-			// List cast: [Int](...)
-			if newI < len(p.Tokens) && p.Tokens[newI].Kind == lexer.LeftParenthesis {
+			// List or map cast: [Int](...), #{String: Int}(...)
+			if newI < len(p.Tokens) && p.Tokens[newI].Kind == lexer.LeftParenthesis ||
+				p.Tokens[newI].Kind == lexer.HashLeftCurlyBrace {
 				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
 				brackets = brackets[:lastBrackI] // Remove bracket
 				new = append(new, tok, p.Tokens[newI])
@@ -214,9 +215,9 @@ func ContinuesStatement(t lexer.TokenType) bool {
 		// Comparison
 		lexer.GreaterThan, lexer.LessThan, lexer.EqualEqual, lexer.GreaterEqualTo,
 		lexer.LessEqualTo, lexer.NotEqual, lexer.AndAnd,
-		lexer.OrOr, lexer.In, lexer.NotIn, lexer.If,
+		lexer.OrOr, lexer.In, lexer.NotIn, lexer.If:
 		// Whitespace
-		lexer.Newline:
+		// lexer.Newline:
 		return true
 	default:
 		return false

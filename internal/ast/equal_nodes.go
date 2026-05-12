@@ -718,6 +718,26 @@ func (a *ListType) Equal(b2 Node) bool {
 	return true
 }
 
+func (a *MapCastExpression) Equal(b2 Node) bool {
+	b, ok := b2.(*MapCastExpression)
+	if !ok {
+		return false
+	}
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.KeyType != nil && b.KeyType != nil && !a.KeyType.Equal(b.KeyType) {
+		return false
+	}
+	if a.ValueType != nil && b.ValueType != nil && !a.ValueType.Equal(b.ValueType) {
+		return false
+	}
+	if !equalSlice(a.Args, b.Args) {
+		return false
+	}
+	return true
+}
+
 func (a *MapItem) Equal(b2 Node) bool {
 	b, ok := b2.(*MapItem)
 	if !ok {

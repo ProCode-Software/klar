@@ -35,7 +35,11 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.LeftParenthesis:
 		res = p.ParseParenExpression()
 	case lexer.HashLeftCurlyBrace:
-		res = p.ParseMap()
+		if p.IsListCastStart() {
+			res = p.ParseMapCast()
+		} else {
+			res = p.ParseMap()
+		}
 	case lexer.LeftBracket:
 		if p.IsListCastStart() {
 			res = p.ParseListCast()

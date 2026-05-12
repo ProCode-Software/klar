@@ -597,7 +597,13 @@ type ParenExpression struct {
 
 type ListCastExpression struct {
 	BaseNode
-	Type Type
+	Type Type // Item type
+	Args []*CallParam
+}
+
+type MapCastExpression struct {
+	BaseNode
+	KeyType, ValueType Type
 	Args []*CallParam
 }
 
