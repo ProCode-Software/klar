@@ -1,6 +1,6 @@
 // This file uses all syntax features in Klar. This can be
 // used to test the parser and type checker.
-// TODO: fix reference errors
+// TODO: Fix reference errors
 
 // Imports
 import klar.io // Standard library import
@@ -27,13 +27,24 @@ basicVar = "Klar is awesome!"
 basicVar += " "
 basicVar *= 3
 
+_ = 1
+_ := 1
+_ += 1
+_ -= 1
+_ *= 1
+_ /= 1
+_ ^= 1
+_ %= 1
+
 // Type Declarations
 type #Tag
+type #Tag2: Inherited
 type Struct {
     field: Int
     field2, field3: String
     fieldWithDefault: Int = 1
 }
+type Struct2: Inherited {}
 type #Interface {
     field: Int
     field2, field3: String
@@ -44,6 +55,7 @@ type #Interface {
     methodWithLabelledParam2(label _: String) -> ReturnType
     methodWithReturn() -> Bool
 }
+type #Interface2: Inherited, Inherited2 {}
 type Enum {
     .some
     .none
@@ -82,19 +94,70 @@ func myFunc()
 @external(.js, file: "#/myfunc.js", export: "default")
 func myFuncWithFallback() { crashout("Unsupported") }
 
+// Literals
+nilValue: Int? := nil
+_ = (
+    // String
+    "Hello", 'Hello', "Hello {1 + 1}",
+    `Hello
+    World!`
+    // Ints
+    23333, -27272, (1 + 1)
+    0xfff, 0xc0fefe, 0xc0_fe_fe,
+    0b10101, 0b110_10,
+    // Float
+    0.18728, 0.172_228,
+    10e5, 0.272e3, 10e4_2, 10.42e6_2,
+    // Bools and nil
+    false, true, nilValue,
+)
+
+// Tuples
+_ = (
+    (1, 2, 3),
+    (1,),
+    (1, 2),
+)
+
 // Operators
 arithmetic := (
     1 + 1, 2 - 1,
     3 * 5, 12 / 4, 11 % 10,
-    2 ^ 3, -2 ^ 4 /* Should be -16 */, (-2) ^ 4 /* 16 */,
+    2 ^ 3, -2 ^ 4 /* -16 */, (-2) ^ 4 /* 16 */,
 )
-logical := (true && false, true || false, !true, 1 + 1 == 2 || 1 * 3 > 6)
+logical := (
+    true && false, true || false,
+    !true,
+    1 + 1 == 2 || 1 * 3 > 6,
+)
 relational := (
     1 == 1, 1 != 2,
     1 < 2, 2 > 1,
     1 <= 1, 2 >= 1,
+    // Chained comparisons
     1 < 2 < 3,
     1 >= 2 >= 3,
     1 < 2 == 2 < 3,
 )
-distributive := (x == 3 or 4, x != 1 and 5, x == 3 or 4 or 5)
+distributive := (
+    x == 3 or 4,
+    x != 1 and 5,
+    x == 3 or 4 or 5,
+)
+
+// Assertion
+optional: Int? := 1
+result: Result<Int> := 2
+print(optional!!, result!!)
+
+// Casts
+_ = [Int]()
+
+// Lambdas
+_ = (
+    func {},
+    func (x: Int) {},
+    func (x: Int) -> x,
+    func (x: Int = 1) -> x,
+)
+_: func(Int, Int) -> Int := func x, y -> x + y
