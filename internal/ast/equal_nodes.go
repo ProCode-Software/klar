@@ -418,7 +418,7 @@ func (a *FunctionDeclaration) Equal(b2 Node) bool {
 	if !a.Identifier.Equal(b.Identifier) {
 		return false
 	}
-	if !a.Struct.Equal(b.Struct) {
+	if !a.SelfType.Equal(b.SelfType) {
 		return false
 	}
 	if !a.SelfName.Equal(b.SelfName) {

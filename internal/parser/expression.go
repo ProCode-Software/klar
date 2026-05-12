@@ -119,21 +119,20 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		return &ast.TupleLiteral{}
 	}
 	expr := p.ParseExpression(ExpressionBindingPower)
-	next := p.Curr()
-	switch next.Kind {
-	case lexer.Comma:
+	if p.CurrKind() == lexer.Comma {
+		p.Advance()
 		// Tuple (requires at least one comma)
 		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
 		parseExprSeries(
 			p, &tuple.Values, ExpressionBindingPower,
 			lexer.RightParenthesis, lexer.Comma,
 		)
+		// TODO: better message for missing ','
 		return tuple
-	default:
-		// Grouped expression
-		p.Expect(lexer.RightParenthesis)
-		return &ast.ParenExpression{Expression: expr}
 	}
+	// Grouped expression
+	p.Expect(lexer.RightParenthesis)
+	return &ast.ParenExpression{Expression: expr}
 }
 
 func (p *Parser) ParseMap() *ast.MapLiteral {
@@ -154,18 +153,30 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			// Normal properties: quotes not required for non-reserved string key
 			entry := &ast.MapItem{}
 			entry.Range.Start = p.Curr().Position
-			parseExprSeries(p, &entry.Keys, ExpressionBindingPower, 0, lexer.Comma)
 
-			// Spread #{ key: 1, values... }
-			if rest, ok := entry.Keys[len(entry.Keys)-1].(*ast.RestExpression); ok {
-				if len(entry.Keys) > 1 {
-					// There must be exactly 1 key
-					p.ErrorLabelled(errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys), "There can only be 1 key")
-					entry.Keys = entry.Keys[:len(entry.Keys)-1]
+			// Keys and possibly a rest
+			for p.HasTokens() {
+				item := p.ParseExpression(ExpressionBindingPower)
+				if rest, ok := item.(*ast.RestExpression); ok {
+					if len(entry.Keys) > 0 {
+						p.ErrorLabelled(
+							errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys),
+							"Only 1 key is allowed in a rest",
+						)
+					}
+					entry.Keys = nil
+					entry.Value = rest
+					entry.Rest = true
+					break
 				}
-				entry.Rest = true
-				entry.Value = rest
-			} else {
+				entry.Keys = append(entry.Keys, item)
+				if p.CurrKind() != lexer.Comma {
+					break
+				}
+				p.Advance()
+			}
+			// Value
+			if !entry.Rest {
 				p.Expect(lexer.Colon)
 				entry.Value = p.ParseExpression(ExpressionBindingPower)
 			}

@@ -168,7 +168,7 @@ func (c *Checker) validateReceiver(name string, self *Object,
 ) bool {
 	selfRange := func(meth methodInfo) ranges.Range {
 		if meth.decl != nil {
-			return meth.decl.Struct.Range()
+			return meth.decl.SelfType.Range()
 		} else {
 			return meth.alias.Struct.Range()
 		}

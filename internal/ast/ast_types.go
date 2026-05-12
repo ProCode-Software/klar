@@ -380,6 +380,7 @@ type MapLiteral struct {
 	BaseNode
 }
 
+// If Rest is true, len(Keys) should be 0.
 type MapItem struct {
 	Keys            []Expression // if not rest
 	Value           Expression
@@ -409,7 +410,7 @@ type Block struct {
 //	func (p: Parser).run()
 type FunctionDeclaration struct {
 	Identifier    Identifier
-	Struct        *Identifier // Struct.Identifier
+	SelfType      *Identifier // Struct.Identifier
 	SelfName      *Identifier // If (p: Parser) is used instead of Parser
 	GenericParams []Identifier
 	Parameters    []*FunctionParam

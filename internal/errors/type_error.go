@@ -99,7 +99,7 @@ func (e *TypeError) Error() string {
 	case ErrInvalidInheritedType:
 		allowed := param[string](p, "allowedTypes")
 		kind := param[string](p, "kind")
-		return kind + " can only inherit from " + allowed
+		return kind + " can only inherit " + allowed
 
 	// OLD ERRORS
 	// =======

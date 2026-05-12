@@ -35,7 +35,7 @@ func (l *Lexer) Tokenize() *Token {
 		case '"', '\'', '`':
 			// Strings
 			return l.ReadString(pos, r)
-		case '.', '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#':
+		case '.', '!', '+', ':', '-', '&', '|', '=', '>', '<', '/', '#', '*', '%', '^':
 			// Multi-character operators
 			var (
 				typ, val = l.ReadOperator(r)
@@ -60,12 +60,6 @@ func (l *Lexer) Tokenize() *Token {
 		case ' ':
 			continue
 		// Single-character tokens and operators
-		case '*':
-			return NewToken(pos, Asterisk, "*")
-		case '%':
-			return NewToken(pos, Percent, "%")
-		case '^':
-			return NewToken(pos, Caret, "^")
 		case '(':
 			return NewToken(pos, LeftParenthesis, "(")
 		case ')':

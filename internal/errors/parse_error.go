@@ -377,7 +377,7 @@ func (e *ParseError) error() string {
 	case ErrDestructPatAfterColon:
 		return "Only an identifier is allowed after ':' in object destructure"
 	case ErrMultipleKeysInMapRest:
-		return "You can only spread a single key at a time"
+		return "A spread must be its own key"
 	case ErrNonNameDeclaration:
 		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
 	case ErrMixTypeTupleLabels:

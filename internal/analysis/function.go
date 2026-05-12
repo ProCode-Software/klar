@@ -57,9 +57,9 @@ func (c *Checker) checkFuncDecl(o *Object) {
 		ctx := NewContext(o.context) // Function body context
 
 		// 1. Self/Receiver
-		if stmt.Struct != nil {
+		if stmt.SelfType != nil {
 			selfName := "self"
-			selfPos := stmt.Struct.Range()
+			selfPos := stmt.SelfType.Range()
 			if stmt.SelfName != nil {
 				selfName = stmt.SelfName.Name
 				selfPos = stmt.SelfName.Range()

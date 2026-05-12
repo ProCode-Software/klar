@@ -60,9 +60,9 @@ func (c *Checker) collectTopLevelObjects(
 				ov.typ.(*Overload).Object = ov
 				ov.public = public
 
-				if stmt.Struct != nil {
+				if stmt.SelfType != nil {
 					// Method
-					declareMethod(stmt.Struct, methodInfo{decl: stmt, obj: ov})
+					declareMethod(stmt.SelfType, methodInfo{decl: stmt, obj: ov})
 				} else if par, isInit := c.getOverloadParent(stmt, fid, fctx); par != nil {
 					// Normal function. Declare the overload as a top-level object. par
 					// will be nil if an error is reported for par not being a function.

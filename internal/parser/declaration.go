@@ -317,14 +317,14 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			f.SelfName = new(p.ParseIdentOrDiscard())
 			p.Expect(lexer.Colon)
 		}
-		f.Struct = new(p.ParseIdentifier()) // TODO: change type of f.Struct to allow types
-		p.Expect(lexer.RightParenthesis)    // )
+		f.SelfType = new(p.ParseIdentifier()) // TODO: change type of f.Struct to allow types
+		p.Expect(lexer.RightParenthesis)      // )
 		p.ExpectErrorCodeNoAdvance(errors.ErrFuncDotAfterSelf, lexer.Dot)
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else if p.PeekKind() == lexer.Dot {
 		// Method declaration
 		// 	func Type.method()
-		f.Struct = new(p.ParseIdentifier())
+		f.SelfType = new(p.ParseIdentifier())
 		p.Expect(lexer.Dot)
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else {
@@ -434,6 +434,9 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	if f.SelfName != nil {
 		p.Error(errors.Node(errors.ErrSelfLabelInFuncAlias, f.Identifier))
 	}
+	if f.SelfType != nil {
+		p.Expect(lexer.Dot) // TODO: better error message
+	}
 	target := p.ParseExpression(ExpressionBindingPower)
 	switch target := target.(type) {
 	case *ast.Symbol:
@@ -455,7 +458,7 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	}
 	return &ast.FuncAliasDeclaration{
 		Identifier: f.Identifier,
-		Struct:     f.Struct,
+		Struct:     f.SelfType,
 		Target:     target,
 	}
 }

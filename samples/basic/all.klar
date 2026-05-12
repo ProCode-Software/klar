@@ -100,9 +100,9 @@ _ = (
     // String
     "Hello", 'Hello', "Hello {1 + 1}",
     `Hello
-    World!`
+    World!`,
     // Ints
-    23333, -27272, (1 + 1)
+    23333, -27272, (1 + 1),
     0xfff, 0xc0fefe, 0xc0_fe_fe,
     0b10101, 0b110_10,
     // Float
@@ -110,6 +110,11 @@ _ = (
     10e5, 0.272e3, 10e4_2, 10.42e6_2,
     // Bools and nil
     false, true, nilValue,
+    // Lists
+    [], [1, 2, 3], [[1, 2, 3]..., whatever...],
+    // Maps
+    #{}, #{a: 1, b: 2, "c": 3, ("Hello" + " World!"): 4},
+    #{#{a: 1}..., :nilValue}
 )
 
 // Tuples

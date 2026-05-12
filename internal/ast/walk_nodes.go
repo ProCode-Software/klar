@@ -94,7 +94,7 @@ func (n *FuncAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *FunctionDeclaration) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkNode{1, n.Struct}, walkNode{2, n.SelfName}, walkSlice[Identifier]{3, n.GenericParams}, walkSlice[*FunctionParam]{4, n.Parameters}, walkNode{5, n.ReturnType}, walkNode{6, n.Body}, walkNode{7, n.Expression})
+	return walkFields(v, n, c, walkNode{0, n.Identifier}, walkNode{1, n.SelfType}, walkNode{2, n.SelfName}, walkSlice[Identifier]{3, n.GenericParams}, walkSlice[*FunctionParam]{4, n.Parameters}, walkNode{5, n.ReturnType}, walkNode{6, n.Body}, walkNode{7, n.Expression})
 }
 
 func (n *FunctionParam) Walk(v Visitor, c *Cursor) StopCode {
