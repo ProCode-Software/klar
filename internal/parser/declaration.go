@@ -137,7 +137,7 @@ func (p *Parser) ParseEnum(
 		if a := p.tryParseAttributes(); len(a) > 0 {
 			attrs = a
 		}
-		p.ExpectNoAdvance(lexer.Dot)
+		p.Expect(lexer.Dot, noAdvance)
 		id := p.ParseMapIdentOrDiscard(0)
 
 		// Check if exists
@@ -150,7 +150,7 @@ func (p *Parser) ParseEnum(
 
 		item := &ast.EnumItem{Identifier: id, Attributes: attrs}
 		if p.CurrKind() == lexer.LeftParenthesis {
-			item.Parameters = p.ParseTupleType().Values
+			item.Parameters = toTupleType(p.ParseTupleType())
 		}
 		if p.isEqual(p.Curr()) {
 			p.Advance()
@@ -171,7 +171,7 @@ func (p *Parser) ParseEnum(
 			}
 			fallthrough
 		default:
-			p.Expect(lexer.Comma, lexer.Newline)
+			p.ExpectOneOf(lexer.Comma, lexer.Newline)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
@@ -225,9 +225,10 @@ func (p *Parser) ParseStruct(
 			// Default value without explicit type
 			p.Error(errors.Token(errors.ErrRequiredStructFieldType, p.Curr()))
 		} else {
-			p.ExpectErrorNoAdvance(
-				errors.Slice(errors.ErrRequiredStructFieldType, f.Names),
+			p.Expect(
 				lexer.Colon,
+				expectError{errors.Slice(errors.ErrRequiredStructFieldType, f.Names)},
+				noAdvance,
 			)
 			f.Type = p.ParseType(DefaultTypeBindingPower)
 		}
@@ -288,7 +289,7 @@ func (p *Parser) ParseInterface(
 			fn.Range.End = p.lastTokEnd()
 			f.Value = fn
 		} else {
-			p.ExpectNoAdvance(lexer.Colon)
+			p.Expect(lexer.Colon, noAdvance)
 			f.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
@@ -319,7 +320,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		}
 		f.SelfType = new(p.ParseIdentifier()) // TODO: change type of f.Struct to allow types
 		p.Expect(lexer.RightParenthesis)      // )
-		p.ExpectErrorCodeNoAdvance(errors.ErrFuncDotAfterSelf, lexer.Dot)
+		p.Expect(lexer.Dot, noAdvance, expectErrorCode(errors.ErrFuncDotAfterSelf))
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else if p.PeekKind() == lexer.Dot {
 		// Method declaration
@@ -398,7 +399,7 @@ func (p *Parser) parseFuncParam() *ast.FunctionParam {
 	}, 0, lexer.Comma, true)
 
 	// Type
-	p.ExpectErrorCodeNoAdvance(errors.ErrMissingFuncParamType, lexer.Colon)
+	p.Expect(lexer.Colon, noAdvance)
 	if !isAssignment(p.PeekBehind().Kind) {
 		param.Type = p.ParseType(DefaultTypeBindingPower)
 	}
@@ -467,11 +468,11 @@ func (p *Parser) ParseAttribute() *ast.Attribute {
 	p.Expect(lexer.At)
 	d := &ast.Attribute{}
 	p.flags |= isAttribute
+	defer func() { p.flags &^= isAttribute }()
 	d.Decorator = p.ParseIdentifier()
 	if p.CurrKind() == lexer.LeftParenthesis {
 		call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 		d.Args = call.Args
 	}
-	p.flags &^= isAttribute
 	return d
 }

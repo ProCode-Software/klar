@@ -35,9 +35,9 @@ func (p Position) AddPosition(n Position) Position {
 	return Position{Line: p.Line + n.Line, Col: p.Col + n.Col}
 }
 
-// HasOffset reports whether p is equal to p1 + (line, col).
-func (p Position) HasOffset(p1 Position, line, col uint32) bool {
-	return p.Line == p1.Line+line && p.Col == p1.Col+col
+// HasOffset reports whether p1 is equal to p2 + (line, col).
+func (p1 Position) HasOffset(p2 Position, line, col uint32) bool {
+	return p1.Line == p2.Line+line && p1.Col == p2.Col+col
 }
 
 // Offset returns a new Position with line and col added to p.

@@ -12,6 +12,9 @@ Each part of a version consists of numbers. Multiple parts of a version are sepa
 Additionally, a tag can be provided to a version, denoted by a space. Tags indicate the precedence of a version with the same number as another. If no tag is present, the version is considered stable, unless the major number is `0`. See the [Tags](#tags) section for the list of supported tags. An optional number is allowed after a tag, denoted by a space. Out of two versions with matching version numbers and tag names, the version with the higher number following the tag is considered greater.
 
 ```
+v1
+v1.2
+v1.2.3
 v1.2.3 rc
 v1.2.3 beta 2
 ```

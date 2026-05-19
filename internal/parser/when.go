@@ -35,6 +35,7 @@ func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 	// Back up isWhenCase flag
 	oldIsWhenCase := p.flags & isWhenCase
 	p.flags |= isWhenCase
+	defer func() { p.flags = oldIsWhenCase }()
 	// ',' binds tighter than '|' in case
 loop:
 	for p.HasTokens() {
@@ -66,7 +67,7 @@ loop:
 		p.Advance()
 		c.Guard = p.ParseExpression(ExpressionBindingPower)
 	}
-	p.flags = (p.flags &^ isWhenCase) | oldIsWhenCase // Restore old isWhenCase flag
+	p.flags = oldIsWhenCase
 	p.Expect(lexer.Arrow)
 	switch p.CurrKind() {
 	// Block
@@ -77,7 +78,7 @@ loop:
 
 		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
 			!isImplicitWhenOp(braceLine, k) {
-			p.Expect(lexer.Newline, lexer.Comma)
+			p.ExpectOneOf(lexer.Newline, lexer.Comma)
 		}
 	// Statement/expression outside braces
 	default:
@@ -85,7 +86,7 @@ loop:
 		// Treat these tokens as expressions
 		case lexer.For, lexer.Func:
 			c.Body = p.ParseExpression(ExpressionBindingPower)
-			p.Expect(lexer.Newline, lexer.Comma)
+			p.ExpectOneOf(lexer.Newline, lexer.Comma)
 			return c
 		}
 		// BUG: Braces/comma required before '<' starting next case

@@ -38,7 +38,7 @@ func (p *Parser) ParseStatement(flags parseFlags) ast.Statement {
 	kind := p.CurrKind()
 	expectEOS := func() {
 		if (flags & allowCommaTerminator) != 0 {
-			p.Expect(lexer.Comma, lexer.Newline)
+			p.ExpectOneOf(lexer.Comma, lexer.Newline)
 		} else if (flags & noEOS) == 0 {
 			p.Expect(lexer.Newline)
 		}
@@ -223,11 +223,6 @@ func parseSeries[T ast.Node](
 	with func() T, until, separator lexer.TokenType,
 	allowEOS bool,
 ) {
-	allSeps := make([]lexer.TokenType, 1, 2)
-	allSeps[0] = separator
-	if allowEOS {
-		allSeps = append(allSeps, lexer.Newline)
-	}
 	if until == 0 && separator == 0 {
 		panic("until and separator cannot both be zero")
 	}
@@ -245,11 +240,32 @@ func parseSeries[T ast.Node](
 			(!allowEOS && curr == lexer.Newline) {
 			break
 		}
-		if separator != 0 {
-			p.Expect(allSeps...)
+
+		if allowEOS {
+			if separator == 0 {
+				p.Expect(lexer.Newline)
+				continue
+			}
+			p.ExpectOneOf(separator, lexer.Newline)
+			continue
 		}
+		p.Expect(separator)
 	}
 	if until != 0 {
 		p.Expect(until)
 	}
+}
+
+// isVersion reports whether the current token is the beginning of a version literal.
+func (p *Parser) isVersion() bool {
+	tok := p.Curr()
+	if tok.Source[0] != 'v' || len(tok.Source) < 2 {
+		return false
+	}
+	for i := 1; i < len(tok.Source); i++ {
+		if !lexer.IsDigit(rune(tok.Source[i])) {
+			return false
+		}
+	}
+	return true
 }

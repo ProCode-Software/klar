@@ -116,7 +116,7 @@ func (p *Parser) parseMethodParams() (params []*ast.MethodParam) {
 	return params
 }
 
-func (p *Parser) ParseTupleType() *ast.TupleType {
+func (p *Parser) ParseTupleType() ast.Type {
 	p.Expect(lexer.LeftParenthesis)
 	var (
 		t      = &ast.TupleType{}
@@ -198,7 +198,10 @@ func (p *Parser) ParseTupleType() *ast.TupleType {
 			setParamRange()
 		}
 	}
-	t.ParenOnly = len(t.Values) == 1 && len(t.Values[0].Keys) <= 1 && !trailingComma
+	// Type has 1 item and key, with no trailing comma.
+	if len(t.Values) == 1 && len(t.Values[0].Keys) <= 1 && !trailingComma {
+		return &ast.ParenType{Type: t.Values[0].Value}
+	}
 	return t
 }
 

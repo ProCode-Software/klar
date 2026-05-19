@@ -12,6 +12,10 @@ func (node *BaseNode) SetPos(start, end lexer.Position) {
 }
 func (node *BaseNode) GetRange() ranges.Range { return node.Range }
 
+// String fragments
+func (EscapeFragment) StringFrag()        {}
+func (InterpolationFragment) StringFrag() {}
+
 // String escapes
 func (BadEscape) stringEsc()         {}
 func (CharacterEscape) stringEsc()   {}

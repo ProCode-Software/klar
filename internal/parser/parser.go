@@ -6,7 +6,6 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/errors"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 const (
@@ -100,24 +99,6 @@ func (p *Parser) HasTokens() bool {
 	return p.Index < len(p.Tokens) && p.CurrKind() != lexer.EOF
 }
 
-// Expect advances the parser if the current token is of typ, otherwise throws an
-// ExpectedTokenError.
-func (p *Parser) Expect(need ...lexer.TokenType) lexer.Token {
-	return p.ExpectError(nil, need...)
-}
-
-// ExpectNoAdvance is [Expect], but doesn't advance the parser on error.
-func (p *Parser) ExpectNoAdvance(need ...lexer.TokenType) lexer.Token {
-	return p.ExpectErrorNoAdvance(nil, need...)
-}
-
-func (p *Parser) ExpectNoAdvancef(s string, need ...lexer.TokenType) lexer.Token {
-	return p.ExpectErrorNoAdvance(
-		errors.ExpectedTokenf(s, need[0], p.Curr()),
-		need...,
-	)
-}
-
 // WhileNot reports whether the current token kind is not kind and the parser is not at EOF.
 func (p *Parser) WhileNot(kind lexer.TokenType) bool {
 	return p.HasTokens() && p.CurrKind() != kind
@@ -142,55 +123,36 @@ func (p *Parser) IsNotCurrentlyEndOr(kind lexer.TokenType) bool {
 	return p.HasTokens() && curr != lexer.Newline && curr != kind
 }
 
-// ExpectErrorCode adds a [errors.ParseError] with code to the parser if it the
-// current token is not in need.
-func (p *Parser) ExpectErrorCode(code errors.ErrorCode, need ...lexer.TokenType) lexer.Token {
-	return p.ExpectError(&ParseError{ErrorCode: code}, need...)
-}
-
-// ExpectErrorCodeNoAdvance is [ExpectErrorCode], but doesn't advance the parser on error.
-func (p *Parser) ExpectErrorCodeNoAdvance(
-	code errors.ErrorCode, need ...lexer.TokenType,
-) lexer.Token {
-	return p.ExpectErrorNoAdvance(&ParseError{ErrorCode: code}, need...)
-}
-
-// ExpectErrorNoAdvance is [ExpectError], but doesn't advance the parser on error.
-func (p *Parser) ExpectErrorNoAdvance(err error, need ...lexer.TokenType) lexer.Token {
-	token := p.Curr()
-	got := token.Kind
-	if !slices.Contains(need, got) {
-		err, _ := err.(*ParseError)
-		if err == nil {
-			err = errors.ExpectedToken(need[0], token)
-		} else if err.Token.Kind == 0 {
-			err.Token = token
-		}
-		p.Error(err)
-		return token
+// Expect advances the parser if the current token is of typ, otherwise throws an
+// ExpectedTokenError.
+func (p *Parser) Expect(exp lexer.TokenType, expFlags ...expectFlag) lexer.Token {
+	got := p.Curr()
+	if got.Kind == exp {
+		return p.Advance()
+	}
+	if noAdvance := p.expectFail(exp, got, expFlags); noAdvance {
+		return got
 	}
 	return p.Advance()
 }
 
-// Expect advances the parser if the current token is of typ, otherwise throws err.
-func (p *Parser) ExpectError(err error, need ...lexer.TokenType) lexer.Token {
-	token := p.Curr()
-	got := token.Kind
-	if !slices.Contains(need, got) {
-		parseErr, _ := err.(*ParseError)
-		if err == nil {
-			err = errors.ExpectedToken(need[0], token)
-		} else if parseErr.Token.Kind == 0 {
-			parseErr.Token = token
-			parseErr.Range = ranges.FromToken(token)
-			err = parseErr
-		}
-		p.Error(err.(*ParseError))
+func (p *Parser) ExpectOneOf(a, b lexer.TokenType, expFlags ...expectFlag) lexer.Token {
+	got := p.Curr()
+	if got.Kind == a || got.Kind == b {
+		return p.Advance()
 	}
-	if got == lexer.EOF {
-		return token // Avoid advancing
+	if noAdvance := p.expectFail(a, got, expFlags); noAdvance {
+		return got
 	}
 	return p.Advance()
+}
+
+func (p *Parser) expectFail(exp lexer.TokenType, got lexer.Token,
+	expFlags []expectFlag,
+) (noAdvance bool) {
+	err, noAdvance := withExpectFlags(expFlags, exp, got)
+	p.Error(err)
+	return noAdvance
 }
 
 // If stopParsing is passed to panic, the parser will immediately stop parsing.

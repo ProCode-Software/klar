@@ -119,26 +119,30 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 		return &ast.TupleLiteral{}
 	}
 	expr := p.ParseExpression(ExpressionBindingPower)
-	if p.CurrKind() == lexer.Comma {
-		p.Advance()
-		// Tuple (requires at least one comma)
-		tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
-		for p.WhileNot(lexer.RightParenthesis) {
-			tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
-			if p.CurrKind() != lexer.RightParenthesis {
-				p.ExpectNoAdvancef("between tuple items", lexer.Comma)
-				if p.CurrKind() == lexer.Newline {
-					p.Advance() // Missing comma
-				}
+	if p.CurrKind() != lexer.Comma {
+		// Grouped expression
+		p.Expect(lexer.RightParenthesis)
+		return &ast.ParenExpression{Expression: expr}
+	}
+
+	// Tuple (requires at least one comma)
+	p.Advance() // ,
+	tuple := &ast.TupleLiteral{Values: []ast.Expression{expr}}
+	for p.WhileNot(lexer.RightParenthesis) {
+		tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
+		if p.CurrKind() != lexer.RightParenthesis {
+			p.Expect(lexer.Comma,
+				noAdvance, withMessage("between tuple items"),
+				withLabel("Expected a comma after this item"),
+			)
+			if p.CurrKind() == lexer.Newline {
+				p.Advance() // Missing comma
 			}
 		}
-		p.ExpectNoAdvance(lexer.RightParenthesis)
-		// TODO: better message for missing ','
-		return tuple
 	}
-	// Grouped expression
-	p.Expect(lexer.RightParenthesis)
-	return &ast.ParenExpression{Expression: expr}
+	p.Expect(lexer.RightParenthesis, noAdvance)
+	// TODO: better message for missing ','
+	return tuple
 }
 
 func (p *Parser) ParseMap() *ast.MapLiteral {
@@ -197,7 +201,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			continue
 		}
 		if curr != lexer.RightCurlyBrace {
-			p.Expect(lexer.Newline, lexer.Comma)
+			p.ExpectOneOf(lexer.Newline, lexer.Comma)
 		}
 	}
 	p.Expect(lexer.RightCurlyBrace)
@@ -444,48 +448,36 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 	return &ast.PipelineExpression{Steps: steps}
 }
 
-func (p *Parser) ParseVersion(left *ast.Symbol, bp BindingPower) ast.Expression {
-	var (
-		b     strings.Builder
-		err   bool
-		first = left.Identifier
-	)
-	expect := func(kind lexer.TokenType) string {
-		tok := p.Advance()
-		if tok.Kind != kind {
-			err = true
-		}
-		return tok.Source
-	}
-	// Check first part of version
-	if first[0] != 'v' || len(first) < 2 {
-		err = true
-	} else {
-		for _, c := range first[1:] {
-			if !lexer.IsDigit(c) {
-				err = true
-				break
-			}
+// The version is validated when the attribute is evaluated (analysis-time).
+func (p *Parser) ParseVersion() ast.Expression {
+	var b strings.Builder
+	skipNewline := func() {
+		if p.CurrKind() == lexer.Newline {
+			p.Advance()
 		}
 	}
-	b.WriteString(first)
-	for p.CurrKind() == lexer.Numeric {
-		b.WriteString(p.Advance().Source)
+
+	// First part should already be validated
+	b.WriteString(p.Advance().Source)
+	for p.CurrKind() == lexer.Dot {
+		p.Advance()
+		b.WriteByte('.')
+		b.WriteString(p.Expect(lexer.Numeric).Source)
+		skipNewline()
 	}
-	if p.CurrKind() == lexer.Minus {
+	skipNewline()
+	// Tag: v1.0 beta
+	if p.CurrKind() == lexer.Identifier {
+		b.WriteByte(' ')
 		b.WriteString(p.Advance().Source)
-		b.WriteString(expect(lexer.Identifier))
-		if p.CurrKind() == lexer.Minus {
+		skipNewline()
+		// Number after the tag: v1.0 beta 2
+		if p.CurrKind() == lexer.Numeric {
+			b.WriteByte(' ')
 			b.WriteString(p.Advance().Source)
-			b.WriteString(expect(lexer.Numeric))
 		}
 	}
 	ver := &ast.VersionLiteral{Version: b.String()}
-	ver.SetPos(left.GetRange().Start, p.lastTokEnd())
-	if err {
-		p.Error(errors.Node(errors.ErrInvalidVersion, ver))
-		return &ast.BadExpression{Value: ver}
-	}
 	return ver
 }
 
@@ -498,6 +490,7 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
 	}
 }
+
 func (p *Parser) ParseMapCast() *ast.MapCastExpression {
 	p.Expect(lexer.HashLeftCurlyBrace)
 	key := p.ParseType(DefaultTypeBindingPower)

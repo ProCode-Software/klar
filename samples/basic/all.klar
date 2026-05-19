@@ -123,18 +123,18 @@ _ = (
     "Hello", 'Hello', "Hello {1 + 1}",
     `Hello
     World!`,
-    // Ints
+    // Int
     23333, -27272, (1 + 1),
     0xfff, 0xc0fefe, 0xc0_fe_fe,
     0b10101, 0b110_10,
     // Float
     0.18728, 0.172_228,
     10e5, 0.272e3, 10e4_2, 10.42e6_2,
-    // Bools and nil
-    false, true, nilValue,
-    // Lists
+    // Bool and nil
+    false, true, nilValue, Optional(nil),
+    // List
     [], [1, 2, 3], [[1, 2, 3]..., whatever...],
-    // Maps
+    // Map
     #{}, #{a: 1, b: 2, "c": 3, ("Hello" + " World!"): 4},
     #{
         #{a: 1}..., // Rest
@@ -226,7 +226,10 @@ _: (Enum, Enum) := (Enum.some, .some)
 
 // Go/Await
 task := go fn()
+task2 := go { print("Running in parallel") }
+go {}
 await task
+await (task, task2)
 _ = await task
 
 // Pipeline

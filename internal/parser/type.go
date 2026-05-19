@@ -89,7 +89,7 @@ func (p *Parser) ParseFunctionType() *ast.FunctionType {
 	}
 	fn := &ast.FunctionType{}
 	if p.CurrKind() == lexer.LeftParenthesis {
-		fn.Parameters = p.ParseTupleType()
+		fn.Parameters = toTupleType(p.ParseTupleType())
 	} else {
 		p.Error(errors.Token(errors.ErrParenFuncTypeParams, p.Curr()))
 		// Parse without parentheses
@@ -146,4 +146,18 @@ func (p *Parser) ParseMapType() *ast.MapType {
 	}
 	p.Expect(lexer.RightCurlyBrace)
 	return &ast.MapType{Key: key, Value: val}
+}
+
+func toTupleType(t ast.Type) *ast.TupleType {
+	switch t := t.(type) {
+	case *ast.TupleType:
+		return t
+	case *ast.ParenType:
+		return &ast.TupleType{
+			BaseNode: t.BaseNode,
+			Values:   []*ast.TypePair{{Value: t.Type}},
+		}
+	default:
+		panic("invalid type parameter list")
+	}
 }

@@ -24,11 +24,24 @@ type Program struct {
 	Comments []*Comment
 }
 
-// An ExpressionStatement is an expression used as a statement.
-type ExpressionStatement struct {
+type Comment struct {
 	BaseNode
-	Expression Expression
+	Type  CommentType
+	Value string
 }
+
+// lexer.LineComment or lexer.BlockComment
+type CommentType = lexer.TokenType
+
+// Basic Literals
+// =======
+
+type Symbol struct {
+	BaseNode
+	Identifier string
+}
+
+type Discard struct{ BaseNode } // _
 
 type StringLiteral struct {
 	BaseNode
@@ -38,6 +51,26 @@ type StringLiteral struct {
 	// Parts of string split by newlines (at end of segment) and escapes (skipped)
 	Fragments []StringFragment
 }
+
+type (
+	// A StringFragment is a part of a [StringLiteral]. Fragments are split
+	// by newlines (at ends of fragments) and escapes.
+	StringFragment interface{ StringFrag() }
+
+	// String fragments. Implement [StringFragment].
+	EscapeFragment        struct{ Value StringEscape }
+	TextFragment          = lexer.TextFragment
+	InterpolationFragment struct{ Expression Node }
+
+	// A StringEscape is an escape sequence inside a [StringLiteral].
+	StringEscape interface{ stringEsc() }
+
+	// String escapes. Implement [StringEscape].
+	BadEscape         struct{ Source string }
+	CharacterEscape   struct{ Character rune }
+	UnicodeEscape     struct{ Hex int32 }
+	HexadecimalEscape struct{ Hex int32 }
+)
 
 type IntegerLiteral struct {
 	BaseNode
@@ -52,10 +85,7 @@ type BooleanLiteral struct {
 	Value bool
 }
 
-type NilLiteral struct {
-	BaseNode
-	Shorthand bool
-}
+type NilLiteral struct{ BaseNode }
 
 type FloatLiteral struct {
 	BaseNode
@@ -78,15 +108,6 @@ type VersionLiteral struct {
 	Version string
 }
 
-type Comment struct {
-	BaseNode
-	Type  CommentType
-	Value string
-}
-
-// lexer.LineComment or lexer.BlockComment
-type CommentType = lexer.TokenType
-
 type BinaryExpression struct {
 	Left, Right Expression
 	Operator    Operator
@@ -107,49 +128,13 @@ type RelationalExpression struct {
 	Operators   []Operator // Should be len(Expressions) - 1
 }
 
-type StringFragment interface {
-	StringFrag()
-}
+// Statements
+// ========
 
-// String fragments. Implement [StringFragment].
-type (
-	EscapeFragment        struct{ Value StringEscape }
-	TextFragment          = lexer.TextFragment
-	InterpolationFragment struct{ Expression Node }
-)
-
-func (EscapeFragment) StringFrag()        {}
-func (InterpolationFragment) StringFrag() {}
-
-// A StringEscape is an escape sequence inside a [StringLiteral].
-type StringEscape interface {
-	stringEsc()
-}
-
-type (
-	BadEscape         struct{ Source string }
-	CharacterEscape   struct{ Character rune }
-	UnicodeEscape     struct{ Hex int32 }
-	HexadecimalEscape struct{ Hex int32 }
-)
-
-type Symbol struct {
+// An ExpressionStatement is an expression used as a statement.
+type ExpressionStatement struct {
 	BaseNode
-	Identifier string
-}
-
-type Discard struct{ BaseNode } // _
-
-type Assignable interface {
-	Node
-	Expression
-	assignable()
-}
-
-type Destructurable interface {
-	Assignable
-	// Items that aren't assignable yield a non-nil BadExpression
-	Names() iter.Seq2[Identifier, *BadExpression]
+	Expression Expression
 }
 
 type PublicDeclaration struct {
@@ -169,135 +154,6 @@ type AssignmentStatement struct {
 	Assignee []Assignable
 	Operator Operator
 	Values   []Expression // Either 1 item or len(Variables)
-}
-
-type Pair struct {
-	BaseNode
-	Key, Value Expression
-}
-
-// ReservedIdent is the set of keywords that cannot be used as variable names.
-var ReservedIdent = []lexer.TokenType{
-	lexer.And, lexer.Await, lexer.Boolean, lexer.Stop, lexer.For, lexer.Func,
-	lexer.Go, lexer.In, lexer.Next, lexer.Nil, lexer.Or,
-	lexer.Return, lexer.Type, lexer.When, lexer.While,
-}
-
-// Keywords that are used before declarations.
-var Modifiers = []lexer.TokenType{lexer.Public}
-
-type Type interface {
-	Node
-	_type()
-}
-
-// A PrimitiveType is a Klar-builtin type
-type PrimitiveType struct {
-	BaseNode
-	Primitive PrimitiveTypeName
-}
-
-// A TypeAlias is a non-primitive type name
-type TypeAlias struct {
-	BaseNode
-	Identifier string
-}
-
-// A QualifiedTypeAlias is similar to [TypeAlias] but is qualified by a namespace.
-type QualifiedTypeAlias struct {
-	BaseNode
-	Namespace, Identifier Identifier
-}
-
-// An OptionalType is a type marked with the suffix '?'. In Klar, this indicates
-// that a type could be nil.
-type OptionalType struct {
-	BaseNode
-	Value Type
-}
-
-type ListType struct {
-	BaseNode
-	Value Type
-}
-
-type MapType struct {
-	BaseNode
-	Key, Value Type
-}
-
-type RestType struct {
-	BaseNode
-	Value Type
-}
-
-type TupleType struct {
-	BaseNode
-	Values    []*TypePair
-	ParenOnly bool // If 1 item without trailing comma
-}
-
-type TypePair struct {
-	Keys  []Identifier
-	Value Type
-	BaseNode
-}
-
-// Used for lambda parameters
-type AssignableTuple struct {
-	BaseNode
-	Values []*AssignableTypePair
-}
-
-type AssignableTypePair struct {
-	BaseNode
-	Keys  []Assignable
-	Type  Type
-	Value Expression
-}
-
-type ParenType struct {
-	BaseNode
-	Type Type
-}
-
-type FunctionType struct {
-	BaseNode
-	Parameters *TupleType
-	ReturnType Type
-}
-
-type GenericType struct {
-	BaseNode
-	Name       Type
-	Parameters []Type
-}
-
-type InterfaceItem struct {
-	*TypePair
-	Attributes []*Attribute
-}
-
-type UnionType struct {
-	BaseNode
-	Options []Type
-}
-
-type MethodType struct {
-	BaseNode
-	ReturnType Type
-	Parameters []*MethodParam
-}
-
-type MethodParam struct {
-	Names []*IdentifierPair
-	Type  Type
-	BaseNode
-}
-
-type IdentifierPair struct {
-	BaseNode
-	Label, Name Identifier
 }
 
 // Examples:
@@ -364,7 +220,7 @@ type EnumDeclaration struct {
 type EnumItem struct {
 	Identifier Identifier
 	Value      Expression
-	Parameters []*TypePair
+	Parameters *TupleType
 	Attributes []*Attribute
 	BaseNode
 }
@@ -372,6 +228,103 @@ type EnumItem struct {
 type TypeAliasDeclaration struct {
 	Identifier Identifier
 	Type       Type
+	BaseNode
+}
+
+// Types
+// ========
+
+// A PrimitiveType is the name of a Klar-builtin type
+type PrimitiveType struct {
+	BaseNode
+	Primitive PrimitiveTypeName
+}
+
+// A TypeAlias is a non-primitive type name
+type TypeAlias struct {
+	BaseNode
+	Identifier string
+}
+
+// A QualifiedTypeAlias is similar to [TypeAlias] but is qualified by a namespace.
+type QualifiedTypeAlias struct {
+	BaseNode
+	Namespace, Identifier Identifier
+}
+
+// An OptionalType is a type marked with the suffix '?'. In Klar, this indicates
+// that a type could be nil.
+type OptionalType struct {
+	BaseNode
+	Value Type
+}
+
+type ListType struct {
+	BaseNode
+	Value Type
+}
+
+type MapType struct {
+	BaseNode
+	Key, Value Type
+}
+
+// Function parameters only
+type RestType struct {
+	BaseNode
+	Value Type
+}
+
+// A TupleType is a tuple of types.
+type TupleType struct {
+	BaseNode
+	Values []*TypePair
+}
+
+// A ParenType is a type enclosed in parentheses.
+type ParenType struct {
+	BaseNode
+	Label Identifier // Optional label
+	Type  Type
+}
+
+// Used for lambda parameters
+type AssignableTuple struct {
+	BaseNode
+	Values []*AssignableTypePair
+}
+
+type FunctionType struct {
+	BaseNode
+	Parameters *TupleType
+	ReturnType Type
+}
+
+type GenericType struct {
+	BaseNode
+	Name       Type
+	Parameters []Type
+}
+
+type InterfaceItem struct {
+	*TypePair
+	Attributes []*Attribute
+}
+
+type UnionType struct {
+	BaseNode
+	Options []Type
+}
+
+type MethodType struct {
+	BaseNode
+	ReturnType Type
+	Parameters []*MethodParam
+}
+
+type MethodParam struct {
+	Names []*IdentifierPair
+	Type  Type
 	BaseNode
 }
 
@@ -560,6 +513,12 @@ type WhenCanCase struct {
 	Params   []*CallParam
 }
 
+type StringTypeMatch struct {
+	BaseNode
+	Name Identifier
+	Type Type
+}
+
 type LambdaExpression struct {
 	BaseNode
 	Params  []*AssignableTypePair
@@ -604,7 +563,7 @@ type ListCastExpression struct {
 type MapCastExpression struct {
 	BaseNode
 	KeyType, ValueType Type
-	Args []*CallParam
+	Args               []*CallParam
 }
 
 // A ForExpression is a [ForStatement] used as an expression.
@@ -630,7 +589,21 @@ type ObjectPipeline struct {
 	Steps  []Node // Assignment or method call
 }
 
-// Destructuring
+// Assignments & Destructuring
+// ========
+
+type Assignable interface {
+	Node
+	Expression
+	assignable()
+}
+
+type Destructurable interface {
+	Assignable
+	// Items that aren't assignable yield a non-nil BadExpression
+	Names() iter.Seq2[Identifier, *BadExpression]
+}
+
 // Values that can be used in VariableDeclaration implement Destructure.
 // (a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
@@ -641,6 +614,7 @@ type Destructure interface {
 }
 
 // Destructures a list or tuple
+// Deprecated: Not used
 //
 //	(a, b) := x
 //	[a, b] := x
@@ -651,6 +625,7 @@ type ListDestructure struct {
 }
 
 // Destructures a struct or map
+// Deprecated: Not used
 //
 //	#{ name, age } := person
 //	#{ kind: type, info.{color} } := animal
@@ -660,6 +635,7 @@ type ObjectDestructure struct {
 }
 
 // Entry for [ObjectDestructure]
+// Deprecated: Not used
 //
 //	#{ in.(name, age) }
 //	#{ cond: when }
@@ -714,8 +690,28 @@ type AssertExpression struct {
 	Expression Expression
 }
 
-type StringTypeMatch struct {
+// Pairs
+// ========
+
+type TypePair struct {
+	Keys  []Identifier
+	Value Type
 	BaseNode
-	Name Identifier
-	Type Type
+}
+
+type ExpressionPair struct {
+	BaseNode
+	Key, Value Expression
+}
+
+type IdentifierPair struct {
+	BaseNode
+	Label, Name Identifier
+}
+
+type AssignableTypePair struct {
+	BaseNode
+	Keys  []Assignable
+	Type  Type
+	Value Expression
 }

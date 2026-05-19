@@ -128,3 +128,9 @@ func (p *Parser) missingParamTypeAnnotError(err *errors.ParseError,
 		Message: "This " + kind + " already has a type",
 	})
 }
+
+func expectAt(msg string, label string) *errors.ParseError {
+	err := errors.ExpectedTokenf(msg, 0, lexer.Token{})
+	err.Label = label
+	return err
+}

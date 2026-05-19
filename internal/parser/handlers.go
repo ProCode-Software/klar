@@ -17,6 +17,10 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		return nil, false
 	// Primary expression/literal
 	case lexer.Identifier:
+		if p.isAttribute() && p.isVersion() {
+			res = p.ParseVersion()
+			break
+		}
 		res = p.ParseSymbol()
 	case lexer.String:
 		res = p.ParseString()
@@ -81,18 +85,9 @@ func (p *Parser) handleLED(
 	switch kind {
 	default:
 		return left, false
-
-	// Version (v1-dev)
-	case lexer.Minus:
-		if left, ok := left.(*ast.Symbol); ok && p.isAttribute() &&
-			left.Identifier[0] == 'v' {
-			res = p.ParseVersion(left, bp)
-			break
-		}
-		fallthrough
 	case
 		// Arithmetic
-		lexer.Plus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
+		lexer.Plus, lexer.Minus, lexer.Asterisk, lexer.Slash, lexer.Percent, lexer.Caret,
 		// Relational
 		lexer.In, lexer.NotIn,
 		// Logical
@@ -122,16 +117,6 @@ func (p *Parser) handleLED(
 	// Assertion
 	case lexer.NotNot:
 		res = p.ParseAssertExpression(left)
-	// Version
-	case lexer.Numeric:
-		if !p.isAttribute() {
-			return left, false
-		}
-		if l, ok := left.(*ast.Symbol); !ok || l.Identifier[0] != 'v' {
-			return left, false
-		} else {
-			res = p.ParseVersion(l, bp)
-		}
 	// Invalid assignment
 	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
