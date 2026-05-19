@@ -108,6 +108,17 @@ type VersionLiteral struct {
 	Version string
 }
 
+// Reference to enum item of a known type
+//
+//	x: Color := .red
+type EnumLiteral struct {
+	BaseNode
+	Name Identifier
+}
+
+// Operations
+// ==========
+
 type BinaryExpression struct {
 	Left, Right Expression
 	Operator    Operator
@@ -128,13 +139,290 @@ type RelationalExpression struct {
 	Operators   []Operator // Should be len(Expressions) - 1
 }
 
+// [expr]!
+type AssertExpression struct {
+	BaseNode
+	Expression Expression
+}
+
+// Accessors & Collections
+// =======================
+
+type IndexExpression struct {
+	Object, Property Node
+	Computed         bool // If square bracket [
+	BaseNode
+}
+
+// A list slice expression
+//
+//	array[low..<high]
+//	array[low...high]
+//	array[low...]
+//	array[..<high]
+//	array[...high]
+//	array[...] // copy
+type SliceExpression struct {
+	Object   Node
+	From, To Expression
+	Operator Operator
+	BaseNode
+}
+
+type RangeExpression struct {
+	From, To, Step Expression
+	Operator       Operator // First ... or ..<
+	BaseNode
+}
+
+type RestExpression struct {
+	BaseNode
+	Expression Expression // Can be nil in when cases
+}
+
+// More complex literals
+// =========
+
+type CallParam struct {
+	Label     *Identifier
+	Value     Expression
+	Shorthand bool // Whether shorthand was used. Label != nil
+	BaseNode
+}
+
+// A function call
+type CallExpression struct {
+	Callee Node
+	Args   []*CallParam
+	BaseNode
+}
+
+type ParenExpression struct {
+	Expression Expression
+	BaseNode
+}
+
+type ListLiteral struct {
+	BaseNode
+	Items []Expression
+}
+
+type MapLiteral struct {
+	Entries []*MapItem
+	BaseNode
+}
+
+// If Rest is true, len(Keys) should be 0.
+type MapItem struct {
+	Keys            []Expression // if not rest
+	Value           Expression
+	Rest, Shorthand bool
+	BaseNode
+}
+
+type TupleLiteral struct {
+	Values []Expression
+	BaseNode
+}
+
+// StructDotInit is a shorthand constructor for known types
+//
+//	people: [Person] := [.("John", age: 32), .("Jane", age: 31)]
+type StructDotInit struct {
+	BaseNode
+	Params []*CallParam
+}
+
+type ListCastExpression struct {
+	BaseNode
+	Type Type // Item type
+	Args []*CallParam
+}
+
+type MapCastExpression struct {
+	BaseNode
+	KeyType, ValueType Type
+	Args               []*CallParam
+}
+
+// Control Expressions
+// ===================
+
+type WhenExpression struct {
+	BaseNode
+	Subjects []Expression
+	Cases    []*WhenCase
+}
+
+type WhenCase struct {
+	BaseNode
+	Options [][]Expression // cases -> subjects
+	Guard   Expression     // <case> if <expr>
+	Braces  bool
+	Body    Node // [*Block], [Statement], or [Expression]. Syntax: -> <expr> | -> {...}
+}
+
+type WhenCanCase struct {
+	BaseNode
+	Operator Operator
+	Type     Type
+	Params   []*CallParam
+}
+
+// In string interpolations for pattern matching in when blocks.
+type StringTypeMatch struct {
+	BaseNode
+	Name Identifier
+	Type Type
+}
+
+type LambdaExpression struct {
+	BaseNode
+	Params  []*AssignableTypePair
+	InParen bool
+	Block   *Block
+	Expr    Expression
+}
+
+type PipelineExpression struct {
+	Steps []Node
+	BaseNode
+}
+
+// A pipeline step may be an assignment or method call (ignoring return values)
+type ObjectPipeline struct {
+	BaseNode
+	Object Expression
+	Steps  []Node // Assignment or method call
+}
+
+// A ForExpression is a [ForStatement] used as an expression.
+// It may reduce when the +=, -=, or = operator is used,
+// filter when a block is used, or map when -> is used.
+//
+//	sum := for i in items += i
+//	for [variables] in [iterator] [-> | = | += | -=] [value]
+//	for [variables] in [iterator] { block... }
+type ForExpression struct {
+	BaseNode
+	Variables []*AssignableTypePair
+	Iterator  Expression
+	Operator  Operator
+	Value     Expression
+	Block     *Block
+}
+
+// Waits for one or more tasks to complete
+//
+//	await task
+//	await [t1, t2]
+//	await (t1, t2)
+type AwaitExpression struct {
+	BaseNode
+	Expression Expression
+}
+
+// Spawns an asynchronous task
+//
+//	go fn()
+//	go { ...body }
+type GoExpression struct {
+	BaseNode
+	Expression Expression // Is a *CallExpression if valid
+	Body       *Block     // If block
+}
+
+// where 'fn' returns a Result, returns from the enclosing function if
+// it returns an error value. Only available in function bodies.
+// try fn() -- must be function call
+type TryExpression struct {
+	BaseNode
+	Expression Expression // Is a *CallExpression if valid
+}
+
 // Statements
-// ========
+// ==========
+
+type Attribute struct {
+	BaseNode
+	Decorator Identifier
+	Args      []*CallParam
+}
 
 // An ExpressionStatement is an expression used as a statement.
 type ExpressionStatement struct {
 	BaseNode
 	Expression Expression
+}
+
+type Block struct {
+	BaseNode
+	Body []Statement
+}
+
+type ReturnStatement struct {
+	Value Expression // Can be nil
+	BaseNode
+}
+
+// Continues a loop. In other languages, this is usually 'continue'.
+// Used for [ForStatement], [WhileStatement], and [WhenExpression] statements.
+type NextStatement struct {
+	BaseNode
+	Loop lexer.TokenType
+}
+
+// Breaks a [ForStatement], [WhileStatement], or [WhenExpression].
+// In other languages, this is usually 'break'.
+type StopStatement struct {
+	BaseNode
+	Loop lexer.TokenType
+}
+
+// An UpdateStatement is a decrement or increment statement. These statements end in
+// ++ or --. Unlike other languages such as C, Klar's increment/decrement operators
+// are statements rather than expressions.
+type UpdateStatement struct {
+	Left     Expression
+	Operator Operator
+	BaseNode
+}
+
+// A ForStatement is a loop that executes Body for each item in a list.
+//
+//	for k, v in <expr>
+//	for item in <expr>
+//	for 5 { ...repeat 5 times }
+type ForStatement struct {
+	BaseNode
+	Variables  []*AssignableTypePair
+	Expression Expression // When used as while loop or repeat
+	Body       *Block
+}
+
+// A WhileStatement executes Body while Condition is true
+//
+//	while { ...infinite loop }
+//	while <expr> - while loop
+type WhileStatement struct {
+	BaseNode
+	Infinite  bool // No condition
+	Condition Expression
+	Body      *Block
+}
+
+// Examples:
+//
+//	import klar.http
+//	import klar.http.*
+//	import klar.regex.{RegEx}
+//	import fetch = klar.http.requests.{get}
+type ImportStatement struct {
+	BaseNode
+	Alias              Identifier // Alias is nil if no unqualified imports
+	Module             []string
+	Wildcard           bool
+	UnqualifiedImports []*IdentifierPair
 }
 
 type PublicDeclaration struct {
@@ -156,19 +444,42 @@ type AssignmentStatement struct {
 	Values   []Expression // Either 1 item or len(Variables)
 }
 
-// Examples:
+// A FunctionDeclaration is a basic Klar function or method declaration.
 //
-//	import klar.http
-//	import klar.http.*
-//	import klar.regex.{RegEx}
-//	import fetch = klar.http.requests.{get}
-type ImportStatement struct {
+//	func run()
+//	func Parser.run()
+//	func (p: Parser).run()
+type FunctionDeclaration struct {
+	Identifier    Identifier
+	SelfType      *Identifier // Struct.Identifier
+	SelfName      *Identifier // If (p: Parser) is used instead of Parser
+	GenericParams []Identifier
+	Parameters    []*FunctionParam
+	ReturnType    Type
+	Body          *Block
+	Expression    Expression
 	BaseNode
-	Alias              Identifier // Alias is nil if no unqualified imports
-	Module             []string
-	Wildcard           bool
-	UnqualifiedImports []*IdentifierPair
 }
+
+type FunctionParam struct {
+	Names   []*IdentifierPair
+	Type    Type
+	Default Expression
+	BaseNode
+}
+
+// func x = y
+// func Parser.x = .y
+// func x = module.y
+type FuncAliasDeclaration struct {
+	BaseNode
+	Struct     *Identifier
+	Identifier Identifier
+	Target     Expression
+}
+
+// Type Declarations
+// =================
 
 type TypeDeclaration interface {
 	Statement
@@ -232,7 +543,7 @@ type TypeAliasDeclaration struct {
 }
 
 // Types
-// ========
+// =====
 
 // A PrimitiveType is the name of a Klar-builtin type
 type PrimitiveType struct {
@@ -328,269 +639,8 @@ type MethodParam struct {
 	BaseNode
 }
 
-type MapLiteral struct {
-	Entries []*MapItem
-	BaseNode
-}
-
-// If Rest is true, len(Keys) should be 0.
-type MapItem struct {
-	Keys            []Expression // if not rest
-	Value           Expression
-	Rest, Shorthand bool
-	BaseNode
-}
-
-type TupleLiteral struct {
-	Values []Expression
-	BaseNode
-}
-
-type ReturnStatement struct {
-	Value Expression // Can be nil
-	BaseNode
-}
-
-type Block struct {
-	BaseNode
-	Body []Statement
-}
-
-// A FunctionDeclaration is a basic Klar function or method declaration.
-//
-//	func run()
-//	func Parser.run()
-//	func (p: Parser).run()
-type FunctionDeclaration struct {
-	Identifier    Identifier
-	SelfType      *Identifier // Struct.Identifier
-	SelfName      *Identifier // If (p: Parser) is used instead of Parser
-	GenericParams []Identifier
-	Parameters    []*FunctionParam
-	ReturnType    Type
-	Body          *Block
-	Expression    Expression
-	BaseNode
-}
-
-// func x = y
-// func Parser.x = .y
-// func x = module.y
-type FuncAliasDeclaration struct {
-	BaseNode
-	Struct     *Identifier
-	Identifier Identifier
-	Target     Expression
-}
-
-type FunctionParam struct {
-	Names   []*IdentifierPair
-	Type    Type
-	Default Expression
-	BaseNode
-}
-
-// Continues a loop. In other languages, this is usually 'continue'.
-// Used for [ForStatement], [WhileStatement], and [WhenExpression] statements.
-type NextStatement struct {
-	BaseNode
-	Loop lexer.TokenType
-}
-
-// Breaks a [ForStatement], [WhileStatement], or [WhenExpression].
-// In other languages, this is usually 'break'.
-type StopStatement struct {
-	BaseNode
-	Loop lexer.TokenType
-}
-
-type ListLiteral struct {
-	BaseNode
-	Items []Expression
-}
-
-type IndexExpression struct {
-	Object, Property Node
-	Computed         bool // If square bracket [
-	BaseNode
-}
-
-// A list slice expression
-//
-//	array[low..<high]
-//	array[low...high]
-//	array[low...]
-//	array[..<high]
-//	array[...high]
-//	array[...] // copy
-type SliceExpression struct {
-	Object   Node
-	From, To Expression
-	Operator Operator
-	BaseNode
-}
-
-// Reference to enum item of a known type
-//
-//	x: Color := .red
-type EnumLiteral struct {
-	BaseNode
-	Name Identifier
-}
-
-type CallParam struct {
-	Label     *Identifier
-	Value     Expression
-	Shorthand bool // Whether shorthand was used. Label != nil
-	BaseNode
-}
-
-// A function call
-type CallExpression struct {
-	Callee Node
-	Args   []*CallParam
-	BaseNode
-}
-
-// StructDotInit is a shorthand constructor for known types
-//
-//	people: [Person] := [.("John", age: 32), .("Jane", age: 31)]
-type StructDotInit struct {
-	BaseNode
-	Params []*CallParam
-}
-
-// An UpdateStatement is a decrement or increment statement. These statements end in
-// ++ or --. Unlike other languages such as C, Klar's increment/decrement operators
-// are statements rather than expressions.
-type UpdateStatement struct {
-	Left     Expression
-	Operator Operator
-	BaseNode
-}
-
-// A ForStatement is a loop that executes Body for each item in a list.
-//
-//	for k, v in <expr>
-//	for item in <expr>
-//	for 5 { ...repeat 5 times }
-type ForStatement struct {
-	BaseNode
-	Variables  []*AssignableTypePair
-	Expression Expression // When used as while loop or repeat
-	Body       *Block
-}
-
-// A WhileStatement executes Body while Condition is true
-//
-//	while { ...infinite loop }
-//	while <expr> - while loop
-type WhileStatement struct {
-	BaseNode
-	Infinite  bool // No condition
-	Condition Expression
-	Body      *Block
-}
-
-type WhenExpression struct {
-	BaseNode
-	Subjects []Expression
-	Cases    []*WhenCase
-}
-
-type WhenCase struct {
-	BaseNode
-	Options [][]Expression // cases -> subjects
-	Guard   Expression     // <case> if <expr>
-	Braces  bool
-	Body    Node // [*Block], [Statement], or [Expression]. Syntax: -> <expr> | -> {...}
-}
-
-type WhenCanCase struct {
-	BaseNode
-	Operator Operator
-	Type     Type
-	Params   []*CallParam
-}
-
-type StringTypeMatch struct {
-	BaseNode
-	Name Identifier
-	Type Type
-}
-
-type LambdaExpression struct {
-	BaseNode
-	Params  []*AssignableTypePair
-	InParen bool
-	Block   *Block
-	Expr    Expression
-}
-
-type Attribute struct {
-	BaseNode
-	Decorator Identifier
-	Args      []*CallParam
-}
-
-type RestExpression struct {
-	BaseNode
-	Expression Expression // Can be nil in when cases
-}
-
-type RangeExpression struct {
-	From, To, Step Expression
-	Operator       Operator // First ... or ..<
-	BaseNode
-}
-
-type PipelineExpression struct {
-	Steps []Node
-	BaseNode
-}
-
-type ParenExpression struct {
-	Expression Expression
-	BaseNode
-}
-
-type ListCastExpression struct {
-	BaseNode
-	Type Type // Item type
-	Args []*CallParam
-}
-
-type MapCastExpression struct {
-	BaseNode
-	KeyType, ValueType Type
-	Args               []*CallParam
-}
-
-// A ForExpression is a [ForStatement] used as an expression.
-// It may reduce when the +=, -=, or = operator is used,
-// filter when a block is used, or map when -> is used.
-//
-//	sum := for i in items += i
-//	for [variables] in [iterator] [-> | = | += | -=] [value]
-//	for [variables] in [iterator] { block... }
-type ForExpression struct {
-	BaseNode
-	Variables []*AssignableTypePair
-	Iterator  Expression
-	Operator  Operator
-	Value     Expression
-	Block     *Block
-}
-
-// A pipeline step may be an assignment or method call (ignoring return values)
-type ObjectPipeline struct {
-	BaseNode
-	Object Expression
-	Steps  []Node // Assignment or method call
-}
-
 // Assignments & Destructuring
-// ========
+// ===========================
 
 type Assignable interface {
 	Node
@@ -656,42 +706,8 @@ type AssignableVars struct {
 	Values []Assignable
 }
 
-// Waits for one or more tasks to complete
-//
-//	await task
-//	await [t1, t2]
-//	await (t1, t2)
-type AwaitExpression struct {
-	BaseNode
-	Expression Expression
-}
-
-// Spawns an asynchronous task
-//
-//	go fn()
-//	go { ...body }
-type GoExpression struct {
-	BaseNode
-	Expression Expression // Is a *CallExpression if valid
-	Body       *Block     // If block
-}
-
-// where 'fn' returns a Result, returns from the enclosing function if
-// it returns an error value. Only available in function bodies.
-// try fn() -- must be function call
-type TryExpression struct {
-	BaseNode
-	Expression Expression // Is a *CallExpression if valid
-}
-
-// [expr]!
-type AssertExpression struct {
-	BaseNode
-	Expression Expression
-}
-
-// Pairs
-// ========
+// Pairs & Helpers
+// ===============
 
 type TypePair struct {
 	Keys  []Identifier

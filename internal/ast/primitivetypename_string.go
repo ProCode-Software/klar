@@ -23,9 +23,8 @@ const _PrimitiveTypeName_name = "AnyStringIntFloatBoolNothingResultError"
 var _PrimitiveTypeName_index = [...]uint8{0, 3, 9, 12, 17, 21, 28, 34, 39}
 
 func (i PrimitiveTypeName) String() string {
-	idx := int(i) - 0
-	if i < 0 || idx >= len(_PrimitiveTypeName_index)-1 {
+	if i < 0 || i >= PrimitiveTypeName(len(_PrimitiveTypeName_index)-1) {
 		return "PrimitiveTypeName(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _PrimitiveTypeName_name[_PrimitiveTypeName_index[idx]:_PrimitiveTypeName_index[idx+1]]
+	return _PrimitiveTypeName_name[_PrimitiveTypeName_index[i]:_PrimitiveTypeName_index[i+1]]
 }
