@@ -77,8 +77,9 @@ type Object struct {
 
 type Field struct {
 	BaseNode
-	Key   string
-	Value Value
+	Key     Value
+	KeyPath *[]Value
+	Value   Value
 }
 
 type VarRef struct {

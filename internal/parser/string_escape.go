@@ -33,8 +33,8 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 		// Escape error
 		if err := e.Error; err != nil {
 			p.Error(&Error{
-				Range:     ranges.Offset(err.Pos.Sub(0, 1), 0, 1),
-				Code: klarerrs.ErrStringEscape,
+				Range: ranges.Offset(err.Pos.Sub(0, 1), 0, 1),
+				Code:  klarerrs.ErrStringEscape,
 				Params: klarerrs.ErrorParams{
 					"reason": err.Code,
 					"type":   e.Type,

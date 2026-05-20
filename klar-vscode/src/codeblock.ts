@@ -5,40 +5,29 @@ export default {
     injectionSelector: 'L:text.html.markdown',
     patterns: [
         ['klar', 'klar'],
-        ['klarmarkup', 'klarmarkup|klon'],
+        ['klon', 'klon'],
     ].map(
         ([name, aliases]) =>
             ({
-                begin: merge(/(^|\G)(\s*)(\`{3,}|~{3,})\s*/, `(?i:(${aliases})(s+[^\`~]*)?$)`),
+                begin: merge(
+                    /(^|\G)(\s*)(\`{3,}|~{3,})\s*/,
+                    `(?i:(${aliases})(s+[^\`~]*)?$)`
+                ),
                 end: /(^|\G)(\2|\s{0,3})(\3)\s*$/,
                 beginCaptures: {
-                    3: {
-                        name: 'punctuation.definition.markdown',
-                    },
-                    4: {
-                        name: 'fenced_code.block.language.markdown',
-                    },
-                    5: {
-                        name: 'fenced_code.block.language.attributes.markdown',
-                    },
+                    3: { name: 'punctuation.definition.markdown' },
+                    4: { name: 'fenced_code.block.language.markdown' },
+                    5: { name: 'fenced_code.block.language.attributes.markdown' },
                 },
-                endCaptures: {
-                    3: {
-                        name: 'punctuation.definition.markdown',
-                    },
-                },
+                endCaptures: { 3: { name: 'punctuation.definition.markdown' } },
                 patterns: [
                     {
                         begin: /(^|\G)(\s*)(.*)/,
                         while: /(^|\G)(?!\s*([`~]{3,})\s*$)/,
                         contentName: `meta.embedded.block.${name}`,
-                        patterns: [
-                            {
-                                include: `source.${name}`,
-                            },
-                        ],
+                        patterns: [{ include: `source.${name}` }],
                     },
                 ],
-            } as Pattern)
+            }) as Pattern
     ),
 } satisfies TextMateLanguage

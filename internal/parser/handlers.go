@@ -161,9 +161,9 @@ func (p *Parser) validateAssignable(node ast.Node) ast.Assignable {
 		return n
 	}
 	p.Error(&klarerrs.Error{
-		Code: klarerrs.ErrInvalidAssignment,
-		Range:     node.GetRange(),
-		Node:      node,
+		Code:  klarerrs.ErrInvalidAssignment,
+		Range: node.GetRange(),
+		Node:  node,
 	})
 	return &ast.BadExpression{Value: node}
 }

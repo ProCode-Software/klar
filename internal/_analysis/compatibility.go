@@ -110,7 +110,7 @@ func (c *Checker) CheckSameType(
 			code = errors.ErrMismatchedDistrib
 		}
 		c.Error(errors.TypeError{
-			Code:    code,
+			Code:         code,
 			Range:        expr.GetRange(),
 			ExpectedType: expType,
 			GotType:      got,

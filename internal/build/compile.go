@@ -20,9 +20,9 @@ type Result struct {
 type processContext struct {
 	ctx        context.Context // Cancellation context
 	cancel     context.CancelFunc
-	done       chan struct{}              // Step complete
+	done       chan struct{}          // Step complete
 	errorCh    chan []*klarerrs.Error // Diagnostics
-	fatalErrCh chan error                 // Critical error
+	fatalErrCh chan error             // Critical error
 }
 
 // The actual compilation process.

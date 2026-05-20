@@ -68,7 +68,7 @@ func (e *Error) handleTypeError() string {
 	case ErrUnsupportedSelfType:
 		return "You can only declare methods on struct and enum types"
 	case ErrUnsupportedInitType:
-		return "You can only create initalizers for struct and enum types"
+		return "You can only create initializers for struct and enum types"
 	case ErrInvalidInheritedType:
 		allowed := e.StringParam("allowedTypes")
 		kind := e.StringParam("kind")

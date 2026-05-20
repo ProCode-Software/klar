@@ -31,9 +31,9 @@ func (c *Checker) ErrOverloadExists(
 	name string, existing types.Overload, pos ranges.Range,
 ) {
 	err := errors.TypeError{
-		Name:      existing.StringNamed(name),
-		Range:     pos,
-		Code: errors.ErrOverloadExists,
+		Name:  existing.StringNamed(name),
+		Range: pos,
+		Code:  errors.ErrOverloadExists,
 		Params: errors.ErrorParams{
 			"origPos": existing.Position,
 		},
@@ -64,8 +64,8 @@ func (c *Checker) ErrRedeclared(
 			"origType": origType,
 			"newType":  newType,
 		},
-		Code: code,
-		Range:     newPos,
+		Code:  code,
+		Range: newPos,
 	}
 	c.Error(err)
 }

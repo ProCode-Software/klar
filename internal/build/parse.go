@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 	pkgparser "github.com/ProCode-Software/klar/pkg/parser"
@@ -102,7 +101,7 @@ func (c *Compiler) parseFile(pc *processContext,
 			slog.Int("errors", len(res.Errors)), slog.String("file", filePath),
 		)
 		select {
-		case pc.errorCh <- convertParseErrors(res.Errors):
+		case pc.errorCh <- res.Errors:
 		case <-pc.ctx.Done():
 		}
 		return
@@ -180,14 +179,6 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	res.Program = pa.Parse()
 	res.Errors = pa.Errors
 	return shortPath, res, nil
-}
-
-func convertParseErrors(errs []*klarerrs.Error) []*klarerrs.Error {
-	compileErrs := make([]*klarerrs.Error, len(errs))
-	for i, err := range errs {
-		compileErrs[i] = err
-	}
-	return compileErrs
 }
 
 // Lexer/parser pool

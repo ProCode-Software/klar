@@ -64,7 +64,7 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 	tok := tokens[i]
 	rang := ranges.FromToken(tok)
 	errNoNewline := func() {
-		panic(fmt.Sprintf("impossible: newline not found in %s token: %q",
+		panic(fmt.Sprintf("impossible: newline not found in %s token_: %q",
 			tok.Kind, tok.Source,
 		))
 	}
@@ -92,7 +92,7 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 		if nl < 0 {
 			errNoNewline()
 		} else if nl == len(tok.Source)-1 {
-			panic(fmt.Sprintf("impossible: newline is last character in %s token: %q",
+			panic(fmt.Sprintf("impossible: newline is last character in %s token_: %q",
 				tok.Kind, tok.Source,
 			))
 		}

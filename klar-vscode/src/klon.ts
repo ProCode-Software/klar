@@ -5,22 +5,22 @@ RegExp.prototype.toString = function () {
     return this.source
 }
 
-const comma = match(/,/, 'punctuation.separator.comma.klarmarkup')
+const comma = match(/,/, 'punctuation.separator.comma.klon')
 
 const repository = {
-    commentInside: match(/TODO/, 'keyword.todo.klar'),
+    commentInside: match(/TODO/, 'keyword.todo.klon'),
     comments: {
         patterns: [
             {
                 begin: /\/{2}/,
                 end: /$/,
-                name: 'comment.line.double-slash.klarmarkup',
+                name: 'comment.line.double-slash.klon',
                 patterns: [include('commentInside')],
             },
             {
                 begin: /\/\*/,
                 end: /\*\//,
-                name: 'comment.block.klarmarkup',
+                name: 'comment.block.klon',
                 patterns: [include('commentInside')],
             },
         ],
@@ -29,13 +29,10 @@ const repository = {
         begin: /(?:(?<=\{)|^)\s*((?:-\s*)*)\s*(?:(\$\s*)?('(?:.*)'|"(?:.*)"|[-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
         end: /$|(?=})/,
         beginCaptures: [
-            { name: 'punctuation.definition.block.sequence.item.klarmarkup' },
+            { name: 'punctuation.definition.block.sequence.item.klon' },
             { name: 'punctuation.definition.variable.klar' },
-            {
-                name: 'support.type.property-name.klarmarkup',
-                patterns: [include('keys')],
-            },
-            { name: 'punctuation.separator.key-value.klarmarkup' },
+            { name: 'support.type.property-name.klon', patterns: [include('keys')] },
+            { name: 'punctuation.separator.key-value.klon' },
             { include: '#values' },
         ],
         patterns: [include('values')],
@@ -43,47 +40,39 @@ const repository = {
     stringLiterals: {
         begin: /("|')/,
         end: '\\1',
-        beginCaptures: [{ name: 'punctuation.definition.string.begin.klarmarkup' }],
-        endCaptures: [{ name: 'punctuation.definition.string.end.klarmarkup' }],
-        contentName: 'string.quoted.klarmarkup',
+        beginCaptures: [{ name: 'punctuation.definition.string.begin.klon' }],
+        endCaptures: [{ name: 'punctuation.definition.string.end.klon' }],
+        contentName: 'string.quoted.klon',
         patterns: [include('strings')],
     },
     namespaces: {
         match: /(@)[\p{L}\w\d_.\\+-]+/u,
-        name: 'support.class.klarmarkup',
-        captures: [undefined, { name: 'punctuation.definition.class.klarmarkup' }],
+        name: 'support.class.klon',
+        captures: [undefined, { name: 'punctuation.definition.class.klon' }],
     },
-    strings: {
-        patterns: [match(/\\./, 'constant.character.escape.klarmarkup')],
-    },
-    rawStrings: {
-        match: /.+?/,
-        name: 'string.unquoted.klarmarkup',
-    },
+    strings: { patterns: [match(/\\./, 'constant.character.escape.klon')] },
+    rawStrings: { match: /.+?/, name: 'string.unquoted.klon' },
     numbers: {
         patterns: [
-            match(/\bv[\d.]+(?:-\w+(?:-\d+)?)?\b/, 'constant.numeric.version.klarmarkup'),
-            match(/\b(true|false)\b/, 'constant.language.boolean.$1.klarmarkup'),
-            match(
-                /(?:\b|[-+])[\d_]+(?:.[\d_]+)?\b/,
-                'constant.numeric.decimal.klarmarkup'
-            ),
-            match(/(?:\B|[-+])\.[\d_]+\b/, 'constant.numeric.decimal.klarmarkup'),
+            match(/\bv[\d.]+(?:-\w+(?:-\d+)?)?\b/, 'constant.numeric.version.klon'),
+            match(/\b(true|false)\b/, 'constant.language.boolean.$1.klon'),
+            match(/(?:\b|[-+])[\d_]+(?:.[\d_]+)?\b/, 'constant.numeric.decimal.klon'),
+            match(/(?:\B|[-+])\.[\d_]+\b/, 'constant.numeric.decimal.klon'),
         ],
     },
     array: {
         begin: /\[/,
         end: /\]/,
-        captures: [{ name: 'punctuation.definition.array.klarmarkup' }],
+        captures: [{ name: 'punctuation.definition.array.klon' }],
         patterns: [comma, { include: '#values' }],
     },
     objects: {
         begin: /{/,
         end: /}/,
-        captures: [{ name: 'punctuation.definition.object.klarmarkup' }],
+        captures: [{ name: 'punctuation.definition.object.klon' }],
         patterns: [
             comma,
-            match(/}/, 'punctuation.definition.object.klarmarkup'),
+            match(/}/, 'punctuation.definition.object.klon'),
             include('properties'),
         ],
     },
@@ -92,16 +81,16 @@ const repository = {
             {
                 match: /(\$)(\.?[-\p{L}\w_\\]+)/u,
                 captures: [
-                    { name: 'punctuation.definition.variable.klarmarkup' },
-                    { name: 'variable.other.klarmarkup' },
+                    { name: 'punctuation.definition.variable.klon' },
+                    { name: 'variable.other.klon' },
                 ],
             },
             {
                 match: /(\$\{)\s*(\.?[-\p{L}\w_\\]+)\s*(\})/u,
                 captures: [
-                    { name: 'punctuation.definition.variable.klarmarkup' },
-                    { name: 'variable.other.klarmarkup' },
-                    { name: 'punctuation.definition.variable.klarmarkup' },
+                    { name: 'punctuation.definition.variable.klon' },
+                    { name: 'variable.other.klon' },
+                    { name: 'punctuation.definition.variable.klon' },
                 ],
             },
         ],
@@ -110,7 +99,7 @@ const repository = {
         patterns: [
             include('stringLiterals'),
             include('numbers'),
-            match('/', 'punctuation.separator.accessor.klarmarkup'),
+            match('/', 'punctuation.separator.accessor.klon'),
         ],
     },
     values: {
@@ -128,8 +117,8 @@ const repository = {
 } satisfies Repository
 
 export default {
-    name: 'Klar Markup',
-    scopeName: 'source.klarmarkup',
+    name: 'Klon',
+    scopeName: 'source.klon',
     patterns: ['comments', 'properties', 'values'].map(include),
     repository,
 } satisfies TextMateLanguage

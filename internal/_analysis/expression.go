@@ -25,10 +25,10 @@ func (c *Checker) CheckBinaryExpr(expr *ast.BinaryExpression, ctx context) Type 
 		typ := c.CheckSameType(expr, op, ctx)
 		if op != lexer.EqualEqual && op != lexer.NotEqual && !IsRelCompType(typ) {
 			c.Error(errors.TypeError{
-				GotType:   typ,
-				Code: errors.ErrUncomparableTypes,
-				Params:    errors.ErrorParams{"operator": op},
-				Range:     expr.GetRange(),
+				GotType: typ,
+				Code:    errors.ErrUncomparableTypes,
+				Params:  errors.ErrorParams{"operator": op},
+				Range:   expr.GetRange(),
 			})
 		}
 		return typ

@@ -93,10 +93,10 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 			structDef.Type = str
 		} else {
 			c.Error(errors.TypeError{
-				Code: errors.ErrNonStructReceiver,
-				Name:      receiver,
-				Range:     decl.Struct.GetRange(),
-				GotType:   structDef.Type,
+				Code:    errors.ErrNonStructReceiver,
+				Name:    receiver,
+				Range:   decl.Struct.GetRange(),
+				GotType: structDef.Type,
 			})
 		}
 		return nil

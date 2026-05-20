@@ -1,8 +1,6 @@
 package analysis
 
 import (
-	"fmt"
-
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
@@ -23,20 +21,7 @@ func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 
 func (c *Checker) fileError(err *klarerrs.Error, fid FileID) {
 	file := c.module.JoinFilePath(c.module.fileID[fid])
-	switch err := err.(type) {
-	case *klarerrs.Error:
-		err.File = file
-	case *klarerrs.TypeError:
-		err.File = file
-	case *klarerrs.ModuleError:
-		err.File = file
-	case *klarerrs.ReferenceError:
-		err.File = file
-	case *klarerrs.Warning:
-		err.File = file
-	default:
-		panic(fmt.Sprintf("unhandled error type %T", err))
-	}
+	err.File = file
 	c.error(err)
 }
 
@@ -65,22 +50,11 @@ func kindOf(typ Type) string {
 	return ""
 }
 
-func objectError[T *klarerrs.Error](code klarerrs.Code, obj *Object) T {
-	var x T
-	switch *klarerrs.Error(x).(type) {
-	case *klarerrs.Error:
-		err := &klarerrs.Error{}
-		err.Range = obj.rang
-		err.File = obj.FilePath()
-		err.Code = code
-		return *klarerrs.Error(err).(T)
-	case *klarerrs.TypeError:
-		err := &klarerrs.TypeError{}
-		err.Range = obj.rang
-		err.File = obj.FilePath()
-		err.Code = code
-		return *klarerrs.Error(err).(T)
-	default:
-		panic("unhandled error type")
+func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
+	err := &klarerrs.Error{
+		Range: obj.rang,
+		File:  obj.FilePath(),
+		Code:  code,
 	}
+	return err
 }

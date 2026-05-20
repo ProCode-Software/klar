@@ -94,7 +94,7 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 func (c *Checker) importModule(p imports.ImportPath) (*Module, error) {
 	if c.Options.Importer == nil {
 		// Importer not set up
-		return nil, &klarerrs.ModuleError{}
+		return nil, &klarerrs.Error{Code: klarerrs.ErrImporterNotFound}
 	}
 	return c.Options.Importer.Import(p, c.Options.Target)
 }

@@ -11,8 +11,9 @@ import (
 //go:generate stringer -type=Code
 
 type Error struct {
-	Code Code
-	File string
+	Code  Code
+	title string
+	File  string
 
 	// Positions
 	Name  string
@@ -25,7 +26,8 @@ type Error struct {
 	Details    []Detail    // Additional files context to display
 	Hints      []Hint      // Hints to display
 
-	Params ErrorParams // Internal details about the error
+	Params  ErrorParams // Internal details about the error
+	Warning bool        // Whether the error is a warning
 }
 
 type ErrorParams map[string]any
@@ -86,16 +88,22 @@ func (e *Error) Hintf(format string, a ...any) *Hint {
 	return e.Hint(fmt.Sprintf(format, a...))
 }
 
-func (e *Error) AddHighlight(msg string, r ranges.Range) *Highlight {
-	h := Highlight{Message: msg, Range: r}
-	e.Highlights = append(e.Highlights, h)
+func (e *Error) HintWithDiff(hint string, diff *Diff) *Hint {
+	h := Hint{Message: hint, Diff: diff}
+	e.Hints = append(e.Hints, h)
 	return &h
 }
 
-func (e *Error) AddDetail(msg string, file string, r ranges.Range) *Detail {
+func (e *Error) AddHighlight(msg string, r ranges.Range) *Error {
+	h := Highlight{Message: msg, Range: r}
+	e.Highlights = append(e.Highlights, h)
+	return e
+}
+
+func (e *Error) AddDetail(msg string, file string, r ranges.Range) *Error {
 	d := Detail{File: file, Range: r, Message: msg}
 	e.Details = append(e.Details, d)
-	return &d
+	return e
 }
 
 // Message returns the error message.
@@ -121,19 +129,51 @@ func (e *Error) Message() string {
 	return ""
 }
 
-// Error implements [error] and is synonymous with [Error.Message].
-func (e *Error) Error() string {
-	return e.Message()
+// Title returns the type of the error.
+func (e *Error) Title() string {
+	if e.title != "" {
+		return e.title
+	}
+	switch e.Prefix() {
+	case SyntaxErrorPrefix:
+		return "Syntax error"
+	case TypeErrorPrefix:
+		return "Type error"
+	case WarningPrefix:
+		return "Warning"
+	case ReferenceErrorPrefix:
+		return "Reference error"
+	case NoPrefix:
+		return "Error"
+	case ModuleErrorPrefix:
+		return "Module error"
+	case ImplementationErrorPrefix:
+		return "Implementation error"
+	default:
+		panic(fmt.Sprintf("unhandled error prefix %d", e.Prefix()))
+	}
 }
+
+func (e *Error) SetTitle(title string) *Error {
+	e.title = title
+	return e
+}
+
+// Error implements [error] and is synonymous with [Error.Message].
+func (e *Error) Error() string { return e.Message() }
+
+// IsWarning returns whether the diagnostic is a warning rather than an error.
+func (e *Error) IsWarning() bool { return e.Warning || e.Prefix() == WarningPrefix }
 
 // Params
 // ========
 
-func (e *Error) SetParam(key string, val any) {
+func (e *Error) SetParam(key string, val any) *Error {
 	if e.Params == nil {
 		e.Params = make(ErrorParams)
 	}
 	e.Params[key] = val
+	return e
 }
 
 func (e *Error) GetParam(key string) any {

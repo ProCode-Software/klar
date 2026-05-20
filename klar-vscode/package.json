@@ -1,25 +1,22 @@
 {
     "name": "klar",
     "displayName": "Klar",
-    "description": "A programming language",
-    "publisher": "procode-software",
     "version": "0.0.1",
-    "license": "Apache-2.0",
-    "type": "module",
-    "engines": {
-        "vscode": "^1.99.0"
-    },
+    "description": "A programming language",
     "categories": [
         "Programming Languages"
     ],
-    "devDependencies": {
-        "vsxtools": "latest",
-        "@vscode/vsce": "^3.7.0"
-    },
+    "license": "Apache-2.0",
+    "publisher": "procode-software",
+    "type": "module",
     "scripts": {
         "watch": "vsxtools run",
         "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository",
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
+    },
+    "devDependencies": {
+        "@vscode/vsce": "^3.7.0",
+        "vsxtools": "latest"
     },
     "contributes": {
         "languages": [
@@ -36,12 +33,10 @@
                 "configuration": "./language-configuration.json"
             },
             {
-                "id": "klarmarkup",
+                "id": "klon",
                 "aliases": [
-                    "Klar Markup",
-                    "klar-markup",
-                    "klon",
-                    "klarmarkup"
+                    "Klon",
+                    "klon"
                 ],
                 "extensions": [
                     ".klon",
@@ -58,8 +53,8 @@
                 "path": "./syntaxes/klar.tmLanguage.json"
             },
             {
-                "language": "klarmarkup",
-                "scopeName": "source.klarmarkup",
+                "language": "klon",
+                "scopeName": "source.klon",
                 "path": "./syntaxes/klon.tmLanguage.json"
             },
             {
@@ -70,9 +65,12 @@
                 ],
                 "embeddedLanguages": {
                     "meta.embedded.block.klar": "klar",
-                    "meta.embedded.block.klarmarkup": "klarmarkup"
+                    "meta.embedded.block.klon": "klon"
                 }
             }
         ]
+    },
+    "engines": {
+        "vscode": "^1.99.0"
     }
 }

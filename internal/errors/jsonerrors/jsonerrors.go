@@ -29,22 +29,22 @@ func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) e
 	return json.MarshalWrite(w, format, json.DefaultOptionsV2())
 }
 
-type errorSlice []klarerrs.CompileError
+type errorSlice []*klarerrs.Error
 
 func (es errorSlice) MarshalJSON() ([]byte, error) {
 	errs := make([]compileError, len(es))
 	for i, err := range es {
-		r := err.GetRange()
+		r := err.Range
 		errs[i] = compileError{
-			Message:    err.GetMessage(),
+			Message:    err.Message(),
 			Range:      rang{pos(r.Start), pos(r.End)},
-			File:       err.GetFile(),
-			Type:       err.GetName(),
-			Code:       convertCode(err.GetCode()),
-			Label:      err.GetLabel(),
-			Hints:      convertHints(err.GetHints()),
-			Details:    convertDetails(err.GetDetails()),
-			Highlights: convertHighlights(err.GetHighlights()),
+			File:       err.File,
+			Type:       err.Title(),
+			Code:       convertCode(err.Code),
+			Label:      err.Label,
+			Hints:      convertHints(err.Hints),
+			Details:    convertDetails(err.Details),
+			Highlights: convertHighlights(err.Highlights),
 		}
 	}
 	return json.Marshal(errs, json.DefaultOptionsV2())
@@ -86,7 +86,7 @@ type code struct {
 	ID   int    `json:"id"`
 }
 
-func convertCode(cd klarerrs.ErrorCode) code {
+func convertCode(cd klarerrs.Code) code {
 	return code{Name: cd.Format(), ID: int(cd)}
 }
 

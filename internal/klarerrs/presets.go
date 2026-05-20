@@ -6,46 +6,45 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-
 func UnexpectedToken(token lexer.Token) *Error {
 	return &Error{
-		Range:     ranges.FromToken(token),
-		Info:     TokenInfo(token),
-		Code: ErrUnexpectedToken,
+		Range: ranges.FromToken(token),
+		Info:  TokenInfo(token),
+		Code:  ErrUnexpectedToken,
 	}
 }
 
 func ExpectedTokenf(msg string, exp lexer.TokenType, got lexer.Token) *Error {
 	return &Error{
-		Range:     ranges.FromToken(got),
-		Info: TokenInfo(got),
-		Code: ErrExpectedToken,
-		Params:    ErrorParams{"expected": exp, "msg": msg},
+		Range:  ranges.FromToken(got),
+		Info:   TokenInfo(got),
+		Code:   ErrExpectedToken,
+		Params: ErrorParams{"expected": exp, "msg": msg},
 	}
 }
 
 func ExpectedToken(expTokenKind lexer.TokenType, gotToken lexer.Token) *Error {
 	return &Error{
-		Range:     ranges.FromToken(gotToken),
-		Token:     gotToken,
-		Code: ErrExpectedToken,
-		Params:    ErrorParams{"expected": expTokenKind},
+		Range:  ranges.FromToken(gotToken),
+		Info:   TokenInfo(gotToken),
+		Code:   ErrExpectedToken,
+		Params: ErrorParams{"expected": expTokenKind},
 	}
 }
 
 func Token(err Code, token lexer.Token) *Error {
 	return &Error{
-		Code: err,
-		Range:     ranges.FromToken(token),
-		Token:     token,
+		Code:  err,
+		Range: ranges.FromToken(token),
+		Info:  TokenInfo(token),
 	}
 }
 
 func Node(err Code, node ast.Node) *Error {
 	return &Error{
-		Code: err,
-		Node:      node,
-		Range:     node.GetRange(),
+		Code:  err,
+		Node:  node,
+		Range: node.GetRange(),
 	}
 }
 
@@ -69,8 +68,19 @@ func Slice[T ast.Node](err Code, nodes []T) *Error {
 
 func TokenPos(err Code, pos lexer.Position, tok lexer.Token) *Error {
 	return &Error{
-		Code: err,
-		Range:     ranges.Offset(pos, 0, 1),
-		Token:     tok,
+		Code:  err,
+		Range: ranges.Offset(pos, 0, 1),
+		Info:  TokenInfo(tok),
+	}
+}
+
+func TooManyErrors() *Error { return &Error{Code: ErrTooManyErrors} }
+
+func Undefined(name string, rang ranges.Range) *Error {
+	return &Error{
+		Code:  ErrUndefined,
+		Name:  name,
+		Range: rang,
+		Label: "I can't find " + Quote(name),
 	}
 }

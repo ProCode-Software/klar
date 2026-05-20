@@ -1,0 +1,74 @@
+// Line comment
+/* Block comment */
+/*
+    /* Nested block comment */
+*/
+
+// Top-level object
+// This could be any type, but only 1 is allowed per file
+key: string
+'quotedKey': 1
+0: true // Numeric key
+
+object:
+    - a: 1
+    - b: 2
+    - c:
+        - - another: true
+        -- another2: false
+    
+object2.a: -1
+object2.b: -2
+object2.c.another: true
+object2.c.another2: false
+
+inlineObject: { a: 1, b: 2, c:
+    - another: true
+    - another2: false }
+
+list:
+    - First item
+    - Second item
+
+inlineList: [First item, "Second item"]
+
+primitives:
+    - bool: true
+    - bool2: false
+    - int: 1
+    - int2: -1
+    - float: 1.0
+    - float2: -1.0
+    - string: "hello"
+    - string2: 'hello'
+    - string3: `Hello
+    World!`
+    - null:
+
+
+// Variables
+numbers: [1, 2, $myNumber, 4]
+
+$myNumber: 123
+$myNumbers: [3, 4, $myNumber]
+$myNull:
+$myObject:
+    - key1: value1
+    - key2: value2
+
+somethingThatAcceptsAnObject: $myObject
+
+// Object Spread
+anotherThingAcceptingAnObject:
+    - key3: value3
+    - <- $myObject
+    - key4: value4
+
+// List Spread
+listSpread: [1, 2, <- $myNumbers, 5, 6]
+
+// String Concatenation
+messageToJane: My name is $name and "I am " ${age} " years old."
+
+$name: "John"
+$age: 32

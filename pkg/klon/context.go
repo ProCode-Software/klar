@@ -17,5 +17,6 @@ type Class struct {
 
 type Context struct {
 	Classes map[string]Class
-	Enums   map[string]map[string]any
+	// Map of field IDs to their enum options
+	Enums map[string]map[string]any
 }

@@ -14,7 +14,7 @@ func (rd *reader) parseDocument() (*ast.Document, []error) {
 	var (
 		tok = rd.currTok()
 		res = rd.parseValue(tok)
-		doc = &ast.Document{Variables: rd.vars, Body: res}
+		doc = &ast.Document{Variables: rd.vars, Body: res, Comments: rd.comments}
 	)
 	if tok.Kind == EOF {
 		return doc, rd.errs
@@ -70,6 +70,8 @@ loop:
 			res = rd.parseBoolean(tok)
 		case At:
 			res = rd.parseClass(tok)
+		case Variable:
+			res = rd.parseVariable(tok)
 		case Arrow:
 			res = rd.parseRest(tok)
 			// Only allowed at top level
@@ -172,15 +174,16 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 }
 
 func (rd *reader) parseList(lb Token) *ast.List {
+	oldFlags := rd.addParseFlags(noComma)
+	defer rd.addParseFlags(oldFlags)
+	
 	rd.depthUp()
 	defer rd.depthDown()
-	oldComma := rd.comma
-	rd.comma = true
-	rd.advanceTok()
+	rd.advanceTok() // [
 
 	var items []ast.Value
 	for rd.hasTokens() && rd.currTok().Kind != RightBracket {
-		items = append(items, rd.parseValue(rd.currTok()))
+		items = append(items, rd.parseValue(rd.advanceTok()))
 		if rd.currTok().Kind != RightBracket {
 			rd.skipLines()
 			rd.expectError(Comma, ErrExpectedToken,
@@ -188,7 +191,6 @@ func (rd *reader) parseList(lb Token) *ast.List {
 			)
 		}
 	}
-	rd.comma = oldComma
 	rd.skipLines()
 	rb := rd.expectError(RightBracket, ErrUnterminatedList, "Expected ']' to end list")
 	return &ast.List{

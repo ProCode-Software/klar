@@ -10,18 +10,5 @@ func IsCompileError(err error) bool {
 	return ok
 }
 
-// *Error is any error from the Klar compiler
-type *Error = *klarerrs.Error
-
-type (
-	// A Warning is a compile-time warning
-	Warning = klarerrs.Warning
-	// SyntaxError is an alias for [klarerrs.Error]
-	SyntaxError = klarerrs.Error
-	// A Error is a syntax error during parsing or analysis
-	Error = klarerrs.Error
-	// A TypeError is a type error during analysis
-	TypeError = klarerrs.TypeError
-	// A ReferenceError is an error caused by an unknown or invalid reference during analysis
-	ReferenceError = klarerrs.ReferenceError
-)
+// Error is any error from the Klar compiler
+type Error = *klarerrs.Error

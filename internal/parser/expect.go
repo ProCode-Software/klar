@@ -29,7 +29,7 @@ func withExpectFlags(flags []expectFlag, exp lexer.TokenType, got lexer.Token) (
 		switch flag := flag.(type) {
 		case expectError:
 			err = flag.err
-			err.Token = got
+			err.Info = klarerrs.TokenInfo(got)
 			err.Range = ranges.FromToken(got)
 			if err.Code == 0 {
 				err.Code = klarerrs.ErrExpectedToken

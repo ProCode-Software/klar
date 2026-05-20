@@ -104,7 +104,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	}
 }
 
-// collectInitializers checks the signature of each initalizer function and
+// collectInitializers checks the signature of each initializer function and
 // associates them with the type with name typeName. Each [*Object] in inits
 // should have type [*Overload]. The type with name typeName is looked up
 // within the context and validated.
@@ -221,7 +221,7 @@ func (c *Checker) validateReceiver(name string, self *Object,
 			// Self type doesn't support methods
 			for _, m := range methods {
 				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType,
-					selfRange(m), 
+					selfRange(m),
 				)
 				err.Label = "Can't declare methods on this kind of type"
 				c.fileError(err, m.obj.file)

@@ -21,8 +21,8 @@ func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
 	r.buf = &bytes.Buffer{}
 
 	// Highlights and ranges
-	msgHighlight := klarerrs.Highlight{e.GetRange(), e.GetLabel()}
-	highlights := append([]klarerrs.Highlight{msgHighlight}, e.GetHighlights()...)
+	msgHighlight := klarerrs.Highlight{e.Range, e.Label}
+	highlights := append([]klarerrs.Highlight{msgHighlight}, e.Highlights...)
 	sortHighlights(highlights)
 	startLine, endLine := r.getBoxRanges(highlights[0].Range,
 		highlights[len(highlights)-1].Range,
@@ -30,7 +30,7 @@ func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
 
 	// Highlight color
 	hlc := r.ColorPalette.ErrorColor
-	if _, ok := e.(*errors.Warning); ok {
+	if e.IsWarning() {
 		hlc = r.ColorPalette.WarningColor
 	}
 
@@ -51,27 +51,27 @@ func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
 	r.blankLine()
 
 	// 2. Header (-- file.klar:1:2)
-	r.printHeader(e.GetFile(), e.GetRange(), digitWidth)
+	r.printHeader(e.File, e.Range, digitWidth)
 
 	// 3. Box (file content and highlights)
-	r.printBox(e.GetFile(),
+	r.printBox(e.File,
 		highlights, &msgHighlight, hlc,
 		startLine, endLine, digitWidth, 0,
 	)
 
 	// 4. Details
-	for _, det := range e.GetDetails() {
+	for _, det := range e.Details {
 		r.newline()
-		r.printDetail(det, e.GetFile() == det.File)
+		r.printDetail(det, e.File == det.File)
 	}
 
 	// 5. Extended message
 	// TODO: not implemented in [*Error] yet
 
 	// 6. Hints
-	for _, hint := range e.GetHints() {
+	for _, hint := range e.Hints {
 		r.newline()
-		r.printHint(hint, e.GetFile())
+		r.printHint(hint, e.File)
 	}
 
 	r.alreadyPrinted = true
@@ -93,19 +93,19 @@ func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32)
 // printMessage prints the error message and error code.
 func (r *Reporter) printMessage(e *klarerrs.Error, hlc string) {
 	var b strings.Builder
-	msgParts := strings.SplitAfterN(e.GetMessage(), ": ", 2)
+	msgParts := strings.SplitAfterN(e.Message(), ": ", 2)
 	if r.UseColor {
-		b.WriteString(ansi.Color(hlc, e.GetName()))
+		b.WriteString(ansi.Color(hlc, e.Title()))
 		b.WriteString(ansi.Color(ansi.CodeBoldDim, ": "))
 		b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
 	} else {
-		fmt.Fprintf(&b, "%s: %s", e.GetName(), msgParts[0])
+		fmt.Fprintf(&b, "%s: %s", e.Title(), msgParts[0])
 	}
 	if len(msgParts) > 1 {
 		b.WriteString(msgParts[1])
 	}
-	if e.GetCode() != 0 {
-		code := " (" + e.GetCode().Format() + ")"
+	if e.Code != 0 {
+		code := " (" + e.Code.Format() + ")"
 		if r.UseColor {
 			b.WriteString(ansi.Dim(code))
 		} else {

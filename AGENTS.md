@@ -21,7 +21,6 @@ This file contains rules for AI agents working with this codebase.
 - **Line length**: Up to 90 columns for code; up to 94 is acceptable if parentheses exceed
 - Doc comments: Target 90 columns, up to 95 for single-line comments
 - **Formatter**: `gofumpt` (stricter than `gofmt`)
-- Use `GOEXPERIMENT=jsonv2` (already set in Makefile)
 
 ## Build & Development
 
@@ -30,6 +29,8 @@ This file contains rules for AI agents working with this codebase.
 - Run `make gen` before submitting if AST types changed
 - Run `./scripts/lint.sh` to validate code quality
 - Run `./scripts/format.sh` before submitting changes
+- Always run Go tools with `GOEXPERIMENT=jsonv2` when they accept it, unless I explicitly tell you not to.
+- Never use `git restore` to restore your own changes, unless you stage yourself before you make changes! Don't undo MY changes!
 
 ## Architecture
 
@@ -54,3 +55,4 @@ Klar is a compiler for a modern programming language:
 - The project is in active development; some CLI commands are placeholders
 - Do not manually edit generated files (`*_string.go`, `equal_nodes.go`, `walk_nodes.go`)
 - Package manager (`glas`) is under development
+- **DO NOT DO ANYTHING I DON'T EXPLICITLY TELL YOU TO DO**

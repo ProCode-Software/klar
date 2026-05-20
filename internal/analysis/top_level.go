@@ -338,7 +338,7 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 				// Vars and consts declared in the same declaration
 				kindString := [...]string{1: "variable", 2: "constant"}
 
-				err := objectError[*klarerrs.Error](klarerrs.ErrVarConstMixInDecl, obj)
+				err := objectError(klarerrs.ErrVarConstMixInDecl, obj)
 				err.Label = "This is a " + kindString[varKind]
 				err.Highlights = append(err.Highlights, klarerrs.Highlight{
 					Range:   lastDecl.rang,

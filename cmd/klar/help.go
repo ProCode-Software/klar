@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -13,7 +13,7 @@ func ShowHelp(w io.Writer, full bool) {
 	hb := NewHelpBuilder(w)
 
 	hb.ShortTitleNoNewline(ansi.BoldBrightCyan("Klar"))
-	hb.Print(RandomDescriptions[rand.Intn(len(RandomDescriptions))], " ",
+	hb.Print(RandomDescriptions[rand.IntN(len(RandomDescriptions))], " ",
 		ansi.Gray("v"+cli.KlarVersion), "\n")
 
 	klar := ansi.BoldGreen("klar ")

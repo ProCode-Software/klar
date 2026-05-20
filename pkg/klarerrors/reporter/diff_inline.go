@@ -106,7 +106,7 @@ func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []kl
 		// Check if this token was deleted
 		isDeleted := false
 		for _, edit := range edits {
-			if dr, ok := edit.(errors.DeletedRange); ok && dr.Range.TokenIntersects(tok) {
+			if dr, ok := edit.(klarerrs.DeletedRange); ok && dr.Range.TokenIntersects(tok) {
 				isDeleted = true
 				break
 			}

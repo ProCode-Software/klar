@@ -78,8 +78,8 @@ func (c *Checker) ParseEnum(t *ast.EnumDeclaration, ctx context) types.Enum {
 					Name:  k,
 					Range: item.pos,
 					// Ranges:    errors.Ranges{item.pos, cycle[len(cycle)-1].Position},
-					Code: errors.ErrEnumCycle,
-					Params:    errors.ErrorParams{"cycle": cycle},
+					Code:   errors.ErrEnumCycle,
+					Params: errors.ErrorParams{"cycle": cycle},
 				}
 				c.Error(err)
 			} else if v, ok := members[name]; ok {

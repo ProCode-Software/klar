@@ -116,9 +116,9 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 		// TODO: maybe error hints for newlines/spaces before
 	case tok.Attributes["unterm"] == true:
 		p.Error(&klarerrs.Error{
-			Code: klarerrs.ErrUnterminatedComment,
-			Token:     tok,
-			Range:     ranges.Offset(tok.Position, 0, 1),
+			Code:  klarerrs.ErrUnterminatedComment,
+			Info:  klarerrs.TokenInfo(tok),
+			Range: ranges.Offset(tok.Position, 0, 1),
 		})
 	case tok.Kind == lexer.BlockComment: // But not if unterminated
 		end -= 2

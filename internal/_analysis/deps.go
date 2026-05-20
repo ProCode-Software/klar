@@ -208,8 +208,8 @@ func (c *Checker) cycleErr(
 		ctx.DeclareType(stackItem, types.InvalidType, ranges.Range{})
 	}
 	err := errors.TypeError{
-		Code: errors.ErrTypeCycle,
-		Range:     decl.GetRange(),
+		Code:  errors.ErrTypeCycle,
+		Range: decl.GetRange(),
 		Params: errors.ErrorParams{
 			"mode":  mode,
 			"stack": stack,

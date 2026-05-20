@@ -38,7 +38,7 @@ type Options struct {
 
 type Checker struct {
 	Programs    map[string]*ast.Program // Files in the module that is being checked.
-	Errors      []*klarerrs.Error   // Errors reported while type checking.
+	Errors      []*klarerrs.Error       // Errors reported while type checking.
 	Options     *Options                // Options for type checking.
 	rootContext *Context                // Context where top-level objects are defined.
 	module      *Module

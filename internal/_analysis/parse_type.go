@@ -97,9 +97,9 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		}
 		if invalid || !isPrim {
 			err := errors.TypeError{
-				Code: errors.ErrNoGenerics,
-				Range:     t.GetRange(),
-				Params:    errors.ErrorParams{"type": c.ParseType(t.Name, ctx)},
+				Code:   errors.ErrNoGenerics,
+				Range:  t.GetRange(),
+				Params: errors.ErrorParams{"type": c.ParseType(t.Name, ctx)},
 			}
 			err.Hint("Only 'Map' and 'Result' types are generic")
 			c.Error(err)

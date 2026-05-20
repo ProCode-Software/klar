@@ -25,9 +25,9 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
 		if unreachableStmt != "" {
 			// Statement after return
 			err := klarerrs.Error{
-				Code: errors.ErrProvenUnreachable,
-				Range:     stmt.GetRange(),
-				Params:    errors.ErrorParams{"type": unreachableStmt},
+				Code:   errors.ErrProvenUnreachable,
+				Range:  stmt.GetRange(),
+				Params: errors.ErrorParams{"type": unreachableStmt},
 			}
 			// Hint if user has line break between return and expression
 			if unreachableStmt == "return" &&

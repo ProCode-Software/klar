@@ -8,8 +8,8 @@ import (
 )
 
 type (
-	Error = klarerrs.Error
-	Options    = parser.Options
+	Error   = klarerrs.Error
+	Options = parser.Options
 )
 
 func Parse(tokens []lexer.Token, options *parser.Options) (

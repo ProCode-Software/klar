@@ -74,7 +74,7 @@ type AssetOptions struct {
 
 type JSOptions struct {
 	// Global objects that should be made available to use in source files.
-	Globals map[string]GlobalType
+	Globals map[string]GlobalType `options:"GlobalType"`
 	// Options for the dev server.
 	Server *JSServerOptions
 	// Path to a .d.ts file containing type definitions for items defined in `globals`.
@@ -91,11 +91,11 @@ type JSOptions struct {
 	// can be bundled with TypeScript, or paths to *.d.ts files.
 	TypeScriptLibs []string
 	// How built JavaScript files should be bundled.
-	Bundle BundleMode
+	Bundle BundleMode `options:"BundleMode"`
 	// Whether source map files should be created. If set to `true`, *.js.map files are
 	// created alongside built JavaScript files. If set to `'inline'`, source maps are
 	// stored as data URIs at the end of JavaScript files.
-	Sourcemap SourceMapMode
+	Sourcemap SourceMapMode `options:"SourceMapMode"`
 	// Add JSDoc comments to exports in the resulting JavaScript files.
 	JSDoc bool
 	// Enable experimental ECMAScript libraries. If enabled, generated JavaScript files
@@ -129,12 +129,12 @@ type CheckerOptions struct {
 	// cover all options for a type. If set to 'enumsOnly', exhaustiveness
 	// is only validated for 'when' statements that match enums.
 	// Exhaustiveness is always required in 'when' expressions.
-	ValidateExhaustiveness ExhaustivenessOption
+	ValidateExhaustiveness ExhaustivenessOption `options:"ExhaustivenessOption"`
 	// Whether assertions (using the `!` operator after an expression to crash
 	// if the value is `nil` or an error) should be allowed. Avoiding assertions
 	// prevents obscure crashes in programs, requiring programs to
 	// explicitly check values and crashout.
-	AllowAssertions CheckedAssertionOption
+	AllowAssertions CheckedAssertionOption `options:"CheckedAssertionOption"`
 	// Whether all list index expressions should return `Result` instead of
 	// crashing when out of bounds.
 	CheckedListIndexing bool

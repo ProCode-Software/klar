@@ -14,19 +14,20 @@ const BufferSize = 64
 type bailout struct{}
 
 type reader struct {
-	buffer []byte
-	reader io.Reader
-	pos    int // Buffer position
-	offset lexer.Position
-	curr   *Token
-	peek   *Token
-	comma  bool
+	buffer     []byte
+	reader     io.Reader
+	pos        int // Buffer position
+	offset     lexer.Position
+	curr       *Token
+	peek       *Token
+	parseFlags uint8
 
-	depth int
-	vars  map[string]ast.Value
-	ctx   *Context
-	flags Flags
-	errs  []error
+	depth    int
+	vars     map[string]ast.Value
+	ctx      *Context
+	flags    Flags
+	errs     []error
+	comments []*ast.Comment
 }
 
 func newBufferReader(buf []byte, f ...Flags) *reader {
@@ -126,13 +127,8 @@ func (rd *reader) peekTok() Token {
 	if rd.peek != nil {
 		return *rd.peek
 	}
-	oldComma := rd.comma
-	if rd.currTok().Kind == LeftBracket {
-		rd.comma = true
-	}
 	next := rd.readToken()
 	rd.peek = &next
-	rd.comma = oldComma
 	return next
 }
 
@@ -194,6 +190,14 @@ func (rd *reader) depthDown() {
 		panic("negative depth")
 	}
 }
+
+func (rd *reader) addParseFlags(flags uint8) (old uint8) {
+	old = rd.parseFlags
+	rd.parseFlags |= flags
+	return
+}
+
+func (rd *reader) resetParseFlags(old uint8) { rd.parseFlags = old }
 
 func handlePanic(e *error) {
 	switch err := recover().(type) {

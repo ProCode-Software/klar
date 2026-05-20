@@ -7,6 +7,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+	"github.com/ProCode-Software/klar/pkg/klon/ast"
+)
+
+const (
+	noComma     uint8 = 1 << iota // Disallow commas in unquoted strings
+	objectValue                   // Allow more characters in unquoted strings
 )
 
 func (rd *reader) readRune() (rune, error) {
@@ -67,6 +74,8 @@ func (rd *reader) readToken() Token {
 			continue
 		case '\n':
 			return Token{Kind: Newline, Pos: start, Src: string(r)}
+		case '/':
+			// TODO
 		case '-':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				return rd.readNumber(r, start)
@@ -87,13 +96,15 @@ func (rd *reader) readToken() Token {
 		case '$':
 			return rd.readVariable(start)
 		case ':':
-			return Token{Kind: Colon, Pos: start, Src: string(r)}
+			if (rd.parseFlags & objectValue) == 0 {
+				return Token{Kind: Colon, Pos: start, Src: string(r)}
+			}
 		case '{':
 			return Token{Kind: LeftCurly, Pos: start, Src: string(r)}
 		case '}':
 			return Token{Kind: RightCurly, Pos: start, Src: string(r)}
 		case ',':
-			if rd.comma {
+			if (rd.parseFlags & noComma) != 0 {
 				return Token{Kind: Comma, Pos: start, Src: string(r)}
 			}
 		case '<':
@@ -196,10 +207,12 @@ func (rd *reader) readNumber(first rune, start lexer.Position) Token {
 
 func (rd *reader) isPunct(r rune) bool {
 	switch r {
-	case '\n', '@', '$', ']', '}', ':':
+	case '\n', '@', '$', ']', '}':
 		return true
+	case ':':
+		return (rd.parseFlags & objectValue) == 0
 	case ',':
-		return rd.comma
+		return (rd.parseFlags & noComma) != 0
 	}
 	return false
 }
