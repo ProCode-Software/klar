@@ -2,14 +2,14 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (p *Parser) validatePublic() {
 	if p.CurrKind() == lexer.Public {
-		p.Error(errors.Token(errors.ErrPublicGoesFirst, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrPublicGoesFirst, p.Curr()))
 	}
 }
 
@@ -18,10 +18,10 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 	var stmt ast.Statement
 	switch curr := p.Curr(); curr.Kind {
 	case lexer.Public:
-		err := errors.Token(errors.ErrDuplicateModifier, curr)
+		err := klarerrs.Token(klarerrs.ErrDuplicateModifier, curr)
 		err.SetParam("modifier", lexer.Public)
 		// Show where it was already used
-		err.Highlights = append(err.Highlights, errors.Highlight{
+		err.Highlights = append(err.Highlights, klarerrs.Highlight{
 			ranges.FromToken(firstPublic), "It was already used here",
 		})
 		p.Error(err)
@@ -40,7 +40,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 		ast.ModifierDeclaration:
 		return &ast.PublicDeclaration{Declaration: stmt}
 	default:
-		p.Error(errors.Node(errors.ErrInvalidPublic, stmt))
+		p.Error(klarerrs.Node(klarerrs.ErrInvalidPublic, stmt))
 	}
 	return &ast.BadExpression{Value: stmt}
 }

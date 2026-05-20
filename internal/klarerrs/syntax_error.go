@@ -1,4 +1,4 @@
-package errors
+package klarerrs
 
 import (
 	"fmt"
@@ -6,12 +6,10 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 const (
-	_ ErrorCode = SyntaxErrorPrefix + iota
-
+	_                  = SyntaxErrorPrefix + iota
 	ErrUnexpectedToken // Token not supposed to be there
 	ErrExpectedToken   // Expected kind of token but got different type
 
@@ -143,42 +141,16 @@ const (
 	ErrNoDeclAfterAttr        // Attribute must be followed by a declaration
 )
 
-// A ParseError is a basic Klar parse error.
-type ParseError struct {
-	ErrorCode  ErrorCode
-	File       string
-	Range      ranges.Range
-	Label      string      // After underline
-	Highlights []Highlight // Additional underline; same file
-	Details    []Detail    // May be in different files
-	Hints      []Hint
-	Params     ErrorParams
-
-	Token lexer.Token
-	Node  ast.Node
-}
-
-func (e *ParseError) SetParam(key string, value any) *ParseError {
-	if e.Params == nil {
-		e.Params = make(ErrorParams, 1)
-	}
-	e.Params[key] = value
-	return e
-}
-
-func (e *ParseError) Error() string {
-	return "SyntaxError: " + e.error()
-}
-
-func (e *ParseError) error() string {
+func (e *Error) handleSyntaxError() string {
 	var (
-		tok  = e.Token
-		kind = tok.Kind
-		src  = tok.Source
+		info, _ = e.Info.(SyntaxErrorInfo)
+		tok     = info.Token
+		kind    = tok.Kind
+		src     = tok.Source
 	)
-	switch e.ErrorCode {
+	switch e.Code {
 	default:
-		title := "error code " + e.ErrorCode.String() + " doesn't have a message "
+		title := "error code " + e.Code.String() + " doesn't have a message "
 		if e.Node != nil {
 			panic(title + "[node = " + reflect.TypeOf(e.Node).Name() + "]")
 		}
@@ -195,7 +167,7 @@ func (e *ParseError) error() string {
 	case ErrInvalidTypeAnnotation:
 		return "A type annotation is only allowed on a new variable"
 	case ErrExpectedToken:
-		expToken := e.tokenTypeParam("expected")
+		expToken := e.TokenTypeParam("expected")
 		expected := FormatTokenType(expToken)
 		if src == ";" {
 			return "A line break must be used to terminate a statement in Klar"
@@ -250,7 +222,7 @@ func (e *ParseError) error() string {
 	case ErrRequiredStructFieldType:
 		return "A struct field must have an explicit type"
 	case ErrMustBeFuncCall:
-		return "The expression after '" + e.tokenTypeParam("expr").String() +
+		return "The expression after '" + e.TokenTypeParam("expr").String() +
 			"' must be a function call"
 	case ErrExpectedHex:
 		return "I expected a hexadecimal digit (0-9, a-f or A-F)"
@@ -270,7 +242,7 @@ func (e *ParseError) error() string {
 			// Unicode
 			return "I expected 1-6 hexadecimal digits (0-9, a-f or A-F) between { }"
 		case lexer.ErrCharEscapeUnknown:
-			esc := e.stringParam("escape")
+			esc := e.StringParam("escape")
 			return "Unknown character escape " + Quote(esc)
 		case lexer.ErrEscapeTooShort:
 			if kind == lexer.EscInterpolation {
@@ -290,7 +262,7 @@ func (e *ParseError) error() string {
 			// return "Invalid string escape"
 		}
 	case ErrCurlyQuote:
-		alt := e.stringParam("alt")
+		alt := e.StringParam("alt")
 		return "Use the straight quotation mark " + Quote(alt) + " instead of a curly quotation mark"
 	case ErrNoForIterator:
 		return "Missing variables or expression in 'for' loop"
@@ -355,7 +327,7 @@ func (e *ParseError) error() string {
 	case ErrDestructInvalidEqual:
 		return "A default value can only be provided in a map destructure pattern"
 	case ErrDuplicateModifier:
-		return "Can't use the " + FormatTokenType(e.tokenTypeParam("modifier")) +
+		return "Can't use the " + FormatTokenType(e.TokenTypeParam("modifier")) +
 			" modifier more than once in this declaration"
 	case ErrGenericInFuncAlias:
 		return "Generic parameters aren't allowed in function aliases"
@@ -409,7 +381,7 @@ func (e *ParseError) error() string {
 		return "A step is not allowed in the range of a list slice"
 	case ErrExpectedInterpolationEnd:
 		kind := "string"
-		if e.optionalBoolParam("regex") {
+		if e.BoolParam("regex") {
 			kind = "regex"
 		}
 		return "I expected '}' here to end " + kind + " interpolation"
@@ -418,13 +390,13 @@ func (e *ParseError) error() string {
 	case ErrTryBlock:
 		return "Klar doesn't have try-catch statements"
 	case ErrTripleEqual:
-		op := FormatTokenType(e.tokenTypeParam("op"))
+		op := FormatTokenType(e.TokenTypeParam("op"))
 		return "In Klar, comparisons are always strict; use " + op + " instead"
 	case ErrSelfNameDiscard:
 		e.Hint("Remove the label")
 		return "Can't use '_' as name of self in method declaration"
 	case ErrInvalidLoop:
-		kind := e.tokenTypeParam("stmt")
+		kind := e.TokenTypeParam("stmt")
 		var loop string
 		if kind == lexer.Next {
 			loop = "continue"
@@ -455,7 +427,7 @@ func (e *ParseError) error() string {
 		)
 		return "A '+' prefix isn't allowed in Klar"
 	case ErrDoubleNot:
-		if e.intParam("count")%2 == 0 {
+		if e.IntParam("count")%2 == 0 {
 			e.Hint("Remove all of them.")
 		} else {
 			e.Hint("Keep only one of them.")
@@ -468,7 +440,7 @@ func (e *ParseError) error() string {
 	case ErrSelfLabelInFuncAlias:
 		return "Function aliases can't have a named self"
 	case ErrMissingLabelsType:
-		if e.intParam("length") == 1 {
+		if e.IntParam("length") == 1 {
 			return "Missing type for this label"
 		}
 		return "Missing type for these labels"
@@ -479,9 +451,9 @@ func (e *ParseError) error() string {
 			"existingIsType": existing.IsTypeDecl(),
 		*/
 		var (
-			name    = e.stringParam("name")
-			oldKind = e.stringParam("oldKind")
-			newKind = e.stringParam("newKind")
+			name    = e.StringParam("name")
+			oldKind = e.StringParam("oldKind")
+			newKind = e.StringParam("newKind")
 			as      string
 		)
 		if oldKind != newKind {
@@ -491,8 +463,8 @@ func (e *ParseError) error() string {
 	case ErrTopLevel:
 		return "Only 'main.klar' and single-file modules can have top-level statements"
 	case ErrImportShadow:
-		name := e.stringParam("name")
-		importPath := e.stringParam("import")
+		name := e.StringParam("name")
+		importPath := e.StringParam("import")
 		if importPath != "" {
 			importPath = " from " + Quote(importPath)
 		}
@@ -500,7 +472,7 @@ func (e *ParseError) error() string {
 			" has the same name as an existing object in this module"
 	case ErrRedeclaredField:
 		name := e.Node.(ast.Identifier).Name
-		kind := e.stringParam("kind")
+		kind := e.StringParam("kind")
 		if kind == "enum" {
 			return "Item " + Quote(name) + " was already declared in this enum"
 		}
@@ -508,23 +480,9 @@ func (e *ParseError) error() string {
 	case ErrVarConstMixInDecl:
 		return "Can't declare variable and constants in the same statement"
 	case ErrDuplicateInheritedType:
-		name := e.stringParam("name")
+		name := e.StringParam("name")
 		return "Type " + Quote(name) + " was already inherited"
 	case ErrNoDeclAfterAttr:
 		return "Attributes must be followed by a declaration"
 	}
-}
-
-func (e *ParseError) stringParam(name string) string { return e.Params[name].(string) }
-func (e *ParseError) boolParam(name string) bool     { return e.Params[name].(bool) }
-func (e *ParseError) intParam(name string) int       { return e.Params[name].(int) }
-func (e *ParseError) tokenTypeParam(name string) lexer.TokenType {
-	return e.Params[name].(lexer.TokenType)
-}
-func (e *ParseError) tokenParam(name string) lexer.Token { return e.Params[name].(lexer.Token) }
-func (e *ParseError) optionalBoolParam(name string) bool {
-	if v, ok := e.Params[name]; ok {
-		return v.(bool)
-	}
-	return false
 }

@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // Step 4: Type check the modules. This is done in a separate goroutine,
@@ -31,7 +31,7 @@ func (c *Compiler) TypeCheckModules(pc *processContext, moduleCh chan *Module) {
 // typeCheckModule type checks a single module, returning any errors.
 func (c *Compiler) typeCheckModule(
 	parsedMod *Module, pool *checkerPool,
-) []errors.CompileError {
+) []*klarerrs.Error {
 	opts := c.getCheckerOptions(parsedMod)
 	mod := analysis.NewModule(
 		parsedMod.Name, parsedMod.Path,

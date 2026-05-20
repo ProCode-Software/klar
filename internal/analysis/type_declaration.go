@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -32,8 +32,8 @@ func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 			typ := c.parseType(tn, decl.file)
 			if _, ok := tag.Implements[typ]; ok {
 				// Type specified twice
-				err := errors.Range(errors.ErrDuplicateInheritedType, tn.GetRange())
-				err.Highlights = append(err.Highlights, errors.Highlight{
+				err := klarerrs.Range(klarerrs.ErrDuplicateInheritedType, tn.GetRange())
+				err.Highlights = append(err.Highlights, klarerrs.Highlight{
 					Range:   existingMap[typ],
 					Message: "It was already specified here",
 				})
@@ -62,12 +62,11 @@ func (c *Checker) validateInheritedType(n ast.Type, t Type,
 	kind := t.Kind()
 	// Validate the node
 	newError := func(currType, allowedTypes string) {
-		err := errors.RangedTypeError(errors.ErrInvalidInheritedType, n.GetRange(),
-			errors.ErrorParams{
-				"kind":         currType,
-				"allowedTypes": allowedTypes,
-			},
-		)
+		err := klarerrs.Range(klarerrs.ErrInvalidInheritedType, n.GetRange())
+		err.Params = klarerrs.ErrorParams{
+			"kind":         currType,
+			"allowedTypes": allowedTypes,
+		}
 		err.Label = "Can't inherit from this kind of type"
 		c.fileError(err, fid)
 	}

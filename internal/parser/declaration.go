@@ -4,7 +4,7 @@ import (
 	"cmp"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -29,7 +29,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	switch p.CurrKind() {
 	case lexer.Equal:
 		if isIntf {
-			p.Error(errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
+			p.Error(klarerrs.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
 		}
 		// Type alias
 		p.Advance()
@@ -88,7 +88,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 			res = p.ParseStruct(name, inherited, attrs)
 		}
 		// Enum already returned
-		p.Error(errors.Range(errors.ErrInvalidGenericType, ranges.Range{lt, gt}))
+		p.Error(klarerrs.Range(klarerrs.ErrInvalidGenericType, ranges.Range{lt, gt}))
 		return res
 	case lexer.Newline:
 		// Type tag if interface
@@ -101,7 +101,7 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		fallthrough
 	default:
 		// Some other token or unassigned type (if EOS)
-		p.Error(errors.Token(errors.ErrExpectedTypeAssignment, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrExpectedTypeAssignment, p.Curr()))
 		if p.CurrKind() != lexer.Newline {
 			p.Advance()
 		}
@@ -142,7 +142,7 @@ func (p *Parser) ParseEnum(
 
 		// Check if exists
 		if _, ok := itemMap[id.Name]; ok {
-			err := errors.Node(errors.ErrRedeclaredField, id)
+			err := klarerrs.Node(klarerrs.ErrRedeclaredField, id)
 			err.SetParam("kind", "enum")
 			p.Error(err)
 		}
@@ -210,7 +210,7 @@ func (p *Parser) ParseStruct(
 		parseSeries(p, &f.Names, func() ast.Identifier {
 			name := p.ParseMapIdentOrDiscard(0)
 			if _, ok := fieldMap[name.Name]; ok {
-				err := errors.Node(errors.ErrRedeclaredField, name)
+				err := klarerrs.Node(klarerrs.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
 				// TODO: original position in error
 				// maybe store index as fieldMap value
@@ -223,11 +223,11 @@ func (p *Parser) ParseStruct(
 		// Type
 		if isAssignment(p.CurrKind()) {
 			// Default value without explicit type
-			p.Error(errors.Token(errors.ErrRequiredStructFieldType, p.Curr()))
+			p.Error(klarerrs.Token(klarerrs.ErrRequiredStructFieldType, p.Curr()))
 		} else {
 			p.Expect(
 				lexer.Colon,
-				expectError{errors.Slice(errors.ErrRequiredStructFieldType, f.Names)},
+				expectError{klarerrs.Slice(klarerrs.ErrRequiredStructFieldType, f.Names)},
 				noAdvance,
 			)
 			f.Type = p.ParseType(DefaultTypeBindingPower)
@@ -258,11 +258,11 @@ func (p *Parser) ParseInterface(
 		// Names
 		parseSeries(p, &f.Keys, func() ast.Identifier {
 			if p.CurrKind() == lexer.Underscore {
-				p.ErrorLabelled(errors.Token(errors.ErrDiscardIntfField, p.Curr()), "Remove the field")
+				p.ErrorLabelled(klarerrs.Token(klarerrs.ErrDiscardIntfField, p.Curr()), "Remove the field")
 			}
 			name := p.ParseMapIdentOrDiscard(0)
 			if _, ok := fieldMap[name.Name]; ok {
-				err := errors.Node(errors.ErrRedeclaredField, name)
+				err := klarerrs.Node(klarerrs.ErrRedeclaredField, name)
 				err.SetParam("kind", "interface")
 				p.Error(err)
 			}
@@ -274,7 +274,7 @@ func (p *Parser) ParseInterface(
 			// Parse function: #{ kind() -> String }
 			if len(f.Keys) > 1 {
 				// Invalid: x, y, z()
-				p.Error(errors.Slice(errors.ErrIntfMultiKeyMethod, f.Keys))
+				p.Error(klarerrs.Slice(klarerrs.ErrIntfMultiKeyMethod, f.Keys))
 			}
 			fn := &ast.MethodType{
 				BaseNode: ast.BaseNode{Range: ranges.Range{
@@ -293,7 +293,7 @@ func (p *Parser) ParseInterface(
 			f.Value = p.ParseType(DefaultTypeBindingPower)
 		}
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
-			p.Error(errors.Token(errors.ErrIntfDefaultValue, c))
+			p.Error(klarerrs.Token(klarerrs.ErrIntfDefaultValue, c))
 			p.ParseExpression(DefaultBindingPower) // Just to skip the expression
 		}
 		f.Range.Start = f.Keys[0].Position
@@ -313,14 +313,14 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		p.Advance() // (
 		if p.PeekKind() == lexer.Colon {
 			if p.CurrKind() == lexer.Underscore {
-				p.Error(errors.Token(errors.ErrSelfNameDiscard, p.Curr()))
+				p.Error(klarerrs.Token(klarerrs.ErrSelfNameDiscard, p.Curr()))
 			}
 			f.SelfName = new(p.ParseIdentOrDiscard())
 			p.Expect(lexer.Colon)
 		}
 		f.SelfType = new(p.ParseIdentifier()) // TODO: change type of f.Struct to allow types
 		p.Expect(lexer.RightParenthesis)      // )
-		p.Expect(lexer.Dot, noAdvance, expectErrorCode(errors.ErrFuncDotAfterSelf))
+		p.Expect(lexer.Dot, noAdvance, expectErrorCode(klarerrs.ErrFuncDotAfterSelf))
 		f.Identifier = p.ParseMapIdentifier(0)
 	} else if p.PeekKind() == lexer.Dot {
 		// Method declaration
@@ -343,7 +343,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 			lexer.GreaterThan, lexer.Comma, false,
 		)
 		if len(f.GenericParams) == 0 {
-			p.Error(errors.Token(errors.ErrEmptyGeneric, p.PeekBehind()))
+			p.Error(klarerrs.Token(klarerrs.ErrEmptyGeneric, p.PeekBehind()))
 		}
 	}
 
@@ -408,11 +408,11 @@ func (p *Parser) parseFuncParam() *ast.FunctionParam {
 	// 	func List.join(by by: String = ", ")
 	if p.isEqual(p.Curr()) {
 		if len(param.Names) > 1 {
-			err := errors.Range(errors.ErrChainedDefault, ranges.Range{
+			err := klarerrs.Range(klarerrs.ErrChainedDefault, ranges.Range{
 				Start: param.Names[len(param.Names)-1].Range.Start,
 				End:   param.Type.GetRange().End,
 			})
-			err.Highlights = append(err.Highlights, errors.Highlight{
+			err.Highlights = append(err.Highlights, klarerrs.Highlight{
 				Range: ranges.Between(
 					param.Names[0].Range,
 					param.Names[len(param.Names)-2].Range,
@@ -430,10 +430,10 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	beforeEqual := p.Index - 1
 	p.Advance() // =
 	if f.GenericParams != nil {
-		p.Error(errors.Node(errors.ErrGenericInFuncAlias, f.Identifier))
+		p.Error(klarerrs.Node(klarerrs.ErrGenericInFuncAlias, f.Identifier))
 	}
 	if f.SelfName != nil {
-		p.Error(errors.Node(errors.ErrSelfLabelInFuncAlias, f.Identifier))
+		p.Error(klarerrs.Node(klarerrs.ErrSelfLabelInFuncAlias, f.Identifier))
 	}
 	if f.SelfType != nil {
 		p.Expect(lexer.Dot) // TODO: better error message
@@ -443,14 +443,14 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	case *ast.Symbol:
 	case *ast.IndexExpression:
 		if target.Computed {
-			p.Error(errors.Node(errors.ErrComputedFuncAlias, target))
+			p.Error(klarerrs.Node(klarerrs.ErrComputedFuncAlias, target))
 		}
 		// LHS checked at analysis-time
 	default:
-		err := errors.Node(errors.ErrNonNameFuncAlias, target)
+		err := klarerrs.Node(klarerrs.ErrNonNameFuncAlias, target)
 		err.HintWithDiff(
 			"Or, did you mean to define a new function? Add parentheses after the function name.",
-			&errors.Diff{Edits: []errors.DiffEdit{errors.AddedString{
+			&klarerrs.Diff{Edits: []klarerrs.DiffEdit{klarerrs.AddedString{
 				Position: p.Tokens[beforeEqual].End(),
 				String:   "()",
 			}}},

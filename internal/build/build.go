@@ -10,7 +10,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
@@ -25,7 +25,7 @@ import (
 type Compiler struct {
 	Mode                BuildMode
 	StartTime           time.Time
-	Errors              []errors.CompileError
+	Errors              []*klarerrs.Error
 	Options             []*Options // Configurations from klar.build or CLI
 	PreBuild, PostBuild []any      // TODO
 	Parser              Parser     // Parses files

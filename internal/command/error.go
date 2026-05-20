@@ -7,7 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
@@ -53,7 +53,7 @@ func (c *Command) handleFlagError(err error) {
 	case *argparse.MissingValueError:
 		typ := argparse.TypeNames[err.Type]
 		cli.ColorErrorfln("<**>Expected %s value for flag <c!>%s</c!></**>",
-			errors.WithA(typ), argparse.FormatFlag(err.Flag),
+			klarerrs.WithA(typ), argparse.FormatFlag(err.Flag),
 		)
 		forMoreHelp()
 	case *argparse.InvalidOptionError:

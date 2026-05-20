@@ -7,7 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -16,13 +16,13 @@ import (
 var Width int
 
 // Report prints the given error.
-func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
+func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
 	r.init()
 	r.buf = &bytes.Buffer{}
 
 	// Highlights and ranges
-	msgHighlight := errors.Highlight{e.GetRange(), e.GetLabel()}
-	highlights := append([]errors.Highlight{msgHighlight}, e.GetHighlights()...)
+	msgHighlight := klarerrs.Highlight{e.GetRange(), e.GetLabel()}
+	highlights := append([]klarerrs.Highlight{msgHighlight}, e.GetHighlights()...)
 	sortHighlights(highlights)
 	startLine, endLine := r.getBoxRanges(highlights[0].Range,
 		highlights[len(highlights)-1].Range,
@@ -66,7 +66,7 @@ func (r *Reporter) Report(e errors.CompileError) (n int64, err error) {
 	}
 
 	// 5. Extended message
-	// TODO: not implemented in [CompileError] yet
+	// TODO: not implemented in [*Error] yet
 
 	// 6. Hints
 	for _, hint := range e.GetHints() {
@@ -91,7 +91,7 @@ func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32)
 }
 
 // printMessage prints the error message and error code.
-func (r *Reporter) printMessage(e errors.CompileError, hlc string) {
+func (r *Reporter) printMessage(e *klarerrs.Error, hlc string) {
 	var b strings.Builder
 	msgParts := strings.SplitAfterN(e.GetMessage(), ": ", 2)
 	if r.UseColor {
@@ -140,7 +140,7 @@ func (r *Reporter) printHeader(file string, rang ranges.Range, digitWidth int) {
 }
 
 // printDetail prints a detail message and the corresponding code snippet.
-func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
+func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 	const detailMargin = 2
 	// Title
 	r.appendSpace(detailMargin)
@@ -161,9 +161,9 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 	r.ColorPalette.Box = r.ColorPalette.DetailBox
 	defer func() { r.ColorPalette.Box = oldBoxColor }()
 
-	hl := errors.Highlight{Range: det.Range}
+	hl := klarerrs.Highlight{Range: det.Range}
 	r.printBox(det.File,
-		[]errors.Highlight{hl}, &hl, r.ColorPalette.HintColor,
+		[]klarerrs.Highlight{hl}, &hl, r.ColorPalette.HintColor,
 		startLine, endLine, digitWidth, detailMargin+2,
 	)
 }
@@ -171,7 +171,7 @@ func (r *Reporter) printDetail(det errors.Detail, sameFile bool) {
 const hintMargin = 4
 
 // printHint prints a hint message and an optional diff.
-func (r *Reporter) printHint(hint errors.Hint, file string) {
+func (r *Reporter) printHint(hint klarerrs.Hint, file string) {
 	r.appendString("Hint", r.ColorPalette.HintColor)
 	if r.UseColor {
 		r.appendString(": ", ansi.CodeDim)

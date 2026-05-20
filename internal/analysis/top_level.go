@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 type methodInfo struct {
@@ -47,7 +47,7 @@ func (c *Checker) collectTopLevelObjects(
 			switch stmt := stmt.(type) {
 			case *ast.ImportStatement:
 				// Imports were already processed. Misplaced import
-				err := errors.Node(errors.ErrImportsGoFirst, stmt)
+				err := klarerrs.Node(klarerrs.ErrImportsGoFirst, stmt)
 				err.Label = "Put this import at the top of the file"
 				c.fileError(err, fid)
 				continue
@@ -137,7 +137,7 @@ func (c *Checker) collectTopLevelObjects(
 				case *ast.BadExpression:
 					panic("typechecking invalid AST")
 				default:
-					c.fileError(errors.Node(errors.ErrUnusedValue, stmt), fid)
+					c.fileError(klarerrs.Node(klarerrs.ErrUnusedValue, stmt), fid)
 					continue
 				}
 			}
@@ -149,12 +149,12 @@ func (c *Checker) collectTopLevelObjects(
 			if fileName == "main.klar" || c.module.Flags.Has(SingleFileModule) {
 				c.module.TopLevel = append(c.module.TopLevel, stmt)
 			} else {
-				c.fileError(errors.Node(errors.ErrTopLevel, stmt), fid)
+				c.fileError(klarerrs.Node(klarerrs.ErrTopLevel, stmt), fid)
 			}
 		}
 		if len(attrs) > 0 {
 			// Attribute with no declaration after
-			err := errors.Slice(errors.ErrNoDeclAfterAttr, attrs)
+			err := klarerrs.Slice(klarerrs.ErrNoDeclAfterAttr, attrs)
 			err.Label = "Missing declaration after attribute"
 			if len(attrs) > 1 {
 				err.Label += "s"
@@ -178,11 +178,11 @@ func (c *Checker) collectTopLevelObjects(
 				// Provide the import path the namespace is from
 				namespace = impObj.module.ImportPathString()
 			}
-			err := errors.Range(errors.ErrImportShadow, impObj.rang)
-			err.Label = errors.Quote(name) + " was already declared in the module"
-			err.Params = errors.ErrorParams{"name": name, "import": namespace}
+			err := klarerrs.Range(klarerrs.ErrImportShadow, impObj.rang)
+			err.Label = klarerrs.Quote(name) + " was already declared in the module"
+			err.Params = klarerrs.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
-			err.Details = append(err.Details, errors.Detail{
+			err.Details = append(err.Details, klarerrs.Detail{
 				File:  modObj.FilePath(),
 				Range: modObj.rang, Message: "It was already declared here",
 			})
@@ -287,7 +287,7 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 		dest, ok := assg.(ast.Destructurable)
 		if !ok {
 			// Not a destructure
-			c.fileError(errors.Node(errors.ErrNonNameDeclaration, dest), fid)
+			c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, dest), fid)
 		}
 		// Undestructured value
 		var value ast.Expression
@@ -311,7 +311,7 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 		for name, err := range dest.Names() {
 			if err != nil {
 				// Expression is not a variable
-				c.fileError(errors.Node(errors.ErrNonNameDeclaration, err), fid)
+				c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, err), fid)
 				continue
 			}
 			obj := NewObject(name.Name, fid, name.Range(), c.module, nil)
@@ -338,9 +338,9 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 				// Vars and consts declared in the same declaration
 				kindString := [...]string{1: "variable", 2: "constant"}
 
-				err := objectError[*errors.ParseError](errors.ErrVarConstMixInDecl, obj)
+				err := objectError[*klarerrs.Error](klarerrs.ErrVarConstMixInDecl, obj)
 				err.Label = "This is a " + kindString[varKind]
-				err.Highlights = append(err.Highlights, errors.Highlight{
+				err.Highlights = append(err.Highlights, klarerrs.Highlight{
 					Range:   lastDecl.rang,
 					Message: "This was already declared as a " + kindString[oldVarKind],
 				})

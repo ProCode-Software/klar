@@ -1,4 +1,4 @@
-// Package reporter formats [CompileError] with colored file context and
+// Package reporter formats [*Error] with colored file context and
 // highlights. This is based on [miette], an implementation written in Rust.
 //
 // [miette]: https://github.com/zkat/miette
@@ -56,7 +56,7 @@ func NewReporterTheme(colors *ColorPalette, chars *CharacterSet) *Reporter {
 
 // LoadFile loads the file and tokens into r. path is the file path as provided
 // in the errors. rel is the path to be displayed when printed. If rel is an empty
-// string, path is displayed. Errors with [CompileError.GetFile] path display
+// string, path is displayed. Errors with [*Error.GetFile] path display
 // tokens.
 func (r *Reporter) LoadFile(path, rel string, tokens []lexer.Token) {
 	if r.files == nil {

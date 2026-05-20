@@ -1,14 +1,14 @@
 package parser
 
 import (
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (p *Parser) unknownTokenError() {
 	tok := p.AdvanceNonBoundary()
-	p.Error(errors.UnexpectedToken(tok))
+	p.Error(klarerrs.UnexpectedToken(tok))
 	// p.skipUntilBoundary()
 }
 
@@ -41,14 +41,14 @@ func (p *Parser) nudError() {
 		p.unknownTokenError()
 		return
 	case lexer.If:
-		p.ErrorLabelled(errors.Token(errors.ErrIfStatement, curr), "Use a 'when' block instead")
+		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrIfStatement, curr), "Use a 'when' block instead")
 	case lexer.Plus:
-		p.ErrorLabelled(errors.Token(errors.ErrPositiveSign, curr),
+		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrPositiveSign, curr),
 			"A leading '+' sign doesn't change a number",
 		)
 	case lexer.NotNot:
 		count := p.countConsecutiveNot()
-		err := errors.Range(errors.ErrDoubleNot,
+		err := klarerrs.Range(klarerrs.ErrDoubleNot,
 			ranges.Offset(curr.Position, 0, uint32(count)),
 		)
 		err.SetParam("count", count)
@@ -95,7 +95,7 @@ func (p *Parser) skipUntilBoundary() {
 
 // mismatchedLabelFormatError formats an error for a mismatch between type-only
 // and labels-and-types parameters.
-func mismatchedLabelFormatError(err *errors.ParseError,
+func mismatchedLabelFormatError(err *klarerrs.Error,
 	prevIsTypeOnly bool, prevRange ranges.Range,
 ) {
 	var msg string
@@ -106,7 +106,7 @@ func mismatchedLabelFormatError(err *errors.ParseError,
 		err.Label = "This parameter should have a label"
 		msg = "This parameter already has a label"
 	}
-	err.Highlights = append(err.Highlights, errors.Highlight{
+	err.Highlights = append(err.Highlights, klarerrs.Highlight{
 		Range:   prevRange,
 		Message: msg,
 	})
@@ -114,7 +114,7 @@ func mismatchedLabelFormatError(err *errors.ParseError,
 
 // missingParamTypeAnnotError formats an error for a missing type annotation for
 // a parameter or tuple item. missingParamTypeAnnotError sets err.Label.
-func (p *Parser) missingParamTypeAnnotError(err *errors.ParseError,
+func (p *Parser) missingParamTypeAnnotError(err *klarerrs.Error,
 	kind string, labelCount int, lastParamRange ranges.Range,
 ) {
 	err.SetParam("length", labelCount)
@@ -123,14 +123,8 @@ func (p *Parser) missingParamTypeAnnotError(err *errors.ParseError,
 	} else {
 		err.Label = "This " + kind + " needs a type annotation"
 	}
-	err.Highlights = append(err.Highlights, errors.Highlight{
+	err.Highlights = append(err.Highlights, klarerrs.Highlight{
 		Range:   lastParamRange,
 		Message: "This " + kind + " already has a type",
 	})
-}
-
-func expectAt(msg string, label string) *errors.ParseError {
-	err := errors.ExpectedTokenf(msg, 0, lexer.Token{})
-	err.Label = label
-	return err
 }

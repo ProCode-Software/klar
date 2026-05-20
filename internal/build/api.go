@@ -10,7 +10,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
@@ -37,11 +37,11 @@ func NewCompiler(mode BuildMode) (*Compiler, error) {
 }
 
 // PrintError prints an error to the error printer.
-func (c *Compiler) PrintError(err errors.CompileError) (int64, error) {
+func (c *Compiler) PrintError(err *klarerrs.Error) (int64, error) {
 	return c.Reporter.Report(err)
 }
 
-func (c *Compiler) PrintAllErrors(errs []errors.CompileError) {
+func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
 	for _, err := range errs {
 		c.PrintError(err)
 	}
@@ -64,7 +64,7 @@ type Parser interface {
 type ParseResult struct {
 	Tokens  []lexer.Token
 	Program *ast.Program
-	Errors  []*errors.ParseError
+	Errors  []*klarerrs.Error
 }
 
 // UseStdParser sets c's Parser to the standard parser [StdParser].

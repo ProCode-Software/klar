@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // Compilation stops after exceeding this number of errors.
 const MaxErrors = 10
 
 type Result struct {
-	Errors []errors.CompileError
+	Errors []*klarerrs.Error
 	// Time from [Compiler.StartTime] to finish time.
 	Elapsed time.Duration `json:"elapsedTime,format:units"`
 	Modules []*Module
@@ -21,7 +21,7 @@ type processContext struct {
 	ctx        context.Context // Cancellation context
 	cancel     context.CancelFunc
 	done       chan struct{}              // Step complete
-	errorCh    chan []errors.CompileError // Diagnostics
+	errorCh    chan []*klarerrs.Error // Diagnostics
 	fatalErrCh chan error                 // Critical error
 }
 
@@ -51,7 +51,7 @@ func (c *Compiler) Compile() (res *Result, err error) {
 		ctx:        ctx,
 		cancel:     cancel,
 		done:       make(chan struct{}, 1),
-		errorCh:    make(chan []errors.CompileError),
+		errorCh:    make(chan []*klarerrs.Error),
 		fatalErrCh: make(chan error, 1),
 	}
 	// Global error collector

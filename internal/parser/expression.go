@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -46,7 +46,7 @@ loop:
 		switch p.CurrKind() {
 		case lexer.NotEqual:
 			if len(rel.Operators) >= 1 { // Allow 'a != b' but not 'a != b != c'
-				err := errors.Token(errors.ErrChainedNotEqual, p.Curr())
+				err := klarerrs.Token(klarerrs.ErrChainedNotEqual, p.Curr())
 				err.Hint(
 					"In 'a != b != c', 'a' could still be equal to 'c'. Since this " +
 						"is confusing, chaining the '!=' operator isn't allowed in Klar.\n\n" +
@@ -60,7 +60,7 @@ loop:
 		case lexer.EqualEqual:
 			// Hint for use of JavaScript === or !==
 			if p.PeekKind() == lexer.Equal {
-				p.ErrorLabelled(errors.Range(errors.ErrTripleEqual, ranges.Range{
+				p.ErrorLabelled(klarerrs.Range(klarerrs.ErrTripleEqual, ranges.Range{
 					Start: p.Curr().Position,
 					End:   p.Advance().Position.Add(0, 3),
 				}).SetParam("op", p.CurrKind()), "Remove the last '=' character")
@@ -86,7 +86,7 @@ loop:
 }
 
 func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
-	err := errors.Token(errors.ErrMultiDirectionCompareChain, p.Curr())
+	err := klarerrs.Token(klarerrs.ErrMultiDirectionCompareChain, p.Curr())
 	var next lexer.TokenType
 	switch got {
 	case lexer.GreaterThan:
@@ -108,7 +108,7 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 			" (e.g. 'a < b > c' to 'a < b && b > c')",
 		)
 	}
-	p.ErrorLabelled(err, errors.Quote(next.String())+" must be used")
+	p.ErrorLabelled(err, klarerrs.Quote(next.String())+" must be used")
 }
 
 func (p *Parser) ParseParenExpression() ast.Expression {
@@ -170,7 +170,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 				if rest, ok := item.(*ast.RestExpression); ok {
 					if len(entry.Keys) > 0 {
 						p.ErrorLabelled(
-							errors.Slice(errors.ErrMultipleKeysInMapRest, entry.Keys),
+							klarerrs.Slice(klarerrs.ErrMultipleKeysInMapRest, entry.Keys),
 							"Only 1 key is allowed in a rest",
 						)
 					}
@@ -237,10 +237,10 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			r.To = p.ParseExpression(RangeBindingPower)
 		} else if k == lexer.DotDotLessThan {
 			// '..<' must have end
-			p.ErrorLabelled(errors.Token(errors.ErrExpectedExprAfterOpenRange, p.PeekBehind()), "Expected an upper bound after this")
+			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrExpectedExprAfterOpenRange, p.PeekBehind()), "Expected an upper bound after this")
 		}
 		if p.CurrKind() == lexer.Ellipsis {
-			p.ErrorLabelled(errors.Token(errors.ErrStepInListSlice, p.Advance()), "List slices must be continuous")
+			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrStepInListSlice, p.Advance()), "List slices must be continuous")
 			r.Step = p.ParseExpression(RangeBindingPower)
 		}
 		p.Expect(lexer.RightBracket)
@@ -252,7 +252,7 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 
 	if rang, ok := item.(*ast.RangeExpression); ok {
 		if rang.Step != nil {
-			p.ErrorLabelled(errors.Node(errors.ErrStepInListSlice, rang.Step), "List slices must be continuous")
+			p.ErrorLabelled(klarerrs.Node(klarerrs.ErrStepInListSlice, rang.Step), "List slices must be continuous")
 		}
 		return &ast.SliceExpression{
 			Object:   left,
@@ -273,10 +273,10 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 	switch left := left.(type) {
 	case *ast.ParenExpression:
 		if left, ok := left.Expression.(*ast.LambdaExpression); ok {
-			p.Error(errors.Node(errors.ErrSelfExecFunc, left))
+			p.Error(klarerrs.Node(klarerrs.ErrSelfExecFunc, left))
 		}
 	case *ast.LambdaExpression:
-		p.Error(errors.Node(errors.ErrSelfExecFunc, left))
+		p.Error(klarerrs.Node(klarerrs.ErrSelfExecFunc, left))
 	}
 	var args []*ast.CallParam
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
@@ -345,7 +345,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 			// Non-parenthesized type
 			if p.CurrKind() == lexer.Colon {
 				p.ErrorLabelled(
-					errors.Token(errors.ErrParenAroundLambdaType, p.Advance()),
+					klarerrs.Token(klarerrs.ErrParenAroundLambdaType, p.Advance()),
 					"This parameter must be in parentheses",
 				)
 				d.Type = p.ParseType(DefaultTypeBindingPower) // Still parse it
@@ -353,7 +353,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 			// Non-parenthesized default
 			if c := p.CurrKind(); c == lexer.Equal || c == lexer.ColonEqual {
 				p.ErrorLabelled(
-					errors.Token(errors.ErrParenAroundLambdaDefault, p.Advance()),
+					klarerrs.Token(klarerrs.ErrParenAroundLambdaDefault, p.Advance()),
 					"This parameter must be in parentheses",
 				)
 				d.Value = p.ParseExpression(ExpressionBindingPower) // Still parse it
@@ -369,7 +369,7 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 		l.Block = p.ParseBlock()
 	default:
 		p.ErrorLabelled(
-			errors.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()),
+			klarerrs.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()),
 			"Expected a block or an arrow '->'",
 		)
 	}
@@ -393,7 +393,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		}
 		curr := p.CurrKind()
 		if curr == lexer.DotDotLessThan {
-			p.ErrorLabelled(errors.Token(errors.ErrEllipsisForOpenRangeStep, p.Curr()), "Steps are defined using '...'")
+			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrEllipsisForOpenRangeStep, p.Curr()), "Steps are defined using '...'")
 			curr = lexer.Ellipsis
 		}
 		if curr == lexer.Ellipsis {
@@ -406,7 +406,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 	if op.Kind == lexer.DotDotLessThan {
 		// Expression required
 		p.ErrorLabelled(
-			errors.Token(errors.ErrExpectedExprAfterOpenRange, op),
+			klarerrs.Token(klarerrs.ErrExpectedExprAfterOpenRange, op),
 			"Open ranges must have an upper bound",
 		)
 	}
@@ -414,7 +414,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 	if _, ok := left.(*ast.Discard); ok {
 		// _... not allowed
 		p.ErrorLabelled(
-			errors.Node(errors.ErrUnderscoreWithRest, left),
+			klarerrs.Node(klarerrs.ErrUnderscoreWithRest, left),
 			"Remove this discard",
 		)
 	}
@@ -441,7 +441,7 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 	// pipeline is not used as an expression.
 	if returnIndex >= 0 && returnIndex != len(steps)-1 {
 		p.ErrorLabelled(
-			errors.Node(errors.ErrReturnPipelineNotLast, steps[returnIndex]),
+			klarerrs.Node(klarerrs.ErrReturnPipelineNotLast, steps[returnIndex]),
 			"'return' must be the last step",
 		)
 	}
@@ -518,7 +518,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 			if isValidIdentifier(p.Curr().Kind) {
 				lhs = p.ParseValidIdent().Symbol()
 			} else {
-				p.Error(errors.Node(errors.ErrInvalidObjectPipeStep, lhs))
+				p.Error(klarerrs.Node(klarerrs.ErrInvalidObjectPipeStep, lhs))
 				lhs = &ast.BadExpression{Value: lhs}
 			}
 		}
@@ -539,7 +539,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 		} else {
 			// Validate method call
 			if _, ok := lhs.(*ast.CallExpression); !ok {
-				p.Error(errors.Node(errors.ErrInvalidObjectPipeStep, lhs))
+				p.Error(klarerrs.Node(klarerrs.ErrInvalidObjectPipeStep, lhs))
 				lhs = &ast.BadExpression{Value: lhs}
 			}
 			pipeline.Steps = append(pipeline.Steps, lhs)
@@ -558,7 +558,7 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 		// = or :=; neither are allowed
 		fallthrough
 	default:
-		p.Error(errors.Token(errors.ErrInvalidForExprOperator, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrInvalidForExprOperator, p.Curr()))
 		p.AdvanceNonBoundary()
 		// TODO: should we still parse an expression after?
 	case isAssignment(k), k == lexer.Arrow:
@@ -580,7 +580,7 @@ func (p *Parser) ParseGoExpression() *ast.GoExpression {
 		g := &ast.GoExpression{Expression: p.ParseExpression(UnaryBindingPower)}
 		if _, ok := g.Expression.(*ast.CallExpression); !ok {
 			p.ErrorLabelled(
-				errors.Node(errors.ErrMustBeFuncCall, g.Expression).
+				klarerrs.Node(klarerrs.ErrMustBeFuncCall, g.Expression).
 					SetParam("expr", lexer.Go),
 				"This must be a function call",
 			)
@@ -599,13 +599,13 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	t := &ast.TryExpression{}
 	// Invalid try-catch block: try {}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		p.ErrorLabelled(errors.Token(errors.ErrTryBlock, p.Curr()), "Klar doesn't have try-catch")
+		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrTryBlock, p.Curr()), "Klar doesn't have try-catch")
 		p.ParseBlock() // Just parse it
 		return t
 	}
 	t.Expression = p.ParseExpression(UnaryBindingPower)
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
-		p.ErrorLabelled(errors.Node(errors.ErrMustBeFuncCall, t.Expression).
+		p.ErrorLabelled(klarerrs.Node(klarerrs.ErrMustBeFuncCall, t.Expression).
 			SetParam("expr", lexer.Try),
 			"This must be a function call",
 		)

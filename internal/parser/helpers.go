@@ -2,7 +2,7 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/printer"
@@ -17,7 +17,7 @@ func newOperator(t lexer.Token) ast.Operator {
 func (p *Parser) isEqual(t lexer.Token) bool {
 	switch t.Kind {
 	case lexer.ColonEqual:
-		p.Error(errors.Token(errors.ErrColonEqual, t))
+		p.Error(klarerrs.Token(klarerrs.ErrColonEqual, t))
 		return true
 	case lexer.Equal:
 		return true
@@ -56,8 +56,8 @@ func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 		}
 	}
 	if !isOk {
-		err := errors.Node(errors.ErrInvalidLabelShorthand, sym)
-		err.Params = errors.ErrorParams{"computed": isComputed}
+		err := klarerrs.Node(klarerrs.ErrInvalidLabelShorthand, sym)
+		err.Params = klarerrs.ErrorParams{"computed": isComputed}
 		p.Error(err)
 	}
 	return key, value
@@ -122,7 +122,7 @@ func (p *Parser) checkCurlyQuote(tok lexer.Token) bool {
 	default:
 		return false
 	}
-	err := errors.Token(errors.ErrCurlyQuote, tok)
+	err := klarerrs.Token(klarerrs.ErrCurlyQuote, tok)
 	err.SetParam("alt", alt)
 	err.Hint("This may have been caused by smart quoting by a mobile keyboard or word processor, which automatically types curly quotation marks instead of straight ones. In Klar, strings are delimited by straight quotes.")
 	p.Error(err)
@@ -135,7 +135,7 @@ func (p *Parser) checkIllegal(tok lexer.Token) bool {
 	}
 	if tok.Attributes != nil {
 		if _, ok := tok.Attributes["invalidCharacter"]; ok {
-			p.Error(errors.Token(errors.ErrInvalidCharacter, tok))
+			p.Error(klarerrs.Token(klarerrs.ErrInvalidCharacter, tok))
 			return true
 		}
 	}

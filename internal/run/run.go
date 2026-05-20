@@ -7,7 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -54,7 +54,7 @@ func reportErrors(c *build.Compiler, res *build.Result, err error) {
 	c.PrintAllErrors(res.Errors)
 	// Critical errors
 	switch err := err.(type) {
-	case nil, errors.CompileError:
+	case nil, *klarerrs.Error:
 	case *build.InterfaceError:
 		build.PrintInterfaceErr(err)
 	default:

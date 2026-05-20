@@ -4,7 +4,7 @@ import (
 	"cmp"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -23,7 +23,7 @@ func (p *Parser) parseMethodParams() (params []*ast.MethodParam) {
 	setMode := func(m int) {
 		// Error if mixing type-only and labels-and-types
 		if mode != modeUnknown && mode != m {
-			err := errors.Token(errors.ErrMixTypeTupleLabels, p.Curr())
+			err := klarerrs.Token(klarerrs.ErrMixTypeTupleLabels, p.Curr())
 			prev := params[len(params)-2]
 			mismatchedLabelFormatError(err, len(prev.Names) == 0, prev.GetRange())
 			p.Error(err)
@@ -63,7 +63,7 @@ func (p *Parser) parseMethodParams() (params []*ast.MethodParam) {
 				newMode = labelsAndTypes
 				name1, name2 = name2, p.ParseValidIdent()
 				if name1.Name == "_" {
-					p.Error(errors.Node(errors.ErrUnderscoreLabel, name1))
+					p.Error(klarerrs.Node(klarerrs.ErrUnderscoreLabel, name1))
 				}
 			}
 
@@ -101,7 +101,7 @@ func (p *Parser) parseMethodParams() (params []*ast.MethodParam) {
 		// Labels missing a type
 		if mode == labelsAndTypes {
 			first, last := labels[0], labels[len(labels)-1]
-			err := errors.Range(errors.ErrMissingLabelsType, ranges.Range{
+			err := klarerrs.Range(klarerrs.ErrMissingLabelsType, ranges.Range{
 				Start: cmp.Or(first.Label.Position, first.Name.Position),
 				End:   last.Name.End(),
 			})
@@ -127,7 +127,7 @@ func (p *Parser) ParseTupleType() ast.Type {
 		// Error if mixing type-only and labels-and-types
 		if mode != modeUnknown && mode != m {
 			prev, curr := t.Values[len(t.Values)-2], t.Values[len(t.Values)-1]
-			err := errors.Range(errors.ErrMixTypeTupleLabels, curr.Range)
+			err := klarerrs.Range(klarerrs.ErrMixTypeTupleLabels, curr.Range)
 			mismatchedLabelFormatError(err, len(prev.Keys) == 0, prev.Range)
 			p.Error(err)
 		}
@@ -186,7 +186,7 @@ func (p *Parser) ParseTupleType() ast.Type {
 	if len(labels) > 0 {
 		// Labels missing a type
 		if mode == labelsAndTypes {
-			err := errors.Range(errors.ErrMissingLabelsType, ranges.Range{
+			err := klarerrs.Range(klarerrs.ErrMissingLabelsType, ranges.Range{
 				Start: labels[0].Position,
 				End:   labels[len(labels)-1].End(),
 			})
@@ -240,7 +240,7 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 			pair.Type = p.ParseType(DefaultTypeBindingPower)
 			hasTypeAnnot = true
 		} else if hasTypeAnnot {
-			err := errors.Range(errors.ErrMissingLabelsType, ranges.Range{
+			err := klarerrs.Range(klarerrs.ErrMissingLabelsType, ranges.Range{
 				Start: pair.Keys[0].GetRange().Start,
 				End:   pair.Keys[len(pair.Keys)-1].GetRange().End,
 			})
@@ -254,7 +254,7 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 			if len(pair.Keys) > 1 {
 				// Not allowed with multiple keys
 				p.ErrorLabelled(
-					errors.Range(errors.ErrChainedDefault, ranges.Range{
+					klarerrs.Range(klarerrs.ErrChainedDefault, ranges.Range{
 						pair.Keys[len(pair.Keys)-1].GetRange().Start,
 						p.lastTokEnd(),
 					}), "Unchain this parameter",

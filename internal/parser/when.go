@@ -2,7 +2,7 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -101,7 +101,7 @@ loop:
 			c.Body = res
 		default:
 			// Expected expression error
-			p.Error(errors.Node(errors.ErrRequiredBraces, res))
+			p.Error(klarerrs.Node(klarerrs.ErrRequiredBraces, res))
 			c.Body = &ast.BadExpression{Value: res}
 		}
 	}

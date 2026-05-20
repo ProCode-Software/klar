@@ -1,7 +1,7 @@
 package analysis
 
 import (
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
@@ -33,7 +33,7 @@ func (c *Checker) ErrOverloadExists(
 	err := errors.TypeError{
 		Name:      existing.StringNamed(name),
 		Range:     pos,
-		ErrorCode: errors.ErrOverloadExists,
+		Code: errors.ErrOverloadExists,
 		Params: errors.ErrorParams{
 			"origPos": existing.Position,
 		},
@@ -42,7 +42,7 @@ func (c *Checker) ErrOverloadExists(
 }
 
 func (c *Checker) ErrRedeclared(
-	code errors.ErrorCode,
+	code errors.Code,
 	name string,
 	newPos ranges.Range,
 	newType string,
@@ -57,14 +57,14 @@ func (c *Checker) ErrRedeclared(
 		dec := ctx.Declarations[name]
 		origPos, origType = dec.Position, typeof(dec.Type, false)
 	}
-	err := errors.ParseError{
+	err := klarerrs.Error{
 		Params: errors.ErrorParams{
 			"name":     name,
 			"origPos":  origPos.Start,
 			"origType": origType,
 			"newType":  newType,
 		},
-		ErrorCode: code,
+		Code: code,
 		Range:     newPos,
 	}
 	c.Error(err)
@@ -90,5 +90,5 @@ func typeof(t Type, isType bool) string {
 	return "type"
 }
 
-func (c *Checker) TypeMismatch(code errors.ErrorCode, name string, exp, got Type) {
+func (c *Checker) TypeMismatch(code errors.Code, name string, exp, got Type) {
 }

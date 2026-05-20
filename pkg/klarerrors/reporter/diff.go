@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -22,9 +22,9 @@ type diffState struct {
 // diffLine groups diff operations that apply to a single line.
 type diffLine struct {
 	line        uint32
-	addedLine   *errors.DiffEdit
-	deletedLine *errors.DeletedLine
-	ranges      []errors.DiffEdit
+	addedLine   *klarerrs.DiffEdit
+	deletedLine *klarerrs.DeletedLine
+	ranges      []klarerrs.DiffEdit
 }
 
 const (
@@ -33,7 +33,7 @@ const (
 )
 
 // printDiff formats and prints all line changes and highlights described in the diff.
-func (r *Reporter) printDiff(diff *errors.Diff) {
+func (r *Reporter) printDiff(diff *klarerrs.Diff) {
 	var (
 		lines, end = r.groupDiffLines(diff)
 		digitWidth = digitLen(end)
@@ -66,7 +66,7 @@ func (r *Reporter) printDiff(diff *errors.Diff) {
 }
 
 // groupDiffLines organizes disjoint diff ranges by line number so they can be accurately displayed together.
-func (r *Reporter) groupDiffLines(diff *errors.Diff) (
+func (r *Reporter) groupDiffLines(diff *klarerrs.Diff) (
 	lines map[uint32]*diffLine, end uint32,
 ) {
 	lines = make(map[uint32]*diffLine)
@@ -84,9 +84,9 @@ func (r *Reporter) groupDiffLines(diff *errors.Diff) (
 				continue
 			}
 			switch edit := edit.(type) {
-			case errors.DeletedLine:
+			case klarerrs.DeletedLine:
 				dl.deletedLine = &edit
-			case errors.AddedTokens, errors.AddedString:
+			case klarerrs.AddedTokens, klarerrs.AddedString:
 				dl.addedLine = &edit
 			}
 		}
@@ -130,7 +130,7 @@ func (r *Reporter) printFullRemove(s *diffState, dl *diffLine) (lastLine uint32)
 func (r *Reporter) printFullAdd(s *diffState, dl *diffLine) (lastLine uint32) {
 	hlColor := r.ColorPalette.DiffAdd + r.ColorPalette.DiffAddBackground
 	switch edit := (*dl.addedLine).(type) {
-	case errors.AddedString:
+	case klarerrs.AddedString:
 		// Multiline added string
 		if edit.NumLines > 1 {
 			for line := range strings.SplitSeq(edit.String, "\n") {
@@ -144,7 +144,7 @@ func (r *Reporter) printFullAdd(s *diffState, dl *diffLine) (lastLine uint32) {
 		r.appendString(edit.String, hlColor)
 		r.newline()
 		return dl.line
-	case errors.AddedTokens:
+	case klarerrs.AddedTokens:
 		var (
 			srcTokens = r.setTokenKind(edit.Tokens, addedToken)
 			srcState  = &state{tokens: srcTokens}

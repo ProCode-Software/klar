@@ -2,7 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -110,7 +110,7 @@ func (c *Checker) CheckSameType(
 			code = errors.ErrMismatchedDistrib
 		}
 		c.Error(errors.TypeError{
-			ErrorCode:    code,
+			Code:    code,
 			Range:        expr.GetRange(),
 			ExpectedType: expType,
 			GotType:      got,

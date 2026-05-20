@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -208,7 +208,7 @@ func (c *Checker) cycleErr(
 		ctx.DeclareType(stackItem, types.InvalidType, ranges.Range{})
 	}
 	err := errors.TypeError{
-		ErrorCode: errors.ErrTypeCycle,
+		Code: errors.ErrTypeCycle,
 		Range:     decl.GetRange(),
 		Params: errors.ErrorParams{
 			"mode":  mode,

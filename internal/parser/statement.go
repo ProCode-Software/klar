@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -16,13 +16,13 @@ func (p *Parser) ParseVarTypeAnnotation(left []ast.Assignable) ast.Statement {
 	switch curr := p.Curr(); curr.Kind {
 	default:
 		if !isAssignment(curr.Kind) {
-			p.Error(errors.ExpectedToken(lexer.ColonEqual, curr))
+			p.Error(klarerrs.ExpectedToken(lexer.ColonEqual, curr))
 			return &ast.BadExpression{Value: typ}
 		}
-		p.Error(errors.Node(errors.ErrInvalidTypeAnnotation, typ))
+		p.Error(klarerrs.Node(klarerrs.ErrInvalidTypeAnnotation, typ))
 		fallthrough
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
-		err := errors.Node(errors.ErrInvalidTypeAnnotation, typ)
+		err := klarerrs.Node(klarerrs.ErrInvalidTypeAnnotation, typ)
 		if curr.Kind == lexer.Equal {
 			err.Hint("Did you mean to use ':='?")
 		}
@@ -47,20 +47,20 @@ func (p *Parser) ParseAssignment(lhs []ast.Assignable, explicitType ast.Type) as
 	}
 	rhs = slices.Clip(rhs)
 	if gotLen := len(rhs); gotLen > 1 && gotLen != expLen {
-		err := errors.Slice(errors.ErrMismatchedAssignment, rhs)
+		err := klarerrs.Slice(klarerrs.ErrMismatchedAssignment, rhs)
 		err.Label = fmt.Sprintf("%d values were provided", gotLen)
 		plural := "s were"
 		if expLen == 1 {
 			plural = " was"
 		}
-		err.Highlights = append(err.Highlights, errors.Highlight{
+		err.Highlights = append(err.Highlights, klarerrs.Highlight{
 			Range: ranges.Range{
 				Start: lhs[0].GetRange().Start,
 				End:   lhs[len(lhs)-1].GetRange().End,
 			},
 			Message: fmt.Sprintf("%d variable%s provided", expLen, plural),
 		})
-		err.Params = errors.ErrorParams{"left": expLen, "right": gotLen}
+		err.Params = klarerrs.ErrorParams{"left": expLen, "right": gotLen}
 		p.Error(err)
 	}
 	if op.Kind == lexer.ColonEqual {
@@ -89,7 +89,7 @@ func (p *Parser) ParseCommaStatement(first ast.Expression) ast.Statement {
 	} else if curr == lexer.Colon {
 		return p.ParseVarTypeAnnotation(items)
 	}
-	p.Error(errors.Slice(errors.ErrInvalidComma, items))
+	p.Error(klarerrs.Slice(klarerrs.ErrInvalidComma, items))
 	return &ast.BadExpression{Value: items[0]}
 }
 
@@ -101,7 +101,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 		p.Advance()
 	}
 	if c := p.CurrKind(); c == lexer.Dot || c == lexer.LeftCurlyBrace {
-		p.Error(errors.Token(errors.ErrImportExpectedModule, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrImportExpectedModule, p.Curr()))
 		if c == lexer.Dot {
 			p.Advance()
 		}
@@ -121,7 +121,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 			i.Wildcard = true
 			wc := p.Advance()
 			if p.CurrKind() == lexer.Dot {
-				p.Error(errors.Token(errors.ErrImportInvalidWildcard, wc))
+				p.Error(klarerrs.Token(klarerrs.ErrImportInvalidWildcard, wc))
 				continue
 			}
 			break
@@ -138,9 +138,9 @@ unqualifiedImport:
 		case i.Wildcard:
 			// Wildcard and unqualified import //nolint:dupword
 			// import module.*.{...}
-			p.Error(errors.Token(errors.ErrWildcardWithUnqualified, p.PeekBehind()))
+			p.Error(klarerrs.Token(klarerrs.ErrWildcardWithUnqualified, p.PeekBehind()))
 		case p.CurrKind() == lexer.RightCurlyBrace:
-			p.Error(errors.Token(errors.ErrEmptyUnqualifiedImport, p.Curr()))
+			p.Error(klarerrs.Token(klarerrs.ErrEmptyUnqualifiedImport, p.Curr()))
 		}
 		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.IdentifierPair) {
 			u = &ast.IdentifierPair{Name: p.ParseIdentifier()}
@@ -168,7 +168,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	p.Expect(lexer.For)
 	f := &ast.ForStatement{}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		p.Error(errors.Token(errors.ErrNoForIterator, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrNoForIterator, p.Curr()))
 	} else {
 		f.Variables, f.Expression = p.parseForVariables()
 	}
@@ -225,7 +225,7 @@ func (p *Parser) ParseControlStatement() ast.Statement {
 	case lexer.When, lexer.For, lexer.While:
 		loopKind = p.Advance().Kind
 	default:
-		p.Error(errors.Token(errors.ErrInvalidLoop, p.Advance()).
+		p.Error(klarerrs.Token(klarerrs.ErrInvalidLoop, p.Advance()).
 			SetParam("stmt", stmtKind),
 		)
 	}

@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -25,11 +25,11 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 	}
 	switch {
 	case tok.Kind == lexer.Underscore:
-		p.Error(errors.Token(errors.ErrUnderscoreValue, tok))
+		p.Error(klarerrs.Token(klarerrs.ErrUnderscoreValue, tok))
 	case slices.Contains(ast.ReservedIdent, tok.Kind):
-		p.Error(errors.Token(errors.ErrReservedKeyword, tok))
+		p.Error(klarerrs.Token(klarerrs.ErrReservedKeyword, tok))
 	default:
-		p.Error(errors.ExpectedToken(lexer.Identifier, tok))
+		p.Error(klarerrs.ExpectedToken(lexer.Identifier, tok))
 	}
 	return false
 }
@@ -73,13 +73,13 @@ func (p *Parser) ParseMapIdentifier(opts parseFlags) ast.Identifier {
 		break
 	case kind == lexer.Numeric && opts&allowNumber == 0:
 		if opts&isLabel != 0 {
-			p.Error(errors.Token(errors.ErrNumericLabel, tok))
+			p.Error(klarerrs.Token(klarerrs.ErrNumericLabel, tok))
 			break
 		}
 		fallthrough
 	case !slices.Contains(ast.Modifiers, tok.Kind) &&
 		!slices.Contains(ast.ReservedIdent, tok.Kind):
-		p.Error(errors.ExpectedToken(lexer.Identifier, tok))
+		p.Error(klarerrs.ExpectedToken(lexer.Identifier, tok))
 	}
 	return newIdentifier(tok)
 }

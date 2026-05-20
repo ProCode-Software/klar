@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
@@ -18,7 +18,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context) Type {
 		name := expr.Identifier
 		target := ctx.LookupRecursive(name)
 		if target == nil {
-			c.fileError(errors.Undefined(name, expr.GetRange()), ctx.File)
+			c.fileError(klarerrs.Undefined(name, expr.GetRange()), ctx.File)
 			return InvalidType
 		}
 		return target.typ

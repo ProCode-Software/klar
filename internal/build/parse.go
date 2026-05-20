@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 	pkgparser "github.com/ProCode-Software/klar/pkg/parser"
@@ -182,8 +182,8 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	return shortPath, res, nil
 }
 
-func convertParseErrors(errs []*errors.ParseError) []errors.CompileError {
-	compileErrs := make([]errors.CompileError, len(errs))
+func convertParseErrors(errs []*klarerrs.Error) []*klarerrs.Error {
+	compileErrs := make([]*klarerrs.Error, len(errs))
 	for i, err := range errs {
 		compileErrs[i] = err
 	}

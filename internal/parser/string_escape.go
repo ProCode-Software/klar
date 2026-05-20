@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -32,10 +32,10 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 
 		// Escape error
 		if err := e.Error; err != nil {
-			p.Error(&ParseError{
+			p.Error(&Error{
 				Range:     ranges.Offset(err.Pos.Sub(0, 1), 0, 1),
-				ErrorCode: errors.ErrStringEscape,
-				Params: errors.ErrorParams{
+				Code: klarerrs.ErrStringEscape,
+				Params: klarerrs.ErrorParams{
 					"reason": err.Code,
 					"type":   e.Type,
 					"escape": src,
@@ -62,7 +62,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 		case lexer.EscUnicode:
 			hex := parseHex(src[3 : len(src)-1])
 			if hex > 0x10FFFF {
-				p.Error(errors.Range(errors.ErrUnicodeEscapeTooBig, ranges.Range{
+				p.Error(klarerrs.Range(klarerrs.ErrUnicodeEscapeTooBig, ranges.Range{
 					e.Pos.Add(0, 3),
 					e.Pos.Add(0, uint32(len(src)-1)), //nolint:gosec
 				}))
@@ -105,7 +105,7 @@ func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.No
 	pBase.Errors = append(pBase.Errors, p.Errors...)
 	// Check that there is nothing else
 	if c := p.CurrKind(); c != lexer.Newline && c != lexer.EOF {
-		pBase.Error(errors.Token(errors.ErrExpectedInterpolationEnd, p.Curr()))
+		pBase.Error(klarerrs.Token(klarerrs.ErrExpectedInterpolationEnd, p.Curr()))
 	}
 	return res
 }

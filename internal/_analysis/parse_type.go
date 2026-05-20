@@ -5,14 +5,14 @@ import (
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
 )
 
 func (c *Checker) validateVariadicParam(index int, len int, typ ast.Type) {
 	if index != len-1 {
-		c.Error(errors.RangedTypeError(errors.ErrVariadicLast, typ.GetRange(), nil))
+		c.Error(errors.Range(errors.ErrVariadicLast, typ.GetRange()))
 	}
 }
 
@@ -74,7 +74,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			if got >= min && got <= max {
 				return
 			}
-			c.Error(errors.RangedTypeError(
+			c.Error(errors.Range(
 				errors.ErrWrongTypeParamLen, t.GetRange(),
 				errors.ErrorParams{"min": min, "max": max, "got": got},
 			))
@@ -97,7 +97,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 		}
 		if invalid || !isPrim {
 			err := errors.TypeError{
-				ErrorCode: errors.ErrNoGenerics,
+				Code: errors.ErrNoGenerics,
 				Range:     t.GetRange(),
 				Params:    errors.ErrorParams{"type": c.ParseType(t.Name, ctx)},
 			}
@@ -105,7 +105,7 @@ func (c *Checker) ParseType(t ast.Type, ctx context) Type {
 			c.Error(err)
 		}
 	case *ast.RestType:
-		c.Error(errors.RangedTypeError(errors.ErrInvalidRestType, t.GetRange(), nil))
+		c.Error(errors.Range(errors.ErrInvalidRestType, t.GetRange()))
 		return types.InvalidType
 	case *ast.TupleType:
 		items := make([]Type, len(t.Values))
@@ -166,7 +166,7 @@ func (c *Checker) parseInheritance(
 		for fnName, allOvlds := range inherited.GetMethods() {
 			for _, ovl := range allOvlds {
 				if _, exists := s.Methods[fnName].Get(ovl.Params); exists && !isIntf {
-					err := errors.RangedTypeError(
+					err := errors.Range(
 						errors.ErrConflictingInherit, item.GetRange(),
 						errors.ErrorParams{"overload": &ovl},
 					)

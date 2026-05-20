@@ -5,15 +5,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/char"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // printUnderlines prints the underlines for the single-line highlights, as well
 // as the label for overflowing highlights and the rightmost highlight. pipeLen
 // is the number of spaces to add in order to account for the pipes of the multiline highlights.
 func (r *Reporter) printUnderlines(s *state, pipeLen int,
-	highlights []errors.Highlight, printLineStart func(rem []errors.Highlight),
-) (remHls []errors.Highlight) {
+	highlights []klarerrs.Highlight, printLineStart func(rem []klarerrs.Highlight),
+) (remHls []klarerrs.Highlight) {
 	var lastCol uint32 = 1
 	for i, hl := range highlights {
 		rang := hl.Range
@@ -66,7 +66,7 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 
 // printArrows prints the arrows for the single-line highlights.
 // If stemsOnly is true, it only prints the stems and not the labels.
-func (r *Reporter) printArrows(s *state, remHls []errors.Highlight,
+func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 	printLineStart func(), pipeLen int, stemsOnly bool,
 ) {
 	for len(remHls) > 0 {
@@ -103,7 +103,7 @@ func (r *Reporter) printArrows(s *state, remHls []errors.Highlight,
 }
 
 func (r *Reporter) printEndingMultilineLabels(s *state,
-	highlights []errors.Highlight, line uint32,
+	highlights []klarerrs.Highlight, line uint32,
 ) {
 	for i, hl := range slices.Backward(highlights) {
 		if hl.Range.End.Line != line {
@@ -128,7 +128,7 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 
 // printNewMultilineUnderlines prints the underlines for multiline highlights
 // that start on the current line. Each highlight is printed on its own line.
-func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []errors.Highlight,
+func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []klarerrs.Highlight,
 	lastCol uint32, printLineStart func(),
 ) {
 	for i, hl := range highlights {

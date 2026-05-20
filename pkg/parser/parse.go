@@ -2,18 +2,18 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 )
 
 type (
-	ParseError = errors.ParseError
+	Error = klarerrs.Error
 	Options    = parser.Options
 )
 
 func Parse(tokens []lexer.Token, options *parser.Options) (
-	program *ast.Program, errors []*ParseError,
+	program *ast.Program, errors []*Error,
 ) {
 	p := parser.New(tokens, options)
 	program = p.Parse()
@@ -21,6 +21,6 @@ func Parse(tokens []lexer.Token, options *parser.Options) (
 	return
 }
 
-func ParseString(src string) (program *ast.Program, errs []*ParseError) {
+func ParseString(src string) (program *ast.Program, errs []*Error) {
 	return Parse(TokenizeString(src), nil)
 }

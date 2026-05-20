@@ -2,7 +2,7 @@ package reporter
 
 import (
 	"github.com/ProCode-Software/klar/internal/char"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -10,15 +10,15 @@ type state struct {
 	tokens     []lexer.Token
 	digitWidth int
 	margin     int
-	highlights []errors.Highlight
-	hlColors   map[errors.Highlight]string
+	highlights []klarerrs.Highlight
+	hlColors   map[klarerrs.Highlight]string
 }
 
 // groupHighlights are the groups of highlights created by [groupHighlights].
 type groupedHighlights struct {
 	// Existing multiline highlights, and single and multi-line highlights
 	// that start on a given line.
-	existing, newSingleLine, newMultiline []errors.Highlight
+	existing, newSingleLine, newMultiline []klarerrs.Highlight
 }
 
 // printBox prints the syntax-highlighted lines of the file
@@ -26,8 +26,8 @@ type groupedHighlights struct {
 // All other highlights will be colored with colors from r's ColorPalette.
 // All lines, including the first line, contain the margin.
 func (r *Reporter) printBox(fileName string,
-	highlights []errors.Highlight, mainHl *errors.Highlight, mainHlColor string,
-	startLine, endLine uint32, digitWidth, margin int, 
+	highlights []klarerrs.Highlight, mainHl *klarerrs.Highlight, mainHlColor string,
+	startLine, endLine uint32, digitWidth, margin int,
 ) {
 	var (
 		file = r.getFile(fileName)
@@ -36,7 +36,7 @@ func (r *Reporter) printBox(fileName string,
 			digitWidth: digitWidth,
 			margin:     margin,
 			highlights: highlights,
-			hlColors:   make(map[errors.Highlight]string, len(highlights)),
+			hlColors:   make(map[klarerrs.Highlight]string, len(highlights)),
 		}
 		colors = []string{
 			// Repeated if there are more than 3 highlights
@@ -78,8 +78,8 @@ func (r *Reporter) printBox(fileName string,
 
 // groupHighlights groups the highlights on line into active multiline highlights,
 // and single and multiline highlights that start on line.
-func groupHighlights(highlights []errors.Highlight, line uint32) *groupedHighlights {
-	var existing, newSingleLine, newMultiline []errors.Highlight
+func groupHighlights(highlights []klarerrs.Highlight, line uint32) *groupedHighlights {
+	var existing, newSingleLine, newMultiline []klarerrs.Highlight
 	for _, hl := range highlights {
 		switch {
 		case !hl.Range.LineIn(line):
@@ -101,7 +101,7 @@ func groupHighlights(highlights []errors.Highlight, line uint32) *groupedHighlig
 // returns 0. tryCollapseLines only collapses lines if there are no new or
 // ending highlights on the next line, assuming there are none on line.
 func (r *Reporter) tryCollapseLines(s *state, line,
-	endLine uint32, firstTokOnLine *int, activeHls []errors.Highlight,
+	endLine uint32, firstTokOnLine *int, activeHls []klarerrs.Highlight,
 ) (n uint32) {
 	// Find the next line with highlights starting or ending.
 	for line := line + 1; line <= endLine; line++ {
@@ -126,7 +126,7 @@ func (r *Reporter) tryCollapseLines(s *state, line,
 }
 
 // highlightsEndOnLine reports whether any highlight ends on the given line.
-func (r *Reporter) highlightsEndOnLine(line uint32, highlights []errors.Highlight) bool {
+func (r *Reporter) highlightsEndOnLine(line uint32, highlights []klarerrs.Highlight) bool {
 	for _, hl := range highlights {
 		if hl.Range.End.Line == line {
 			return true
@@ -145,7 +145,7 @@ func (r *Reporter) printEmptyLineNumber(s *state) {
 	r.appendf(r.ColorPalette.Box, "%c ", r.CharacterSet.HighlightLine)
 }
 
-func (r *Reporter) printHighlightPipes(s *state, activeHls []errors.Highlight) {
+func (r *Reporter) printHighlightPipes(s *state, activeHls []klarerrs.Highlight) {
 	for _, hl := range activeHls {
 		r.appendf(s.hlColors[hl], "%c ", r.CharacterSet.BoxL)
 	}
@@ -153,7 +153,7 @@ func (r *Reporter) printHighlightPipes(s *state, activeHls []errors.Highlight) {
 
 // printCollapsedLineNumber prints the collapsed line number, the pipes of
 // active multiline highlights, and ellipsis.
-func (r *Reporter) printCollapsedLineNumber(s *state, highlights []errors.Highlight) {
+func (r *Reporter) printCollapsedLineNumber(s *state, highlights []klarerrs.Highlight) {
 	// Character for the border of the box.
 	borderChar := r.CharacterSet.SkipLineL // Horizontal line on right side
 	if len(highlights) > 0 {
@@ -201,7 +201,7 @@ func (r *Reporter) printHighlights(s *state, line, lastCol uint32,
 	// Print the underlines
 	if len(singleLine) > 0 {
 		printLineStart()
-		singleLine = r.printUnderlines(s, pipeLen, singleLine, func(rem []errors.Highlight) {
+		singleLine = r.printUnderlines(s, pipeLen, singleLine, func(rem []klarerrs.Highlight) {
 			// If underline line overflows, print the stems of the other highlights
 			// on the next line.
 			if len(rem) > 0 {

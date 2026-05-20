@@ -3,7 +3,7 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/ast/typed"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/target"
@@ -19,10 +19,10 @@ type (
 
 // A Checker type-checks a [ast.Program].
 type Checker struct {
-	Errors  []errors.CompileError
+	Errors  []*errors.Error
 	Exports map[string]runtime.Exportable
 	Program *ast.Program
-	OnError func(err errors.CompileError)
+	OnError func(err *errors.Error)
 
 	FilePath string
 	Target   target.Double
@@ -38,9 +38,9 @@ func NewChecker(program *ast.Program) *Checker {
 	}
 }
 
-func (c *Checker) Error(err errors.CompileError) {
+func (c *Checker) Error(err *errors.Error) {
 	switch newErr := err.(type) {
-	case errors.ParseError:
+	case klarerrs.Error:
 		newErr.File = c.FilePath
 		err = newErr
 	case errors.TypeError:

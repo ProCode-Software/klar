@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ProCode-Software/klar/internal/char"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"golang.org/x/term"
 )
 
@@ -67,8 +67,8 @@ func digitLen(x uint32) int {
 // sortHighlights sorts highlights by the order in which they will be printed.
 // Highlights on the earliest line are printed first. If two highlights are on
 // the same line, the leftmost highlight is printed first.
-func sortHighlights(highlights []errors.Highlight) {
-	slices.SortFunc(highlights, func(a, b errors.Highlight) int {
+func sortHighlights(highlights []klarerrs.Highlight) {
+	slices.SortFunc(highlights, func(a, b klarerrs.Highlight) int {
 		return cmp.Or(
 			cmp.Compare(a.Range.Start.Line, b.Range.Start.Line),
 			cmp.Compare(a.Range.End.Col, b.Range.End.Col),

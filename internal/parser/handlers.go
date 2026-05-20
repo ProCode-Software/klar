@@ -2,7 +2,7 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -71,7 +71,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.Underscore:
 		u := p.Advance()
 		if !p.isWhenCase() {
-			p.Error(errors.Token(errors.ErrUnderscoreValue, u))
+			p.Error(klarerrs.Token(klarerrs.ErrUnderscoreValue, u))
 		}
 		res = &ast.Discard{}
 	}
@@ -120,7 +120,7 @@ func (p *Parser) handleLED(
 	// Invalid assignment
 	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
-		err := errors.Token(errors.ErrAssignmentAsExpr, p.Advance())
+		err := klarerrs.Token(klarerrs.ErrAssignmentAsExpr, p.Advance())
 		if kind == lexer.Equal {
 			err.Hint("Did you mean to use '==' instead?")
 		}
@@ -160,8 +160,8 @@ func (p *Parser) validateAssignable(node ast.Node) ast.Assignable {
 	if ok {
 		return n
 	}
-	p.Error(&errors.ParseError{
-		ErrorCode: errors.ErrInvalidAssignment,
+	p.Error(&klarerrs.Error{
+		Code: klarerrs.ErrInvalidAssignment,
 		Range:     node.GetRange(),
 		Node:      node,
 	})

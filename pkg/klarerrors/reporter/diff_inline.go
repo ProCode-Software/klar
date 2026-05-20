@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -36,7 +36,7 @@ func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
 
 // sortDiffEdits sorts inline edits by their column position, ensuring that
 // deletions are processed before additions at the same column.
-func sortDiffEdits(a, b errors.DiffEdit) int {
+func sortDiffEdits(a, b klarerrs.DiffEdit) int {
 	if colOrder := cmp.Compare(a.Start().Col, b.Start().Col); colOrder != 0 {
 		return colOrder
 	}
@@ -67,7 +67,7 @@ func (r *Reporter) getOriginalTokens(s *diffState, line uint32) (orig []lexer.To
 
 // buildMergedTokens creates a set of virtual tokens representing the merged "before" and "after"
 // states of the line, adjusting positions and handling multi-line additions.
-func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []errors.DiffEdit) (
+func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []klarerrs.DiffEdit) (
 	merged []lexer.Token, lastLine uint32,
 ) {
 	var (
@@ -92,9 +92,9 @@ func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []er
 			edit := edits[editI]
 			if edit.Operation() {
 				switch e := edit.(type) {
-				case errors.AddedString:
+				case klarerrs.AddedString:
 					addToken(lexer.Token{Kind: addedToken, Source: e.String})
-				case errors.AddedTokens:
+				case klarerrs.AddedTokens:
 					for _, t := range e.Tokens {
 						t.Kind = addedToken
 						addToken(t)
@@ -127,9 +127,9 @@ func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []er
 		edit := edits[editI]
 		if edit.Operation() {
 			switch e := edit.(type) {
-			case errors.AddedString:
+			case klarerrs.AddedString:
 				addToken(lexer.Token{Kind: addedToken, Source: e.String})
-			case errors.AddedTokens:
+			case klarerrs.AddedTokens:
 				for _, t := range e.Tokens {
 					t.Kind = addedToken
 					addToken(t)

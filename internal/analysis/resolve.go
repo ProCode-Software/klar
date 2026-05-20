@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/target"
 )
@@ -94,7 +94,7 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 func (c *Checker) importModule(p imports.ImportPath) (*Module, error) {
 	if c.Options.Importer == nil {
 		// Importer not set up
-		return nil, &errors.ModuleError{}
+		return nil, &klarerrs.ModuleError{}
 	}
 	return c.Options.Importer.Import(p, c.Options.Target)
 }

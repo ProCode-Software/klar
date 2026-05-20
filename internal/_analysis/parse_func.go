@@ -5,7 +5,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/ast/typed"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/runtime"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -71,8 +71,8 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 			if found {
 				// Method outside struct scope
 				// other: structDef.Position
-				c.Error(errors.ParseError{
-					ErrorCode: errors.ErrMethodInOtherScope,
+				c.Error(klarerrs.Error{
+					Code: errors.ErrMethodInOtherScope,
 					Details: []errors.Detail{{
 						Range:       structDef.Position,
 						Description: fmt.Sprintf("%s was declared here", errors.Quote(receiver)),
@@ -93,7 +93,7 @@ func (c *Checker) checkFuncDecl(decl *ast.FunctionDeclaration, ctx context) *typ
 			structDef.Type = str
 		} else {
 			c.Error(errors.TypeError{
-				ErrorCode: errors.ErrNonStructReceiver,
+				Code: errors.ErrNonStructReceiver,
 				Name:      receiver,
 				Range:     decl.Struct.GetRange(),
 				GotType:   structDef.Type,

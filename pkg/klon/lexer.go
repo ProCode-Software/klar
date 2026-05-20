@@ -240,7 +240,7 @@ func (rd *reader) readVariable(start lexer.Position) Token {
 	var (
 		isBrace = r == '{'
 		unterm  = true
-		tokErr  ErrorCode
+		tokErr  Code
 	)
 	if isBrace {
 		rd.advanceBytes(n)

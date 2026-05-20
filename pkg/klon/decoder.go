@@ -86,7 +86,7 @@ func typeError(rv reflect.Value, val ast.Value) *TypeError {
 	}
 }
 
-func decodeError(code ErrorCode, rv reflect.Value, val ast.Value, msg string, v ...any) error {
+func decodeError(code Code, rv reflect.Value, val ast.Value, msg string, v ...any) error {
 	var errMsg string
 	if len(v) > 0 {
 		errMsg = fmt.Sprintf(msg, v...)

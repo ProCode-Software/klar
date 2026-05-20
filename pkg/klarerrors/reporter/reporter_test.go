@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/parser"
@@ -18,7 +18,7 @@ type fileMap map[string][]lexer.Token
 type reporterTestCase struct {
 	name      string
 	files     fileMap
-	error     errors.CompileError
+	error     *klarerrs.Error
 	expected  string // Uncolored
 	termWidth int
 	ascii     bool
@@ -95,8 +95,8 @@ var testCases = []reporterTestCase{
 	{
 		name:  "SingleLine",
 		files: fileMap{"main.klar": parser.TokenizeString("x := 1")},
-		error: &errors.ParseError{
-			ErrorCode: errors.ErrColonEqual,
+		error: &klarerrs.Error{
+			Code: klarerrs.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
 			File:      "main.klar",
 			Label:     "Use ':=' instead",
@@ -106,12 +106,12 @@ var testCases = []reporterTestCase{
 	{
 		name:  "SingleLine_1Highlight",
 		files: fileMap{"main2.klar": parser.TokenizeString("x := 1")},
-		error: &errors.ParseError{
-			ErrorCode: errors.ErrColonEqual,
+		error: &klarerrs.Error{
+			Code: klarerrs.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
 			File:      "main2.klar",
 			Label:     "Use ':=' instead",
-			Highlights: []errors.Highlight{
+			Highlights: []klarerrs.Highlight{
 				{ranges.NewRange(1, 1, 1, 2), "This is 'x'"},
 			},
 		},
@@ -120,12 +120,12 @@ var testCases = []reporterTestCase{
 	{
 		name:  "SingleLine_2Highlights",
 		files: fileMap{"main.klar": parser.TokenizeString("x := 1")},
-		error: &errors.ParseError{
-			ErrorCode: errors.ErrColonEqual,
+		error: &klarerrs.Error{
+			Code: klarerrs.ErrColonEqual,
 			Range:     ranges.NewRange(1, 3, 1, 5),
 			File:      "main.klar",
 			Label:     "Use ':=' instead",
-			Highlights: []errors.Highlight{
+			Highlights: []klarerrs.Highlight{
 				{ranges.NewRange(1, 1, 1, 2), "This is 'x'"},
 				{ranges.NewRange(1, 6, 1, 7), "'x' is set to 1"},
 			},
@@ -135,12 +135,12 @@ var testCases = []reporterTestCase{
 	{
 		name:  "Multiline_2Highlights",
 		files: fileMap{"main.klar": parser.TokenizeString("deleteThisLine()\nx := 1")},
-		error: &errors.ParseError{
-			ErrorCode: errors.ErrRequiredBraces,
+		error: &klarerrs.Error{
+			Code: klarerrs.ErrRequiredBraces,
 			Range:     ranges.NewRange(2, 3, 2, 5),
 			File:      "main.klar",
 			Label:     "Something else is better",
-			Highlights: []errors.Highlight{
+			Highlights: []klarerrs.Highlight{
 				{ranges.NewRange(2, 6, 2, 7), "'x' is set to 1"},
 				{ranges.NewRange(1, 1, 2, 7), "Please delete this"},
 			},

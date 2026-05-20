@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -14,7 +14,7 @@ import (
 // active multiline highlights are printed first. printSourceLine returns
 // the end column of the last token on the line.
 func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
-	activeHls []errors.Highlight,
+	activeHls []klarerrs.Highlight,
 ) (lastCol uint32) {
 	// Print the "pipes" for active multiline highlights
 	if len(activeHls) > 0 {

@@ -157,14 +157,14 @@ func (rd *reader) skipLines() {
 	}
 }
 
-func (rd *reader) tokenError(code ErrorCode, tok Token, msg string, v ...any) {
+func (rd *reader) tokenError(code Code, tok Token, msg string, v ...any) {
 	var text string
 	if len(v) == 0 {
 		text = msg
 	} else {
 		text = fmt.Sprintf(msg, v...)
 	}
-	rd.errs = append(rd.errs, &ParseError{
+	rd.errs = append(rd.errs, &Error{
 		Code:  code,
 		Range: tokenRange(tok),
 		Token: tok,
@@ -173,7 +173,7 @@ func (rd *reader) tokenError(code ErrorCode, tok Token, msg string, v ...any) {
 }
 
 func (rd *reader) expectError(
-	exp TokenType, code ErrorCode, msg string, v ...any,
+	exp TokenType, code Code, msg string, v ...any,
 ) Token {
 	if curr := rd.currTok(); curr.Kind != exp {
 		rd.tokenError(code, curr, msg, v...)

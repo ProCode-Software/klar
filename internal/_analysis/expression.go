@@ -2,7 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -26,7 +26,7 @@ func (c *Checker) CheckBinaryExpr(expr *ast.BinaryExpression, ctx context) Type 
 		if op != lexer.EqualEqual && op != lexer.NotEqual && !IsRelCompType(typ) {
 			c.Error(errors.TypeError{
 				GotType:   typ,
-				ErrorCode: errors.ErrUncomparableTypes,
+				Code: errors.ErrUncomparableTypes,
 				Params:    errors.ErrorParams{"operator": op},
 				Range:     expr.GetRange(),
 			})

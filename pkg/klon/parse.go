@@ -148,7 +148,7 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 	rd.advanceTok()
 	var (
 		name   string
-		err    = vr.Attrs["err"].(ErrorCode)
+		err    = vr.Attrs["err"].(Code)
 		braces = vr.Attrs["brace"].(bool)
 	)
 	if braces {

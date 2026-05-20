@@ -8,7 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
 
-type ErrorCode int
+type Code int
 
 type ReadError struct {
 	Err error
@@ -37,7 +37,7 @@ func (err *InvalidUnmarshallError) Error() string {
 }
 
 const (
-	_ ErrorCode = iota
+	_ Code = iota
 	ErrUnterminatedString
 	ErrExpectedEOF
 	ErrExpectedVarInArrow
@@ -63,19 +63,19 @@ const (
 	ErrVariableNotDefined
 )
 
-type ParseError struct {
-	Code  ErrorCode
+type Error struct {
+	Code  Code
 	Range ranges.Range
 	Token Token
 	Text  string
 }
 
-func (err *ParseError) Error() string {
+func (err *Error) Error() string {
 	return "klon: syntax error " + printLoc(err.Range) + ": " + err.Text
 }
 
 type TypeError struct {
-	Code ErrorCode
+	Code Code
 	Type reflect.Type
 	Val  ast.Value
 	Text string

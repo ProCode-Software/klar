@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -95,7 +95,7 @@ func (p *Parser) ParseTopLevelStatement() ast.Statement {
 		} else if c := p.Curr(); c.Position.Line == pb.Position.Line &&
 			c.Kind != lexer.Newline && c.Kind != lexer.EOF {
 			// No newline after import
-			p.Error(errors.ExpectedToken(lexer.Newline, c))
+			p.Error(klarerrs.ExpectedToken(lexer.Newline, c))
 		}
 		return res
 	}
@@ -111,12 +111,12 @@ func (p *Parser) ParseComment(tok lexer.Token) *ast.Comment {
 	switch {
 	case tok.Kind == lexer.Hashbang:
 		if tok.Position != (lexer.Position{1, 1}) {
-			p.Error(errors.Token(errors.ErrMisplacedShebang, tok))
+			p.Error(klarerrs.Token(klarerrs.ErrMisplacedShebang, tok))
 		}
 		// TODO: maybe error hints for newlines/spaces before
 	case tok.Attributes["unterm"] == true:
-		p.Error(&errors.ParseError{
-			ErrorCode: errors.ErrUnterminatedComment,
+		p.Error(&klarerrs.Error{
+			Code: klarerrs.ErrUnterminatedComment,
 			Token:     tok,
 			Range:     ranges.Offset(tok.Position, 0, 1),
 		})

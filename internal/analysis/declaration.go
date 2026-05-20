@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -118,20 +118,20 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 		if selfObj == nil {
 			// Undefined
 			for _, o := range inits {
-				err := errors.Undefined(typeName, identRange(o))
+				err := klarerrs.Undefined(typeName, identRange(o))
 				c.fileError(err, o.file)
 			}
 			return
 		}
 		// Found, but in a different scope
-		det := []errors.Detail{{
+		det := []klarerrs.Detail{{
 			File:    selfObj.FilePath(),
 			Range:   selfObj.Range(),
-			Message: errors.Quote(typeName) + " was declared here",
+			Message: klarerrs.Quote(typeName) + " was declared here",
 		}}
 		for _, o := range inits {
 			node := c.moduleDecls[o].node.(*ast.FunctionDeclaration)
-			err := errors.Node(errors.ErrMethodInOtherScope, node)
+			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, node)
 			err.SetParam("initializer", true)
 			err.Details = det
 			c.error(err)
@@ -146,7 +146,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 	case *TypeAlias:
 		// Similar to method receivers, this can't be an alias
 		for _, o := range inits {
-			err := errors.RangedTypeError(errors.ErrAliasSelfType, identRange(o), nil)
+			err := klarerrs.Range(klarerrs.ErrAliasSelfType, identRange(o))
 			err.SetParam("initializer", true)
 			err.Label = "Initializer target can't be an alias"
 			c.fileError(err, o.file)
@@ -155,7 +155,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 	default:
 		// Type doesn't support initializers
 		for _, o := range inits {
-			err := errors.RangedTypeError(errors.ErrUnsupportedInitType, identRange(o), nil)
+			err := klarerrs.Range(klarerrs.ErrUnsupportedInitType, identRange(o))
 			err.Label = "Can't create initializers on this kind of type"
 			c.fileError(err, o.file)
 		}
@@ -183,18 +183,18 @@ func (c *Checker) validateReceiver(name string, self *Object,
 	case self == nil:
 		// Self type doesn't exist
 		for _, meth := range methods {
-			err := errors.Undefined(name, selfRange(meth))
+			err := klarerrs.Undefined(name, selfRange(meth))
 			c.fileError(err, meth.obj.file)
 		}
 	case isOtherScope:
 		// typeName was declared in a different scope from the method
-		det := []errors.Detail{{
+		det := []klarerrs.Detail{{
 			File:    self.FilePath(),
 			Range:   self.Range(),
-			Message: errors.Quote(name) + " was declared here",
+			Message: klarerrs.Quote(name) + " was declared here",
 		}}
 		for _, meth := range methods {
-			err := errors.Node(errors.ErrMethodInOtherScope, meth.decl)
+			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, meth.decl)
 			err.Details = det
 			c.error(err)
 		}
@@ -211,8 +211,8 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		case *TypeAlias:
 			// Self type is a type alias
 			for _, m := range methods {
-				err := errors.RangedTypeError(errors.ErrAliasSelfType,
-					selfRange(m), nil,
+				err := klarerrs.Range(klarerrs.ErrAliasSelfType,
+					selfRange(m),
 				)
 				err.Label = "Self type can't be an alias"
 				c.fileError(err, m.obj.file)
@@ -220,8 +220,8 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		default:
 			// Self type doesn't support methods
 			for _, m := range methods {
-				err := errors.RangedTypeError(errors.ErrUnsupportedSelfType,
-					selfRange(m), nil,
+				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType,
+					selfRange(m), 
 				)
 				err.Label = "Can't declare methods on this kind of type"
 				c.fileError(err, m.obj.file)

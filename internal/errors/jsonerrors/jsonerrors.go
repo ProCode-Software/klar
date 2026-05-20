@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // WriteTo writes the build result and error information to w in JSON format.
@@ -29,7 +29,7 @@ func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) e
 	return json.MarshalWrite(w, format, json.DefaultOptionsV2())
 }
 
-type errorSlice []errors.CompileError
+type errorSlice []klarerrs.CompileError
 
 func (es errorSlice) MarshalJSON() ([]byte, error) {
 	errs := make([]compileError, len(es))
@@ -86,11 +86,11 @@ type code struct {
 	ID   int    `json:"id"`
 }
 
-func convertCode(cd errors.ErrorCode) code {
+func convertCode(cd klarerrs.ErrorCode) code {
 	return code{Name: cd.Format(), ID: int(cd)}
 }
 
-func convertHints(hints []errors.Hint) []hint {
+func convertHints(hints []klarerrs.Hint) []hint {
 	hs := make([]hint, len(hints))
 	for i, hn := range hints {
 		hs[i] = hint{hn.Message}
@@ -98,7 +98,7 @@ func convertHints(hints []errors.Hint) []hint {
 	return hs
 }
 
-func convertDetails(details []errors.Detail) []detail {
+func convertDetails(details []klarerrs.Detail) []detail {
 	ds := make([]detail, len(details))
 	for i, dt := range details {
 		ds[i] = detail{
@@ -112,7 +112,7 @@ func convertDetails(details []errors.Detail) []detail {
 	return ds
 }
 
-func convertHighlights(highlights []errors.Highlight) []highlight {
+func convertHighlights(highlights []klarerrs.Highlight) []highlight {
 	hs := make([]highlight, len(highlights))
 	for i, ht := range highlights {
 		hs[i] = highlight{

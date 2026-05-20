@@ -2,7 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/types"
 )
@@ -78,7 +78,7 @@ func (c *Checker) ParseEnum(t *ast.EnumDeclaration, ctx context) types.Enum {
 					Name:  k,
 					Range: item.pos,
 					// Ranges:    errors.Ranges{item.pos, cycle[len(cycle)-1].Position},
-					ErrorCode: errors.ErrEnumCycle,
+					Code: errors.ErrEnumCycle,
 					Params:    errors.ErrorParams{"cycle": cycle},
 				}
 				c.Error(err)

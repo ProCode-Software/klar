@@ -3,7 +3,7 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/ast/typed"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 type Return struct {
@@ -24,8 +24,8 @@ func (c *Checker) CheckStatements(body []ast.Statement, ctx context) (
 	for i, stmt := range body {
 		if unreachableStmt != "" {
 			// Statement after return
-			err := errors.ParseError{
-				ErrorCode: errors.ErrProvenUnreachable,
+			err := klarerrs.Error{
+				Code: errors.ErrProvenUnreachable,
 				Range:     stmt.GetRange(),
 				Params:    errors.ErrorParams{"type": unreachableStmt},
 			}

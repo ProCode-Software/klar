@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -25,7 +25,7 @@ func (p *Parser) handleInvalidNumber(
 	ne *lexer.NumberError, format lexer.IntFormat, tok lexer.Token,
 ) {
 	var (
-		err    *errors.ParseError
+		err    *klarerrs.Error
 		src    = tok.Source
 		tokPos = tok.Position
 		errPos = tokPos.Add(0, ne.Offset)
@@ -35,24 +35,24 @@ func (p *Parser) handleInvalidNumber(
 		switch {
 		case strings.Contains(src, "__"):
 			// Consecutive separator
-			err = errors.Position(errors.ErrConsecutiveSeparator, errPos)
+			err = klarerrs.Position(klarerrs.ErrConsecutiveSeparator, errPos)
 		case src[len(src)-1] == '_':
 			// Separator at end of number
-			err = errors.Position(errors.ErrTrailingSeparator, errPos)
+			err = klarerrs.Position(klarerrs.ErrTrailingSeparator, errPos)
 		default:
 			// Somewhere else
-			err = errors.Position(errors.ErrMisplacedSeparator, errPos)
+			err = klarerrs.Position(klarerrs.ErrMisplacedSeparator, errPos)
 		}
 	case lexer.ErrIntIncompatibleDigit:
-		err = errors.TokenPos(
-			map[lexer.IntFormat]errors.ErrorCode{
-				lexer.NumberFormatDecimal: errors.ErrExpectedDecimal,
-				lexer.NumberFormatBinary:  errors.ErrExpectedBinary,
-				lexer.NumberFormatHex:     errors.ErrExpectedHex,
+		err = klarerrs.TokenPos(
+			map[lexer.IntFormat]klarerrs.Code{
+				lexer.NumberFormatDecimal: klarerrs.ErrExpectedDecimal,
+				lexer.NumberFormatBinary:  klarerrs.ErrExpectedBinary,
+				lexer.NumberFormatHex:     klarerrs.ErrExpectedHex,
 			}[format], errPos, tok,
 		)
 	case lexer.ErrInvalidDecimalPoint:
-		err = errors.Position(errors.ErrInvalidDecimalPoint, errPos)
+		err = klarerrs.Position(klarerrs.ErrInvalidDecimalPoint, errPos)
 	default:
 		panic(fmt.Sprintf("unhandled lexer.NumberErrorCode: %d", ne.Code))
 	}
@@ -108,14 +108,14 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		full = src[1:]
 		if a.QuoteStyle != '`' && src[len(src)-1] == '\n' {
 			// Use a better error for quoted strings with newline
-			p.Error(errors.Position(errors.ErrMultilineQuotedString,
+			p.Error(klarerrs.Position(klarerrs.ErrMultilineQuotedString,
 				token.End(),
 			))
 		} else {
 			// TODO: End() is wrong
-			err := errors.Position(errors.ErrUnterminatedString, token.End() /* .Add(0, 1) */)
-			err.Label = "Expected closing " + errors.Quote(string(a.QuoteStyle))
-			err.Highlights = append(err.Highlights, errors.Highlight{
+			err := klarerrs.Position(klarerrs.ErrUnterminatedString, token.End() /* .Add(0, 1) */)
+			err.Label = "Expected closing " + klarerrs.Quote(string(a.QuoteStyle))
+			err.Highlights = append(err.Highlights, klarerrs.Highlight{
 				Range:   ranges.Offset(token.Position, 0, 1),
 				Message: "It was started here",
 			})
@@ -148,8 +148,8 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	params := re.Attributes["params"].(lexer.RegexAttrs)
 	if params.Unterminated {
 		// TODO: End() is wrong
-		err := errors.Position(errors.ErrUnterminatedRegex, re.End())
-		err.Highlights = append(err.Highlights, errors.Highlight{
+		err := klarerrs.Position(klarerrs.ErrUnterminatedRegex, re.End())
+		err.Highlights = append(err.Highlights, klarerrs.Highlight{
 			Range:   ranges.SingleChar(re.Position),
 			Message: "It was started here",
 		})

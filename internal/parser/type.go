@@ -2,7 +2,7 @@ package parser
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -71,7 +71,7 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericTy
 	p.Expect(lexer.LessThan)
 	if p.CurrKind() == lexer.GreaterThan {
 		// At least 1 parameter required
-		p.Error(errors.Token(errors.ErrEmptyGeneric, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrEmptyGeneric, p.Curr()))
 		params = nil
 	}
 	parseSeries(p, &params,
@@ -91,7 +91,7 @@ func (p *Parser) ParseFunctionType() *ast.FunctionType {
 	if p.CurrKind() == lexer.LeftParenthesis {
 		fn.Parameters = toTupleType(p.ParseTupleType())
 	} else {
-		p.Error(errors.Token(errors.ErrParenFuncTypeParams, p.Curr()))
+		p.Error(klarerrs.Token(klarerrs.ErrParenFuncTypeParams, p.Curr()))
 		// Parse without parentheses
 		fn.Parameters.Values = p.parseFuncTypeWithoutParen()
 	}

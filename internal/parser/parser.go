@@ -4,7 +4,7 @@ package parser
 import (
 	"slices"
 
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
@@ -18,20 +18,20 @@ type Parser struct {
 	Options        Options
 	Tokens         []lexer.Token
 	Index          int
-	Errors         []*ParseError
+	Errors         []*Error
 	flags          uint8            // Conditional flags
 	listCastTokens map[int]struct{} // Populated during EOS inference
 }
 
-// ParseError is [errors.ParseError]
-type ParseError = errors.ParseError
+// Error is [klarerrs.Error]
+type Error = klarerrs.Error
 
 // Options is options provided to [Parser].
 type Options struct {
 	// Path of the file being parsed. File is applied to all reported errors.
 	File string
 	// If Error != nil, Error is called for every reported error.
-	Error func(e *ParseError)
+	Error func(e *Error)
 	// Parsing is stopped once len(p.Errors) equals MaxErrors.
 	// If MaxErrors <= 0, there is no limit.
 	MaxErrors int
@@ -161,19 +161,19 @@ type stopParsing struct{}
 type stmtError struct{}
 
 // Error adds an error to the parser.
-func (p *Parser) Error(err *errors.ParseError) {
+func (p *Parser) Error(err *klarerrs.Error) {
 	err.File = p.Options.File
 	p.Errors = append(p.Errors, err)
 	if p.Options.Error != nil {
 		p.Options.Error(err)
 	}
 	if mx := p.Options.MaxErrors; mx > 0 && len(p.Errors) >= mx {
-		p.Errors = append(p.Errors, errors.TooManyErrors())
+		p.Errors = append(p.Errors, klarerrs.TooManyErrors())
 		panic(stopParsing{})
 	}
 }
 
-func (p *Parser) ErrorLabelled(err *errors.ParseError, label string) {
+func (p *Parser) ErrorLabelled(err *klarerrs.Error, label string) {
 	err.Label = label
 	p.Error(err)
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
-	"github.com/ProCode-Software/klar/internal/errors"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -25,7 +25,7 @@ type Options struct {
 	// The minimum version of Klar required to compile the program.
 	KlarVersion *version.Version
 	// If Error != nil, it is called when an error is reported.
-	Error func(errors.CompileError)
+	Error func(*klarerrs.Error)
 	// Whether the program is being typechecked for testing purposes.
 	IsTest bool
 	// If MaxErrors > 0, the type checker will terminate when this limit is reached.
@@ -38,7 +38,7 @@ type Options struct {
 
 type Checker struct {
 	Programs    map[string]*ast.Program // Files in the module that is being checked.
-	Errors      []errors.CompileError   // Errors reported while type checking.
+	Errors      []*klarerrs.Error   // Errors reported while type checking.
 	Options     *Options                // Options for type checking.
 	rootContext *Context                // Context where top-level objects are defined.
 	module      *Module
