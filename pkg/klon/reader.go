@@ -1,7 +1,6 @@
 package klon
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 
@@ -43,12 +42,8 @@ func newBufferReader(buf []byte, f ...Flags) *reader {
 }
 
 func newStreamReader(r io.Reader, f ...Flags) *reader {
-	var buf []byte
-	if _, ok := r.(*bytes.Buffer); !ok {
-		buf = make([]byte, BufferSize)
-	}
 	return &reader{
-		buffer: buf,
+		buffer: make([]byte, 0, BufferSize),
 		reader: r,
 		offset: lexer.Position{1, 1},
 		flags:  parseFlags(f...),
@@ -71,28 +66,28 @@ func (rd *reader) refill() error {
 		}
 		return nil
 	}
-	if !rd.needsMore() && rd.buffer[0] != 0 {
-		return nil
-	}
-	prevPos := rd.pos
-	rd.pos = 0
-	prelen := len(rd.buffer)
-	canNext := func(err error) error {
-		if err != io.EOF || rd.pos >= len(rd.buffer)-1 {
-			return err
-		}
-		return nil
+	if rd.pos < len(rd.buffer) {
+		// Copy remaining bytes to the beginning of the buffer
+		copy(rd.buffer, rd.buffer[rd.pos:])
+		rd.buffer = rd.buffer[:len(rd.buffer)-rd.pos]
+		rd.pos = 0
+	} else {
+		rd.buffer = rd.buffer[:0]
+		rd.pos = 0
 	}
 
-	rd.buffer = append(rd.buffer, make([]byte, BufferSize-len(rd.buffer))...)
-	n, err := rd.reader.Read(rd.buffer)
-	if err != nil && n == 0 {
-		rd.buffer = rd.buffer[:prelen]
-		rd.pos = prevPos
-		return canNext(err)
+	n, err := rd.reader.Read(rd.buffer[len(rd.buffer):cap(rd.buffer)])
+	if n > 0 {
+		rd.buffer = rd.buffer[:len(rd.buffer)+n]
 	}
-	rd.buffer = rd.buffer[:n]
-	return canNext(io.EOF)
+	
+	if err != nil && (n == 0 || err != io.EOF) {
+		return err
+	}
+	if len(rd.buffer) == 0 {
+		return io.EOF
+	}
+	return nil
 }
 
 // tryRefill refills the buffer if needed. If the buffer can't be refilled,
