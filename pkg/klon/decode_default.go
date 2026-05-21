@@ -3,6 +3,7 @@ package klon
 import (
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
@@ -122,6 +123,57 @@ func makeInterfaceDecoder(rt reflect.Type) decodeFunc {
 }
 
 func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
+	strFields, _ := makeStructFields(rt, d.flags)
+
+	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		switch val := val.(type) {
+		case *ast.Object:
+			for _, f := range val.Fields {
+				if err := d.decodeField(rv, strFields, f); err != nil {
+					return err
+				}
+			}
+		case *ast.List:
+			for _, item := range val.Items {
+				if obj, ok := item.(*ast.Object); ok {
+					for _, f := range obj.Fields {
+						if err := d.decodeField(rv, strFields, f); err != nil {
+							return err
+						}
+					}
+				} else {
+					// Single field in dashed list
+					// e.g. - key: value
+					// Wait, parseObject returns *ast.Object if it has colons.
+					// If it's a dashed list, it might contain objects.
+				}
+			}
+		default:
+			return typeError(rv, val)
+		}
+		return nil
+	}
+}
+
+func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.Field) error {
+	if f.Key == nil {
+		if f.Value != nil {
+			// This might be an ArrowRef (spread)
+			if arrow, ok := f.Value.(*ast.ArrowRef); ok {
+				return d.decodeValue(arrow, rv)
+			}
+		}
+		return nil
+	}
+	keyStr, ok := f.Key.(*ast.String)
+	if !ok {
+		return nil
+	}
+	lower := strings.ToLower(keyStr.Raw)
+	if field, ok := strFields.Fields[lower]; ok {
+		fieldVal := rv.FieldByIndex(field.Indices)
+		return d.decodeValue(f.Value, fieldVal)
+	}
 	return nil
 }
 

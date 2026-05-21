@@ -10,6 +10,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
 type FilesystemError struct {
@@ -44,6 +45,7 @@ const (
 	ErrNothingToCompile // No inputs
 	ErrMisplacedTest    // Test file in a non-test directory
 	ErrLexer            // Lexer error
+	ErrInvalidConfig    // Failed to parse configuration
 )
 
 type InterfaceError struct {
@@ -103,11 +105,34 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 }
 
 func PrintInterfaceErr(err *InterfaceError) {
+	if IsKlonError(err) {
+		PrintKlonError(err)
+		return
+	}
 	main, detail := err.PrettyError()
 	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
+}
+
+func PrintKlonError(err *InterfaceError) {
+	dir, name := filepath.Split(err.Value)
+	cli.Error(ansi.Sprintf("<**>Failed to parse <dim>%s</dim><c>%s</c>:</**>", dir, name))
+	// TODO: use reporter
+	klonErr := err.Err.(*klon.Error)
+	fmt.Printf("%s "+ansi.Dim("%s")+"\n", klonErr.Text, klonErr.Range.Start)
 }
 
 func IsMaxErrors(err error) bool {
 	ie, ok := err.(*InterfaceError)
 	return ok && ie.Code == ErrTooManyErrors
+}
+
+// IsKlonError returns true if the error was caused by a failure
+// to parse a Klon file such as a config.
+func IsKlonError(err error) bool {
+	ie, ok := err.(*InterfaceError)
+	if !ok {
+		return false
+	}
+	_, ok = ie.Err.(*klon.Error)
+	return ok
 }

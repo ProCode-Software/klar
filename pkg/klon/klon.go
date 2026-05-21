@@ -39,3 +39,7 @@ func UnmarshallDocumentContext(d *ast.Document, v any, ctx *Context, f ...Flags)
 func NewContext() *Context {
 	return &Context{}
 }
+
+func Parse(b []byte) (*ast.Document, []error) {
+	return newBufferReader(b).parseDocument()
+}

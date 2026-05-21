@@ -18,16 +18,19 @@ type reader struct {
 	reader     io.Reader
 	pos        int // Buffer position
 	offset     lexer.Position
-	curr       *Token
-	peek       *Token
+	curr       Token
+	peek       Token
+	hasCurr    bool
+	hasPeek    bool
 	parseFlags uint8
 
-	depth    int
-	vars     map[string]ast.Value
-	ctx      *Context
-	flags    Flags
-	errs     []error
-	comments []*ast.Comment
+	depth      int
+	lastDashes int
+	vars       map[string]ast.Value
+	ctx        *Context
+	flags      Flags
+	errs       []error
+	comments   []*ast.Comment
 }
 
 func newBufferReader(buf []byte, f ...Flags) *reader {
@@ -114,37 +117,36 @@ func (rd *reader) hasTokens() bool {
 
 // currTok returns the current token.
 func (rd *reader) currTok() Token {
-	if rd.curr != nil {
-		return *rd.curr
+	if rd.hasCurr {
+		return rd.curr
 	}
-	tok := rd.readToken()
-	rd.curr = &tok
-	return tok
+	rd.curr = rd.readToken()
+	rd.hasCurr = true
+	return rd.curr
 }
 
 // peekTok returns the token after the current token without advancing r.
 func (rd *reader) peekTok() Token {
-	if rd.peek != nil {
-		return *rd.peek
+	if rd.hasPeek {
+		return rd.peek
 	}
-	next := rd.readToken()
-	rd.peek = &next
-	return next
+	rd.peek = rd.readToken()
+	rd.hasPeek = true
+	return rd.peek
 }
 
 // advanceTok returns the current token and advances r.
 func (rd *reader) advanceTok() Token {
-	if rd.peek != nil {
-		t := *rd.curr
+	if rd.hasPeek {
+		t := rd.curr
 		rd.curr = rd.peek
-		rd.peek = nil
+		rd.hasCurr = true
+		rd.hasPeek = false
 		return t
 	}
-	curr := rd.currTok()
-	new := rd.readToken()
-	rd.curr = &new
-	rd.peek = nil
-	return curr
+	t := rd.currTok()
+	rd.hasCurr = false
+	return t
 }
 
 func (rd *reader) skipLines() {
@@ -162,7 +164,7 @@ func (rd *reader) tokenError(code Code, tok Token, msg string, v ...any) {
 	}
 	rd.errs = append(rd.errs, &Error{
 		Code:  code,
-		Range: tokenRange(tok),
+		Range: tok.Range(),
 		Token: tok,
 		Text:  text,
 	})
@@ -194,10 +196,29 @@ func (rd *reader) depthDown() {
 func (rd *reader) addParseFlags(flags uint8) (old uint8) {
 	old = rd.parseFlags
 	rd.parseFlags |= flags
+	if old != rd.parseFlags {
+		rd.invalidateCache()
+	}
 	return
 }
 
-func (rd *reader) resetParseFlags(old uint8) { rd.parseFlags = old }
+func (rd *reader) resetParseFlags(old uint8) {
+	if rd.parseFlags != old {
+		rd.parseFlags = old
+		rd.invalidateCache()
+	}
+}
+
+func (rd *reader) invalidateCache() {
+	if !rd.hasCurr {
+		return
+	}
+	// Back up to the start of the current token
+	rd.pos = rd.curr.BufPos
+	rd.offset = rd.curr.Pos
+	rd.hasCurr = false
+	rd.hasPeek = false
+}
 
 func handlePanic(e *error) {
 	switch err := recover().(type) {

@@ -8,7 +8,11 @@ import "github.com/ProCode-Software/klar/internal/config/klarbuild"
 func ReadKlarBuild(path string) ([]*Options, error) {
 	f, err := klarbuild.Parse(path)
 	if err != nil {
-		return nil, err
+		return nil, &InterfaceError{
+			Code:  ErrInvalidConfig,
+			Value: path,
+			Err:   err,
+		}
 	}
 	// Single configuration
 	if len(f.Configurations) == 0 {
@@ -30,9 +34,9 @@ func ReadKlarBuild(path string) ([]*Options, error) {
 
 // MergeKlarBuild converts f and c into an [Options] object by converting
 // c's inputs into [Input]. If c != nil, f and c are merged into a single
-// configuration.
+// configuration. The resulting Configuration will have a single top-level config.
 func MergeKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) (*Options, error) {
-	// TODO: input resolution
+	// Single top-level configuration
 	if c == nil {
 		c := f.Configuration
 		inputs, err := ResolveInputs(c.Input)
@@ -41,6 +45,7 @@ func MergeKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) (*Options, er
 		}
 		return &Options{File: *f, Inputs: inputs}, nil
 	}
+	// c is an individual config. Duplicate the file and replace the top-level config.
 	f2 := *f
 	f2.Configurations = nil
 	f2.Configuration = *c

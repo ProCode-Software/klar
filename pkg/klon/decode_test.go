@@ -23,12 +23,12 @@ func TestMain(t *testing.T) {
 	testCase(t, "Invalid", `3`, make(chan int), true)
 	testCase(t, "anonymous struct", `options:
 		- value: 2
-		- obj2:
+		- obj:
 			-- value: 5`, optionsObjValue{objValue{value{5}}}, false)
 	testCase(t, "anonymous struct but in braces", `
 		options: {
 			value: 5,
-			obj2:
+			obj:
 				- value: 42
 		}`, optionsObjValue{objValue{value{42}}}, false)
 }

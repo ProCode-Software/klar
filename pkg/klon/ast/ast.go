@@ -46,7 +46,8 @@ type Boolean struct {
 
 type StringGroup struct {
 	BaseNode
-	Values []Value
+	Values    []Value
+	Separated []bool // Separated[i] is true if Values[i+1] is separated from Values[i] by space/newline
 }
 
 type String struct {

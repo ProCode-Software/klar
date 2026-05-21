@@ -61,6 +61,12 @@ const (
 	ErrExpectedValue
 	ErrIllegalCharacter
 	ErrVariableNotDefined
+	ErrDashSkip
+	ErrInvalidKey
+	ErrUnterminatedObject
+	ErrExpectedClassName
+	ErrVarNotTopLevel
+	ErrInvalidVariableDecl
 )
 
 type Error struct {

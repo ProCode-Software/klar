@@ -1,11 +1,21 @@
 package klarbuild
 
 import (
-	"os"
-
+	"github.com/ProCode-Software/klar/internal/config"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
+
+func Parse(path string) (conf *File, err error) {
+	conf = &File{Configuration: Configuration{}}
+	if err = config.ReadFromFile(path, &conf, Context); err != nil {
+		return conf, err
+	}
+	return conf, nil
+}
+
+// Default returns the default build configuration.
+func Default() *File { return &File{Configuration: Configuration{}} }
 
 var Context = &klon.Context{
 	Enums: map[string]map[string]any{
@@ -51,23 +61,4 @@ var Context = &klon.Context{
 			"bun":     target.Bun,
 		},
 	},
-}
-
-func Parse(path string) (config *File, err error) {
-	var fr *os.File
-	fr, err = os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fr.Close()
-
-	config = &File{Configuration: Configuration{}}
-	if err = klon.UnmarshallReadContext(fr, &config, Context); err != nil {
-		return nil, err
-	}
-	return config, nil
-}
-
-func Default() *File {
-	return &File{Configuration: Configuration{}}
 }

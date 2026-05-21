@@ -112,6 +112,7 @@ func Build(r *command.Runner) {
 			switch {
 			case err != nil:
 				build.PrintInterfaceErr(err.(*build.InterfaceError))
+				cli.Exit(1)
 			case len(opts) == 0:
 				opt = build.DefaultKlarBuild()
 			default:

@@ -14,6 +14,7 @@ import (
 const (
 	noComma     uint8 = 1 << iota // Disallow commas in unquoted strings
 	objectValue                   // Allow more characters in unquoted strings
+	allowDot                      // Allow dots in unquoted strings
 )
 
 func (rd *reader) readRune() (rune, error) {
@@ -65,64 +66,80 @@ func (rd *reader) advanceBytes(n int) {
 func (rd *reader) readToken() Token {
 	for {
 		start := rd.offset
+		bufPos := rd.pos
 		r, err := rd.readRune()
 		if err == io.EOF {
-			return Token{Kind: EOF, Pos: start}
+			return Token{Kind: EOF, Pos: start, BufPos: bufPos}
 		}
 		switch r {
 		case ' ', '\t':
 			continue
 		case '\n':
-			return Token{Kind: Newline, Pos: start, Src: string(r)}
+			return Token{Kind: Newline, Pos: start, Src: string(r), BufPos: bufPos}
 		case '/':
-			// TODO
+			if curr, n, _ := rd.currRune(); curr == '/' {
+				rd.advanceBytes(n)
+				rd.readLineComment(start)
+				continue
+			} else if curr == '*' {
+				rd.advanceBytes(n)
+				rd.readBlockComment(start)
+				continue
+			}
 		case '-':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
-				return rd.readNumber(r, start)
+				return rd.readNumber(r, start, bufPos)
 			}
-			return Token{Kind: Dash, Pos: start, Src: string(r)}
-		case '+', '.':
+			return Token{Kind: Dash, Pos: start, Src: string(r), BufPos: bufPos}
+		case '+':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
-				return rd.readNumber(r, start)
+				return rd.readNumber(r, start, bufPos)
+			}
+		case '.':
+			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
+				return rd.readNumber(r, start, bufPos)
+			}
+			if (rd.parseFlags & allowDot) == 0 {
+				return Token{Kind: String, Pos: start, Src: ".", BufPos: bufPos}
 			}
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			return rd.readNumber(r, start)
+			return rd.readNumber(r, start, bufPos)
 		case '[':
-			return Token{Kind: LeftBracket, Pos: start, Src: string(r)}
+			return Token{Kind: LeftBracket, Pos: start, Src: string(r), BufPos: bufPos}
 		case ']':
-			return Token{Kind: RightBracket, Pos: start, Src: string(r)}
+			return Token{Kind: RightBracket, Pos: start, Src: string(r), BufPos: bufPos}
 		case '@':
-			return Token{Kind: At, Pos: start, Src: string(r)}
+			return Token{Kind: At, Pos: start, Src: string(r), BufPos: bufPos}
 		case '$':
-			return rd.readVariable(start)
+			return rd.readVariable(start, bufPos)
 		case ':':
 			if (rd.parseFlags & objectValue) == 0 {
-				return Token{Kind: Colon, Pos: start, Src: string(r)}
+				return Token{Kind: Colon, Pos: start, Src: string(r), BufPos: bufPos}
 			}
 		case '{':
-			return Token{Kind: LeftCurly, Pos: start, Src: string(r)}
+			return Token{Kind: LeftCurly, Pos: start, Src: string(r), BufPos: bufPos}
 		case '}':
-			return Token{Kind: RightCurly, Pos: start, Src: string(r)}
+			return Token{Kind: RightCurly, Pos: start, Src: string(r), BufPos: bufPos}
 		case ',':
 			if (rd.parseFlags & noComma) != 0 {
-				return Token{Kind: Comma, Pos: start, Src: string(r)}
+				return Token{Kind: Comma, Pos: start, Src: string(r), BufPos: bufPos}
 			}
 		case '<':
 			if curr, n, _ := rd.currRune(); curr == '-' {
 				rd.advanceBytes(n)
-				return Token{Kind: Arrow, Pos: start, Src: string(r)}
+				return Token{Kind: Arrow, Pos: start, Src: string(r), BufPos: bufPos}
 			}
 		case '>':
 			if curr, n, _ := rd.currRune(); curr == '"' || curr == '\'' {
 				rd.advanceBytes(n)
-				return rd.readQuotedString(curr, start, true)
+				return rd.readQuotedString(curr, start, bufPos, true)
 			}
 		case utf8.RuneError:
-			tok := Token{Kind: Illegal, Pos: start, Src: string(r)}
+			tok := Token{Kind: Illegal, Pos: start, Src: string(r), BufPos: bufPos}
 			rd.tokenError(ErrIllegalCharacter, tok, "Invalid Unicode character")
 			return tok
 		case '"', '\'':
-			return rd.readQuotedString(r, start, false)
+			return rd.readQuotedString(r, start, bufPos, false)
 		default:
 			if unicode.IsSpace(r) {
 				continue
@@ -130,18 +147,19 @@ func (rd *reader) readToken() Token {
 		}
 		b := &strings.Builder{}
 		b.WriteRune(r)
-		return rd.readUnquotedString(b, start)
+		return rd.readUnquotedString(b, start, bufPos)
 	}
 }
 
-func (rd *reader) readQuotedString(quote rune, start lexer.Position, wrap bool) Token {
+func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int, wrap bool) Token {
 	var b strings.Builder
 	ret := func(unterm bool) Token {
 		return Token{
-			Kind:  String,
-			Src:   b.String(),
-			Pos:   start,
-			Attrs: attrs{"unterm": unterm, "quote": quote, "wrap": wrap},
+			Kind:   String,
+			Src:    b.String(),
+			Pos:    start,
+			BufPos: bufPos,
+			Attrs:  attrs{"unterm": unterm, "quote": quote, "wrap": wrap},
 		}
 	}
 	if wrap {
@@ -167,12 +185,12 @@ func (rd *reader) readQuotedString(quote rune, start lexer.Position, wrap bool) 
 	}
 }
 
-func (rd *reader) readNumber(first rune, start lexer.Position) Token {
+func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token {
 	var b strings.Builder
 	isNumber := true
 	var isDecimal, wasUnderscore bool
 	value := func() Token {
-		tok := Token{Kind: Number, Src: b.String(), Pos: start}
+		tok := Token{Kind: Number, Src: b.String(), Pos: start, BufPos: bufPos}
 		if !isNumber || tok.Src[0] < '0' || tok.Src[0] > '9' {
 			tok.Kind = String
 		}
@@ -200,7 +218,7 @@ func (rd *reader) readNumber(first rune, start lexer.Position) Token {
 		b.WriteRune(r)
 		rd.advanceBytes(size)
 		if !isNumber {
-			return rd.readUnquotedString(&b, start)
+			return rd.readUnquotedString(&b, start, bufPos)
 		}
 	}
 }
@@ -213,41 +231,53 @@ func (rd *reader) isPunct(r rune) bool {
 		return (rd.parseFlags & objectValue) == 0
 	case ',':
 		return (rd.parseFlags & noComma) != 0
+	case '.':
+		return (rd.parseFlags & allowDot) == 0
 	}
 	return false
 }
 
-func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position) Token {
+func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, bufPos int) Token {
 	for {
 		r, n, err := rd.currRune()
 		if err != nil || rd.isPunct(r) {
 			break
 		}
+		if r == '/' {
+			if r2, _, err2 := rd.peekRune(); err2 == nil && (r2 == '/' || r2 == '*') {
+				break
+			}
+		}
 		rd.advanceBytes(n)
 		b.WriteRune(r)
 	}
 	str := strings.TrimSpace(b.String())
-	if str == "true" || str == "false" {
+	switch str {
+	case "true", "false":
 		return Token{
-			Kind:  Boolean,
-			Src:   str,
-			Pos:   start,
-			Attrs: attrs{"value": str == "true"},
+			Kind:   Boolean,
+			Src:    str,
+			Pos:    start,
+			BufPos: bufPos,
+			Attrs:  attrs{"value": str == "true"},
 		}
+	case "null":
+		return Token{Kind: None, Src: str, Pos: start, BufPos: bufPos}
 	}
-	return Token{Kind: String, Src: str, Pos: start}
+	return Token{Kind: String, Src: str, Pos: start, BufPos: bufPos}
 }
 
-func (rd *reader) readVariable(start lexer.Position) Token {
+func (rd *reader) readVariable(start lexer.Position, bufPos int) Token {
 	var b strings.Builder
 	b.WriteByte('$')
 	r, n, err := rd.currRune()
 	if err != nil {
 		return Token{
-			Kind:  Variable,
-			Src:   b.String(),
-			Pos:   start,
-			Attrs: attrs{"err": ErrUnterminatedVar},
+			Kind:   Variable,
+			Src:    b.String(),
+			Pos:    start,
+			BufPos: bufPos,
+			Attrs:  attrs{"err": ErrUnterminatedVar},
 		}
 	}
 	var (
@@ -282,13 +312,66 @@ loop:
 		tokErr = ErrUnterminatedVar
 	}
 	return Token{
-		Kind:  Variable,
-		Src:   b.String(),
-		Pos:   start,
-		Attrs: attrs{"err": tokErr, "brace": isBrace},
+		Kind:   Variable,
+		Src:    b.String(),
+		Pos:    start,
+		BufPos: bufPos,
+		Attrs:  attrs{"err": tokErr, "brace": isBrace},
 	}
 }
 
 func isValidIdentChar(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_'
+}
+
+func (rd *reader) readLineComment(start lexer.Position) {
+	var b strings.Builder
+	b.WriteString("//")
+	for {
+		r, _, err := rd.currRune()
+		if err != nil || r == '\n' {
+			break
+		}
+		b.WriteRune(r)
+		rd.readRune()
+	}
+	rd.comments = append(rd.comments, &ast.Comment{
+		BaseNode: ast.BaseNode{
+			Range: ranges.Range{Start: start, End: rd.offset},
+		},
+		Source: b.String(),
+	})
+}
+
+func (rd *reader) readBlockComment(start lexer.Position) {
+	var b strings.Builder
+	b.WriteString("/*")
+	depth := 1
+	for depth > 0 {
+		r, err := rd.readRune()
+		if err != nil {
+			break
+		}
+		b.WriteRune(r)
+		if r == '*' {
+			if r2, n, err2 := rd.currRune(); err2 == nil && r2 == '/' {
+				b.WriteRune(r2)
+				rd.advanceBytes(n)
+				depth--
+			}
+		} else if r == '/' {
+			if r2, n, err2 := rd.currRune(); err2 == nil && r2 == '*' {
+				b.WriteRune(r2)
+				rd.advanceBytes(n)
+				depth++
+			}
+		}
+	}
+	rd.comments = append(rd.comments, &ast.Comment{
+		BaseNode: ast.BaseNode{
+			Range: ranges.Range{Start: start, End: rd.offset},
+		},
+		Block:  true,
+		Source: b.String(),
+	})
 }

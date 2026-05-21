@@ -32,17 +32,18 @@ const (
 type attrs = map[string]any
 
 type Token struct {
-	Kind  TokenType
-	Src   string
-	Pos   lexer.Position
-	Attrs map[string]any
+	Kind   TokenType
+	Src    string
+	Pos    lexer.Position
+	BufPos int // Position in reader buffer
+	Attrs  map[string]any
 }
 
-func tokenRange(tok Token) ranges.Range {
-	return ranges.Range{Start: tok.Pos, End: tokenEnd(tok)}
+func (tok Token) Range() ranges.Range {
+	return ranges.Range{Start: tok.Pos, End: tok.End()}
 }
 
-func tokenEnd(tok Token) lexer.Position {
+func (tok *Token) End() lexer.Position {
 	if tok.Attrs != nil {
 		if end, ok := tok.Attrs["end"]; ok {
 			return end.(lexer.Position)
