@@ -1,10 +1,10 @@
 package klon
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
@@ -40,8 +40,13 @@ func (rd *reader) parseValue(tok Token) ast.Value {
 		rd.skipLines()
 		tok = rd.currTok()
 	}
-	if (rd.depth == 0 && rd.peekTok().Kind == Colon) ||
-		((hasNewline || tok.Pos == (lexer.Position{Line: 1, Col: 1})) && tok.Kind == Dash) {
+	if rd.depth == 0 {
+		fmt.Println("top", tok, rd.peekTok())
+		if rd.peekTok().Kind == Colon || tok.Kind == Dash {
+			return rd.parseObject()
+		}
+	}
+	if tok.Kind == Dash && hasNewline {
 		return rd.parseObject()
 	}
 	if tok.Kind == EOF {

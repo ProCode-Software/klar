@@ -39,6 +39,7 @@ func (err *InvalidUnmarshallError) Error() string {
 const (
 	_ Code = iota
 	ErrUnterminatedString
+	ErrUnterminatedComment
 	ErrExpectedEOF
 	ErrExpectedVarInArrow
 	ExpectedCurlyInVar

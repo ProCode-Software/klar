@@ -1,6 +1,8 @@
 package klon
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -52,4 +54,19 @@ func (tok *Token) End() lexer.Position {
 	pos := tok.Pos
 	pos.Col += uint32(len(tok.Src))
 	return pos
+}
+
+func (tok *Token) setAttr(k string, v any) {
+	if tok.Attrs == nil {
+		tok.Attrs = make(map[string]any)
+	}
+	tok.Attrs[k] = v
+}
+
+func (tok Token) String() string {
+	var isString string
+	if tok.Kind == String {
+		isString = "String = "
+	}
+	return fmt.Sprintf("Token{%s, %s%#q}", tok.Pos, isString, tok.Src)
 }

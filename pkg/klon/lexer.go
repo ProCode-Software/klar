@@ -29,24 +29,34 @@ func (rd *reader) readRune() (rune, error) {
 	r, n := utf8.DecodeRune(rd.buffer[rd.pos:])
 	rd.pos += n
 	if r == '\n' {
-		rd.offset.Line++
-		rd.offset.Col = 1
+		rd.resetLine()
 	} else {
 		rd.offset.Col++
 	}
 	return r, nil
 }
 
+func (rd *reader) resetLine() {
+	rd.offset.Line++
+	rd.offset.Col = 1
+}
+
+func (rd *reader) resetLineIf(r rune) {
+	if r == '\n' {
+		rd.resetLine()
+	}
+}
+
 func (rd *reader) peekRune() (rune, int, error) {
 	if rd.needsMore() {
-		if err := rd.refill(); err != nil {
-			if err == io.EOF {
-				return 0, 0, io.EOF
-			}
-			panic(ReadError{err})
+		if err := rd.tryRefill(); err != nil {
+			return 0, 0, err
 		}
 	}
-	r, n := utf8.DecodeRune(rd.buffer[rd.pos:])
+	if rd.pos+1 >= len(rd.buffer) {
+		return 0, 0, io.EOF
+	}
+	r, n := utf8.DecodeRune(rd.buffer[rd.pos+1:])
 	return r, n, nil
 }
 
@@ -96,6 +106,7 @@ func (rd *reader) readToken() Token {
 				return rd.readNumber(r, start, bufPos)
 			}
 		case '.':
+			// TODO: Don't allow leading/trailing decimal point for numbers
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				return rd.readNumber(r, start, bufPos)
 			}
@@ -243,8 +254,9 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 		if err != nil || rd.isPunct(r) {
 			break
 		}
+		// Comment between or after string
 		if r == '/' {
-			if r2, _, err2 := rd.peekRune(); err2 == nil && (r2 == '/' || r2 == '*') {
+			if r2, _, _ := rd.peekRune(); r2 == '/' || r2 == '*' {
 				break
 			}
 		}
@@ -264,7 +276,13 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 	case "null":
 		return Token{Kind: None, Src: str, Pos: start, BufPos: bufPos}
 	}
-	return Token{Kind: String, Src: str, Pos: start, BufPos: bufPos}
+	return Token{
+		Kind:   String,
+		Src:    str,
+		Pos:    start,
+		BufPos: bufPos,
+		Attrs:  attrs{"end": rd.offset, "quote": rune(0)},
+	}
 }
 
 func (rd *reader) readVariable(start lexer.Position, bufPos int) Token {
@@ -328,18 +346,16 @@ func (rd *reader) readLineComment(start lexer.Position) {
 	var b strings.Builder
 	b.WriteString("//")
 	for {
-		r, _, err := rd.currRune()
+		r, size, err := rd.currRune()
 		if err != nil || r == '\n' {
 			break
 		}
 		b.WriteRune(r)
-		rd.readRune()
+		rd.advanceBytes(size)
 	}
 	rd.comments = append(rd.comments, &ast.Comment{
-		BaseNode: ast.BaseNode{
-			Range: ranges.Range{Start: start, End: rd.offset},
-		},
-		Source: b.String(),
+		BaseNode: ast.BaseNode{ranges.Range{Start: start, End: rd.offset}},
+		Source:   b.String(),
 	})
 }
 
@@ -347,31 +363,36 @@ func (rd *reader) readBlockComment(start lexer.Position) {
 	var b strings.Builder
 	b.WriteString("/*")
 	depth := 1
-	for depth > 0 {
+	for {
 		r, err := rd.readRune()
 		if err != nil {
 			break
 		}
 		b.WriteRune(r)
 		if r == '*' {
-			if r2, n, err2 := rd.currRune(); err2 == nil && r2 == '/' {
+			if r2, n, _ := rd.currRune(); r2 == '/' {
 				b.WriteRune(r2)
 				rd.advanceBytes(n)
-				depth--
+				if depth--; depth == 0 {
+					break
+				}
 			}
 		} else if r == '/' {
-			if r2, n, err2 := rd.currRune(); err2 == nil && r2 == '*' {
+			if r2, n, _ := rd.currRune(); r2 == '*' {
 				b.WriteRune(r2)
 				rd.advanceBytes(n)
 				depth++
 			}
 		}
 	}
-	rd.comments = append(rd.comments, &ast.Comment{
-		BaseNode: ast.BaseNode{
-			Range: ranges.Range{Start: start, End: rd.offset},
-		},
-		Block:  true,
-		Source: b.String(),
-	})
+	cmt := &ast.Comment{
+		BaseNode: ast.BaseNode{ranges.Range{start, rd.offset}},
+		Block:    true,
+		Source:   b.String(),
+	}
+	if depth > 0 {
+		// Unterminated block comment
+		rd.rangeError(ErrUnterminatedComment, cmt.Range, "Expected '*/' to end block comment")
+	}
+	rd.comments = append(rd.comments, cmt)
 }

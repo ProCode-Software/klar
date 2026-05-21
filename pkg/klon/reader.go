@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
 
@@ -168,6 +169,16 @@ func (rd *reader) tokenError(code Code, tok Token, msg string, v ...any) {
 		Token: tok,
 		Text:  text,
 	})
+}
+
+func (rd *reader) rangeError(code Code, r ranges.Range, msg string, v ...any) {
+	var text string
+	if len(v) == 0 {
+		text = msg
+	} else {
+		text = fmt.Sprintf(msg, v...)
+	}
+	rd.errs = append(rd.errs, &Error{Code: code, Range: r, Text: text})
 }
 
 func (rd *reader) expectError(
