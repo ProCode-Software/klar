@@ -165,6 +165,30 @@ func (e *Error) Error() string { return e.Message() }
 // IsWarning returns whether the diagnostic is a warning rather than an error.
 func (e *Error) IsWarning() bool { return e.Warning || e.Prefix() == WarningPrefix }
 
+// ErrorCode returns the error code of the diagnostic as a string.
+func (e *Error) ErrorCode() string { return e.Code.Format() }
+
+// To implement [reporter.Error].
+// ========
+
+// FilePath is e.File. FilePath implements [reporter.Error].
+func (e *Error) FilePath() string { return e.File }
+
+// Location is e.Range. Location implements [reporter.Error].
+func (e *Error) Location() ranges.Range { return e.Range }
+
+// ErrorDetails is e.Details. ErrorDetails implements [reporter.Error].
+func (e *Error) ErrorDetails() []Detail { return e.Details }
+
+// ErrorHighlights is e.Highlights. ErrorHighlights implements [reporter.Error].
+func (e *Error) ErrorHighlights() []Highlight { return e.Highlights }
+
+// ErrorHints is e.Hints. ErrorHints implements [reporter.Error].
+func (e *Error) ErrorHints() []Hint { return e.Hints }
+
+// MainHighlight is e.Label. MainHighlight implements [reporter.Error].
+func (e *Error) MainHighlight() string { return e.Label }
+
 // Params
 // ========
 

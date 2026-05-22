@@ -1,5 +1,5 @@
 // Package reporter formats [*Error] with colored file context and
-// highlights. This is based on [miette], an implementation written in Rust.
+// highlights. This is based on the Rust crate [miette].
 //
 // [miette]: https://github.com/zkat/miette
 package reporter
@@ -55,9 +55,9 @@ func NewReporterTheme(colors *ColorPalette, chars *CharacterSet) *Reporter {
 }
 
 // LoadFile loads the file and tokens into r. path is the file path as provided
-// in the errors. rel is the path to be displayed when printed. If rel is an empty
-// string, path is displayed. Errors with [*Error.GetFile] path display
-// tokens.
+// in [Error.FilePath]. rel is the path to be displayed when printed. If rel is
+// an empty string, path is displayed. If an error's [Error.FilePath]() == path,
+// tokens are displayed. If the file is already loaded, rel and tokens are replaced.
 func (r *Reporter) LoadFile(path, rel string, tokens []lexer.Token) {
 	if r.files == nil {
 		r.files = make(map[string]*file)
@@ -69,4 +69,9 @@ func (r *Reporter) LoadFile(path, rel string, tokens []lexer.Token) {
 // If a file with path is not found, RemoveFile is a no-op.
 func (r *Reporter) RemoveFile(path string) {
 	delete(r.files, path)
+}
+
+// FileLoaded returns true if path is loaded in r.
+func (r *Reporter) FileLoaded(path string) bool {
+	return r.files != nil && r.files[path] != nil
 }

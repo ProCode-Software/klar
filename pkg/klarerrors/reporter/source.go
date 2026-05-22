@@ -86,17 +86,16 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
 		return uint32(utf8.RuneCountInString(src))
 	case rang.End.Line == line:
+		var src string
 		// Fast path for taking the LAST line of a token
 		nl := strings.LastIndexByte(tok.Source, '\n') // Last newline
 		// Things that should't happen
 		if nl < 0 {
 			errNoNewline()
-		} else if nl == len(tok.Source)-1 {
-			panic(fmt.Sprintf("impossible: newline is last character in %s token_: %q",
-				tok.Kind, tok.Source,
-			))
+		} else if nl < len(tok.Source)-1 {
+			// If a newline was the last character, src will be empty
+			src = tok.Source[nl+1:]
 		}
-		src := tok.Source[nl+1:]
 		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
 		return uint32(utf8.RuneCountInString(src))
 	default:

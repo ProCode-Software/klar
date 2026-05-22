@@ -15,14 +15,33 @@ import (
 // width if it is a [*os.File].
 var Width int
 
+// Error is an interface that represents an error to report.
+type Error interface {
+	Title() string     // The title of the error, such as "Error".
+	Message() string   // The error message.
+	ErrorCode() string // The error code, displayed after the message.
+	IsWarning() bool   // Whether the error is a warning.
+
+	FilePath() string       // The full path of the file where the error occurred.
+	Location() ranges.Range // The start and end positions of the error in the file.
+	MainHighlight() string  // The text to display after the main underline.
+
+	// Additional file ranges to display after the error.
+	ErrorDetails() []klarerrs.Detail
+	// Additional underline locations in the file.
+	ErrorHighlights() []klarerrs.Highlight
+	// Hints to display after the error. A hint may display a diff.
+	ErrorHints() []klarerrs.Hint
+}
+
 // Report prints the given error.
-func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
+func (r *Reporter) Report(e Error) (n int64, err error) {
 	r.init()
 	r.buf = &bytes.Buffer{}
 
 	// Highlights and ranges
-	msgHighlight := klarerrs.Highlight{e.Range, e.Label}
-	highlights := append([]klarerrs.Highlight{msgHighlight}, e.Highlights...)
+	msgHighlight := klarerrs.Highlight{e.Location(), e.MainHighlight()}
+	highlights := append([]klarerrs.Highlight{msgHighlight}, e.ErrorHighlights()...)
 	sortHighlights(highlights)
 	startLine, endLine := r.getBoxRanges(highlights[0].Range,
 		highlights[len(highlights)-1].Range,
@@ -51,27 +70,27 @@ func (r *Reporter) Report(e *klarerrs.Error) (n int64, err error) {
 	r.blankLine()
 
 	// 2. Header (-- file.klar:1:2)
-	r.printHeader(e.File, e.Range, digitWidth)
+	r.printHeader(e.FilePath(), e.Location(), digitWidth)
 
 	// 3. Box (file content and highlights)
-	r.printBox(e.File,
+	r.printBox(e.FilePath(),
 		highlights, &msgHighlight, hlc,
 		startLine, endLine, digitWidth, 0,
 	)
 
 	// 4. Details
-	for _, det := range e.Details {
+	for _, det := range e.ErrorDetails() {
 		r.newline()
-		r.printDetail(det, e.File == det.File)
+		r.printDetail(det, e.FilePath() == det.File)
 	}
 
 	// 5. Extended message
 	// TODO: not implemented in [*Error] yet
 
 	// 6. Hints
-	for _, hint := range e.Hints {
+	for _, hint := range e.ErrorHints() {
 		r.newline()
-		r.printHint(hint, e.File)
+		r.printHint(hint, e.FilePath())
 	}
 
 	r.alreadyPrinted = true
@@ -91,7 +110,7 @@ func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32)
 }
 
 // printMessage prints the error message and error code.
-func (r *Reporter) printMessage(e *klarerrs.Error, hlc string) {
+func (r *Reporter) printMessage(e Error, hlc string) {
 	var b strings.Builder
 	msgParts := strings.SplitAfterN(e.Message(), ": ", 2)
 	if r.UseColor {
@@ -104,8 +123,8 @@ func (r *Reporter) printMessage(e *klarerrs.Error, hlc string) {
 	if len(msgParts) > 1 {
 		b.WriteString(msgParts[1])
 	}
-	if e.Code != 0 {
-		code := " (" + e.Code.Format() + ")"
+	if e.ErrorCode() != "" {
+		code := " (" + e.ErrorCode() + ")"
 		if r.UseColor {
 			b.WriteString(ansi.Dim(code))
 		} else {
