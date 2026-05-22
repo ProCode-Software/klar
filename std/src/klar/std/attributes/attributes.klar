@@ -31,7 +31,7 @@ public func added(version: Version) {}
 public func deprecated(
     reason: String?,
     since _: Version?,
-    replacement _: Any?, // What users should use instead
+    use _: Any?, // What users should use instead
     target _: ...Target, // Platforms this is deprecated on
 ) {}
 

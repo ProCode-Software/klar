@@ -11,9 +11,9 @@ type Attribute interface {
 }
 
 type Deprecated struct {
-	Version     version.Version
-	Message     string
-	Replacement string
+	Version version.Version
+	Message string
+	Use     string
 }
 type Added struct {
 	Version version.Version
