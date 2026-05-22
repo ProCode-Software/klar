@@ -103,6 +103,12 @@ func (rd *reader) addParseFlags(flags uint8) (old uint8) {
 	return
 }
 
+func (rd *reader) removeParseFlags(flags uint8) (old uint8) {
+	old = rd.parseFlags
+	rd.parseFlags &^= flags
+	return
+}
+
 func (rd *reader) resetParseFlags(old uint8) { rd.parseFlags = old }
 
 func sliceRange[T ast.Node](items []T) ranges.Range {

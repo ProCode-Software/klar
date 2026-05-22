@@ -15,6 +15,7 @@ const (
 	noComma     uint8 = 1 << iota // Disallow commas in unquoted strings
 	objectValue                   // Allow more characters in unquoted strings
 	allowDot                      // Allow dots in unquoted strings
+	key                           // Currently reading a key
 )
 
 func (rd *reader) readRune() (rune, error) {

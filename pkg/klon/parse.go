@@ -8,6 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/sanity-io/litter"
 )
 
 const MaxDepth = 10000
@@ -40,13 +41,17 @@ func (rd *reader) parseValue(tok Token) ast.Value {
 	// Skip leading newlines
 	hasNewline := tok.Kind == Newline
 	if hasNewline {
+		old := rd.removeParseFlags(objectValue)
 		rd.skipLines()
 		tok = rd.currTok()
+		rd.resetParseFlags(old)
 	}
 
 	// A. Top-level object
 	if rd.depth == 0 {
-		if rd.peekTok().Kind == Colon || tok.Kind == Dash /* Invalid but still parse it */ {
+		if (rd.parseFlags&key == 0 && rd.peekTok().Kind == Colon) ||
+			tok.Kind == Dash /* Invalid but still parse it */ {
+			fmt.Println(rd.currTok())
 			return rd.parseObject()
 		}
 	}
@@ -95,11 +100,6 @@ loop:
 			res = rd.parseVariable(tok)
 		case Arrow:
 			res = rd.parseRest(tok)
-			// Only allowed at top level
-			if rd.depth > 0 {
-				rd.tokenError(ErrInvalidArrow, tok, "'<-' is only allowed at the top level")
-				res = &ast.Bad{BaseNode: ast.BaseNode{res.Pos()}, Value: res}
-			}
 		case LeftBracket:
 			res = rd.parseInlineList(tok)
 		case LeftCurly:
@@ -124,6 +124,11 @@ loop:
 				continue
 			}
 
+		case Colon:
+			if rd.parseFlags&key != 0 {
+				break loop
+			}
+			fallthrough
 		default:
 			rd.tokenError(ErrUnexpectedToken, tok, "Unexpected token")
 			rd.advanceTok()
@@ -234,7 +239,6 @@ func (rd *reader) parseInlineList(lb Token) *ast.List {
 // parseString parses a quoted string literal.
 func (rd *reader) parseString(str Token) *ast.String {
 	rd.advanceTok()
-	fmt.Println(str)
 	var (
 		wrap  bool
 		src   string
@@ -367,14 +371,16 @@ func (rd *reader) parseClass(cls Token) *ast.Class {
 func (rd *reader) parseList(first ast.Value) *ast.List {
 	items := []ast.Value{first}
 
-	old := rd.addParseFlags(objectValue | allowDot)
+	old := rd.addParseFlags(allowDot)
 	defer rd.resetParseFlags(old)
 
 	for rd.hasTokens() {
 		if !rd.checkDashes(rd.parseDashes()) {
 			break
 		}
+		old := rd.removeParseFlags(objectValue)
 		items = append(items, rd.parseValue(rd.readToken()))
+		rd.resetParseFlags(old)
 	}
 	return &ast.List{
 		BaseNode: ast.BaseNode{Range: sliceRange(items)},
@@ -469,9 +475,11 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		singleKey ast.Value
 		path      *[]ast.Value
 		keyStart  lexer.Position
-
-		value ast.Value
+		value     ast.Value
 	)
+	old := rd.removeParseFlags(objectValue)
+	defer rd.resetParseFlags(old)
+
 	// Check dashes
 	dashes = rd.parseDashes()
 	if !rd.checkDashes(dashes) {
@@ -543,7 +551,10 @@ func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 }
 
 func (rd *reader) convertKeyPath(path *[]ast.Value) ast.Value {
-	return nil
+	return &ast.StringGroup{
+		BaseNode: ast.BaseNode{sliceRange(*path)},
+		Values:   *path,
+	}
 }
 
 // parseKey parses a key for a field. The key can be either a single value,
@@ -558,10 +569,13 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start l
 			return false
 		}
 	}
+	old := rd.addParseFlags(key)
+	defer rd.resetParseFlags(old)
 
 	// Single key
 	singleKey = rd.parseValue(rd.advanceTok())
 	start = singleKey.Pos().Start
+	litter.Dump(singleKey)
 	if !validate(singleKey) {
 		singleKey = &ast.Bad{Value: singleKey}
 	}
@@ -593,10 +607,19 @@ func (rd *reader) parseDashes() (n int) {
 
 func (rd *reader) checkDashes(n int) bool {
 	if n < rd.depth {
-		return false
+		return false // Dedent
 	}
-	if n > rd.depth {
-		// Error
+	if n > rd.depth+1 {
+		// Too many dashes
+		if rd.depth == 0 {
+			rd.tokenError(ErrDashSkip, rd.currTok(),
+				"The top level object shouldn't include a dash",
+			)
+		} else {
+			rd.tokenError(ErrDashSkip, rd.currTok(),
+				"Too many dashes: expected up to %d, there are %d", rd.depth+1, n,
+			)
+		}
 		return false
 	}
 	return true

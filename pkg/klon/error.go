@@ -74,7 +74,6 @@ const (
 	ErrVarNotTopLevel     // Variable declaration outside of top level
 	ErrInvalidVarDecl     // Variable declaration using braces
 	ErrExpectedVarInArrow // Missing variable after '<-'
-	ErrInvalidArrow       // Rest/spread operator used in invalid context
 
 	// Decode =====
 
