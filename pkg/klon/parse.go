@@ -1,6 +1,7 @@
 package klon
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -233,6 +234,7 @@ func (rd *reader) parseInlineList(lb Token) *ast.List {
 // parseString parses a quoted string literal.
 func (rd *reader) parseString(str Token) *ast.String {
 	rd.advanceTok()
+	fmt.Println(str)
 	var (
 		wrap  bool
 		src   string
@@ -476,15 +478,15 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		return nil, dashes
 	}
 
-	tok := rd.currTok()
-	if tok.Kind == Arrow {
+	switch tok := rd.currTok(); tok.Kind {
+	case Arrow:
 		// Rest
 		return rd.parseRest(tok), dashes
-	} else if tok.Kind == Variable {
+	case Variable:
 		// Variable declaration
 		varName = rd.parseVariable(tok)
 		singleKey = varName
-	} else {
+	default:
 		// Normal key or list item
 		singleKey, path, keyStart = rd.parseKey()
 	}
@@ -570,8 +572,8 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start l
 	// Dot-separated key path
 	dotPath = &[]ast.Value{singleKey}
 	for rd.currTok().Kind == Dot {
-		rd.advanceTok()
-		singleKey = rd.parseValue(rd.currTok())
+		rd.advanceTok() // .
+		singleKey = rd.parseValue(rd.advanceTok())
 		if !validate(singleKey) {
 			singleKey = &ast.Bad{Value: singleKey}
 		}
