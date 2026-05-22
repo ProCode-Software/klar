@@ -23,18 +23,18 @@ import (
 // Build executes the "klar build" command.
 func Build(r *command.Runner) {
 	inputArgs := r.Parser.VarArgByName("inputs")
-	b, err := build.NewCompiler(build.ModeBuild)
+	c, err := build.NewCompiler(build.ModeBuild)
 	if err != nil {
 		cli.FailureError(err)
 	}
-	b.UseStdParser()
+	c.UseStdParser()
 	// Logging
 	jsonOutput := r.Flag("json-output").Bool()
-	if err := build.SetLogger(b, r.Flag("verbose").Bool(), jsonOutput); err != nil {
+	if err := build.SetLogger(c, r.Flag("verbose").Bool(), jsonOutput); err != nil {
 		cli.FailureError(err)
 	}
 	defer func() {
-		if err := b.CloseLogger(); err != nil {
+		if err := c.CloseLogger(); err != nil {
 			cli.Failure("Failed to write log file: ", err)
 		}
 	}()
@@ -44,35 +44,39 @@ func Build(r *command.Runner) {
 
 	// Resolve all inputs if provided
 	if len(inputArgs) > 0 {
-		b.Info("Resolving inputs", slog.Any("inputs", inputArgs))
+		c.Info("Resolving inputs", slog.Any("inputs", inputArgs))
 	}
-	b.StartTime = time.Now() // Start timer at resolution process
+	c.StartTime = time.Now() // Start timer at resolution process
 	var configPath string    // Config path if resolved from cwd or --config flag
 	inps, err := build.ResolveInputs(inputArgs)
 	if err == nil && len(inps) == 0 {
 		// Try reading from the cwd's klar.build if no inputs provided
 		if _, err := os.Stat("klar.build"); err == nil {
 			configPath = "klar.build"
-			b.Info("klar.build found in current directory")
+			c.Info("klar.build found in current directory")
 		} else {
 			// Build the nearest *package* if no path provided
 			pkgPath, _ := module.PackageRoot(".")
 			if false {
 				cli.ErrNoManifest(pkgPath)
 			}
-			b.Info("Resolving inputs at current package", slog.String("package", pkgPath))
+			c.Info("Resolving inputs at current package", slog.String("package", pkgPath))
 			//nolint:ineffassign // False positive
 			inps, err = build.ResolveInputs([]string{pkgPath})
 		}
 	}
-	if err != nil {
+	switch err := err.(type) {
+	case nil:
+	case *build.FilesystemError:
 		// Show a better error for file not found
-		if fe, ok := err.(*build.FilesystemError); ok && fe.IsNotExist() {
-			cli.ErrNotFound(fe.Path, "")
-		} else if ie, ok := err.(*build.InterfaceError); ok {
-			build.PrintInterfaceErr(ie)
-			cli.Exit(1)
+		if err.IsNotExist() {
+			cli.ErrNotFound(err.Path, "")
 		}
+		cli.Failure(err.Error())
+	case *build.InterfaceError:
+		c.PrintInterfaceError(err)
+		cli.Exit(1)
+	default:
 		cli.Failure(err.Error())
 	}
 	// Force a config path if --config flag was passed
@@ -81,23 +85,26 @@ func Build(r *command.Runner) {
 		configPath = conf
 		cfs, err := build.ReadKlarBuild(conf)
 		if err != nil {
-			build.PrintInterfaceErr(err.(*build.InterfaceError))
-		} else if len(cfs) == 0 {
-			// Make sure the --config has options in it
-			cli.Failuref("The configuration from '%s' has no options in it", "", conf)
+			build.PrintInterfaceError(err.(*build.InterfaceError))
+			cli.Exit(1)
 		}
-		b.Info("Using --config flag:", slog.String("path", conf))
+		if len(cfs) == 0 {
+			// Make sure the --config has options in it
+			cli.Failure(ansi.Sprintf("The configuration at <c>%s</c> has no options in it", conf))
+		}
+		c.Info("Using --config flag:", slog.String("path", conf))
 		configFlag = cfs[0]
 		delete(r.Flags, "config")
 	}
 
 	// Read options from klar.build
 	if len(inps) == 0 && configPath != "" {
-		if b.Options, err = build.ReadKlarBuild(configPath); err != nil {
-			build.PrintInterfaceErr(err.(*build.InterfaceError))
+		if c.Options, err = build.ReadKlarBuild(configPath); err != nil {
+			c.PrintInterfaceError(err.(*build.InterfaceError))
+			cli.Exit(1)
 		}
 	} else {
-		b.Options = make([]*build.Options, 0, len(inps))
+		c.Options = make([]*build.Options, 0, len(inps))
 	}
 	// Apply options for each input
 	for _, inp := range inps {
@@ -111,7 +118,7 @@ func Build(r *command.Runner) {
 			opts, err := build.ReadKlarBuild(inp.KlarBuild)
 			switch {
 			case err != nil:
-				build.PrintInterfaceErr(err.(*build.InterfaceError))
+				c.PrintInterfaceError(err.(*build.InterfaceError))
 				cli.Exit(1)
 			case len(opts) == 0:
 				opt = build.DefaultKlarBuild()
@@ -121,13 +128,13 @@ func Build(r *command.Runner) {
 		}
 		ParseFlags(r, opt)
 		opt.Inputs = []build.Input{inp}
-		b.Options = append(b.Options, opt)
+		c.Options = append(c.Options, opt)
 	}
 	// TODO: error if --output is file and there are multiple inputs
-	res, err := b.Compile()
+	res, err := c.Compile()
 	switch {
 	case len(res.Errors) > 0:
-		printErrors(res, b, jsonOutput, err)
+		printErrors(res, c, jsonOutput, err)
 		cli.Exit(1)
 	case err != nil:
 		if jsonOutput {
@@ -137,7 +144,7 @@ func Build(r *command.Runner) {
 		switch err := err.(type) {
 		case *build.InterfaceError:
 			// For InterfaceErrors: print a prettier error
-			build.PrintInterfaceErr(err)
+			c.PrintInterfaceError(err)
 			cli.Exit(1)
 		case *build.FilesystemError:
 			cli.Failure(err.Error())

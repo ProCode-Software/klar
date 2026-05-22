@@ -1,15 +1,20 @@
 package build
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
@@ -99,26 +104,78 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return "An error occurred during tokenization: ", err.Err.Error()
 	case ErrMisplacedTest:
 		return "Test files must be in the <c>test</c> directory", ""
+	case ErrInvalidConfig:
+		return fmt.Sprintf("Failed to parse <c>%s</c>: ", err.Value), err.Err.Error()
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
 }
 
-func PrintInterfaceErr(err *InterfaceError) {
-	if IsKlonError(err) {
-		PrintKlonError(err)
-		return
-	}
+func PrintInterfaceError(err *InterfaceError) {
 	main, detail := err.PrettyError()
 	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
 
-func PrintKlonError(err *InterfaceError) {
-	dir, name := filepath.Split(err.Value)
+// PrintInterfaceError is [PrintInterfaceError], but uses b's [Reporter] to
+// report Klon errors if needed.
+func (c *Compiler) PrintInterfaceError(err *InterfaceError) {
+	if IsKlonError(err) {
+		c.PrintKlonError(err)
+	} else {
+		PrintInterfaceError(err)
+	}
+}
+
+func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
+	dir, name := filepath.Split(ierr.Value)
 	cli.Error(ansi.Sprintf("<**>Failed to parse <dim>%s</dim><c>%s</c>:</**>", dir, name))
-	// TODO: use reporter
-	klonErr := err.Err.(*klon.Error)
-	fmt.Printf("%s "+ansi.Dim("%s")+"\n", klonErr.Text, klonErr.Range.Start)
+
+	// Load tokens for reporter
+	if !c.Reporter.FileLoaded(ierr.Value) {
+		c.Reporter.LoadFile(
+			ierr.Value,
+			cli.RelPath(c.WorkDir, ierr.Value),
+			makeKlonTokens(ierr.Value),
+		)
+	}
+	err := ierr.Err.(*klon.Error)
+	if _, err := c.Reporter.Report(&errorWithFile{err, ierr.Value}); err != nil {
+		PrintInterfaceError(ierr)
+		return
+	}
+}
+
+// errorWithFile adds a custom file to a [reporter.Error].
+type errorWithFile struct {
+	reporter.Error
+	file string
+}
+
+func (e *errorWithFile) FilePath() string { return e.file }
+
+func makeKlonTokens(filePath string) []lexer.Token {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil
+	}
+	var endCol int
+	lastNl := bytes.LastIndexByte(content, '\n')
+	switch {
+	case lastNl < 0:
+		endCol = utf8.RuneCount(content)
+	case lastNl < len(content)-1:
+		endCol = utf8.RuneCount(content[lastNl+1:])
+	default:
+		endCol = 1
+	}
+	return []lexer.Token{{
+		Position: lexer.Position{1, 1},
+		Source:   string(content),
+		Attributes: map[string]any{"end": lexer.Position{
+			Line: uint32(bytes.Count(content, []byte{'\n'})) + 1,
+			Col:  uint32(endCol),
+		}},
+	}}
 }
 
 func IsMaxErrors(err error) bool {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
@@ -107,3 +108,18 @@ func (err *TypeError) Error() string {
 func printLoc(r ranges.Range) string {
 	return fmt.Sprintf("at line %d, column %d", r.Start.Line, r.Start.Col)
 }
+
+// Implements [reporter.Error]
+// =======
+
+func (err *Error) Title() string          { return "Syntax error" }
+func (err *Error) Location() ranges.Range { return err.Range }
+func (err *Error) Message() string        { return err.Text }
+
+func (err *Error) ErrorCode() string                     { return "" }
+func (err *Error) IsWarning() bool                       { return false }
+func (err *Error) FilePath() string                      { return "" }
+func (err *Error) MainHighlight() string                 { return "" }
+func (err *Error) ErrorDetails() []klarerrs.Detail       { return nil }
+func (err *Error) ErrorHighlights() []klarerrs.Highlight { return nil }
+func (err *Error) ErrorHints() []klarerrs.Hint           { return nil }

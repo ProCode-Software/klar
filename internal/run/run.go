@@ -56,7 +56,7 @@ func reportErrors(c *build.Compiler, res *build.Result, err error) {
 	switch err := err.(type) {
 	case nil, *klarerrs.Error:
 	case *build.InterfaceError:
-		build.PrintInterfaceErr(err)
+		build.PrintInterfaceError(err)
 	default:
 		cli.Error(err.Error())
 	}
