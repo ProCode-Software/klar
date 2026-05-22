@@ -64,9 +64,7 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 				val = v
 				break
 			}
-			return decodeError(ErrVariableNotDefined, rv, node,
-				"Can't find variable '%s'", node.Name,
-			)
+			return decodeError(ErrUndefinedVar, rv, node, "Can't find variable '%s'", node.Name)
 		case *ast.StringGroup:
 			// TODO: resolve classes
 		}

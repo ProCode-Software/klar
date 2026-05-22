@@ -5,28 +5,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-const (
-	Unquoted = iota
-	DoubleQuote
-	SingleQuote
-
-	LineComment = iota
-	BlockComment
-)
-
 type Node interface {
-	_node()
 	Pos() ranges.Range
 	SetPos(start, end lexer.Position)
 }
 
 type Value = Node
 
-type BaseNode struct {
-	Range ranges.Range
-}
+// BaseNode
+// ============
 
-func (*BaseNode) _node()              {}
+type BaseNode struct{ Range ranges.Range }
+
 func (b *BaseNode) Pos() ranges.Range { return b.Range }
 func (b *BaseNode) SetPos(start, end lexer.Position) {
 	b.Range = ranges.Range{Start: start, End: end}
@@ -46,8 +36,7 @@ type Boolean struct {
 
 type StringGroup struct {
 	BaseNode
-	Values    []Value
-	Separated []bool // Separated[i] is true if Values[i+1] is separated from Values[i] by space/newline
+	Values []Value
 }
 
 type String struct {
@@ -81,6 +70,8 @@ type Field struct {
 	Key     Value
 	KeyPath *[]Value
 	Value   Value
+
+	Arrow *ArrowRef
 }
 
 type VarRef struct {
@@ -94,6 +85,7 @@ type Comment struct {
 	Block  bool
 	Source string
 }
+
 
 type Class struct {
 	BaseNode

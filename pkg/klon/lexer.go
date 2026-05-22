@@ -111,7 +111,7 @@ func (rd *reader) readToken() Token {
 				return rd.readNumber(r, start, bufPos)
 			}
 			if (rd.parseFlags & allowDot) == 0 {
-				return Token{Kind: String, Pos: start, Src: ".", BufPos: bufPos}
+				return Token{Kind: Dot, Pos: start, Src: ".", BufPos: bufPos}
 			}
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			return rd.readNumber(r, start, bufPos)
@@ -354,7 +354,7 @@ func (rd *reader) readLineComment(start lexer.Position) {
 		rd.advanceBytes(size)
 	}
 	rd.comments = append(rd.comments, &ast.Comment{
-		BaseNode: ast.BaseNode{ranges.Range{Start: start, End: rd.offset}},
+		BaseNode: ast.BaseNode{ranges.Range{start, rd.offset}},
 		Source:   b.String(),
 	})
 }
