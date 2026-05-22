@@ -59,6 +59,7 @@ const (
 	ErrInvalidKey        // Non-string/number/bool used as a key
 	ErrExpectedValue     // Expected a value but found something else
 	ErrExpectedClassName // Missing or invalid class name after '@'
+	ErrExpectedKeyValue  // Expected a key-value pair
 
 	// Structural =====
 

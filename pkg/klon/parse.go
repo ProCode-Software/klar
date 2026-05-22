@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 )
@@ -87,7 +88,7 @@ loop:
 			res = rd.parseNone(tok)
 		case Boolean:
 			res = rd.parseBoolean(tok)
-		case At:
+		case AtRef:
 			res = rd.parseClass(tok)
 		case Variable:
 			res = rd.parseVariable(tok)
@@ -183,15 +184,15 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 	if braces {
 		if err == ErrUnterminatedVar {
 			name = vr.Src[2:]
-			rd.tokenError(err, vr, "Expected '{' to close variable")
+			rd.tokenError(err, vr, "Expected closing '}' in variable reference")
 		} else {
-			name = vr.Src[1 : len(vr.Src)-1]
+			name = vr.Src[2 : len(vr.Src)-1]
 		}
 	} else {
 		name = vr.Src[1:]
 	}
 	if err == ErrInvalidIdentifier {
-		rd.tokenError(err, vr, "Variable name can't begin with a digit")
+		rd.tokenError(err, vr, "A variable name can't start with a digit")
 	}
 	return &ast.VarRef{
 		BaseNode: ast.BaseNode{Range: vr.Range()},
@@ -348,23 +349,14 @@ func (rd *reader) parseNone(none Token) *ast.None {
 }
 
 // parseClass parses a class name (@identifier).
-func (rd *reader) parseClass(at Token) *ast.Class {
+func (rd *reader) parseClass(cls Token) *ast.Class {
 	rd.advanceTok() // @
-
-	var (
-		name string
-		key  = rd.parseKey()
-		// TODO: store the identifier with the token in the lexer, similar to variables
-		str, ok = key.(*ast.String)
-	)
-	if !ok || str.Quote != 0 {
-		rd.tokenError(ErrExpectedClassName, at, "A class name must be an unquoted identifier")
-	} else {
-		name = str.Raw
+	if cls.Attrs != nil && cls.Attrs["invalid"] == true {
+		rd.tokenError(ErrInvalidIdentifier, cls, "A class name can't start with a digit")
 	}
 	return &ast.Class{
-		BaseNode: ast.BaseNode{Range: at.Range()},
-		Name:     name,
+		BaseNode: ast.BaseNode{cls.Range()},
+		Name:     cls.Src[1:],
 	}
 }
 
@@ -372,7 +364,15 @@ func (rd *reader) parseClass(at Token) *ast.Class {
 // already parsed by [reader.parseEntry].
 func (rd *reader) parseList(first ast.Value) *ast.List {
 	items := []ast.Value{first}
+
+	old := rd.addParseFlags(objectValue | allowDot)
+	defer rd.resetParseFlags(old)
+
 	for rd.hasTokens() {
+		if !rd.checkDashes(rd.parseDashes()) {
+			break
+		}
+		items = append(items, rd.parseValue(rd.readToken()))
 	}
 	return &ast.List{
 		BaseNode: ast.BaseNode{Range: sliceRange(items)},
@@ -394,9 +394,13 @@ func (rd *reader) parseObject() ast.Value {
 			break
 			// TODO: return
 		}
-		field, ok := item.(*ast.Field)
-		// Only !ok for the first item
-		if !ok {
+		var field *ast.Field
+		switch item := item.(type) {
+		case *ast.Field:
+			field = item
+		case *ast.ArrowRef:
+			field = &ast.Field{Arrow: item}
+		default:
 			return rd.parseList(item) // It's a list
 		}
 		isObject = true
@@ -416,123 +420,133 @@ func (rd *reader) parseObject() ast.Value {
 	}
 }
 
-// parseBracedObject parses a braced object or list literal { ... }.
+// parseBracedObject parses a braced object { ... }.
 func (rd *reader) parseBracedObject(lc Token) ast.Value {
-	oldFlags := rd.addParseFlags(noComma)
-	defer rd.resetParseFlags(oldFlags)
+	old := rd.addParseFlags(noComma)
+	defer rd.resetParseFlags(old)
 
+	// Dash depth resets in braced objects
 	oldDepth := rd.depth
 	rd.depth = 0
 	defer func() { rd.depth = oldDepth }()
+
 	rd.advanceTok() // {
 
-	var (
-		fields []*ast.Field
-		items  []ast.Value
-		isList bool
-		first  = true
-	)
-
+	var fields []*ast.Field
 	for rd.hasTokens() && rd.currTok().Kind != RightCurly {
-		rd.skipLines()
-		if rd.currTok().Kind == RightCurly {
+		field, dashes := rd.parseEntry(true)
+		if dashes < rd.depth {
 			break
 		}
+		fields = append(fields, field.(*ast.Field))
 
-		key, path, val, _ := rd.parseEntry()
-		if key == nil && path == nil && val == nil {
-			rd.skipLines()
-			continue
-		}
-
-		// A. Determine type on first entry
-		if first {
-			isList = (key == nil)
-			first = false
-		} else if (key == nil) != isList {
-			rd.tokenError(ErrTypeMismatch, rd.currTok(), "Mixed keyed and unkeyed entries")
-		}
-
-		// B. Collect entries
-		if isList {
-			items = append(items, val)
-		} else {
-			fields = append(fields, &ast.Field{ast.BaseNode{ranges.Range{key.Pos().Start, val.Pos().End}}, key, path, val})
-		}
-
-		rd.skipLines()
-		if rd.currTok().Kind == Comma {
-			rd.advanceTok()
+		if rd.currTok().Kind != RightCurly {
+			// TODO: also allow newline as a separator
+			rd.expectError(Comma, ErrExpectedToken,
+				"Expected ',' to separate inline object fields",
+			)
 		}
 	}
-
-	rb := rd.expectError(RightCurly, ErrUnterminatedObject, "Expected '}' to end object")
-	if isList {
-		return &ast.List{ast.BaseNode{ranges.Range{lc.Pos, rb.Pos}}, true, items}
+	rc := rd.expectError(RightCurly, ErrUnterminatedObject,
+		"Expected '}' to close inline object",
+	)
+	return &ast.Object{
+		BaseNode: ast.BaseNode{ranges.Range{lc.Pos, rc.End()}},
+		Fields:   fields,
+		Inline:   true,
 	}
-	return &ast.Object{ast.BaseNode{ranges.Range{lc.Pos, rb.Pos}}, fields, true}
 }
 
 // parseEntry parses a single entry within an object or list block.
-// It handles variables, spreads, keyed entries, and unkeyed list items.
+// The entry can be keyed or unkeyed, or a rest. Variable declarations
+// are handled. If the entry is a rest, an [*ast.ArrowRef] is returned.
 // If isObject == true, an error is reported if the entry doesn't have a key.
-func (rd *reader) parseEntry(isObject bool) (entry ast.Value, dashes int) {
-	tok := rd.currTok()
+func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
+	var (
+		varName   *ast.VarRef
+		singleKey ast.Value
+		path      *[]ast.Value
+		keyStart  lexer.Position
 
+		value ast.Value
+	)
+	// Check dashes
 	dashes = rd.parseDashes()
 	if !rd.checkDashes(dashes) {
 		return nil, dashes
 	}
 
-	// A. Variable declarations
-	if tok.Kind == Variable {
-		varName := rd.parseVariable(tok)
-		if rd.depth != 0 {
-			rd.tokenError(ErrVarNotTopLevel, tok, "Variables must be declared at the top level")
-		}
-		if varName.Braces {
-			rd.tokenError(ErrInvalidVarDecl, tok, "Variable declarations can't use braces")
-		}
-		rd.expectError(Colon, ErrExpectedToken, "Expected ':' after variable name")
-
-		old := rd.addParseFlags(allowDot)
-		v := rd.parseValue(rd.currTok())
-		rd.resetParseFlags(old)
-
-		if rd.vars == nil {
-			rd.vars = make(map[string]ast.Value)
-		}
-		rd.vars[varName.Name] = v
-		return nil, nil, nil, 0
-	}
-
-	// B. Spread
+	tok := rd.currTok()
 	if tok.Kind == Arrow {
-		return nil, nil, rd.parseRest(tok), rd.depth
+		// Rest
+		return rd.parseRest(tok), dashes
+	} else if tok.Kind == Variable {
+		// Variable declaration
+		varName = rd.parseVariable(tok)
+		singleKey = varName
+	} else {
+		// Normal key or list item
+		singleKey, path, keyStart = rd.parseKey()
 	}
 
-	// C. Normal entry
-	key, path, dashes = rd.readKey()
-	if key == nil {
-		return nil, nil, nil, dashes
-	}
-
-	// Keyed entry
+	// Key-value field
 	if rd.currTok().Kind == Colon {
 		rd.advanceTok() // :
-		old := rd.addParseFlags(allowDot)
-		v := rd.parseValue(rd.currTok())
+		old := rd.addParseFlags(allowDot | objectValue)
+		value = rd.parseValue(rd.currTok())
 		rd.resetParseFlags(old)
-		return key, path, v, dashes
+
+		// If the variable is a field, then it's a declaration
+		if varName != nil {
+			rd.declareVariable(varName, value)
+			return rd.parseEntry(forceObject) // Read another entry
+		}
+
+		return &ast.Field{
+			BaseNode: ast.BaseNode{ranges.Range{keyStart, value.Pos().End}},
+			Key:      singleKey,
+			KeyPath:  path,
+			Value:    value,
+		}, dashes
 	}
 
 	// Unkeyed list item
-	return nil, nil, rd.parseValueWithFirst(key), dashes
+	// =====
+
+	// If we read a key-path, it has to be converted to a single value
+	if path != nil {
+		singleKey = rd.convertKeyPath(path)
+	}
+	// If forceObject == true, report an error because this should be a key-value pair
+	if forceObject {
+		rd.rangeError(ErrExpectedKeyValue, singleKey.Pos(),
+			"Expected a key-value pair in this object",
+		)
+		singleKey = &ast.Field{Key: &ast.Bad{Value: singleKey}}
+	}
+	return singleKey, dashes
+}
+
+func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
+	if rd.depth != 0 {
+		rd.rangeError(ErrVarNotTopLevel, name.Range, "Variables must be declared at the top level")
+	}
+	if name.Braces {
+		rd.rangeError(ErrInvalidVarDecl, name.Range, "Variable declarations can't use braces")
+	}
+	if rd.vars == nil {
+		rd.vars = make(map[string]ast.Value)
+	}
+	rd.vars[name.Name] = value
+}
+
+func (rd *reader) convertKeyPath(path *[]ast.Value) ast.Value {
+	return nil
 }
 
 // parseKey parses a key for a field. The key can be either a single value,
 // or a dot-path.
-func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value) {
+func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start lexer.Position) {
 	validate := func(v ast.Value) bool {
 		switch v.(type) {
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
@@ -542,14 +556,17 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value) {
 			return false
 		}
 	}
+
 	// Single key
 	singleKey = rd.parseValue(rd.advanceTok())
+	start = singleKey.Pos().Start
 	if !validate(singleKey) {
 		singleKey = &ast.Bad{Value: singleKey}
 	}
 	if rd.currTok().Kind != Dot {
-		return singleKey, nil
+		return singleKey, nil, start
 	}
+
 	// Dot-separated key path
 	dotPath = &[]ast.Value{singleKey}
 	for rd.currTok().Kind == Dot {
@@ -560,7 +577,7 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value) {
 		}
 		*dotPath = append(*dotPath, singleKey)
 	}
-	return nil, dotPath
+	return nil, dotPath, start
 }
 
 func (rd *reader) parseDashes() (n int) {

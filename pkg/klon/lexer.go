@@ -100,6 +100,9 @@ func (rd *reader) readToken() Token {
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				return rd.readNumber(r, start, bufPos)
 			}
+			if rd.parseFlags&objectValue != 0 {
+				break
+			}
 			return Token{Kind: Dash, Pos: start, Src: string(r), BufPos: bufPos}
 		case '+':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
@@ -120,7 +123,9 @@ func (rd *reader) readToken() Token {
 		case ']':
 			return Token{Kind: RightBracket, Pos: start, Src: string(r), BufPos: bufPos}
 		case '@':
-			return Token{Kind: At, Pos: start, Src: string(r), BufPos: bufPos}
+			if curr, _, _ := rd.currRune(); !unicode.IsSpace(curr) {
+				return rd.readClass(start, bufPos)
+			}
 		case '$':
 			return rd.readVariable(start, bufPos)
 		case ':':
@@ -318,7 +323,7 @@ loop:
 			b.WriteRune(r)
 			rd.advanceBytes(n)
 			break loop
-		case b.Len() == 1 && unicode.IsDigit(r):
+		case ((isBrace && b.Len() == 2) || b.Len() == 1) && unicode.IsDigit(r):
 			tokErr = ErrInvalidIdentifier
 		case !isValidIdentChar(r):
 			break loop
@@ -335,6 +340,33 @@ loop:
 		Pos:    start,
 		BufPos: bufPos,
 		Attrs:  attrs{"err": tokErr, "brace": isBrace},
+	}
+}
+
+func (rd *reader) readClass(start lexer.Position, bufPos int) Token {
+	var b strings.Builder
+	var invalid bool
+	b.WriteString("@")
+loop:
+	for {
+		r, size, err := rd.currRune()
+		switch {
+		case err != nil:
+			break loop
+		case b.Len() == 1 && unicode.IsDigit(r):
+			invalid = true
+		case !isValidIdentChar(r):
+			break loop
+		}
+		b.WriteRune(r)
+		rd.advanceBytes(size)
+	}
+	return Token{
+		Kind:   AtRef,
+		Src:    b.String(),
+		Pos:    start,
+		BufPos: bufPos,
+		Attrs:  attrs{"invalid": invalid, "end": rd.offset},
 	}
 }
 

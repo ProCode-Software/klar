@@ -102,4 +102,14 @@ type Bad struct {
 	Value any
 }
 
+func (b *Bad) Pos() ranges.Range {
+	if !b.BaseNode.Range.IsZero() {
+		return b.BaseNode.Range
+	}
+	if node, ok := b.Value.(Node); ok {
+		return node.Pos()
+	}
+	return ranges.Range{}
+}
+
 type None struct{ BaseNode }

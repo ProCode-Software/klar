@@ -18,7 +18,7 @@ const (
 	String
 	Boolean
 	None
-	At // @
+	AtRef // @
 	Colon
 	Comma
 	Dash  // -
