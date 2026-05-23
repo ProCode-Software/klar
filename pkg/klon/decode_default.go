@@ -32,7 +32,7 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Array:
 		return d.makeArrayDecoder(rt)
 	case reflect.Pointer:
-		return makePointerDecoder(rt)
+		return d.makePointerDecoder(rt)
 	case reflect.Interface:
 		return makeInterfaceDecoder(rt)
 	default:
@@ -50,7 +50,7 @@ func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 		rv.SetString(v.Source)
 	case *ast.None:
 	default:
-		return typeError(rv, v)
+		return typeMismatchError(rv, v)
 	}
 	return nil
 }
@@ -61,7 +61,7 @@ func decodeBool(rv reflect.Value, val ast.Value, d *decoder) error {
 		rv.SetBool(val.Value)
 	case *ast.None:
 	default:
-		return typeError(rv, val)
+		return typeMismatchError(rv, val)
 	}
 	return nil
 }
@@ -73,14 +73,13 @@ func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
 		if float64(asInt) != val.Value {
 			// Truncated
 			return decodeError(klonerrs.ErrTruncatedNumber, rv, val,
-				"Number %f must be a whole integer to be stored in Go type %s",
-				val.Value, rv.Type().String(),
+				"Number '%s' must be a whole integer", val.Source,
 			)
 		}
 		rv.SetInt(asInt)
 	case *ast.None:
 	default:
-		return typeError(rv, val)
+		return typeMismatchError(rv, val)
 	}
 	return nil
 }
@@ -88,17 +87,23 @@ func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
 func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
 	switch val := val.(type) {
 	case *ast.Number:
-		if val.Value < 0 {
-			return decodeError(klonerrs.ErrNegativeNumber, rv, val,
-				"Can't decode negative number %f into Go type %s",
-				val.Value, rv.Type().String(),
+		asUInt := uint64(val.Value)
+		if float64(asUInt) != val.Value {
+			// Truncated
+			return decodeError(klonerrs.ErrTruncatedNumber, rv, val,
+				"Number '%s' must be a whole integer", val.Source,
 			)
 		}
-		rv.SetUint(uint64(val.Value))
+		if val.Value < 0 {
+			return decodeError(klonerrs.ErrNegativeNumber, rv, val,
+				"Number '%s' can't be negative", val.Source,
+			)
+		}
+		rv.SetUint(asUInt)
 		return nil
 	case *ast.None:
 	}
-	return typeError(rv, val)
+	return typeMismatchError(rv, val)
 }
 
 func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
@@ -107,7 +112,7 @@ func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
 		rv.SetFloat(val.Value)
 	case *ast.None:
 	default:
-		return typeError(rv, val)
+		return typeMismatchError(rv, val)
 	}
 	return nil
 }
@@ -151,7 +156,7 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 				}
 			}
 		default:
-			return typeError(rv, val)
+			return typeMismatchError(rv, val)
 		}
 		return nil
 	}
@@ -203,7 +208,7 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 		case *ast.None:
 		default:
 			if d.flags.Has(klonflags.NoSingleItemToArray) {
-				return typeError(rv, val)
+				return typeMismatchError(rv, val)
 			}
 			if !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1 {
 				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
@@ -213,5 +218,20 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 			return decodeItem(rv.Index(0), val, d)
 		}
 		return nil
+	}
+}
+
+func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
+	elm := rt.Elem()
+	decode := d.getDecoder(elm)
+	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		if _, ok := val.(*ast.None); ok {
+			rv.SetZero()
+			return nil
+		}
+		if rv.IsNil() {
+			rv.Set(reflect.New(elm))
+		}
+		return decode(rv.Elem(), val, d)
 	}
 }

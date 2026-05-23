@@ -48,6 +48,9 @@ func withExpectFlags(flags []expectFlag, exp lexer.TokenType, got lexer.Token) (
 			stay = true
 		}
 	}
+	if err == nil {
+		err = klarerrs.Token(klarerrs.ErrExpectedToken, got)
+	}
 	err.SetParam("expected", exp)
 	return
 }

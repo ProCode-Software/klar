@@ -50,10 +50,17 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("klon: %s error at %s: %s", kind, err.Range, err.Text)
 }
 
+func (e *Error) IsTypeError() bool { return e.Type != nil }
+
 // Implements [reporter.Error]
 // =======
 
-func (err *Error) Title() string          { return "Syntax error" }
+func (err *Error) Title() string {
+	if err.IsTypeError() {
+		return "Type error"
+	}
+	return "Syntax error"
+}
 func (err *Error) Location() ranges.Range { return err.Range }
 func (err *Error) Message() string        { return err.Text }
 

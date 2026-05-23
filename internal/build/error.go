@@ -127,8 +127,13 @@ func (c *Compiler) PrintInterfaceError(err *InterfaceError) {
 }
 
 func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
-	dir, name := filepath.Split(ierr.Value)
-	cli.Error(ansi.Sprintf("<**>Failed to parse <dim>%s</dim><c>%s</c>:</**>", dir, name))
+	_, name := filepath.Split(ierr.Value)
+	kind := "configuration"
+	switch name {
+	case "glas.pack":
+		kind = "manifest"
+	}
+	cli.Error(ansi.Sprintf("<**>Failed to parse %s:</**>\n", kind))
 
 	// Load tokens for reporter
 	if !c.Reporter.FileLoaded(ierr.Value) {

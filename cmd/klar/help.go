@@ -3,26 +3,42 @@ package main
 import (
 	"fmt"
 	"io"
-	"math/rand/v2"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 )
 
+// TODO: Should these be bright?
+var RandomDescriptions = []string{
+	ansi.Magenta("✨ A simple, modern, and clean programming language"),
+	ansi.Green("⏩ The progressive programming language"),
+	ansi.Yellow("Not another C-based programming language"),
+	ansi.Cyan("🐨 A koala-approved programming language!"),
+}
+
+func KlarGradient(text string) string {
+	// This is just for the VSCode color dialog
+	rgba := func(r, g, b, _ uint8) [3]int { return [3]int{int(r), int(g), int(b)} }
+	return ansi.Gradient(text, rgba(189, 247, 90, 1), rgba(117, 246, 255, 1))
+}
+
 func ShowHelp(w io.Writer, full bool) {
 	hb := NewHelpBuilder(w)
 
-	hb.ShortTitleNoNewline(ansi.BoldBrightCyan("Klar"))
-	hb.Print(RandomDescriptions[rand.IntN(len(RandomDescriptions))], " ",
-		ansi.Gray("v"+cli.KlarVersion), "\n")
+	// Title
+	hb.Println(
+		ansi.Bold(KlarGradient("Klar:")),
+		cli.RandomSlice(RandomDescriptions),
+		ansi.Gray("v"+cli.KlarVersion),
+	)
 
-	klar := ansi.BoldGreen("klar ")
-	pipe := " | "
+	// Usage
+	klar := ansi.BoldMagenta("klar")
 	hb.ShortTitle("Usage")
-	hb.Print(
-		klar, ansi.Yellow("<command> "), ansi.Cyan("[args]"), pipe,
-		klar, ansi.Yellow("<file>"), pipe,
-		klar, ansi.Cyan("-c "), ansi.DimCyan("<script>"), "\n",
+	hb.Println(
+		klar, ansi.Yellow("<command>"), ansi.Cyan("[args]"), "|",
+		klar, ansi.Yellow("<file>"), "|",
+		klar, ansi.Cyan("-c"), ansi.Green("<script>"),
 	)
 
 	hb.Title("Commands")
@@ -46,21 +62,25 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Command("help", "Get help for a command or show this message")
 	hb.Flush()
 
-	hb.Print("\nUse ", ansi.Cyan("klar help <subcommand>"),
-		" for more information about a command.\n")
+	hb.Println(
+		"\n", "Use",
+		ansi.Magenta("klar"), ansi.Yellow("help"), ansi.Cyan("<subcommand>"),
+		"for more information about a command.",
+	)
 
 	if full {
 		FlagHelp(hb)
 	}
 
+	// Social Links
 	hb.ShortTitle("GitHub")
-	hb.Print(ansi.Magenta("https://github.com/ProCode-Software/klar"), "\n")
+	hb.Println(ansi.Magenta("https://github.com/ProCode-Software/klar"))
 }
 
 func FlagHelp(hb *HelpBuilder) {
 	hb.Title("Flags")
 	hb.Color = ansi.Cyan
-	hb.TW.WriteCells(hb.Color("-c")+ansi.DimCyan(" <script>"), "Evaluate code from a string")
+	hb.TW.WriteCells(hb.Color("-c")+ansi.Green(" <script>"), "Evaluate code from a string")
 	hb.TW.WriteCells(hb.Color("-v")+", "+hb.Color("--version"), "Print the Klar version")
 	hb.TW.WriteCells(hb.Color("-h")+", "+hb.Color("--help"), "Print this help message")
 	hb.Flush()
@@ -113,11 +133,13 @@ func (hb *HelpBuilder) Print(s ...any) {
 	fmt.Fprint(hb.TW.Output, s...)
 }
 
+func (hb *HelpBuilder) Println(s ...any) {
+	fmt.Fprintln(hb.TW.Output, s...)
+}
+
 // Flush flushes the tab writer, panicking if an error occurs.
 func (hb *HelpBuilder) Flush() {
 	if _, err := hb.TW.Flush(); err != nil {
 		panic(err)
 	}
 }
-
-const helpTemplate = ``

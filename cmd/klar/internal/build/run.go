@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -81,7 +84,7 @@ func Build(r *command.Runner) {
 	}
 	// Force a config path if --config flag was passed
 	var configFlag *build.Options
-	if conf := r.Flag("config").String(); conf != "klar.build" {
+	if conf := r.Flag("config").String(); conf != "klar.build" && conf != "" {
 		configPath = conf
 		cfs, err := build.ReadKlarBuild(conf)
 		if err != nil {
@@ -109,11 +112,14 @@ func Build(r *command.Runner) {
 	// Apply options for each input
 	for _, inp := range inps {
 		var opt *build.Options
-		if configPath != "" {
+		switch {
+		case configPath != "":
 			// Use --config flag
 			opt = configFlag
 			inp.KlarBuild = configPath
-		} else {
+		case inp.KlarBuild == "":
+			opt = build.DefaultKlarBuild()
+		default:
 			// Use the Input's klar.build
 			opts, err := build.ReadKlarBuild(inp.KlarBuild)
 			switch {
@@ -134,6 +140,9 @@ func Build(r *command.Runner) {
 	res, err := c.Compile()
 	switch {
 	case len(res.Errors) > 0:
+		if r.Flag("sound-on-error").Bool() {
+			playErrorSound()
+		}
 		printErrors(res, c, jsonOutput, err)
 		cli.Exit(1)
 	case err != nil:
@@ -201,8 +210,14 @@ func printJSONErrors(res *build.Result, err error, isMaxErrors bool) {
 	os.Stdout.WriteString("\n")
 }
 
+var jsFlags = []string{
+	"declaration", "minify", "inline-sourcemap", "sourcemap", "jsdoc",
+	"copy-node-modules", "banner", "bundle", "declaration-path",
+}
+
 // ParseFlags parses flags from r into o.
 func ParseFlags(r *command.Runner, o *build.Options) {
+	var firstJSFlag string
 	for flag, v := range r.Flags {
 		if v == nil {
 			continue
@@ -210,52 +225,64 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		switch flag {
 		case "config", "verbose":
 			continue // Already handled
+		case "sound-on-error":
 		case "watch":
 			o.Watch = v.Bool()
 		case "output":
 			o.Output = []string{v.String()}
 		case "target":
 			o.Target = v.Value.(target.Target)
+		case "declaration":
+			o.JS.Declaration = v.Bool()
+		case "minify":
+			o.JS.Minify = v.Bool()
+		case "inline-sourcemap":
+			if v.Bool() {
+				o.JS.Sourcemap = klarbuild.SourceMapInline
+			}
+		case "sourcemap":
+			if v.Bool() {
+				o.JS.Sourcemap = klarbuild.SourceMapEnabled
+			}
+		case "jsdoc":
+			o.JS.JSDoc = v.Bool()
+		case "copy-node-modules":
+			o.JS.CopyNodeModules = v.Bool()
+		case "banner":
+			o.JS.Banner = v.String()
+		case "bundle":
+			o.JS.Bundle = v.Value.(klarbuild.BundleMode)
+		case "declaration-path":
+			o.JS.DeclarationPath = v.String()
 		default:
-			// The rest are all JS flags
-			if o.JS == nil {
-				o.JS = &klarbuild.JSOptions{}
-			}
-			// Check if a JavaScript flag was used when not targeting JavaScript
-			// TODO: wait until all flags are parsed. Flags aren't in order.
-			if o.Target != target.JavaScript {
-				cli.Failure(fmt.Sprintf(
-					"Can't use JavaScript flag '%s' with target '%s'",
-					argparse.FormatFlag(flag), o.Target,
-				))
-			}
-			switch flag {
-			case "declaration":
-				o.JS.Declaration = v.Bool()
-			case "minify":
-				o.JS.Minify = v.Bool()
-			case "inline-sourcemap":
-				if v.Bool() {
-					o.JS.Sourcemap = klarbuild.SourceMapInline
-				}
-			case "sourcemap":
-				if v.Bool() {
-					o.JS.Sourcemap = klarbuild.SourceMapEnabled
-				}
-			case "jsdoc":
-				o.JS.JSDoc = v.Bool()
-			case "copy-node-modules":
-				o.JS.CopyNodeModules = v.Bool()
-			case "banner":
-				o.JS.Banner = v.String()
-			case "bundle":
-				o.JS.Bundle = v.Value.(klarbuild.BundleMode)
-			case "declaration-path":
-				o.JS.DeclarationPath = v.String()
-			default:
-				panic("unhandled flag: " + flag)
-			}
+			panic("unhandled flag: " + flag)
 		}
+		// Check if a JavaScript flag was used when not targeting JavaScript
+		if o.JS != nil && o.Target != target.JavaScript && slices.Contains(jsFlags, flag) &&
+			firstJSFlag == "" {
+			firstJSFlag = flag
+		}
+	}
+	if firstJSFlag != "" {
+		cli.Failure(fmt.Sprintf(
+			"Can't use JavaScript flag '%s' with target '%s'",
+			argparse.FormatFlag(firstJSFlag), o.Target,
+		))
+	}
+}
+
+func playErrorSound() {
+	// TODO: use a different path
+	home, err := os.UserHomeDir()
+	if err != nil {
+		cli.Failure("Failed to get home directory: ", err)
+	}
+	soundPath := filepath.Join(home, "Downloads/fahh.mp3")
+
+	// TODO: make this cross-platform
+	cmd := exec.Command("pw-play", soundPath)
+	if err := cmd.Start(); err != nil {
+		cli.Failure("Failed to play error sound: ", err)
 	}
 }
 

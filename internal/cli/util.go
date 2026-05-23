@@ -2,6 +2,7 @@ package cli
 
 import (
 	"io"
+	"math/rand/v2"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -54,3 +55,6 @@ func RelPath(basePath, targPath string) string {
 	}
 	return rel
 }
+
+// RandomSlice returns a random element from a slice.
+func RandomSlice[T any](s []T) T { return s[rand.IntN(len(s))] }

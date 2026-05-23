@@ -19,7 +19,7 @@ import (
 var termWidth int
 
 func formatCmd(subCommand string) string {
-	return ansi.BoldGreen(ExecName) + " " + ansi.BoldYellow(subCommand)
+	return ansi.BoldMagenta(ExecName) + " " + ansi.BoldYellow(subCommand)
 }
 
 func (c *Command) Help(f io.Writer) {
@@ -104,7 +104,7 @@ func (c *Command) FlagString(indent int) string {
 			tw.WriteString(sep + argparse.FormatFlag(alias))
 		}
 		if flag.ParamName != "" {
-			tw.WriteString(ansi.DimCyan(" <" + flag.ParamName + ">"))
+			tw.WriteString(ansi.Green(" <" + flag.ParamName + ">"))
 		}
 		fmt.Fprintf(tw, "%s\t%s %s\n", ansi.Reset(), flag.Description, getDefault(flag))
 	}
@@ -149,7 +149,7 @@ var templFuncs = template.FuncMap{
 		return b.String()
 	},
 
-	"exec":  func() string { return ansi.BoldGreen(ExecName) },
+	"exec":  func() string { return ansi.BoldMagenta(ExecName) },
 	"ansi":  func(color, s string) string { return ansi.Color("\x1b["+color+"m", s) },
 	"bold":  func(color, s string) string { return ansi.Color("\x1b[1;"+color+"m", s) },
 	"title": func(title string) string { return ansi.Bold(title) + ansi.BoldDim(": ") },

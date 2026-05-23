@@ -48,8 +48,10 @@ const (
 	CodeBoldBrightMagenta = "\033[1;95m"
 	CodeBoldBrightCyan    = "\033[1;96m"
 
-	CodeDimCyan = "\033[2;36m"
-	CodeDimBlue = "\033[2;34m"
+	CodeDimGreen   = "\033[2;32m"
+	CodeDimCyan    = "\033[2;36m"
+	CodeDimBlue    = "\033[2;34m"
+	CodeDimMagenta = "\033[2;35m"
 )
 
 var DisableColor = os.Getenv("NO_COLOR") != ""
@@ -89,6 +91,8 @@ func BoldBlue(s string) string    { return Color(CodeBoldBlue, s) }
 func BoldDim(s string) string     { return Color(CodeBoldDim, s) }
 func DimCyan(s string) string     { return Color(CodeDimCyan, s) }
 func DimBlue(s string) string     { return Color(CodeDimBlue, s) }
+func DimMagenta(s string) string  { return Color(CodeDimMagenta, s) }
+func DimGreen(s string) string    { return Color(CodeDimGreen, s) }
 
 func BrightRed(s string) string     { return Color(CodeBrightRed, s) }
 func BrightGreen(s string) string   { return Color(CodeBrightGreen, s) }
@@ -104,6 +108,15 @@ func BoldBrightYellow(s string) string  { return Color(CodeBoldBrightYellow, s) 
 func BoldBrightBlue(s string) string    { return Color(CodeBoldBrightBlue, s) }
 func BoldBrightMagenta(s string) string { return Color(CodeBoldBrightMagenta, s) }
 func BoldBrightCyan(s string) string    { return Color(CodeBoldBrightCyan, s) }
+
+func Gradient(text string, colors ...[3]int) string {
+	return gradient("38", text, colors...)
+}
+
+// space is either "38" (foreground) or "48" (background).
+func RGBSpace(space string, r, g, b int) string {
+	return fmt.Sprintf("\033[%s;2;%d;%d;%dm", space, r, g, b)
+}
 
 var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
 

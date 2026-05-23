@@ -1,7 +1,9 @@
 package klarerrs
 
+const ErrTooManyErrors Code = -1
+
 const (
-	ErrTooManyErrors Code = -1
+	_ Code = NoPrefix + iota
 )
 
 func (e *Error) handleUnprefixed() string {

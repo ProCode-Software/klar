@@ -76,24 +76,75 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 	}
 }
 
-func typeError(rv reflect.Value, val ast.Value) *Error {
-	rt := rv.Type()
-	// Known pointer
-	nodeType := reflect.TypeOf(val).Elem().Name()
+func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
+	goType := rv.Type()
+	var msg string
+	if rv.Kind() == reflect.Interface {
+		msg = "Can't use " + FormatNodeType(val) + " as a value"
+	} else {
+		msg = "Expected " + formatGoType(goType.Kind()) + ", but found " + FormatNodeType(val)
+	}
 	return &Error{
 		Code:  klonerrs.ErrTypeMismatch,
-		Type:  rt,
+		Type:  goType,
 		Value: val,
-		Text:  "can't decode " + nodeType + " into Go type " + rt.Name(),
+		Range: val.Pos(),
+		Text:  msg,
 	}
 }
 
-func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value, msg string, v ...any) error {
+func formatGoType(k reflect.Kind) string {
+	switch k {
+	case reflect.String:
+		return "a string"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float64, reflect.Float32:
+		return "a number"
+	case reflect.Bool:
+		return "a boolean"
+	case reflect.Slice, reflect.Array:
+		return "a list"
+	case reflect.Map, reflect.Struct:
+		return "an object"
+	default:
+		return k.String()
+	}
+}
+
+func FormatNodeType(node ast.Value) string {
+	switch node.(type) {
+	case *ast.String, *ast.StringGroup:
+		return "a string"
+	case *ast.Number:
+		return "a number"
+	case *ast.Boolean:
+		return "a boolean"
+	case *ast.List:
+		return "a list"
+	case *ast.Object:
+		return "an object"
+	case *ast.None:
+		return "no value"
+	default:
+		panic(fmt.Sprintf("unhandled node type: %T", node))
+	}
+}
+
+func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value,
+	msg string, v ...any,
+) error {
 	var errMsg string
 	if len(v) > 0 {
 		errMsg = fmt.Sprintf(msg, v...)
 	} else {
 		errMsg = msg
 	}
-	return &Error{Code: code, Type: rv.Type(), Value: val, Text: errMsg}
+	return &Error{
+		Code:  code,
+		Text:  errMsg,
+		Type:  rv.Type(),
+		Value: val,
+		Range: val.Pos(),
+	}
 }

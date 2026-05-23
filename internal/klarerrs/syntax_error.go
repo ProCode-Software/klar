@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	_                  = SyntaxErrorPrefix + iota
+	_ Code = SyntaxErrorPrefix + iota
+
 	ErrUnexpectedToken // Token not supposed to be there
 	ErrExpectedToken   // Expected kind of token but got different type
 

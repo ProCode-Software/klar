@@ -130,7 +130,9 @@ func (p *Parser) Expect(exp lexer.TokenType, expFlags ...expectFlag) lexer.Token
 	if got.Kind == exp {
 		return p.Advance()
 	}
-	if noAdvance := p.expectFail(exp, got, expFlags); noAdvance {
+	err, noAdvance := withExpectFlags(expFlags, exp, got)
+	p.Error(err)
+	if noAdvance {
 		return got
 	}
 	return p.Advance()
@@ -141,18 +143,12 @@ func (p *Parser) ExpectOneOf(a, b lexer.TokenType, expFlags ...expectFlag) lexer
 	if got.Kind == a || got.Kind == b {
 		return p.Advance()
 	}
-	if noAdvance := p.expectFail(a, got, expFlags); noAdvance {
+	err, noAdvance := withExpectFlags(expFlags, a, got)
+	p.Error(err)
+	if noAdvance {
 		return got
 	}
 	return p.Advance()
-}
-
-func (p *Parser) expectFail(exp lexer.TokenType, got lexer.Token,
-	expFlags []expectFlag,
-) (noAdvance bool) {
-	err, noAdvance := withExpectFlags(expFlags, exp, got)
-	p.Error(err)
-	return noAdvance
 }
 
 // If stopParsing is passed to panic, the parser will immediately stop parsing.

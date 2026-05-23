@@ -38,4 +38,5 @@ var Flags = argparse.NewParser("[inputs...]").
 	BoolFlag("jsdoc", "Whether to generate JSDoc comments in JavaScript output. Recommended if '--declaration' is disabled", false).
 	StringFlag("config", "Path to a klar.build config file", "file", "klar.build", "c").
 	BoolFlag("copy-node-modules", "Whether to copy node_modules and package.json to the output directory", true).
-	BoolFlag("json-output", "Show logs and error messages in JSON format", false)
+	BoolFlag("json-output", "Show logs and error messages in JSON format", false).
+	BoolFlag("sound-on-error", "Play a sound when there are errors", false)

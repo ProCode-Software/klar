@@ -19,7 +19,7 @@ var fullHelpTemplate = `
   {{ printf "%s:" .Description | ansi "2" }}
   {{ exec }} {{ bold "33" .Command }} {{- if .Args }} {{ join .Args " " }} {{- end }}
 	{{- range .Flags }} {{ if hasPrefix . "-" -}} {{ ansi "36" . }} 
-		{{- else -}} TODO{{ ansi "32" . }} {{- end -}}
+		{{- else -}} {{ ansi "32" . }} {{- end -}}
 	{{ end }}
 {{ end }}
 {{ end -}}

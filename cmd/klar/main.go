@@ -18,14 +18,6 @@ var (
 	profiler prof
 )
 
-// TODO: bold and/or bright, or no?
-var RandomDescriptions = []string{
-	ansi.BoldMagenta("✨ A simple, modern, and clean programming language"),
-	ansi.BoldGreen("⏩ The progressive programming language"),
-	ansi.BoldYellow("Not another C-based programming language"),
-	ansi.BoldCyan("🐨 A koala-approved programming language!"),
-}
-
 func main() {
 	// debug.SetCrashOutput(crashOutput, debug.CrashOptions{})
 	defer cli.HandleSignalExit()
@@ -45,7 +37,7 @@ func main() {
 	case "-c":
 		if len(args) < 3 {
 			cli.Failure("Expected program as string\n\nUsage: ",
-				ansi.BoldGreen("klar ")+ansi.Cyan("-c ")+ansi.Blue("<program>\n\n"),
+				ansi.BoldMagenta("klar ")+ansi.Cyan("-c ")+ansi.Blue("<program>\n\n"),
 				"Use "+ansi.Cyan("'klar --help'")+" for more information.",
 			)
 			cli.Exit(2)
@@ -61,7 +53,7 @@ func main() {
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "help":
-		if len(args) < 3 || args[2] == "" {
+		if len(args) < 3 || args[2] == "" || args[2] == "klar" {
 			ShowHelp(os.Stdout, true)
 			cli.Exit(0)
 		}
