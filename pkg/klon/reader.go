@@ -1,4 +1,5 @@
 package klon
+
 import (
 	"io"
 
@@ -29,7 +30,7 @@ type reader struct {
 	flags      klonflags.Flags
 	errs       []error
 	comments   []*ast.Comment
-	}
+}
 
 func newBufferReader(buf []byte, f ...klonflags.Flags) *reader {
 	return &reader{
@@ -112,4 +113,12 @@ func handlePanic(e *error) {
 	default:
 		panic(err)
 	}
+}
+
+func parseFlags(flags ...klonflags.Flags) klonflags.Flags {
+	var f klonflags.Flags
+	for _, flag := range flags {
+		f |= flag
+	}
+	return f
 }

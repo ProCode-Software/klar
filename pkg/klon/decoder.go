@@ -57,7 +57,7 @@ func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
 }
 
 // preprocessValue wraps a new [decodeFunc] that resolves variables
-// and decodes using decode.
+// and concatenates strings before decoding.
 func preprocessValue(decode decodeFunc) decodeFunc {
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
 		switch node := val.(type) {
@@ -66,7 +66,9 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 				val = v
 				break
 			}
-			return decodeError(klonerrs.ErrUndefinedVar, rv, node, "Can't find variable '%s'", node.Name)
+			return decodeError(klonerrs.ErrUndefinedVar, rv, node,
+				"Can't find variable '%s'", node.Name,
+			)
 		case *ast.StringGroup:
 			// TODO: resolve classes
 		}

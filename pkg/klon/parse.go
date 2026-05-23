@@ -538,10 +538,14 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 
 func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 	if rd.depth != 0 {
-		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range, "Variables must be declared at the top level")
+		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range,
+			"Variables must be declared at the top level",
+		)
 	}
 	if name.Braces {
-		rd.rangeError(klonerrs.ErrInvalidVarDecl, name.Range, "Variable declarations can't use braces")
+		rd.rangeError(klonerrs.ErrInvalidVarDecl, name.Range,
+			"Variable declarations can't use braces",
+		)
 	}
 	if rd.vars == nil {
 		rd.vars = make(map[string]ast.Value)
@@ -558,13 +562,17 @@ func (rd *reader) convertKeyPath(path *[]ast.Value) ast.Value {
 
 // parseKey parses a key for a field. The key can be either a single value,
 // or a dot-path.
-func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start lexer.Position) {
+func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
+	start lexer.Position,
+) {
 	validate := func(v ast.Value) bool {
 		switch v.(type) {
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
 			return true
 		default:
-			rd.rangeError(klonerrs.ErrInvalidKey, v.Pos(), "A field key must be a string, number, or boolean")
+			rd.rangeError(klonerrs.ErrInvalidKey, v.Pos(),
+				"A field key must be a string, number, or boolean",
+			)
 			return false
 		}
 	}
