@@ -86,7 +86,6 @@ type Comment struct {
 	Source string
 }
 
-
 type Class struct {
 	BaseNode
 	Name string

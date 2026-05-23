@@ -1,43 +1,40 @@
 package klon
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
-	"github.com/sanity-io/litter"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
 const MaxDepth = 10000
 
 // parseDocument parses a full KLON document.
 func (rd *reader) parseDocument() (*ast.Document, []error) {
-	var (
-		tok = rd.currTok()
-		res = rd.parseValue(tok)
-		doc = &ast.Document{Variables: rd.vars, Body: res, Comments: rd.comments}
-	)
+	res := rd.parseValue()
 
-	if tok.Kind == EOF {
-		return doc, rd.errs
-	}
 	// Check for EOF
 	rd.skipLines()
-	if tok = rd.currTok(); tok.Kind != EOF {
-		rd.tokenError(ErrExpectedEOF, tok, "Expected end of file")
+	if tok := rd.currTok(); tok.Kind != EOF {
+		rd.tokenError(klonerrs.ErrExpectedEOF, tok, "Expected end of file")
 	}
 
-	doc.Comments = rd.comments
-	doc.SetPos(res.Pos().Start, tok.Pos)
-	return doc, rd.errs
+	return &ast.Document{
+		BaseNode:  ast.BaseNode{ranges.Range{res.Pos().Start, rd.offset}},
+		Body:      res,
+		Variables: rd.vars,
+		Comments:  rd.comments,
+	}, rd.errs
 }
 
 // parseValue parses a single value, which could be a primitive, list, object,
 // or a StringGroup if multiple values are on the same line.
-func (rd *reader) parseValue(tok Token) ast.Value {
+func (rd *reader) parseValue() ast.Value {
+	tok := rd.currTok()
+
 	// Skip leading newlines
 	hasNewline := tok.Kind == Newline
 	if hasNewline {
@@ -51,7 +48,6 @@ func (rd *reader) parseValue(tok Token) ast.Value {
 	if rd.depth == 0 {
 		if (rd.parseFlags&key == 0 && rd.peekTok().Kind == Colon) ||
 			tok.Kind == Dash /* Invalid but still parse it */ {
-			fmt.Println(rd.currTok())
 			return rd.parseObject()
 		}
 	}
@@ -70,18 +66,18 @@ func (rd *reader) parseValue(tok Token) ast.Value {
 loop:
 	for rd.hasTokens() && rd.currTok().Pos.Line == startLine {
 		var res ast.Value
-		switch tok.Kind {
+		switch tok = rd.currTok(); tok.Kind {
 		case EOF, Newline:
 			break loop
 		case Comma:
 			if len(items) == 0 {
-				rd.tokenError(ErrExpectedValue, tok, "Expected a value before comma")
+				rd.tokenError(klonerrs.ErrExpectedValue, tok, "Expected a value before comma")
 				rd.advanceTok()
 			}
 			break loop
 		case RightBracket, RightCurly:
 			if len(items) == 0 {
-				rd.tokenError(ErrUnmatchedBracket, tok, "Unmatched '%s'", tok.Src)
+				rd.tokenError(klonerrs.ErrUnmatchedBracket, tok, "Unmatched '%s'", tok.Src)
 				rd.advanceTok()
 			}
 			break loop
@@ -108,7 +104,7 @@ loop:
 		case Dash:
 			// Invalid dash
 			if rd.depth == 0 {
-				rd.tokenError(ErrDashAtTopLevel, tok,
+				rd.tokenError(klonerrs.ErrDashAtTopLevel, tok,
 					"Top-level objects and lists can't start with a dash",
 				)
 				// Still parse the object
@@ -117,7 +113,7 @@ loop:
 				rd.depthDown()
 				res = &ast.Bad{BaseNode: ast.BaseNode{res.Pos()}, Value: res}
 			} else {
-				rd.tokenError(ErrDashWithoutNewline, tok,
+				rd.tokenError(klonerrs.ErrDashWithoutNewline, tok,
 					"An object or list must begin on a new line",
 				)
 				rd.advanceTok()
@@ -130,7 +126,7 @@ loop:
 			}
 			fallthrough
 		default:
-			rd.tokenError(ErrUnexpectedToken, tok, "Unexpected token")
+			rd.tokenError(klonerrs.ErrUnexpectedToken, tok, "Unexpected token")
 			rd.advanceTok()
 			continue
 		}
@@ -169,7 +165,7 @@ func (rd *reader) parseNumber(num Token) *ast.Number {
 func (rd *reader) parseRest(arrow Token) *ast.ArrowRef {
 	rd.advanceTok() // <-
 	if k := rd.currTok().Kind; k != Variable {
-		rd.tokenError(ErrExpectedVarInArrow, arrow, "Expected a variable after '<-'")
+		rd.tokenError(klonerrs.ErrExpectedVarInArrow, arrow, "Expected a variable after '<-'")
 		return &ast.ArrowRef{}
 	}
 	varRef := rd.parseVariable(rd.currTok())
@@ -184,11 +180,11 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 	rd.advanceTok()
 	var (
 		name   string
-		err    = vr.Attrs["err"].(Code)
+		err    = vr.Attrs["err"].(klonerrs.Code)
 		braces = vr.Attrs["brace"].(bool)
 	)
 	if braces {
-		if err == ErrUnterminatedVar {
+		if err == klonerrs.ErrUnterminatedVar {
 			name = vr.Src[2:]
 			rd.tokenError(err, vr, "Expected closing '}' in variable reference")
 		} else {
@@ -197,7 +193,7 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 	} else {
 		name = vr.Src[1:]
 	}
-	if err == ErrInvalidIdentifier {
+	if err == klonerrs.ErrInvalidIdentifier {
 		rd.tokenError(err, vr, "A variable name can't start with a digit")
 	}
 	return &ast.VarRef{
@@ -218,17 +214,17 @@ func (rd *reader) parseInlineList(lb Token) *ast.List {
 
 	var items []ast.Value
 	for rd.hasTokens() && rd.currTok().Kind != RightBracket {
-		items = append(items, rd.parseValue(rd.advanceTok()))
+		items = append(items, rd.parseValue())
 		rd.skipLines()
 		if rd.currTok().Kind != RightBracket {
-			rd.expectError(Comma, ErrExpectedToken,
+			rd.expectError(Comma, klonerrs.ErrExpectedToken,
 				"Expected ',' between list items or ']' to end the list",
 			)
 		}
 	}
 
 	rd.skipLines()
-	rb := rd.expectError(RightBracket, ErrUnterminatedList, "Expected ']' to end list")
+	rb := rd.expectError(RightBracket, klonerrs.ErrUnterminatedList, "Expected ']' to end list")
 	return &ast.List{
 		BaseNode: ast.BaseNode{ranges.Range{lb.Pos, rb.Pos}},
 		Inline:   true,
@@ -254,7 +250,7 @@ func (rd *reader) parseString(str Token) *ast.String {
 			src = str.Src[2:]
 		}
 		if str.Attrs["unterm"].(bool) {
-			rd.tokenError(ErrUnterminatedString, str, "This string was left open")
+			rd.tokenError(klonerrs.ErrUnterminatedString, str, "This string was left open")
 		} else {
 			src = src[:len(src)-1]
 		}
@@ -279,7 +275,7 @@ func (rd *reader) parseString(str Token) *ast.String {
 				continue
 			}
 			// Unknown escape; keep in string
-			rd.tokenError(ErrUnknownEscape, str, `Unknown escape sequence '\%c'`, c)
+			rd.tokenError(klonerrs.ErrUnknownEscape, str, `Unknown escape sequence '\%c'`, c)
 			b.WriteByte('\\')
 			b.WriteByte(c)
 
@@ -358,7 +354,7 @@ func (rd *reader) parseNone(none Token) *ast.None {
 func (rd *reader) parseClass(cls Token) *ast.Class {
 	rd.advanceTok() // @
 	if cls.Attrs != nil && cls.Attrs["invalid"] == true {
-		rd.tokenError(ErrInvalidIdentifier, cls, "A class name can't start with a digit")
+		rd.tokenError(klonerrs.ErrInvalidIdentifier, cls, "A class name can't start with a digit")
 	}
 	return &ast.Class{
 		BaseNode: ast.BaseNode{cls.Range()},
@@ -379,7 +375,7 @@ func (rd *reader) parseList(first ast.Value) *ast.List {
 			break
 		}
 		old := rd.removeParseFlags(objectValue)
-		items = append(items, rd.parseValue(rd.readToken()))
+		items = append(items, rd.parseValue())
 		rd.resetParseFlags(old)
 	}
 	return &ast.List{
@@ -448,14 +444,17 @@ func (rd *reader) parseBracedObject(lc Token) ast.Value {
 		}
 		fields = append(fields, field.(*ast.Field))
 
-		if rd.currTok().Kind != RightCurly {
-			// TODO: also allow newline as a separator
-			rd.expectError(Comma, ErrExpectedToken,
-				"Expected ',' to separate inline object fields",
-			)
+		if curr := rd.currTok(); curr.Kind != RightCurly {
+			if curr.Kind != Comma && curr.Kind != Newline {
+				rd.tokenError(klonerrs.ErrExpectedToken, curr,
+					"Expected ',' or newline to separate inline object fields",
+				)
+				continue
+			}
+			rd.advanceTok()
 		}
 	}
-	rc := rd.expectError(RightCurly, ErrUnterminatedObject,
+	rc := rd.expectError(RightCurly, klonerrs.ErrUnterminatedObject,
 		"Expected '}' to close inline object",
 	)
 	return &ast.Object{
@@ -503,7 +502,7 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 	if rd.currTok().Kind == Colon {
 		rd.advanceTok() // :
 		old := rd.addParseFlags(allowDot | objectValue)
-		value = rd.parseValue(rd.currTok())
+		value = rd.parseValue()
 		rd.resetParseFlags(old)
 
 		// If the variable is a field, then it's a declaration
@@ -529,7 +528,7 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 	}
 	// If forceObject == true, report an error because this should be a key-value pair
 	if forceObject {
-		rd.rangeError(ErrExpectedKeyValue, singleKey.Pos(),
+		rd.rangeError(klonerrs.ErrExpectedKeyValue, singleKey.Pos(),
 			"Expected a key-value pair in this object",
 		)
 		singleKey = &ast.Field{Key: &ast.Bad{Value: singleKey}}
@@ -539,10 +538,10 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 
 func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 	if rd.depth != 0 {
-		rd.rangeError(ErrVarNotTopLevel, name.Range, "Variables must be declared at the top level")
+		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range, "Variables must be declared at the top level")
 	}
 	if name.Braces {
-		rd.rangeError(ErrInvalidVarDecl, name.Range, "Variable declarations can't use braces")
+		rd.rangeError(klonerrs.ErrInvalidVarDecl, name.Range, "Variable declarations can't use braces")
 	}
 	if rd.vars == nil {
 		rd.vars = make(map[string]ast.Value)
@@ -565,7 +564,7 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start l
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
 			return true
 		default:
-			rd.rangeError(ErrInvalidKey, v.Pos(), "A field key must be a string, number, or boolean")
+			rd.rangeError(klonerrs.ErrInvalidKey, v.Pos(), "A field key must be a string, number, or boolean")
 			return false
 		}
 	}
@@ -573,9 +572,8 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start l
 	defer rd.resetParseFlags(old)
 
 	// Single key
-	singleKey = rd.parseValue(rd.advanceTok())
+	singleKey = rd.parseValue()
 	start = singleKey.Pos().Start
-	litter.Dump(singleKey)
 	if !validate(singleKey) {
 		singleKey = &ast.Bad{Value: singleKey}
 	}
@@ -587,7 +585,7 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value, start l
 	dotPath = &[]ast.Value{singleKey}
 	for rd.currTok().Kind == Dot {
 		rd.advanceTok() // .
-		singleKey = rd.parseValue(rd.advanceTok())
+		singleKey = rd.parseValue()
 		if !validate(singleKey) {
 			singleKey = &ast.Bad{Value: singleKey}
 		}
@@ -612,11 +610,11 @@ func (rd *reader) checkDashes(n int) bool {
 	if n > rd.depth+1 {
 		// Too many dashes
 		if rd.depth == 0 {
-			rd.tokenError(ErrDashSkip, rd.currTok(),
+			rd.tokenError(klonerrs.ErrDashSkip, rd.currTok(),
 				"The top level object shouldn't include a dash",
 			)
 		} else {
-			rd.tokenError(ErrDashSkip, rd.currTok(),
+			rd.tokenError(klonerrs.ErrDashSkip, rd.currTok(),
 				"Too many dashes: expected up to %d, there are %d", rd.depth+1, n,
 			)
 		}

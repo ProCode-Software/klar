@@ -5,19 +5,21 @@ import (
 	"reflect"
 
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
 type decoder struct {
 	ctx   *Context
-	flags Flags
+	flags klonflags.Flags
 	vars  map[string]ast.Value
 }
 
 type decodeFunc func(reflect.Value, ast.Value, *decoder) error
 
-var DecodeCache = makeCache[reflect.Type, decodeFunc]()
+var decodeCache = makeCache[reflect.Type, decodeFunc]()
 
-func decode(rd *reader, ctx *Context, v any, flgs ...Flags) (err error) {
+func decode(rd *reader, ctx *Context, v any, flgs ...klonflags.Flags) (err error) {
 	defer handlePanic(&err)
 	doc, errs := rd.parseDocument()
 	if len(errs) > 0 {
@@ -26,7 +28,7 @@ func decode(rd *reader, ctx *Context, v any, flgs ...Flags) (err error) {
 	return decodeDocument(doc, ctx, v, flgs...)
 }
 
-func decodeDocument(doc *ast.Document, ctx *Context, v any, flgs ...Flags) error {
+func decodeDocument(doc *ast.Document, ctx *Context, v any, flgs ...klonflags.Flags) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return &InvalidUnmarshallError{Type: rv.Type()}
@@ -46,11 +48,11 @@ func (d *decoder) decodeValue(val ast.Value, rv reflect.Value) error {
 
 // Looks up a decoder or creates one if it doesn't exist.
 func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
-	if marsh, ok := DecodeCache.get(rt); ok {
+	if marsh, ok := decodeCache.get(rt); ok {
 		return marsh
 	}
 	marsh := d.makeDefaultDecoder(rt)
-	DecodeCache.set(rt, marsh)
+	decodeCache.set(rt, marsh)
 	return preprocessValue(marsh)
 }
 
@@ -64,7 +66,7 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 				val = v
 				break
 			}
-			return decodeError(ErrUndefinedVar, rv, node, "Can't find variable '%s'", node.Name)
+			return decodeError(klonerrs.ErrUndefinedVar, rv, node, "Can't find variable '%s'", node.Name)
 		case *ast.StringGroup:
 			// TODO: resolve classes
 		}
@@ -72,24 +74,24 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 	}
 }
 
-func typeError(rv reflect.Value, val ast.Value) *TypeError {
+func typeError(rv reflect.Value, val ast.Value) *Error {
 	rt := rv.Type()
 	// Known pointer
 	nodeType := reflect.TypeOf(val).Elem().Name()
-	return &TypeError{
-		Code: ErrTypeMismatch,
-		Type: rt,
-		Val:  val,
-		Text: "can't decode " + nodeType + " into Go type " + rt.Name(),
+	return &Error{
+		Code:  klonerrs.ErrTypeMismatch,
+		Type:  rt,
+		Value: val,
+		Text:  "can't decode " + nodeType + " into Go type " + rt.Name(),
 	}
 }
 
-func decodeError(code Code, rv reflect.Value, val ast.Value, msg string, v ...any) error {
+func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value, msg string, v ...any) error {
 	var errMsg string
 	if len(v) > 0 {
 		errMsg = fmt.Sprintf(msg, v...)
 	} else {
 		errMsg = msg
 	}
-	return &TypeError{Code: code, Type: rv.Type(), Val: val, Text: errMsg}
+	return &Error{Code: code, Type: rv.Type(), Value: val, Text: errMsg}
 }

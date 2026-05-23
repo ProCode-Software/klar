@@ -22,7 +22,7 @@ const (
 	Colon
 	Comma
 	Dash  // -
-	Dot // .
+	Dot   // .
 	Arrow // <-
 	Comment
 	Variable

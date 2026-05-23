@@ -9,6 +9,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
 const (
@@ -153,7 +154,7 @@ func (rd *reader) readToken() Token {
 			}
 		case utf8.RuneError:
 			tok := Token{Kind: Illegal, Pos: start, Src: string(r), BufPos: bufPos}
-			rd.tokenError(ErrIllegalCharacter, tok, "Invalid Unicode character")
+			rd.tokenError(klonerrs.ErrIllegalCharacter, tok, "Invalid Unicode character")
 			return tok
 		case '"', '\'':
 			return rd.readQuotedString(r, start, bufPos, false)
@@ -242,7 +243,7 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 
 func (rd *reader) isPunct(r rune) bool {
 	switch r {
-	case '\n', '@', '$', ']', '}':
+	case '\n', '@', '$', '[', ']', '{', '}':
 		return true
 	case ':':
 		return (rd.parseFlags & objectValue) == 0
@@ -301,13 +302,13 @@ func (rd *reader) readVariable(start lexer.Position, bufPos int) Token {
 			Src:    b.String(),
 			Pos:    start,
 			BufPos: bufPos,
-			Attrs:  attrs{"err": ErrUnterminatedVar},
+			Attrs:  attrs{"err": klonerrs.ErrUnterminatedVar},
 		}
 	}
 	var (
 		isBrace = r == '{'
 		unterm  = true
-		tokErr  Code
+		tokErr  klonerrs.Code
 	)
 	if isBrace {
 		rd.advanceBytes(n)
@@ -325,7 +326,7 @@ loop:
 			rd.advanceBytes(n)
 			break loop
 		case ((isBrace && b.Len() == 2) || b.Len() == 1) && unicode.IsDigit(r):
-			tokErr = ErrInvalidIdentifier
+			tokErr = klonerrs.ErrInvalidIdentifier
 		case !isValidIdentChar(r):
 			break loop
 		}
@@ -333,7 +334,7 @@ loop:
 		b.WriteRune(r)
 	}
 	if isBrace && unterm {
-		tokErr = ErrUnterminatedVar
+		tokErr = klonerrs.ErrUnterminatedVar
 	}
 	return Token{
 		Kind:   Variable,
@@ -425,7 +426,7 @@ func (rd *reader) readBlockComment(start lexer.Position) {
 	}
 	if depth > 0 {
 		// Unterminated block comment
-		rd.rangeError(ErrUnterminatedComment, cmt.Range, "Expected '*/' to end block comment")
+		rd.rangeError(klonerrs.ErrUnterminatedComment, cmt.Range, "Expected '*/' to end block comment")
 	}
 	rd.comments = append(rd.comments, cmt)
 }

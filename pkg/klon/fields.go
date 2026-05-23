@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
 type StructFields struct {
@@ -22,7 +24,7 @@ type StructField struct {
 	Indices []int
 }
 
-func makeStructFields(rt reflect.Type, flag Flags) (StructFields, error) {
+func makeStructFields(rt reflect.Type, flag klonflags.Flags) (StructFields, error) {
 	type queueItem struct {
 		Type reflect.Type
 	}
@@ -62,7 +64,7 @@ func makeStructFields(rt reflect.Type, flag Flags) (StructFields, error) {
 				var name string
 				name, ok := f.Tag.Lookup("klon")
 				// Check for json: struct tag and extract the name only
-				if !ok && flag.Has(AllowJSONStructTags) {
+				if !ok && flag.Has(klonflags.AllowJSONStructTags) {
 					if parts := strings.Split(f.Tag.Get("json"), ","); len(parts) > 0 {
 						name = parts[0]
 					}
@@ -79,7 +81,7 @@ func makeStructFields(rt reflect.Type, flag Flags) (StructFields, error) {
 					rt = rt.Elem()
 				}
 				isNormalField := name != "" || !f.Anonymous || rt.Kind() != reflect.Struct
-				if isNormalField || flag.Has(KeyedEmbeddedFields) {
+				if isNormalField || flag.Has(klonflags.KeyedEmbeddedFields) {
 					if name == "" {
 						name = f.Name
 					}

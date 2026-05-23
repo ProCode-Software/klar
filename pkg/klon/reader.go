@@ -1,10 +1,10 @@
 package klon
-
 import (
 	"io"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
 const BufferSize = 64
@@ -26,12 +26,12 @@ type reader struct {
 	lastDashes int
 	vars       map[string]ast.Value
 	ctx        *Context
-	flags      Flags
+	flags      klonflags.Flags
 	errs       []error
 	comments   []*ast.Comment
-}
+	}
 
-func newBufferReader(buf []byte, f ...Flags) *reader {
+func newBufferReader(buf []byte, f ...klonflags.Flags) *reader {
 	return &reader{
 		buffer: buf,
 		offset: lexer.Position{1, 1},
@@ -39,7 +39,7 @@ func newBufferReader(buf []byte, f ...Flags) *reader {
 	}
 }
 
-func newStreamReader(r io.Reader, f ...Flags) *reader {
+func newStreamReader(r io.Reader, f ...klonflags.Flags) *reader {
 	return &reader{
 		buffer: make([]byte, 0, BufferSize),
 		reader: r,

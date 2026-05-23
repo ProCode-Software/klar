@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
 func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
@@ -70,7 +72,7 @@ func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
 		asInt := int64(val.Value)
 		if float64(asInt) != val.Value {
 			// Truncated
-			return decodeError(ErrTruncatedNumber, rv, val,
+			return decodeError(klonerrs.ErrTruncatedNumber, rv, val,
 				"Number %f must be a whole integer to be stored in Go type %s",
 				val.Value, rv.Type().String(),
 			)
@@ -87,7 +89,7 @@ func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
 	switch val := val.(type) {
 	case *ast.Number:
 		if val.Value < 0 {
-			return decodeError(ErrNegativeNumber, rv, val,
+			return decodeError(klonerrs.ErrNegativeNumber, rv, val,
 				"Can't decode negative number %f into Go type %s",
 				val.Value, rv.Type().String(),
 			)
@@ -112,7 +114,7 @@ func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
 
 // Including reflect.Function, Chan, and UnsafePointer
 func decodeInvalid(rv reflect.Value, val ast.Value, d *decoder) error {
-	return decodeError(ErrUnsupportedValue, rv, val,
+	return decodeError(klonerrs.ErrUnsupportedValue, rv, val,
 		"Unsupported Go type %s", rv.Type().String(),
 	)
 }
@@ -188,8 +190,8 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
 		switch val := val.(type) {
 		case *ast.List:
-			if !d.flags.Has(IgnoreArrayLength) && len(val.Items) != arrLength {
-				return decodeError(ErrWrongArrayLength, rv, val,
+			if !d.flags.Has(klonflags.IgnoreArrayLength) && len(val.Items) != arrLength {
+				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
 					"Expected %d items, but found %d", arrLength, len(val.Items),
 				)
 			}
@@ -200,11 +202,11 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 			}
 		case *ast.None:
 		default:
-			if d.flags.Has(NoSingleItemToArray) {
+			if d.flags.Has(klonflags.NoSingleItemToArray) {
 				return typeError(rv, val)
 			}
-			if !d.flags.Has(IgnoreArrayLength) && arrLength != 1 {
-				return decodeError(ErrWrongArrayLength, rv, val,
+			if !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1 {
+				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
 					"Expected %d items, but found 1", arrLength,
 				)
 			}

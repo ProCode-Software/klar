@@ -1,10 +1,10 @@
 package klon
-
 import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
 func (rd *reader) hasTokens() bool { return rd.currTok().Kind != EOF }
@@ -49,7 +49,7 @@ func (rd *reader) skipLines() {
 	}
 }
 
-func (rd *reader) tokenError(code Code, tok Token, msg string, v ...any) {
+func (rd *reader) tokenError(code klonerrs.Code, tok Token, msg string, v ...any) {
 	var text string
 	if len(v) == 0 {
 		text = msg
@@ -64,7 +64,7 @@ func (rd *reader) tokenError(code Code, tok Token, msg string, v ...any) {
 	})
 }
 
-func (rd *reader) rangeError(code Code, r ranges.Range, msg string, v ...any) {
+func (rd *reader) rangeError(code klonerrs.Code, r ranges.Range, msg string, v ...any) {
 	var text string
 	if len(v) == 0 {
 		text = msg
@@ -75,7 +75,7 @@ func (rd *reader) rangeError(code Code, r ranges.Range, msg string, v ...any) {
 }
 
 func (rd *reader) expectError(
-	exp TokenType, code Code, msg string, v ...any,
+	exp TokenType, code klonerrs.Code, msg string, v ...any,
 ) Token {
 	if curr := rd.currTok(); curr.Kind != exp {
 		rd.tokenError(code, curr, msg, v...)
@@ -86,7 +86,7 @@ func (rd *reader) expectError(
 
 func (rd *reader) depthUp() {
 	if rd.depth++; rd.depth > MaxDepth {
-		rd.tokenError(ErrMaxDepth, rd.currTok(), "Too much nesting")
+		rd.tokenError(klonerrs.ErrMaxDepth, rd.currTok(), "Too much nesting")
 		panic(bailout{})
 	}
 }
