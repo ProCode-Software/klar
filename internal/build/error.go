@@ -132,9 +132,13 @@ func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
 
 	// Load tokens for reporter
 	if !c.Reporter.FileLoaded(ierr.Value) {
+		absPath, err := filepath.Abs(ierr.Value)
+		if err != nil {
+			absPath = ierr.Value
+		}
 		c.Reporter.LoadFile(
 			ierr.Value,
-			cli.RelPath(c.WorkDir, ierr.Value),
+			cli.RelPath(c.WorkDir, absPath),
 			makeKlonTokens(ierr.Value),
 		)
 	}

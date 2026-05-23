@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 	pkgparser "github.com/ProCode-Software/klar/pkg/parser"
@@ -154,11 +155,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 			return shortPath, nil, &FilesystemError{"stat", filePath, err}
 		}
 		sizeEst = stat.Size() / 10
-		// Get relative path
-		if shortPath, err = filepath.Rel(p.cwd, filePath); err != nil {
-			l.Warn("Could not get short path for file", slog.Any("error", err))
-			shortPath = filePath
-		}
+		shortPath = cli.RelPath(p.cwd, filePath) // Get relative path
 		l.Info("Successfully opened file")
 	}
 	res = &ParseResult{}

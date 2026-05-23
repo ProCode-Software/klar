@@ -87,7 +87,7 @@ func (c *rangeComponent) String() string {
 	if c.open {
 		return min + "..<" + max
 	}
-	return min + ".." + max
+	return min + "..." + max
 }
 
 func (c *anyComponent) String() string { return "*" }

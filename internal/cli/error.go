@@ -76,9 +76,11 @@ func ErrNoManifest(dir string) {
 
 func ErrNotFound(path, typ string) {
 	if typ != "" {
-		Failure("Can't find " + typ + " " + ansi.Cyan(path))
+		Error("Can't find " + typ + " " + ansi.Cyan(path))
+	} else {
+		Error("Can't find " + ansi.Cyan(path))
 	}
-	Failure("Can't find " + ansi.Cyan(path))
+	Exit(2)
 }
 
 type SignalExit struct{ Code int }

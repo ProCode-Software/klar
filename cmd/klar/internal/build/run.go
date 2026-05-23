@@ -85,7 +85,7 @@ func Build(r *command.Runner) {
 		configPath = conf
 		cfs, err := build.ReadKlarBuild(conf)
 		if err != nil {
-			build.PrintInterfaceError(err.(*build.InterfaceError))
+			c.PrintInterfaceError(err.(*build.InterfaceError))
 			cli.Exit(1)
 		}
 		if len(cfs) == 0 {

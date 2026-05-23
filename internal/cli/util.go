@@ -2,6 +2,7 @@ package cli
 
 import (
 	"io"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -44,4 +45,12 @@ type AllWriter interface {
 	io.Writer
 	io.StringWriter
 	io.ByteWriter
+}
+
+func RelPath(basePath, targPath string) string {
+	rel, err := filepath.Rel(basePath, targPath)
+	if err != nil || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return targPath
+	}
+	return rel
 }
