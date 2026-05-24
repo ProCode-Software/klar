@@ -66,5 +66,13 @@ func (f *Flag) Enum() *Enum {
 	return f.Value.(*Enum)
 }
 
+// EnumValue is f.Enum().Value()
+func (f *Flag) EnumValue() any {
+	if f.Type != TypeEnum {
+		panic("flag is not of type enum")
+	}
+	return f.Value.(*Enum).value
+}
+
 func (e *Enum) Key() string { return e.key }
 func (e *Enum) Value() any  { return e.value }

@@ -2,7 +2,9 @@ package command
 
 import (
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -14,6 +16,12 @@ import (
 func (c *Command) handleFlagError(err error) {
 	forMoreHelp := func() {
 		ansi.Fprintfln(os.Stderr, "\nUse <c!>--help</c!> for more information.")
+	}
+	formatOpts := func(opts []string) string {
+		return ansi.BrightYellow(strings.Join(
+			opts,
+			ansi.Partial(ansi.CodeReset)+", "+ansi.Partial(ansi.CodeBrightYellow),
+		))
 	}
 	switch err := err.(type) {
 	case argparse.HelpError:
@@ -55,18 +63,17 @@ func (c *Command) handleFlagError(err error) {
 		cli.ColorErrorfln("<**>Expected %s value for flag <c!>%s</c!></**>",
 			klarerrs.WithA(typ), argparse.FormatFlag(err.Flag),
 		)
+		if c.Flags.FlagDefs[err.Flag].Type == argparse.TypeEnum {
+			opts := slices.Sorted(maps.Keys(c.Flags.GetOptions(err.Flag)))
+			fmt.Fprintln(os.Stderr, "\nExpected one of:\n ", formatOpts(opts))
+		}
 		forMoreHelp()
 	case *argparse.InvalidOptionError:
 		cli.ColorErrorfln(
 			"<**><y!>%s</y!> isn't a valid option for flag <c!>%s</c!>.</**>\n\n"+
 				"Expected one of:"+
 				"\n  %s",
-			err.Input, argparse.FormatFlag(err.Flag), ansi.BrightYellow(
-				strings.Join(
-					err.ExpOptions,
-					ansi.Partial(ansi.CodeReset)+", "+ansi.Partial(ansi.CodeBrightYellow),
-				),
-			),
+			err.Input, argparse.FormatFlag(err.Flag), formatOpts(err.ExpOptions),
 		)
 		forMoreHelp()
 	}
