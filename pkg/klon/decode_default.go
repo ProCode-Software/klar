@@ -36,7 +36,12 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Interface:
 		return makeInterfaceDecoder(rt)
 	default:
-		return decodeInvalid
+		// Including reflect.Function, Chan, and UnsafePointer
+		return func(rv reflect.Value, val ast.Value, d *decoder) error {
+			return decodeError(klonerrs.ErrUnsupportedValue, rv, val,
+				"Unsupported Go type %s", rv.Type().String(),
+			)
+		}
 	}
 }
 
@@ -48,7 +53,6 @@ func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 		rv.SetString(strconv.FormatBool(v.Value))
 	case *ast.Number:
 		rv.SetString(v.Source)
-	case *ast.None:
 	default:
 		return typeMismatchError(rv, v)
 	}
@@ -56,72 +60,67 @@ func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 }
 
 func decodeBool(rv reflect.Value, val ast.Value, d *decoder) error {
-	switch val := val.(type) {
-	case *ast.Boolean:
-		rv.SetBool(val.Value)
-	case *ast.None:
-	default:
-		return typeMismatchError(rv, val)
-	}
-	return nil
-}
-
-func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
-	switch val := val.(type) {
-	case *ast.Number:
-		asInt := int64(val.Value)
-		if float64(asInt) != val.Value {
-			// Truncated
-			return decodeError(klonerrs.ErrTruncatedNumber, rv, val,
-				"Number '%s' must be a whole integer", val.Source,
-			)
-		}
-		rv.SetInt(asInt)
-	case *ast.None:
-	default:
-		return typeMismatchError(rv, val)
-	}
-	return nil
-}
-
-func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
-	switch val := val.(type) {
-	case *ast.Number:
-		asUInt := uint64(val.Value)
-		if float64(asUInt) != val.Value {
-			// Truncated
-			return decodeError(klonerrs.ErrTruncatedNumber, rv, val,
-				"Number '%s' must be a whole integer", val.Source,
-			)
-		}
-		if val.Value < 0 {
-			return decodeError(klonerrs.ErrNegativeNumber, rv, val,
-				"Number '%s' can't be negative", val.Source,
-			)
-		}
-		rv.SetUint(asUInt)
+	if bool, ok := val.(*ast.Boolean); ok {
+		rv.SetBool(bool.Value)
 		return nil
-	case *ast.None:
 	}
 	return typeMismatchError(rv, val)
 }
 
-func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
-	switch val := val.(type) {
-	case *ast.Number:
-		rv.SetFloat(val.Value)
-	case *ast.None:
-	default:
+func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
+	num, ok := val.(*ast.Number)
+	if !ok {
 		return typeMismatchError(rv, val)
 	}
+	asInt := int64(num.Value)
+	if float64(asInt) != num.Value {
+		// Truncated
+		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
+			"Number '%s' must be a whole integer", num.Source,
+		)
+	}
+	rv.SetInt(asInt)
 	return nil
 }
 
-// Including reflect.Function, Chan, and UnsafePointer
-func decodeInvalid(rv reflect.Value, val ast.Value, d *decoder) error {
-	return decodeError(klonerrs.ErrUnsupportedValue, rv, val,
-		"Unsupported Go type %s", rv.Type().String(),
-	)
+func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
+	num, ok := val.(*ast.Number)
+	if !ok {
+		return typeMismatchError(rv, val)
+	}
+	asUInt := uint64(num.Value)
+	if float64(asUInt) != num.Value {
+		// Truncated
+		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
+			"Number '%s' must be a whole integer", num.Source,
+		)
+	}
+	if num.Value < 0 {
+		return decodeError(klonerrs.ErrNegativeNumber, rv, num,
+			"Number '%s' can't be negative", num.Source,
+		)
+	}
+	rv.SetUint(asUInt)
+	return nil
+}
+
+func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
+	if num, ok := val.(*ast.Number); ok {
+		rv.SetFloat(num.Value)
+		return nil
+	}
+	return typeMismatchError(rv, val)
+}
+
+func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
+	elm := rt.Elem()
+	decode := d.getDecoder(elm)
+	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		if rv.IsNil() {
+			rv.Set(reflect.New(elm))
+		}
+		return decode(rv.Elem(), val, d)
+	}
 }
 
 // TODO
@@ -133,44 +132,24 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 	strFields, _ := makeStructFields(rt, d.flags)
 
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		switch val := val.(type) {
-		case *ast.Object:
-			for _, f := range val.Fields {
-				if err := d.decodeField(rv, strFields, f); err != nil {
-					return err
-				}
-			}
-		case *ast.List:
-			for _, item := range val.Items {
-				if obj, ok := item.(*ast.Object); ok {
-					for _, f := range obj.Fields {
-						if err := d.decodeField(rv, strFields, f); err != nil {
-							return err
-						}
-					}
-				} else {
-					// Single field in dashed list
-					// e.g. - key: value
-					// Wait, parseObject returns *ast.Object if it has colons.
-					// If it's a dashed list, it might contain objects.
-				}
-			}
-		default:
+		obj, ok := val.(*ast.Object)
+		if !ok {
 			return typeMismatchError(rv, val)
+		}
+		for _, f := range obj.Fields {
+			if err := d.decodeField(rv, strFields, f); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
+	reflect.Value{}.gr
 }
 
 func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.Field) error {
-	if f.Key == nil {
-		if f.Value != nil {
-			// This might be an ArrowRef (spread)
-			if arrow, ok := f.Value.(*ast.ArrowRef); ok {
-				return d.decodeValue(arrow, rv)
-			}
-		}
-		return nil
+	if f.Arrow != nil {
+		// The object should have already been preprocessed, and that involves resolving ArrowRefs.
+		panic("field should not have Arrow during decoding")
 	}
 	keyStr, ok := f.Key.(*ast.String)
 	if !ok {
@@ -179,12 +158,16 @@ func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.F
 	lower := strings.ToLower(keyStr.Raw)
 	if field, ok := strFields.Fields[lower]; ok {
 		fieldVal := rv.FieldByIndex(field.Indices)
-		return d.decodeValue(f.Value, fieldVal)
+		if field.Decode == nil {
+			field.Decode = d.getDecoder(field.Type)
+		}
+		return field.Decode(fieldVal, f.Value, d)
 	}
 	return nil
 }
 
 func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
+	
 	return nil
 }
 
@@ -192,46 +175,39 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 	arrLength := rt.Len()
 	itemType := rt.Elem()
 	decodeItem := d.getDecoder(itemType)
+	// TODO: allow strings to be used as [...]byte/rune
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		switch val := val.(type) {
-		case *ast.List:
-			if !d.flags.Has(klonflags.IgnoreArrayLength) && len(val.Items) != arrLength {
-				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
-					"Expected %d items, but found %d", arrLength, len(val.Items),
-				)
-			}
-			for i := range min(len(val.Items), arrLength) {
-				if err := decodeItem(rv.Index(i), val.Items[i], d); err != nil {
+		list, ok := val.(*ast.List)
+		ignoreLen := d.flags.Has(klonflags.IgnoreArrayLength)
+		switch {
+		case ok && !ignoreLen && len(list.Items) != arrLength:
+			// Mismatched list length
+			return decodeError(klonerrs.ErrWrongArrayLength, rv, list,
+				"Expected %d items, but found %d", arrLength, len(list.Items),
+			)
+		case ok:
+			// Valid list
+			minLen := min(len(list.Items), arrLength)
+			for i := 0; i < minLen; i++ {
+				if rest, ok := list.Items[i].(*ast.ArrowRef); ok {
+					// TODO: resolve arrow ref. make rv.Index(_) and list.Items[_] will then be out of sync.
+					// Also make sure to validate the new length of the Klon list.
+					_ = rest
+				}
+				if err := decodeItem(rv.Index(i), list.Items[i], d); err != nil {
 					return err
 				}
 			}
-		case *ast.None:
+		case d.flags.Has(klonflags.NoSingleItemToArray):
+			return typeMismatchError(rv, val)
+		case !ignoreLen && arrLength != 1:
+			return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
+				"Expected %d items, but found 1", arrLength,
+			)
 		default:
-			if d.flags.Has(klonflags.NoSingleItemToArray) {
-				return typeMismatchError(rv, val)
-			}
-			if !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1 {
-				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
-					"Expected %d items, but found 1", arrLength,
-				)
-			}
+			// Put a single item into an array
 			return decodeItem(rv.Index(0), val, d)
 		}
 		return nil
-	}
-}
-
-func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
-	elm := rt.Elem()
-	decode := d.getDecoder(elm)
-	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		if _, ok := val.(*ast.None); ok {
-			rv.SetZero()
-			return nil
-		}
-		if rv.IsNil() {
-			rv.Set(reflect.New(elm))
-		}
-		return decode(rv.Elem(), val, d)
 	}
 }

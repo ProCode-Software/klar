@@ -270,7 +270,7 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 		rd.advanceBytes(n)
 		b.WriteRune(r)
 	}
-	str := strings.TrimSpace(b.String())
+	str := strings.TrimSpace(b.String()) // Trim whitespace around
 	switch str {
 	case "true", "false":
 		return Token{

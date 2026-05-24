@@ -30,6 +30,7 @@ const (
 	ErrExpectedValue     // Expected a value but found something else
 	ErrExpectedClassName // Missing or invalid class name after '@'
 	ErrExpectedKeyValue  // Expected a key-value pair
+	ErrMisplacedRest     // Rest found outside of an Object or List
 
 	// Structural =====
 
@@ -44,10 +45,13 @@ const (
 	ErrVarNotTopLevel     // Variable declaration outside of top level
 	ErrInvalidVarDecl     // Variable declaration using braces
 	ErrExpectedVarInArrow // Missing variable after '<-'
+	ErrVarAlreadyDeclared // Variable is already declared
+	ErrVarCycle           // Variable cycle
 
 	// Decode =====
 
 	ErrTypeMismatch     // Mixed keyed and unkeyed entries in a block
 	ErrWrongArrayLength // Mismatched array length during decoding
 	ErrUnsupportedValue // Value type that cannot be decoded into the target Go type
+	ErrInvalidEnumOption // Invalid enum option
 )

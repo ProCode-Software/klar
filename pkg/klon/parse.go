@@ -12,7 +12,7 @@ import (
 
 const MaxDepth = 10000
 
-// parseDocument parses a full KLON document.
+// parseDocument parses a full Klon document.
 func (rd *reader) parseDocument() (*ast.Document, []error) {
 	res := rd.parseValue()
 
@@ -30,8 +30,8 @@ func (rd *reader) parseDocument() (*ast.Document, []error) {
 	}, rd.errs
 }
 
-// parseValue parses a single value, which could be a primitive, list, object,
-// or a StringGroup if multiple values are on the same line.
+// parseValue parses one or more values on a single line. parseValue may also
+// parse an object or list if a dash is encountered on the next line.
 func (rd *reader) parseValue() ast.Value {
 	tok := rd.currTok()
 
@@ -537,22 +537,29 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 }
 
 func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
-	if rd.depth != 0 {
+	switch {
+	case rd.depth != 0:
 		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range,
 			"Variables must be declared at the top level",
 		)
-	}
-	if name.Braces {
+	case name.Braces:
 		rd.rangeError(klonerrs.ErrInvalidVarDecl, name.Range,
 			"Variable declarations can't use braces",
 		)
+	case rd.vars != nil && rd.vars[name.Name] != nil:
+		existing := rd.vars[name.Name]
+		rd.rangeError(klonerrs.ErrVarAlreadyDeclared, name.Range,
+			"Variable '%s' was already declared at %s", name.Name, existing.Pos(),
+		)
+	default:
+		if rd.vars == nil {
+			rd.vars = make(map[string]ast.Value)
+		}
+		rd.vars[name.Name] = value
 	}
-	if rd.vars == nil {
-		rd.vars = make(map[string]ast.Value)
-	}
-	rd.vars[name.Name] = value
 }
 
+// convertKeyPath converts a dot-path to a StringGroup value.
 func (rd *reader) convertKeyPath(path *[]ast.Value) ast.Value {
 	return &ast.StringGroup{
 		BaseNode: ast.BaseNode{sliceRange(*path)},
@@ -602,6 +609,7 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
 	return nil, dotPath, start
 }
 
+// parseDashes parses consecutive dashes on a line, returning the count.
 func (rd *reader) parseDashes() (n int) {
 	rd.skipLines()
 	for rd.hasTokens() && rd.currTok().Kind == Dash {

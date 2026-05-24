@@ -51,29 +51,10 @@ func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
 	if marsh, ok := decodeCache.get(rt); ok {
 		return marsh
 	}
+	// TODO: handle KlonUnmarshaller interface
 	marsh := d.makeDefaultDecoder(rt)
 	decodeCache.set(rt, marsh)
 	return preprocessValue(marsh)
-}
-
-// preprocessValue wraps a new [decodeFunc] that resolves variables
-// and concatenates strings before decoding.
-func preprocessValue(decode decodeFunc) decodeFunc {
-	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		switch node := val.(type) {
-		case *ast.VarRef:
-			if v, ok := d.vars[node.Name]; ok {
-				val = v
-				break
-			}
-			return decodeError(klonerrs.ErrUndefinedVar, rv, node,
-				"Can't find variable '%s'", node.Name,
-			)
-		case *ast.StringGroup:
-			// TODO: resolve classes
-		}
-		return decode(rv, val, d)
-	}
 }
 
 func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
