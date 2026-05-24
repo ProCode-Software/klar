@@ -13,7 +13,7 @@ const (
 	Bun
 )
 
-var Names = map[string]Target{
+var Names = map[string]any{
 	"unknown": Unknown,
 	"js":      JavaScript,
 	"klarvm":  KlarVM,
@@ -33,4 +33,14 @@ func (t Target) String() string {
 		Deno:       "deno",
 		Bun:        "bun",
 	}[t]
+}
+
+// IsJavaScript returns true if the target is a JavaScript environment.
+func (t Target) IsJavaScript() bool {
+	switch t {
+	case JavaScript, Browser, Node, Deno, Bun:
+		return true
+	default:
+		return false
+	}
 }

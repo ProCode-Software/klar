@@ -30,12 +30,7 @@ var Context = &klon.Context{
 			"false":        DisallowAssertions,
 			"withComments": AllowAssertionsWithComments,
 		},
-		"BundleMode": {
-			"off":       BundleOff,
-			"source":    BundleSource,
-			"perModule": BundlePerModule,
-			"all":       BundleStd,
-		},
+		"BundleMode": BundleModes,
 		"GlobalType": {
 			"object":   GlobalObject,
 			"string":   GlobalString,
@@ -52,13 +47,15 @@ var Context = &klon.Context{
 			"true":   SourceMapEnabled,
 			"inline": SourceMapInline,
 		},
-		"Target": {
-			"js":      target.JavaScript,
-			"klarvm":  target.KlarVM,
-			"browser": target.Browser,
-			"node":    target.Node,
-			"deno":    target.Deno,
-			"bun":     target.Bun,
-		},
+		"Target": target.Names,
 	},
+}
+
+var BundleModes = map[string]any{
+	"off":       BundleOff,
+	"false":     BundleOff,
+	"source":    BundleSource,
+	"perModule": BundlePerModule,
+	"all":       BundleStd,
+	"true":      BundleStd,
 }

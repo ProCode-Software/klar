@@ -16,7 +16,7 @@ func ReadKlarBuild(path string) ([]*Options, error) {
 	}
 	// Single configuration
 	if len(f.Configurations) == 0 {
-		cfg, err := MergeKlarBuild(f, nil)
+		cfg, err := MergeKlarBuild(f, nil, path)
 		if err != nil {
 			return nil, err
 		}
@@ -25,7 +25,7 @@ func ReadKlarBuild(path string) ([]*Options, error) {
 	// Multiple configurations
 	opts := make([]*Options, len(f.Configurations))
 	for i, cfg := range f.Configurations {
-		if opts[i], err = MergeKlarBuild(f, cfg); err != nil {
+		if opts[i], err = MergeKlarBuild(f, cfg, path); err != nil {
 			return nil, err
 		}
 	}
@@ -35,11 +35,13 @@ func ReadKlarBuild(path string) ([]*Options, error) {
 // MergeKlarBuild converts f and c into an [Options] object by converting
 // c's inputs into [Input]. If c != nil, f and c are merged into a single
 // configuration. The resulting Configuration will have a single top-level config.
-func MergeKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) (*Options, error) {
+func MergeKlarBuild(
+	f *klarbuild.File, c *klarbuild.Configuration, path string,
+) (*Options, error) {
 	// Single top-level configuration
 	if c == nil {
 		c := f.Configuration
-		inputs, err := ResolveInputs(c.Input)
+		inputs, err := ResolveInputs(c.Input, path)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +51,7 @@ func MergeKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) (*Options, er
 	f2 := *f
 	f2.Configurations = nil
 	f2.Configuration = *c
-	inputs, err := ResolveInputs(f2.Input)
+	inputs, err := ResolveInputs(f2.Input, path)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +63,6 @@ func MergeKlarBuild(f *klarbuild.File, c *klarbuild.Configuration) (*Options, er
 func DefaultKlarBuild() *Options {
 	def := klarbuild.Default()
 	// There are no inputs in the default config for there to be an error
-	opts, _ := MergeKlarBuild(def, nil)
+	opts, _ := MergeKlarBuild(def, nil, "")
 	return opts
 }

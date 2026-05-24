@@ -1,11 +1,14 @@
 package build
 
 import (
+	"errors"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/module"
 )
 
@@ -17,11 +20,12 @@ const sep = string(filepath.Separator)
 // ResolveInputs finds the location, kind, and klar.build file for each input.
 // ResolveInputs returns an error if a path cannot be read, an input is invalid,
 // or an input is not a .klar file.
-func ResolveInputs(inputs []string) ([]Input, error) {
+func ResolveInputs(inputs []string, klarBuildPath string) ([]Input, error) {
 	if len(inputs) == 0 {
 		return nil, nil
 	}
 	res := make([]Input, 0, len(inputs))
+	klarBuildDir := filepath.Dir(klarBuildPath)
 	for _, input := range inputs {
 		if len(input) == 0 {
 			continue
@@ -38,8 +42,16 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 			// TODO: resolve by import path
 			i = Input{Kind: KindModule, Name: input}
 		default:
+			input = filepath.Join(klarBuildDir, input)
 			info, err := os.Stat(input)
 			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					kind := "input"
+					if klarBuildPath != "" {
+						kind += " from klar.build"
+					}
+					cli.ErrNotFound(input, kind)
+				}
 				return nil, &FilesystemError{"stat", input, err}
 			}
 			fullPath, err := filepath.Abs(input)
@@ -59,7 +71,9 @@ func ResolveInputs(inputs []string) ([]Input, error) {
 				}
 			}
 			// Get path to closest klar.build file
-			ResolveKlarBuild(&i)
+			if i.KlarBuild = klarBuildPath; klarBuildPath == "" {
+				ResolveKlarBuild(&i)
+			}
 		}
 		res = append(res, i)
 	}

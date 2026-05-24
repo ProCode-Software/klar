@@ -202,3 +202,15 @@ func IsKlonError(err error) bool {
 	_, ok = ie.Err.(*klon.Error)
 	return ok
 }
+
+func (c *Compiler) FailWithError(err error) {
+	switch err := err.(type) {
+	case *InterfaceError:
+		c.PrintInterfaceError(err)
+	case *FilesystemError:
+		cli.FailureError(err)
+	default:
+		cli.FailureError(err)
+	}
+	cli.Exit(1)
+}

@@ -51,7 +51,7 @@ func Build(r *command.Runner) {
 	}
 	c.StartTime = time.Now() // Start timer at resolution process
 	var configPath string    // Config path if resolved from cwd or --config flag
-	inps, err := build.ResolveInputs(inputArgs)
+	inps, err := build.ResolveInputs(inputArgs, "")
 	if err == nil && len(inps) == 0 {
 		// Try reading from the cwd's klar.build if no inputs provided
 		if _, err := os.Stat("klar.build"); err == nil {
@@ -65,7 +65,7 @@ func Build(r *command.Runner) {
 			}
 			c.Info("Resolving inputs at current package", slog.String("package", pkgPath))
 			//nolint:ineffassign // False positive
-			inps, err = build.ResolveInputs([]string{pkgPath})
+			inps, err = build.ResolveInputs([]string{pkgPath}, configPath)
 		}
 	}
 	switch err := err.(type) {
@@ -124,8 +124,7 @@ func Build(r *command.Runner) {
 			opts, err := build.ReadKlarBuild(inp.KlarBuild)
 			switch {
 			case err != nil:
-				c.PrintInterfaceError(err.(*build.InterfaceError))
-				cli.Exit(1)
+				c.FailWithError(err)
 			case len(opts) == 0:
 				opt = build.DefaultKlarBuild()
 			default:
@@ -231,7 +230,7 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "output":
 			o.Output = []string{v.String()}
 		case "target":
-			o.Target = v.Value.(target.Target)
+			o.Target = v.EnumValue().(target.Target)
 		case "declaration":
 			o.JS.Declaration = v.Bool()
 		case "minify":
@@ -243,6 +242,8 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "sourcemap":
 			if v.Bool() {
 				o.JS.Sourcemap = klarbuild.SourceMapEnabled
+			} else if v.Set {
+				o.JS.Sourcemap = klarbuild.SourceMapDisabled
 			}
 		case "jsdoc":
 			o.JS.JSDoc = v.Bool()
@@ -251,14 +252,14 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "banner":
 			o.JS.Banner = v.String()
 		case "bundle":
-			o.JS.Bundle = v.Value.(klarbuild.BundleMode)
+			o.JS.Bundle = v.EnumValue().(klarbuild.BundleMode)
 		case "declaration-path":
 			o.JS.DeclarationPath = v.String()
 		default:
 			panic("unhandled flag: " + flag)
 		}
 		// Check if a JavaScript flag was used when not targeting JavaScript
-		if o.JS != nil && o.Target != target.JavaScript && slices.Contains(jsFlags, flag) &&
+		if o.JS != nil && !o.Target.IsJavaScript() && slices.Contains(jsFlags, flag) &&
 			firstJSFlag == "" {
 			firstJSFlag = flag
 		}
@@ -290,7 +291,7 @@ const LongDescription = `Compiles Klar source files at the provided file or modu
 
 An input passed to 'klar build' can be a directory path, to compile a module or package; a file path, to compile an individual file; '-', to read from standard input and compile it as an individual file; or a name prefixed with '@' to resolve a module by its name and compile it.
 
-A 'klar.build' is used to customize the build process and how files are compiled. For more information on build settings, see [url].
+A 'klar.build' is used to customize the build process and how files are compiled. For more information on build settings, run 'klar help klar.build'.
 For each input, its closest 'klar.build' file is used to configure the build. The '--config' flag can be used to override the configuration for all inputs. Common build options are provided as flags to override klar.build options.
 
 Currently, Klar files can be compiled to JavaScript.`
