@@ -143,7 +143,6 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		}
 		return nil
 	}
-	reflect.Value{}.gr
 }
 
 func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.Field) error {
@@ -157,6 +156,7 @@ func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.F
 	}
 	lower := strings.ToLower(keyStr.Raw)
 	if field, ok := strFields.Fields[lower]; ok {
+		// TODO: fix panic caused by rv being a pointer
 		fieldVal := rv.FieldByIndex(field.Indices)
 		if field.Decode == nil {
 			field.Decode = d.getDecoder(field.Type)
@@ -167,8 +167,59 @@ func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.F
 }
 
 func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
-	
-	return nil
+	itemType := rt.Elem()
+	decodeItem := d.getDecoder(itemType)
+	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		list, ok := val.(*ast.List)
+		if !ok {
+			if d.flags.Has(klonflags.NoSingleItemToArray) {
+				return typeMismatchError(rv, val)
+			}
+			// Create a new slice with a single item
+			rv.Set(reflect.MakeSlice(rv.Type(), 1, 1))
+			return decodeItem(rv.Index(0), val, d)
+		}
+
+		if rv.IsNil() {
+			rv.Set(reflect.MakeSlice(rv.Type(), 0, len(list.Items)))
+		}
+
+		// Decode items one-by-one, growing the slice dynamically.
+		for _, item := range list.Items {
+			rest, ok := item.(*ast.ArrowRef)
+			if !ok {
+				// Normal item
+				i := rv.Len()
+				rv.Grow(1)
+				rv.SetLen(i + 1)
+				if err := decodeItem(rv.Index(i), item, d); err != nil {
+					return err
+				}
+				continue
+			}
+			// Rest
+			res, err := d.resolveVar(rest.Var)
+			if err != nil {
+				return err
+			}
+			restList, ok := res.(*ast.List)
+			if !ok {
+				return decodeError(klonerrs.ErrTypeMismatch, rv, res,
+					"Arrow reference must resolve to a list",
+				)
+			}
+			// Append items from the resolved list
+			for _, item := range restList.Items {
+				i := rv.Len()
+				rv.Grow(1)
+				rv.SetLen(i + 1)
+				if err := decodeItem(rv.Index(i), item, d); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 }
 
 func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {

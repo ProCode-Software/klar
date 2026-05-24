@@ -75,7 +75,7 @@ func (rd *reader) rangeError(code klonerrs.Code, r ranges.Range, msg string, v .
 	rd.errs = append(rd.errs, &Error{Code: code, Range: r, Text: text})
 }
 
-func (rd *reader) expectError(
+func (rd *reader) expect(
 	exp TokenType, code klonerrs.Code, msg string, v ...any,
 ) Token {
 	if curr := rd.currTok(); curr.Kind != exp {

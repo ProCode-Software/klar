@@ -36,12 +36,22 @@ func (rd *reader) parseValue() ast.Value {
 	tok := rd.currTok()
 
 	// Skip leading newlines
-	hasNewline := tok.Kind == Newline
-	if hasNewline {
+	if tok.Kind == Newline {
 		old := rd.removeParseFlags(objectValue)
 		rd.skipLines()
 		tok = rd.currTok()
+		// `value:\n - x` and `\n x` technically start with the same depth
+		isTopLevel := rd.depth == 0 && old&objectValue == 0
 		rd.resetParseFlags(old)
+
+		// Object as a value
+		if tok.Kind == Dash {
+			if !isTopLevel {
+				rd.depthUp()
+				defer rd.depthDown()
+			}
+			return rd.parseObject()
+		}
 	}
 
 	// A. Top-level object
@@ -50,9 +60,6 @@ func (rd *reader) parseValue() ast.Value {
 			tok.Kind == Dash /* Invalid but still parse it */ {
 			return rd.parseObject()
 		}
-	}
-	if tok.Kind == Dash && hasNewline {
-		return rd.parseObject()
 	}
 
 	// B. EOF
@@ -217,14 +224,14 @@ func (rd *reader) parseInlineList(lb Token) *ast.List {
 		items = append(items, rd.parseValue())
 		rd.skipLines()
 		if rd.currTok().Kind != RightBracket {
-			rd.expectError(Comma, klonerrs.ErrExpectedToken,
+			rd.expect(Comma, klonerrs.ErrExpectedToken,
 				"Expected ',' between list items or ']' to end the list",
 			)
 		}
 	}
 
 	rd.skipLines()
-	rb := rd.expectError(RightBracket, klonerrs.ErrUnterminatedList, "Expected ']' to end list")
+	rb := rd.expect(RightBracket, klonerrs.ErrUnterminatedList, "Expected ']' to end list")
 	return &ast.List{
 		BaseNode: ast.BaseNode{ranges.Range{lb.Pos, rb.Pos}},
 		Inline:   true,
@@ -369,6 +376,7 @@ func (rd *reader) parseList(first ast.Value) *ast.List {
 
 	old := rd.addParseFlags(allowDot)
 	defer rd.resetParseFlags(old)
+	// objectValue was already removed by parseObject. It will be restored by its defer call.
 
 	for rd.hasTokens() {
 		if !rd.checkDashes(rd.parseDashes()) {
@@ -392,6 +400,9 @@ func (rd *reader) parseObject() ast.Value {
 		start    = rd.currTok().Pos
 		isObject bool
 	)
+	old := rd.removeParseFlags(objectValue)
+	defer rd.addParseFlags(old)
+
 	for rd.hasTokens() {
 		item, dashes := rd.parseEntry(isObject)
 		if dashes < rd.depth {
@@ -399,9 +410,15 @@ func (rd *reader) parseObject() ast.Value {
 			// TODO: return
 		}
 		var field *ast.Field
+		var needsNl bool
 		switch item := item.(type) {
+		case nil:
+			goto next // Variable declaration
 		case *ast.Field:
 			field = item
+			// If the value was an object, the newline was consumed before dedenting,
+			// so we don't need to check for a newline.
+			needsNl = needsNewlineAfter(item.Value)
 		case *ast.ArrowRef:
 			field = &ast.Field{Arrow: item}
 		default:
@@ -409,10 +426,14 @@ func (rd *reader) parseObject() ast.Value {
 		}
 		isObject = true
 		fields = append(fields, field)
+	next:
+		if rd.currTok().Kind != EOF && needsNl {
+			rd.expect(Newline, klonerrs.ErrExpectedToken, "Expected a newline between fields")
+		}
 	}
 
 	if len(fields) == 0 {
-		// It didn't successfully read a field, due to EOF
+		// It didn't successfully read a field, due to variable declaration
 		return &ast.None{}
 	}
 
@@ -424,10 +445,26 @@ func (rd *reader) parseObject() ast.Value {
 	}
 }
 
+func needsNewlineAfter(item ast.Value) bool {
+	switch item := item.(type) {
+	case *ast.Object:
+		return item.Inline
+	case *ast.List:
+		return item.Inline
+	}
+	return true
+}
+
 // parseBracedObject parses a braced object { ... }.
 func (rd *reader) parseBracedObject(lc Token) ast.Value {
+	rd.depthUp()
+	defer rd.depthDown()
+
 	old := rd.addParseFlags(noComma)
 	defer rd.resetParseFlags(old)
+
+	old2 := rd.removeParseFlags(objectValue)
+	defer rd.addParseFlags(old2)
 
 	// Dash depth resets in braced objects
 	oldDepth := rd.depth
@@ -454,7 +491,7 @@ func (rd *reader) parseBracedObject(lc Token) ast.Value {
 			rd.advanceTok()
 		}
 	}
-	rc := rd.expectError(RightCurly, klonerrs.ErrUnterminatedObject,
+	rc := rd.expect(RightCurly, klonerrs.ErrUnterminatedObject,
 		"Expected '}' to close inline object",
 	)
 	return &ast.Object{
@@ -466,8 +503,9 @@ func (rd *reader) parseBracedObject(lc Token) ast.Value {
 
 // parseEntry parses a single entry within an object or list block.
 // The entry can be keyed or unkeyed, or a rest. Variable declarations
-// are handled. If the entry is a rest, an [*ast.ArrowRef] is returned.
-// If isObject == true, an error is reported if the entry doesn't have a key.
+// are handled and return a nil entry when encountered. If the entry is a
+// rest, an [*ast.ArrowRef] is returned. If isObject == true, an error is
+// reported if the entry doesn't have a key.
 func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 	var (
 		varName   *ast.VarRef
@@ -476,8 +514,6 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		keyStart  lexer.Position
 		value     ast.Value
 	)
-	old := rd.removeParseFlags(objectValue)
-	defer rd.resetParseFlags(old)
 
 	// Check dashes
 	dashes = rd.parseDashes()
@@ -508,7 +544,7 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		// If the variable is a field, then it's a declaration
 		if varName != nil {
 			rd.declareVariable(varName, value)
-			return rd.parseEntry(forceObject) // Read another entry
+			return nil, dashes
 		}
 
 		return &ast.Field{
@@ -634,7 +670,7 @@ func (rd *reader) checkDashes(n int) bool {
 				"Too many dashes: expected up to %d, there are %d", rd.depth+1, n,
 			)
 		}
-		return false
+		return true // For recovery
 	}
 	return true
 }

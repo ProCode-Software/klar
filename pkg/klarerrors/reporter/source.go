@@ -103,6 +103,8 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 		lines := strings.Split(tok.Source, "\n")
 		src := lines[line-tok.Position.Line]
 		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
-		return uint32(utf8.RuneCountInString(src))
+		// Line length for normal tokens includes the newline
+		// TODO: is this actually the case?
+		return uint32(utf8.RuneCountInString(src)) + 1
 	}
 }

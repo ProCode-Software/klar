@@ -325,7 +325,8 @@ loop:
 			b.WriteRune(r)
 			rd.advanceBytes(n)
 			break loop
-		case ((isBrace && b.Len() == 2) || b.Len() == 1) && unicode.IsDigit(r):
+		case isBrace && b.Len() == 2 && unicode.IsDigit(r),
+			!isBrace && b.Len() == 1 && unicode.IsDigit(r):
 			tokErr = klonerrs.ErrInvalidIdentifier
 		case !isValidIdentChar(r):
 			break loop

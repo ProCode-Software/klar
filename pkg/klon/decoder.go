@@ -63,7 +63,7 @@ func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
 	if rv.Kind() == reflect.Interface {
 		msg = "Can't use " + FormatNodeType(val) + " as a value"
 	} else {
-		msg = "Expected " + formatGoType(goType.Kind()) + ", but found " + FormatNodeType(val)
+		msg = "Expected " + formatGoType(goType) + ", but found " + FormatNodeType(val)
 	}
 	return &Error{
 		Code:  klonerrs.ErrTypeMismatch,
@@ -74,8 +74,8 @@ func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
 	}
 }
 
-func formatGoType(k reflect.Kind) string {
-	switch k {
+func formatGoType(rt reflect.Type) string {
+	switch k := rt.Kind(); k {
 	case reflect.String:
 		return "a string"
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -88,6 +88,8 @@ func formatGoType(k reflect.Kind) string {
 		return "a list"
 	case reflect.Map, reflect.Struct:
 		return "an object"
+	case reflect.Pointer:
+		return formatGoType(rt.Elem())
 	default:
 		return k.String()
 	}
