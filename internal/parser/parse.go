@@ -240,16 +240,9 @@ func parseSeries[T ast.Node](
 			(!allowEOS && curr == lexer.Newline) {
 			break
 		}
-
-		if allowEOS {
-			if separator == 0 {
-				p.Expect(lexer.Newline)
-				continue
-			}
-			p.ExpectOneOf(separator, lexer.Newline)
-			continue
+		if separator != 0 {
+			p.Expect(separator)
 		}
-		p.Expect(separator)
 	}
 	if until != 0 {
 		p.Expect(until)

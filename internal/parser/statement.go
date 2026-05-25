@@ -142,15 +142,19 @@ unqualifiedImport:
 		case p.CurrKind() == lexer.RightCurlyBrace:
 			p.Error(klarerrs.Token(klarerrs.ErrEmptyUnqualifiedImport, p.Curr()))
 		}
-		parseSeries(p, &i.UnqualifiedImports, func() (u *ast.IdentifierPair) {
-			u = &ast.IdentifierPair{Name: p.ParseIdentifier()}
+		for p.WhileNot(lexer.RightCurlyBrace) {
+			u := &ast.IdentifierPair{Name: p.ParseIdentifier()}
 			// Alias
 			if p.CurrKind() == lexer.As {
 				p.Advance()
 				u.Label = p.ParseIdentifier()
 			}
-			return
-		}, lexer.RightCurlyBrace, lexer.Comma, true)
+			i.UnqualifiedImports = append(i.UnqualifiedImports, u)
+			if p.CurrKind() != lexer.RightCurlyBrace {
+				p.ExpectOneOf(lexer.Comma, lexer.Newline)
+			}
+		}
+		p.Expect(lexer.RightCurlyBrace, noAdvance)
 	}
 
 	return i
