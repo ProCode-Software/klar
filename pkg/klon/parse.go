@@ -58,7 +58,7 @@ func (rd *reader) parseValue() ast.Value {
 	// A. Top-level object
 	if rd.depth == 0 {
 		if (rd.parseFlags&key == 0 && rd.peekTok().Kind == Colon) ||
-			tok.Kind == Dash /* Invalid but still parse it */ {
+			tok.Kind == Dash /* Only valid as a list */ {
 			return rd.parseObject()
 		}
 	}
@@ -383,6 +383,7 @@ func (rd *reader) parseList(first ast.Value) *ast.List {
 		if !rd.checkDashes(rd.parseDashes()) {
 			break
 		}
+		// TODO: will an item that starts with a newline and indents be parsed?
 		old := rd.removeParseFlags(objectValue)
 		items = append(items, rd.parseValue())
 		rd.resetParseFlags(old)
@@ -396,14 +397,14 @@ func (rd *reader) parseList(first ast.Value) *ast.List {
 // parseObject parses an unbraced object or dashed list.
 // It determines the type of the collection (List or Object) based on the first entry.
 func (rd *reader) parseObject() ast.Value {
+	old := rd.removeParseFlags(objectValue)
+	defer rd.addParseFlags(old)
+
 	var (
 		fields   []*ast.Field
 		start    = rd.currTok().Pos
 		isObject bool
 	)
-	old := rd.removeParseFlags(objectValue)
-	defer rd.addParseFlags(old)
-
 	for rd.hasTokens() {
 		item, dashes := rd.parseEntry(isObject)
 		if dashes < rd.depth {

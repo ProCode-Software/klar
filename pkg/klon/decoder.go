@@ -54,9 +54,9 @@ func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
 		return marsh
 	}
 	// TODO: handle KlonUnmarshaller interface
-	marsh := d.makeDefaultDecoder(rt)
+	marsh := preprocessValue(d.makeDefaultDecoder(rt))
 	decodeCache.set(rt, marsh)
-	return preprocessValue(marsh)
+	return marsh
 }
 
 func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
