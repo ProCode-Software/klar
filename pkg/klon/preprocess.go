@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
@@ -96,44 +97,113 @@ func (d *decoder) preprocessStringGroup(sg *ast.StringGroup) (*ast.String, error
 
 // preprocessObject resolves rest items and merges them with the object.
 func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
-	var new *ast.Object
-	for i, f := range obj.Fields {
-		if f.Arrow == nil {
-			// Fields are only duplicated if there are arrow references
-			if new != nil {
-				new.Fields = append(new.Fields, f)
-			}
+	// 1. Check for duplicate fields and whether there are rests
+	var (
+		literalKeys = make(map[string]*ast.Field)
+		hasRest     bool
+	)
+	for _, f := range obj.Fields {
+		if f.Arrow != nil {
+			hasRest = true
 			continue
 		}
-
-		// Rest
-		if new == nil {
-			new = &ast.Object{
-				BaseNode: obj.BaseNode,
-				Inline:   obj.Inline,
-				Fields:   make([]*ast.Field, 0, len(obj.Fields)),
-			}
-			new.Fields = append(new.Fields, obj.Fields[:i]...)
-		}
-		// Resolve the arrow reference
-		v, err := d.resolveVar(f.Arrow.Var)
+		path, err := d.stringFieldPath(f)
 		if err != nil {
 			return nil, err
 		}
-		obj, ok := v.(*ast.Object)
-		if !ok {
-			if _, ok := v.(*ast.None); ok {
-				continue // Rest can be 'none'
+		if existing, ok := literalKeys[path]; ok {
+			return nil, decodeError(klonerrs.ErrDuplicateField, reflect.Value{}, f,
+				"Field %s was already defined at %s", klarerrs.Quote(path), existing.Pos(),
+			)
+		}
+		literalKeys[path] = f
+	}
+	// Don't duplicate the object if there aren't any rests
+	if !hasRest {
+		return obj, nil
+	}
+
+	// 2. Merge rest newFields into the object. Fields maintain the
+	// order they were first defined in.
+	var (
+		newFields []*ast.Field
+		seen      = make(map[string]int) // Key: Index
+		addField  func(*ast.Field) error
+	)
+	addField = func(f *ast.Field) error {
+		if f.Arrow == nil {
+			// Normal field or key-path. Key-paths will be resolved during decoding.
+			// For now, we only verify that the same key-path doesn't appear twice,
+			// not that `a.b: x` and `a: {b: x}` are both present.
+			path, err := d.stringFieldPath(f)
+			if err != nil {
+				return err
 			}
-			return nil, decodeError(klonerrs.ErrInvalidRest, reflect.Value{}, f.Arrow.Var,
+			if i, ok := seen[path]; ok {
+				// Replace existing field (original order, but last value)
+				newFields[i] = f
+			} else {
+				// New field
+				seen[path] = len(newFields)
+				newFields = append(newFields, f)
+			}
+			return nil
+		}
+
+		// Rest: Resolve and recursively preprocess
+		res, err := d.resolveVar(f.Arrow.Var)
+		if err != nil {
+			return err
+		}
+		restObj, ok := res.(*ast.Object)
+		if !ok {
+			if _, ok := res.(*ast.None); ok {
+				return nil // Rest can be 'none'
+			}
+			return decodeError(klonerrs.ErrInvalidRest, reflect.Value{}, f.Arrow.Var,
 				"'%s' must be an object in order to use it as a rest", f.Arrow.Var.Name,
 			)
 		}
-		_ = obj
-		// TODO: check v and append its fields
+		// Also preprocess the rest target object to resolve nested rests
+		if restObj, err = d.preprocessObject(restObj); err != nil {
+			return err
+		}
+		// Add all fields from the rest
+		for _, subField := range restObj.Fields {
+			if err := addField(subField); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	if new == nil {
-		return obj, nil
+
+	for _, f := range obj.Fields {
+		if err := addField(f); err != nil {
+			return nil, err
+		}
 	}
-	return new, nil
+
+	return &ast.Object{
+		BaseNode: obj.BaseNode,
+		Inline:   obj.Inline,
+		Fields:   newFields,
+	}, nil
+}
+
+// stringFieldPath returns the string representation of a field's key.
+// It handles both keys and key paths.
+func (d *decoder) stringFieldPath(f *ast.Field) (string, error) {
+	if f.KeyPath == nil {
+		return ToString(f.Key)
+	}
+	var b strings.Builder
+	for _, p := range *f.KeyPath {
+		keyStr, err := ToString(p)
+		if err != nil {
+			return "", err
+		}
+		b.WriteByte('.')
+		b.WriteString(keyStr)
+	}
+	return b.String()[1:], nil // Cut dot at beginning
 }

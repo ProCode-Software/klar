@@ -39,7 +39,7 @@ You may research online about new language and stdlib features.
 - Run `make gen` before submitting if AST types changed, or if objects/types that need to be generated have changed.
 - Run `./scripts/lint.sh` to validate code quality
 - Run `./scripts/format.sh` before submitting changes
-- Always run Go tools with `GOEXPERIMENT=jsonv2` when they accept it, unless I explicitly tell you not to. This project uses the experimental `encoding/json/v2` package, which is faster and more configurable than the standard `encoding/json` package.
+- Always run Go tools with `GOEXPERIMENT=jsonv2` when they accept it, unless I explicitly tell you not to. This project uses the experimental `encoding/json/v2` package, which is faster and more configurable than the standard `encoding/json` package. Note that the `./run` script automatically sets `GOEXPERIMENT=jsonv2` when running the CLI.
 - Never use `git restore` to restore your own changes, unless you stage yourself before you make changes! Don't undo MY changes!
 
 ## Architecture
@@ -85,3 +85,4 @@ Klon is a markup language that will be Klar's flagship configuration format. `gl
 - Do what I ask. Don't do anything else.
 - Ask me questions before starting or continuing. I want good code, so ask me to clarify or further explain.
 - NEVER GUESS. Ask me. You may look at other examples in the codebase for suggestions that may be part of your question.
+- If possible, call a tool to prompt the user with questions.

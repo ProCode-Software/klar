@@ -30,6 +30,7 @@ const (
 	ErrExpectedValue     // Expected a value but found something else
 	ErrExpectedClassName // Missing or invalid class name after '@'
 	ErrExpectedKeyValue  // Expected a key-value pair
+	ErrDuplicateField    // Field already defined in the object
 	ErrMisplacedRest     // Rest found outside of an Object or List
 
 	// Structural =====

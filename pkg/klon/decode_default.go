@@ -350,7 +350,7 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 			}
 			i++
 		}
-		
+
 		// Check if there weren't enough items. (Here 'i' is 1-based)
 		if i < arrLength {
 			if arrLength == 0 {
@@ -436,6 +436,32 @@ func (d *decoder) makeInterfaceDecoder(rt reflect.Type) decodeFunc {
 		case *ast.List:
 			l := make([]any, 0, len(node.Items))
 			for _, item := range node.Items {
+				if rest, ok := item.(*ast.ArrowRef); ok {
+					// Resolve and preprocess the rest list
+					res, err := d.resolveVar(rest.Var)
+					if err != nil {
+						return err
+					}
+					restList, ok := res.(*ast.List)
+					if !ok {
+						if _, ok := res.(*ast.None); ok {
+							continue // Rest can be 'none'
+						}
+						return decodeError(klonerrs.ErrInvalidRest, rv, res,
+							"'%s' must be a list in order to use it as a rest", rest.Var.Name,
+						)
+					}
+					// Recursively decode items from the resolved list
+					for _, subItem := range restList.Items {
+						var itemAny any
+						if err := d.decodeValue(subItem, reflect.ValueOf(&itemAny).Elem()); err != nil {
+							return err
+						}
+						l = append(l, itemAny)
+					}
+					continue
+				}
+
 				var itemAny any
 				if err := d.decodeValue(item, reflect.ValueOf(&itemAny).Elem()); err != nil {
 					return err
