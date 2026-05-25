@@ -49,10 +49,7 @@ func (rd *reader) resetLineIf(r rune) {
 	}
 }
 
-func (rd *reader) AdvanceRune() (rune, error) {
-	return rd.readRune()
-}
-
+func (rd *reader) AdvanceRune() (rune, error) { return rd.readRune() }
 func (rd *reader) CurrRune() (rune, error) {
 	if rd.pos >= len(rd.buffer) {
 		if err := rd.refill(); err != nil {
@@ -62,7 +59,6 @@ func (rd *reader) CurrRune() (rune, error) {
 	r, _ := utf8.DecodeRune(rd.buffer[rd.pos:])
 	return r, nil
 }
-
 func (rd *reader) PeekRune() (rune, error) {
 	if rd.pos >= len(rd.buffer) {
 		if err := rd.refill(); err != nil {
@@ -86,10 +82,7 @@ func (rd *reader) PeekRune() (rune, error) {
 	r2, _ := utf8.DecodeRune(rd.buffer[nextPos:])
 	return r2, nil
 }
-
-func (rd *reader) Position() lexer.Position {
-	return rd.offset
-}
+func (rd *reader) Position() lexer.Position { return rd.offset }
 
 func (rd *reader) peekRune() (rune, int, error) {
 	if rd.needsMore() {
@@ -246,9 +239,7 @@ func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int,
 }
 
 func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token {
-	var (
-		prefix string
-	)
+	var prefix string
 	if first == '-' || first == '+' {
 		prefix = string(first)
 		r, n, err := rd.currRune()
@@ -261,25 +252,24 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 		first = r
 	}
 
-	literal, nAttrs := lexer.ReadNumber(rd, first)
-	fullLiteral := prefix + literal
+	num, params := lexer.ReadNumber(rd, first)
 
 	// Numbers are ALWAYS delimited by space, punct, or comma in Klon.
 	r, _, err := rd.currRune()
 	isDelim := err != nil || unicode.IsSpace(r) || rd.isPunct(r) || r == ','
 
-	if nAttrs.Error == nil && isDelim {
+	if params.Error == nil && isDelim {
 		return Token{
 			Kind:   Number,
-			Src:    fullLiteral,
+			Src:    prefix + num,
 			Pos:    start,
 			BufPos: bufPos,
-			Attrs:  map[string]any{"params": nAttrs},
+			Attrs:  attrs{"params": params},
 		}
 	}
 
 	b := &strings.Builder{}
-	b.WriteString(fullLiteral)
+	b.WriteString(prefix + num)
 	return rd.readUnquotedString(b, start, bufPos)
 }
 
@@ -312,7 +302,7 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 		rd.advanceBytes(n)
 		b.WriteRune(r)
 	}
-	str := strings.TrimSpace(b.String())
+	str := strings.TrimSpace(b.String()) // Trim whitespace around
 	switch str {
 	case "true", "false":
 		return Token{
