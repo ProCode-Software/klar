@@ -87,49 +87,50 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 		}
 	}
 
+readNumber:
 	for {
 		r, err := rd.CurrRune()
 		if err != nil {
 			break
 		}
-
-		var stop bool
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			if format == NumberFormatBinary && r > '1' {
 				newError(ErrIntIncompatibleDigit, &b)
 			}
+		case 'e', 'E':
+			// Exponent or hex digit
+			if format == NumberFormatDecimal {
+				if isExp {
+					newError(ErrIntIncompatibleDigit, &b)
+					break
+				}
+				if last == '_' {
+					newError(ErrIntMisplacedSeparator, &b)
+					errPos--
+				}
+				isExp = true
+				flags |= HasExponent | IsFloat
+				break
+			}
+			fallthrough // Hex or invalid digit
 		case 'a', 'b', 'c', 'd', 'f', 'A', 'B', 'C', 'D', 'F':
 			if format != NumberFormatHex {
-				stop = true
+				// Hex letter or e on other format
+				newError(ErrIntIncompatibleDigit, &b)
 			}
-		case 'e', 'E':
-			if format == NumberFormatHex {
-				break
-			}
-			if format != NumberFormatDecimal || isExp {
-				stop = true
-				break
-			}
-			if last == '_' {
-				newError(ErrIntMisplacedSeparator, &b)
-				errPos--
-			}
-			isExp = true
-			flags |= HasExponent | IsFloat
 		case '.':
 			if isDec || isExp || format != NumberFormatDecimal {
-				stop = true
-				break
+				break readNumber
 			}
 			if last == '_' {
 				newError(ErrIntMisplacedSeparator, &b)
 				errPos--
 			}
 			// Check if next character is a digit
-			if next, err2 := rd.PeekRune(); err2 != nil || !IsDigit(next) {
-				stop = true
-				break
+			next, err2 := rd.PeekRune()
+			if err2 != nil || !IsDigit(next) {
+				break readNumber
 			}
 			isDec = true
 			flags |= IsFloat
@@ -140,14 +141,10 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 			flags |= HasSeparator
 		case '+', '-':
 			if (last != 'e' && last != 'E') || format != NumberFormatDecimal {
-				stop = true
+				break readNumber
 			}
 		default:
-			stop = true
-		}
-
-		if stop {
-			break
+			break readNumber
 		}
 
 		b.WriteRune(r)

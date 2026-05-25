@@ -271,6 +271,4 @@ func (l *Lexer) PeekRune() (rune, error) {
 	return r2, nil
 }
 
-func (l *Lexer) Position() Position {
-	return l.Pos
-}
+func (l *Lexer) Position() Position { return l.Pos }

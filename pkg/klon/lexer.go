@@ -239,7 +239,10 @@ func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int,
 }
 
 func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token {
-	var prefix string
+	var (
+		prefix   string
+		isNumber = true
+	)
 	if first == '-' || first == '+' {
 		prefix = string(first)
 		r, n, err := rd.currRune()
@@ -254,11 +257,15 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 
 	num, params := lexer.ReadNumber(rd, first)
 
-	// Numbers are ALWAYS delimited by space, punct, or comma in Klon.
+	// Klon transitions to unquoted string for certain numeric patterns
+	if strings.Contains(num, "__") || num[0] == '.' || num[len(num)-1] == '_' {
+		isNumber = false
+	}
+
 	r, _, err := rd.currRune()
 	isDelim := err != nil || unicode.IsSpace(r) || rd.isPunct(r) || r == ','
 
-	if params.Error == nil && isDelim {
+	if isNumber && isDelim {
 		return Token{
 			Kind:   Number,
 			Src:    prefix + num,
