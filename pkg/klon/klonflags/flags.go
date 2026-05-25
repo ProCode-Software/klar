@@ -5,7 +5,7 @@ type Flags uint32
 const (
 	// Marshalling
 
-	NoSortFields       Flags = 1 << iota // Don't alphabetically sort fields: order is random
+	NoSortFields       Flags = 1 << iota // Don't alphabetically sort fields (order is random for maps)
 	InsertFinalNewline                   // Add newline at end of output
 	PreserveFieldCase                    // Don't convert field names to camel case
 
@@ -21,7 +21,7 @@ const (
 	KeyedEmbeddedFields // If a struct has an embedded field, it may be keyed in the source
 	IgnoreArrayLength   // Don't validate array lengths; skip remaining items
 	NoMissingFields     // Error on missing field when unmarshalling
-	ZeroNullValues      // Zero Go values if the AST value is 'none'
+	ZeroNullValues      // Zero Go values if the AST value is `none`
 
 	// Unmarshalling to any
 
@@ -32,6 +32,7 @@ const (
 	BoolIsString       // true and false literals are strings
 	NumberIsString     // Numeric literals are strings
 	EmptyValueIsString // Empty markup values are decoded as "
+	OmitNullFields     // Don't include fields set to `none`
 
 	StrictFields = NoUnknownFields | CaseSensitiveFields |
 		NoSingleItemToArray | NoMissingFields

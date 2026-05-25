@@ -38,8 +38,9 @@ type Error struct {
 	Text  string
 	Token Token // For syntax errors
 	// For type errors
-	Type  reflect.Type
-	Value ast.Value
+	Type        reflect.Type
+	Value       ast.Value
+	isDecodeErr bool
 }
 
 func (err *Error) Error() string {
@@ -50,7 +51,7 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("klon: %s error at %s: %s", kind, err.Range, err.Text)
 }
 
-func (e *Error) IsTypeError() bool { return e.Type != nil }
+func (e *Error) IsTypeError() bool { return e.isDecodeErr }
 
 // Implements [reporter.Error]
 // =======

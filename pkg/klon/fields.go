@@ -16,32 +16,33 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
-type StructFields struct {
-	Flat         []*StructField          // Sorted fields
-	FoldedFields map[string]*StructField // In lower case
-	Fields       map[string]*StructField // Actual case (camel case or Go case)
+type structFields struct {
+	Flat         []*structField          // Sorted fields
+	FoldedFields map[string]*structField // In lower case
+	Fields       map[string]*structField // Actual case (camel case or Go case)
 }
 
-type StructField struct {
+type structField struct {
 	Name   string
 	Decode decodeFunc
 	Encode any // TODO
 	Type   reflect.Type
-	// Path to reach the actual field when embedded. If the field is not embedded, len(Indices) == 1. Each index is passed to [reflect.Value.FieldByIndex].
+	// Path to reach the actual field when embedded. If the field is not embedded,
+	// len(Indices) == 1. Each index is passed to [reflect.Value.FieldByIndex].
 	Indices []int
 }
 
-func makeStructFields(rt reflect.Type, flag klonflags.Flags) (StructFields, error) {
+func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, error) {
 	var (
 		visited    = map[reflect.Type]struct{}{}
-		currFields []*StructField
-		nextFields = []*StructField{{Type: rt}}
+		currFields []*structField
+		nextFields = []*structField{{Type: rt}}
 
 		fieldLen  = rt.NumField()
-		strFields = StructFields{
-			Flat:         make([]*StructField, 0, fieldLen),
-			Fields:       make(map[string]*StructField, fieldLen),
-			FoldedFields: make(map[string]*StructField, fieldLen),
+		strFields = structFields{
+			Flat:         make([]*structField, 0, fieldLen),
+			Fields:       make(map[string]*structField, fieldLen),
+			FoldedFields: make(map[string]*structField, fieldLen),
 		}
 	)
 	// Breadth-first search
@@ -100,7 +101,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (StructFields, erro
 					if name == "" {
 						name = camelCaseField(f.Name, flag)
 					}
-					new := &StructField{
+					new := &structField{
 						Name:    name,
 						Type:    rt,
 						Indices: indices,
@@ -125,7 +126,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (StructFields, erro
 					}
 				}
 				// Embedded struct
-				nextFields = append(nextFields, &StructField{
+				nextFields = append(nextFields, &structField{
 					Name:    name,
 					Type:    rt,
 					Indices: indices,
@@ -134,7 +135,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (StructFields, erro
 			}
 		}
 	}
-	slices.SortFunc(strFields.Flat, func(a, b *StructField) int {
+	slices.SortFunc(strFields.Flat, func(a, b *structField) int {
 		return cmp.Or(strings.Compare(a.Name, b.Name), len(a.Indices)-len(b.Indices))
 	})
 	return strFields, nil
@@ -174,17 +175,35 @@ func makeEnumDecoder(optsKey string) decodeFunc {
 		default:
 			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
 			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,
-				"Invalid option: expected one of: %s", allOpts,
+				"Invalid option: Expected one of: %s", allOpts,
 			)
 		}
 		enumVal, ok := opts[valAsStr]
 		if !ok {
 			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
 			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,
-				"Invalid option %s: expected one of: %s", klarerrs.Quote(valAsStr), allOpts,
+				"Invalid option %s: Expected one of: %s", klarerrs.Quote(valAsStr), allOpts,
 			)
 		}
 		rv.Set(reflect.ValueOf(enumVal))
 		return nil
 	}
+}
+
+func (sf *structFields) Lookup(name string, val ast.Value, flag klonflags.Flags) (
+	*structField, error,
+) {
+	if field, ok := sf.Fields[name]; ok {
+		return field, nil
+	}
+	if !flag.Has(klonflags.CaseSensitiveFields) {
+		// Case insensitive lookup
+		if field, ok := sf.FoldedFields[strings.ToLower(name)]; ok {
+			return field, nil
+		}
+	}
+	// TODO: Recommend a similar field name, or hint about whitespace ('a ' vs. 'a')
+	return nil, decodeError(klonerrs.ErrFieldNotFound, reflect.Value{}, val,
+		"Unknown field '%s'", name,
+	)
 }

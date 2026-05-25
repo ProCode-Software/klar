@@ -71,8 +71,7 @@ func (c *Command) handleFlagError(err error) {
 	case *argparse.InvalidOptionError:
 		cli.ColorErrorfln(
 			"<**><y!>%s</y!> isn't a valid option for flag <c!>%s</c!>.</**>\n\n"+
-				"Expected one of:"+
-				"\n  %s",
+				"Expected one of:\n  %s",
 			err.Input, argparse.FormatFlag(err.Flag), formatOpts(err.ExpOptions),
 		)
 		forMoreHelp()

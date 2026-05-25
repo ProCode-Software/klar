@@ -3,7 +3,9 @@ package klon
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
@@ -66,11 +68,12 @@ func typeMismatchError(rv reflect.Value, val ast.Value) *Error {
 		msg = "Expected " + formatGoType(goType) + ", but found " + FormatNodeType(val)
 	}
 	return &Error{
-		Code:  klonerrs.ErrTypeMismatch,
-		Type:  goType,
-		Value: val,
-		Range: val.Pos(),
-		Text:  msg,
+		Code:        klonerrs.ErrTypeMismatch,
+		Type:        goType,
+		Value:       val,
+		Range:       val.Pos(),
+		Text:        msg,
+		isDecodeErr: true,
 	}
 }
 
@@ -116,18 +119,42 @@ func FormatNodeType(node ast.Value) string {
 
 func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value,
 	msg string, v ...any,
-) error {
+) *Error {
 	var errMsg string
 	if len(v) > 0 {
 		errMsg = fmt.Sprintf(msg, v...)
 	} else {
 		errMsg = msg
 	}
+	var rt reflect.Type
+	if rv.IsValid() {
+		rt = rv.Type()
+	}
+	var pos ranges.Range
+	if val != nil {
+		pos = val.Pos()
+	}
 	return &Error{
-		Code:  code,
-		Text:  errMsg,
-		Type:  rv.Type(),
-		Value: val,
-		Range: val.Pos(),
+		Code:        code,
+		Text:        errMsg,
+		Type:        rt,
+		Value:       val,
+		Range:       pos,
+		isDecodeErr: true,
+	}
+}
+
+func ToString(v ast.Value) (string, error) {
+	switch v := v.(type) {
+	case *ast.String:
+		return v.Raw, nil // TODO: segments
+	case *ast.Boolean:
+		return strconv.FormatBool(v.Value), nil
+	case *ast.Number:
+		return v.Source, nil
+	default:
+		return "", decodeError(klonerrs.ErrCantConvertToString, reflect.Value{}, v,
+			"Can't convert %s to a string", FormatNodeType(v),
+		)
 	}
 }

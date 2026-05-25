@@ -8,6 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
 const MaxDepth = 10000
@@ -354,7 +355,7 @@ func (rd *reader) parseBoolean(b Token) *ast.Boolean {
 // parseNone parses a 'none' literal.
 func (rd *reader) parseNone(none Token) *ast.None {
 	rd.advanceTok()
-	return &ast.None{BaseNode: ast.BaseNode{Range: none.Range()}}
+	return &ast.None{BaseNode: ast.BaseNode{Range: none.Range()}, Literal: true}
 }
 
 // parseClass parses a class name (@identifier).
@@ -574,6 +575,10 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 
 func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 	switch {
+	case rd.flags.Has(klonflags.NoVariables):
+		rd.rangeError(klonerrs.ErrVarsDisabled, name.Range,
+			"Variables aren't allowed to be declared in this file",
+		)
 	case rd.depth != 0:
 		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range,
 			"Variables must be declared at the top level",

@@ -1,9 +1,8 @@
 package klon
 
 import (
+	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
@@ -47,12 +46,12 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 
 func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 	switch v := v.(type) {
-	case *ast.String:
-		rv.SetString(v.Raw) // TODO
-	case *ast.Boolean:
-		rv.SetString(strconv.FormatBool(v.Value))
-	case *ast.Number:
-		rv.SetString(v.Source)
+	case *ast.String, *ast.Boolean, *ast.Number:
+		str, err := ToString(v)
+		if err != nil { // Ex: Variable resolution error
+			return err
+		}
+		rv.SetString(str)
 	default:
 		return typeMismatchError(rv, v)
 	}
@@ -145,25 +144,51 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 	}
 }
 
-func (d *decoder) decodeField(rv reflect.Value, strFields StructFields, f *ast.Field) error {
+func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.Field) error {
 	if f.Arrow != nil {
 		// The object should have already been preprocessed, and that involves resolving ArrowRefs.
 		panic("field should not have Arrow during decoding")
 	}
-	keyStr, ok := f.Key.(*ast.String)
-	if !ok {
-		return nil
+	if f.KeyPath != nil {
+		return nil // TODO
 	}
-	lower := strings.ToLower(keyStr.Raw)
-	if field, ok := strFields.Fields[lower]; ok {
-		// TODO: fix panic caused by rv being a pointer
-		fieldVal := rv.FieldByIndex(field.Indices)
-		if field.Decode == nil {
-			field.Decode = d.getDecoder(field.Type)
+
+	// Keys can be strings, bools, or numbers
+	name, err := ToString(f.Key)
+	if err != nil {
+		if err, ok := err.(*Error); ok && err.Code == klonerrs.ErrCantConvertToString {
+			// Key type should already be validated at parse-time
+			panic(fmt.Sprintf("object key should have been validated during parse: %T", f.Key))
 		}
-		return field.Decode(fieldVal, f.Value, d)
+		return err
 	}
-	return nil
+
+	field, err := strFields.Lookup(name, f.Key, d.flags)
+	if err != nil {
+		return err
+	}
+	// Follow the indices to find the actual field [reflect.Value]. We
+	// can't use rv.FieldByIndex because it will panic on a nil pointer.
+	fv := rv
+	for _, i := range field.Indices {
+		if fv.Kind() == reflect.Pointer {
+			if fv.IsNil() {
+				el := fv.Type().Elem()
+				// Embedded pointer to unexported struct: type A struct { *b `klon:"B"` }
+				if !fv.CanSet() {
+					return fmt.Errorf("can't set embedded pointer to unexported struct %s", el)
+				}
+				fv.Set(reflect.New(el))
+			}
+			fv = fv.Elem()
+		}
+		fv = fv.Field(i)
+	}
+
+	if field.Decode == nil {
+		field.Decode = d.getDecoder(fv.Type())
+	}
+	return field.Decode(fv, f.Value, d)
 }
 
 func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
@@ -197,6 +222,7 @@ func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
 				}
 				continue
 			}
+
 			// Rest
 			res, err := d.resolveVar(rest.Var)
 			if err != nil {
@@ -204,8 +230,11 @@ func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
 			}
 			restList, ok := res.(*ast.List)
 			if !ok {
-				return decodeError(klonerrs.ErrTypeMismatch, rv, res,
-					"Arrow reference must resolve to a list",
+				if _, ok := res.(*ast.None); ok {
+					continue // Rest can be 'none'
+				}
+				return decodeError(klonerrs.ErrInvalidRest, rv, res,
+					"'%s' must be a list in order to use it as a rest", rest.Var.Name,
 				)
 			}
 			// Append items from the resolved list

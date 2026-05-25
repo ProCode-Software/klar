@@ -50,9 +50,12 @@ const (
 
 	// Decode =====
 
-	ErrTypeMismatch      // Mixed keyed and unkeyed entries in a block
-	ErrWrongArrayLength  // Mismatched array length during decoding
-	ErrUnsupportedValue  // Value type that cannot be decoded into the target Go type
-	ErrInvalidEnumOption // Invalid enum option
-	ErrInvalidRest       // Rest must be an object or list (depending on context)
+	ErrTypeMismatch        // Mixed keyed and unkeyed entries in a block
+	ErrWrongArrayLength    // Mismatched array length during decoding
+	ErrUnsupportedValue    // Value type that cannot be decoded into the target Go type
+	ErrInvalidEnumOption   // Invalid enum option
+	ErrInvalidRest         // Rest must be an object or list (depending on context)
+	ErrFieldNotFound       // Field not found in the target struct
+	ErrVarsDisabled        // Variables can't be resolved due to [klonflags.NoVariables]
+	ErrCantConvertToString // Can't convert value to string
 )

@@ -111,4 +111,18 @@ func (b *Bad) Pos() ranges.Range {
 	return ranges.Range{}
 }
 
-type None struct{ BaseNode }
+type None struct {
+	BaseNode
+	Literal bool // Whether 'none' was used
+}
+
+func CanString(v Value) bool {
+	switch v := v.(type) {
+	case *String, *Boolean, *Number:
+		return true
+	case *None:
+		return v.Literal
+	default:
+		return false
+	}
+}

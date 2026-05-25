@@ -2,9 +2,9 @@
 target: browser
 verbose: true
 
-input: ./src/proj
+input: ./src/mylang
 emitPackage: true
-output: ./dist/proj
+output: ./dist
 
 js:
     - declaration: true
@@ -12,7 +12,13 @@ js:
     - bundle: true
     - typescriptLibs: DOM
     - <- $baseJSOptions
+    - server:
+        -- port: 3000
+        -- document: ./index.html
 
 postBuild: @print Build complete!
 
 preBuild: [lint, generate, format]
+
+$baseJSOptions: 
+    

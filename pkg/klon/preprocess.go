@@ -30,7 +30,7 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 		case *ast.Object:
 			val, err = d.preprocessObject(node)
 		case *ast.ArrowRef:
-			// ArrowRefs are invalid outside lists and Object (*Field.Arrow)
+			// ArrowRefs are invalid outside lists (manually handled) and Object (*Field.Arrow)
 			return decodeError(klonerrs.ErrMisplacedRest, reflect.Value{}, node,
 				"Rests are only allowed in objects and lists",
 			)
@@ -96,5 +96,44 @@ func (d *decoder) preprocessStringGroup(sg *ast.StringGroup) (*ast.String, error
 
 // preprocessObject resolves rest items and merges them with the object.
 func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
-	return obj, nil
+	var new *ast.Object
+	for i, f := range obj.Fields {
+		if f.Arrow == nil {
+			// Fields are only duplicated if there are arrow references
+			if new != nil {
+				new.Fields = append(new.Fields, f)
+			}
+			continue
+		}
+
+		// Rest
+		if new == nil {
+			new = &ast.Object{
+				BaseNode: obj.BaseNode,
+				Inline:   obj.Inline,
+				Fields:   make([]*ast.Field, 0, len(obj.Fields)),
+			}
+			new.Fields = append(new.Fields, obj.Fields[:i]...)
+		}
+		// Resolve the arrow reference
+		v, err := d.resolveVar(f.Arrow.Var)
+		if err != nil {
+			return nil, err
+		}
+		obj, ok := v.(*ast.Object)
+		if !ok {
+			if _, ok := v.(*ast.None); ok {
+				continue // Rest can be 'none'
+			}
+			return nil, decodeError(klonerrs.ErrInvalidRest, reflect.Value{}, f.Arrow.Var,
+				"'%s' must be an object in order to use it as a rest", f.Arrow.Var.Name,
+			)
+		}
+		_ = obj
+		// TODO: check v and append its fields
+	}
+	if new == nil {
+		return obj, nil
+	}
+	return new, nil
 }
