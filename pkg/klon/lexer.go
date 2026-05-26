@@ -146,10 +146,6 @@ func (rd *reader) readToken() Token {
 				return rd.readNumber(r, start, bufPos)
 			}
 		case '.':
-			// TODO: Don't allow leading/trailing decimal point for numbers
-			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
-				return rd.readNumber(r, start, bufPos)
-			}
 			if (rd.parseFlags & allowDot) == 0 {
 				return Token{Kind: Dot, Pos: start, Src: ".", BufPos: bufPos}
 			}
@@ -246,7 +242,7 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 	if first == '-' || first == '+' {
 		prefix = string(first)
 		r, n, err := rd.currRune()
-		if err != nil || (!lexer.IsDigit(r) && r != '.') {
+		if err != nil || !lexer.IsDigit(r) {
 			b := &strings.Builder{}
 			b.WriteRune(first)
 			return rd.readUnquotedString(b, start, bufPos)
@@ -255,10 +251,10 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 		first = r
 	}
 
-	num, params := lexer.ReadNumber(rd, first)
+	literal, params := lexer.ReadNumber(rd, first)
 
 	// Klon transitions to unquoted string for certain numeric patterns
-	if strings.Contains(num, "__") || num[0] == '.' || num[len(num)-1] == '_' {
+	if literal[0] == '.' || literal[len(literal)-1] == '_' {
 		isNumber = false
 	}
 
@@ -268,7 +264,7 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 	if isNumber && isDelim {
 		return Token{
 			Kind:   Number,
-			Src:    prefix + num,
+			Src:    prefix + literal,
 			Pos:    start,
 			BufPos: bufPos,
 			Attrs:  attrs{"params": params},
@@ -276,7 +272,7 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 	}
 
 	b := &strings.Builder{}
-	b.WriteString(prefix + num)
+	b.WriteString(prefix + literal)
 	return rd.readUnquotedString(b, start, bufPos)
 }
 

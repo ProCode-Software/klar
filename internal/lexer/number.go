@@ -51,17 +51,13 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 		b            strings.Builder
 		format       IntFormat
 		flags        NumberFlags
-		errorType    NumberErrorCode
-		errPos       int
+		err          *NumberError
 		isExp, isDec bool
 		last         rune
 	)
-	newError := func(code NumberErrorCode, b *strings.Builder) {
-		if errorType == 0 {
-			errorType = code
-			if b != nil {
-				errPos = b.Len()
-			}
+	newError := func(code NumberErrorCode, errPos int) {
+		if err == nil {
+			err = &NumberError{Code: code, Offset: uint32(errPos)}
 		}
 	}
 
@@ -69,7 +65,7 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 	last = first
 
 	if first == '0' {
-		if r, err := rd.CurrRune(); err == nil {
+		if r, er := rd.CurrRune(); er == nil {
 			switch r {
 			case 'x', 'X':
 				format = NumberFormatHex
@@ -89,25 +85,24 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 
 readNumber:
 	for {
-		r, err := rd.CurrRune()
-		if err != nil {
+		r, er := rd.CurrRune()
+		if er != nil {
 			break
 		}
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			if format == NumberFormatBinary && r > '1' {
-				newError(ErrIntIncompatibleDigit, &b)
+				newError(ErrIntIncompatibleDigit, b.Len())
 			}
 		case 'e', 'E':
 			// Exponent or hex digit
 			if format == NumberFormatDecimal {
 				if isExp {
-					newError(ErrIntIncompatibleDigit, &b)
+					newError(ErrIntIncompatibleDigit, b.Len())
 					break
 				}
 				if last == '_' {
-					newError(ErrIntMisplacedSeparator, &b)
-					errPos--
+					newError(ErrIntMisplacedSeparator, b.Len()-1)
 				}
 				isExp = true
 				flags |= HasExponent | IsFloat
@@ -117,15 +112,14 @@ readNumber:
 		case 'a', 'b', 'c', 'd', 'f', 'A', 'B', 'C', 'D', 'F':
 			if format != NumberFormatHex {
 				// Hex letter or e on other format
-				newError(ErrIntIncompatibleDigit, &b)
+				newError(ErrIntIncompatibleDigit, b.Len())
 			}
 		case '.':
 			if isDec || isExp || format != NumberFormatDecimal {
 				break readNumber
 			}
 			if last == '_' {
-				newError(ErrIntMisplacedSeparator, &b)
-				errPos--
+				newError(ErrIntMisplacedSeparator, b.Len()-1)
 			}
 			// Check if next character is a digit
 			next, err2 := rd.PeekRune()
@@ -136,7 +130,7 @@ readNumber:
 			flags |= IsFloat
 		case '_':
 			if last == '_' || (format == NumberFormatDecimal && !IsDigit(last)) {
-				newError(ErrIntMisplacedSeparator, &b)
+				newError(ErrIntMisplacedSeparator, b.Len())
 			}
 			flags |= HasSeparator
 		case '+', '-':
@@ -154,15 +148,9 @@ readNumber:
 
 	num := b.String()
 	if last == '_' {
-		newError(ErrIntMisplacedSeparator, nil)
-		errPos = len(num) - 1
+		newError(ErrIntMisplacedSeparator, len(num)-1)
 	} else if format != NumberFormatHex && !IsDigit(last) {
-		newError(ErrIntIncompatibleDigit, nil)
-		errPos = len(num)
-	}
-	var err *NumberError
-	if errorType != 0 {
-		err = &NumberError{Code: errorType, Offset: uint32(errPos)}
+		newError(ErrIntIncompatibleDigit, len(num))
 	}
 	return num, NumberAttrs{Format: format, Flags: flags, Error: err}
 }
