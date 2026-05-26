@@ -19,6 +19,9 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 			if d.flags.Has(klonflags.ZeroNullValues) {
 				rv.SetZero()
 			}
+			if rv.Kind() == reflect.Interface && d.flags.Has(klonflags.EmptyValueIsString) {
+				rv.Set(reflect.ValueOf(""))
+			}
 			return nil // No need to decode
 		case *ast.VarRef:
 			val, err = d.resolveVar(node)
@@ -85,9 +88,38 @@ func (d *decoder) resolveVar(ref *ast.VarRef) (ast.Value, error) {
 	}
 
 notFound:
-	return nil, decodeError(klonerrs.ErrUndefinedVar, reflect.Value{}, ref,
+	err := decodeError(klonerrs.ErrUndefinedVar, reflect.Value{}, ref,
 		"Can't find variable '%s'", ref.Name,
 	)
+	if d.shouldWarn(err.Code) {
+		d.warn(err)
+		return &ast.None{}, nil
+	}
+	return nil, err
+}
+
+func resolveRest[T ast.Value](d *decoder, rest *ast.ArrowRef, rv reflect.Value) (val T, empty bool, err error) {
+	res, err := d.resolveVar(rest.Var)
+	if err != nil {
+		return val, false, err
+	}
+	val, ok := res.(T)
+	if !ok {
+		if _, ok := res.(*ast.None); ok {
+			return val, true, nil // Rest can be none
+		}
+		var kind string
+		switch res.(type) {
+		case *ast.List:
+			kind = "a list"
+		case *ast.Object:
+			kind = "an object"
+		}
+		return val, false, decodeError(klonerrs.ErrInvalidRest, rv, res,
+			"'%s' must be %s in order to use it as a rest", rest.Var.Name, kind,
+		)
+	}
+	return val, false, nil
 }
 
 func (d *decoder) preprocessStringGroup(sg *ast.StringGroup) (*ast.String, error) {
@@ -151,18 +183,11 @@ func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
 		}
 
 		// Rest: Resolve and recursively preprocess
-		res, err := d.resolveVar(f.Arrow.Var)
+		restObj, empty, err := resolveRest[*ast.Object](d, f.Arrow, reflect.Value{})
 		if err != nil {
 			return err
-		}
-		restObj, ok := res.(*ast.Object)
-		if !ok {
-			if _, ok := res.(*ast.None); ok {
-				return nil // Rest can be 'none'
-			}
-			return decodeError(klonerrs.ErrInvalidRest, reflect.Value{}, f.Arrow.Var,
-				"'%s' must be an object in order to use it as a rest", f.Arrow.Var.Name,
-			)
+		} else if empty {
+			return nil
 		}
 		// Also preprocess the rest target object to resolve nested rests
 		if restObj, err = d.preprocessObject(restObj); err != nil {
@@ -190,15 +215,22 @@ func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
 	}, nil
 }
 
+func (d *decoder) evaluateString(str *ast.String) (string, error) {
+	if str.Evaluated != "" {
+		return str.Evaluated, nil
+	}
+	return str.Raw, nil
+}
+
 // stringFieldPath returns the string representation of a field's key.
 // It handles both keys and key paths.
 func (d *decoder) stringFieldPath(f *ast.Field) (string, error) {
 	if f.KeyPath == nil {
-		return ToString(f.Key)
+		return d.ToString(f.Key)
 	}
 	var b strings.Builder
 	for _, p := range *f.KeyPath {
-		keyStr, err := ToString(p)
+		keyStr, err := d.ToString(p)
 		if err != nil {
 			return "", err
 		}

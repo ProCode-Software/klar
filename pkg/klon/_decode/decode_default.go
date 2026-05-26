@@ -2,7 +2,6 @@ package decode
 
 import (
 	"reflect"
-	"strconv"
 
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/internal/errors"
@@ -47,7 +46,7 @@ func decodeString(rv reflect.Value, d *Decoder, flags parseFlags) (ast.Node, err
 	case *ast.String:
 		rv.SetString(v.Value)
 	case *ast.Boolean:
-		rv.SetString(strconv.FormatBool(v.Value))
+		rv.SetString(v.String())
 	case *ast.Number:
 		rv.SetString(v.Source)
 	case *ast.None:

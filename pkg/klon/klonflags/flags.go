@@ -12,7 +12,7 @@ const (
 	// Unmarshalling
 
 	NoUnknownFields     // Error on unknown field when unmarshalling
-	NoVariables         // Don't resolve variables or namespaces
+	NoVariables         // Don't resolve variables
 	CaseSensitiveFields // Field names must be same case as given in klon struct tag or camel case
 	ClampNumbers        // Out of range numbers are clamped or truncated
 	AllowJSONStructTags // Use json: struct tags if klon: doesn't exist
@@ -27,6 +27,7 @@ const (
 
 	UseFloat64         // All numbers are decoded as float64
 	UseInt64           // Integers are decoded as int64
+	UseInt             // Integers are decoded as int
 	UseByteSlice       // Strings are decoded as []byte
 	UseRuneSlice       // Same as [UseByteSlice] but decodes as []rune
 	BoolIsString       // true and false literals are strings

@@ -41,6 +41,7 @@ type Error struct {
 	Type        reflect.Type
 	Value       ast.Value
 	isDecodeErr bool
+	Warning     bool
 }
 
 func (err *Error) Error() string {
@@ -66,7 +67,7 @@ func (err *Error) Location() ranges.Range { return err.Range }
 func (err *Error) Message() string        { return err.Text }
 
 func (err *Error) ErrorCode() string                     { return "" }
-func (err *Error) IsWarning() bool                       { return false }
+func (err *Error) IsWarning() bool                       { return err.Warning }
 func (err *Error) FilePath() string                      { return "" }
 func (err *Error) MainHighlight() string                 { return "" }
 func (err *Error) ErrorDetails() []klarerrs.Detail       { return nil }

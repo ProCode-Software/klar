@@ -33,6 +33,71 @@ func TestMain(t *testing.T) {
 		}`, optionsObjValue{objValue{value{42}}}, false)
 }
 
+func TestInterfaceMerge(t *testing.T) {
+	t.Run("MergeIntoInitializedPointer", func(t *testing.T) {
+		var i int = 10
+		var anyVal any = &i
+		err := Unmarshall([]byte(`20`), &anyVal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if i != 20 {
+			t.Errorf("expected i to be 20, but got %d", i)
+		}
+		if p, ok := anyVal.(*int); !ok || p != &i {
+			t.Errorf("expected anyVal to still hold the same pointer &i")
+		}
+	})
+
+	t.Run("MergeIntoNilPointer", func(t *testing.T) {
+		var anyVal any = (*int)(nil)
+		err := Unmarshall([]byte(`42`), &anyVal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		p, ok := anyVal.(*int)
+		if !ok {
+			t.Fatalf("expected anyVal to hold an *int, but got %T", anyVal)
+		}
+		if *p != 42 {
+			t.Errorf("expected *p to be 42, but got %d", *p)
+		}
+	})
+
+	t.Run("FlexibleFallbackOnTypeMismatch", func(t *testing.T) {
+		var i int = 10
+		var anyVal any = &i
+		// Try to decode a string into an interface holding an *int.
+		// It should fail to merge into *int and fallback to any (overwriting with string).
+		err := Unmarshall([]byte(`'hello'`), &anyVal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		s, ok := anyVal.(string)
+		if !ok {
+			t.Fatalf("expected anyVal to be a string due to fallback, but got %T", anyVal)
+		}
+		if s != "hello" {
+			t.Errorf("expected s to be 'hello', but got %q", s)
+		}
+		if i != 10 {
+			t.Errorf("expected i to remain 10, but got %d", i)
+		}
+	})
+
+	t.Run("NullClearsInterface", func(t *testing.T) {
+		var i int = 10
+		var anyVal any = &i
+		err := Unmarshall([]byte(`null`), &anyVal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if anyVal != nil {
+			t.Errorf("expected anyVal to be nil after decoding null, but got %v (%T)", anyVal, anyVal)
+		}
+	})
+}
+
 func testCase[T any](t *testing.T,
 	name, document string, expected T, wantErr bool,
 ) {

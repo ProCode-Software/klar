@@ -6,7 +6,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -179,11 +178,11 @@ func makeEnumDecoder(optsKey string) decodeFunc {
 		var valAsStr string
 		switch val := val.(type) {
 		case *ast.String:
-			valAsStr = val.Raw
+			valAsStr = val.Evaluated
 		case *ast.Number:
 			valAsStr = val.Source
 		case *ast.Boolean:
-			valAsStr = strconv.FormatBool(val.Value)
+			valAsStr = val.String()
 		default:
 			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
 			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,

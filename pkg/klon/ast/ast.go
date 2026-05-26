@@ -34,6 +34,13 @@ type Boolean struct {
 	Value bool
 }
 
+func (b *Boolean) String() string {
+	if b.Value {
+		return "true"
+	}
+	return "false"
+}
+
 type StringGroup struct {
 	BaseNode
 	Values []Value
@@ -45,6 +52,8 @@ type String struct {
 	Value []string // Escapes evaluated, variables as segments
 	Wrap  bool     // If '>' was before quote
 	Quote rune     // 0 if unquoted or " or ' rune
+
+	Evaluated string
 }
 
 type Number struct {

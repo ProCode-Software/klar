@@ -3,7 +3,6 @@ package klon
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
@@ -144,12 +143,28 @@ func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value,
 	}
 }
 
-func ToString(v ast.Value) (string, error) {
+func (d *decoder) warn(e error) {
+	w, ok := e.(*Error)
+	if ok && d.shouldWarn(w.Code) {
+		w.Warning = true
+		d.ctx.Warnings = append(d.ctx.Warnings, w)
+	}
+}
+
+func (d *decoder) shouldWarn(code klonerrs.Code) bool {
+	if d.ctx == nil || d.ctx.WarningKinds == nil || d.ctx.Warnings == nil {
+		return false
+	}
+	_, ok := d.ctx.WarningKinds[code]
+	return ok
+}
+
+func (d *decoder) ToString(v ast.Value) (string, error) {
 	switch v := v.(type) {
 	case *ast.String:
-		return v.Raw, nil // TODO: segments
+		return d.evaluateString(v)
 	case *ast.Boolean:
-		return strconv.FormatBool(v.Value), nil
+		return v.String(), nil
 	case *ast.Number:
 		return v.Source, nil
 	default:

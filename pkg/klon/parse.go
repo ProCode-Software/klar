@@ -56,7 +56,7 @@ func (rd *reader) parseValue() ast.Value {
 	}
 
 	// A. Top-level object
-	if rd.depth == 0 {
+	if rd.depth == 0 && tok.Kind != LeftBracket && tok.Kind != LeftCurly {
 		if (rd.parseFlags&key == 0 && rd.peekTok().Kind == Colon) ||
 			tok.Kind == Dash /* Only valid as a list */ {
 			return rd.parseObject()

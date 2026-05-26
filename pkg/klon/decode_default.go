@@ -46,7 +46,7 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 	switch v := v.(type) {
 	case *ast.String, *ast.Boolean, *ast.Number:
-		str, err := ToString(v)
+		str, err := d.ToString(v)
 		if err != nil { // Ex: Variable resolution error
 			return err
 		}
@@ -71,7 +71,7 @@ func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
 		return typeMismatchError(rv, val)
 	}
 	asInt := int64(num.Value)
-	if float64(asInt) != num.Value {
+	if float64(asInt) != num.Value && !d.flags.Has(klonflags.ClampNumbers) {
 		// Truncated
 		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
 			"Number '%s' must be a whole integer", num.Source,
@@ -86,14 +86,19 @@ func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
 	if !ok {
 		return typeMismatchError(rv, val)
 	}
+	clamp := d.flags.Has(klonflags.ClampNumbers)
 	asUInt := uint64(num.Value)
-	if float64(asUInt) != num.Value {
+	if float64(asUInt) != num.Value && !clamp {
 		// Truncated
 		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
 			"Number '%s' must be a whole integer", num.Source,
 		)
 	}
 	if num.Value < 0 {
+		if clamp {
+			rv.SetUint(0)
+			return nil
+		}
 		return decodeError(klonerrs.ErrNegativeNumber, rv, num,
 			"Number '%s' can't be negative", num.Source,
 		)
@@ -181,7 +186,7 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 	}
 
 	// Keys can be strings, bools, or numbers
-	name, err := ToString(f.Key)
+	name, err := d.ToString(f.Key)
 	if err != nil {
 		if err, ok := err.(*Error); ok && err.Code == klonerrs.ErrCantConvertToString {
 			// Key type should already be validated at parse-time
@@ -192,7 +197,11 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 
 	field, err := strFields.Lookup(name, f.Key, d.flags)
 	if err != nil {
-		return err
+		if d.flags.Has(klonflags.NoUnknownFields) {
+			return err
+		}
+		d.warn(err)
+		return nil
 	}
 	// Follow the indices to find the actual field [reflect.Value]. We
 	// can't use rv.FieldByIndex because it will panic on a nil pointer.
@@ -211,7 +220,6 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 		}
 		fv = fv.Field(i)
 	}
-
 	return field.Decode(fv, f.Value, d)
 }
 
@@ -254,18 +262,11 @@ func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
 			}
 
 			// Rest
-			res, err := d.resolveVar(rest.Var)
+			restList, empty, err := resolveRest[*ast.List](d, rest, rv)
 			if err != nil {
 				return err
-			}
-			restList, ok := res.(*ast.List)
-			if !ok {
-				if _, ok := res.(*ast.None); ok {
-					continue // Rest can be 'none'
-				}
-				return decodeError(klonerrs.ErrInvalidRest, rv, res,
-					"'%s' must be a list in order to use it as a rest", rest.Var.Name,
-				)
+			} else if empty {
+				continue
 			}
 			// Append items from the resolved list
 			for _, item := range restList.Items {
@@ -367,20 +368,12 @@ func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
 func (d *decoder) appendRestToArray(rv reflect.Value, list *ast.List, rest *ast.ArrowRef,
 	decodeItem decodeFunc, i, arrLength int,
 ) (int, error) {
-	res, err := d.resolveVar(rest.Var)
+	restList, empty, err := resolveRest[*ast.List](d, rest, rv)
 	if err != nil {
 		return i, err
+	} else if empty {
+		return i, nil
 	}
-	restList, ok := res.(*ast.List)
-	if !ok {
-		if _, ok := res.(*ast.None); ok {
-			return i, nil // Rest can be 'none'
-		}
-		return i, decodeError(klonerrs.ErrInvalidRest, rv, res,
-			"'%s' must be a list in order to use it as a rest", rest.Var.Name,
-		)
-	}
-
 	// Append items from the resolved list
 	for _, item := range restList.Items {
 		if i >= arrLength {
@@ -423,24 +416,34 @@ func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
 func decodeInterface(rv reflect.Value, val ast.Value, d *decoder) error {
 	// If the interface is set to a pointer, decode into the pointer's value
 	if !rv.IsNil() {
-		// Underlying value of interface
-		// Make sure the pointer isn't a cycle
-		if next := rv.Elem(); next.Kind() == reflect.Pointer && rv != next.Elem() {
-			nextType := next.Type().Elem() // Type of the pointer implementing the interface
-			if rv.IsNil() {
-				rv.Set(reflect.New(nextType))
-				next = rv.Elem()
+		next := rv.Elem() // Underlying value of interface
+		if next.Kind() == reflect.Pointer && rv != next.Elem() {
+			if next.IsNil() {
+				// Initialize the pointer if it's nil
+				next = reflect.New(next.Type().Elem())
+				rv.Set(next)
 			}
-			decode := d.getDecoder(nextType)
-			if err := decode(next, val, d); err == nil {
+			// Attempt to decode into the pointed-to value
+			decode := d.getDecoder(next.Type().Elem())
+			if err := decode(next.Elem(), val, d); err == nil {
 				return nil
 			}
 			// If the decode fails, fall back to decoding into any.
 		}
 	}
+	// Decode into 'any'
 	// We can't decode into a nil interface with methods
 	if rv.NumMethod() != 0 {
 		return fmt.Errorf("can't decode into nil interface with methods: %s", rv.Type().String())
 	}
-	return d.decodeAny(rv, val)
+	v, err := d.toGoValue(val)
+	switch {
+	case err != nil:
+		return err
+	case v != nil:
+		rv.Set(reflect.ValueOf(v))
+	default:
+		rv.SetZero()
+	}
+	return nil
 }

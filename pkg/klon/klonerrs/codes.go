@@ -23,7 +23,7 @@ const (
 	// Literal =====
 
 	ErrInvalidIdentifier // Variable name starting with a digit
-	ErrLeadingPlusSign // Numbers can't have a leading plus sign
+	ErrLeadingPlusSign   // Numbers can't have a leading plus sign
 	ErrUnknownEscape     // Invalid backslash escape sequence
 	ErrInvalidKey        // Non-string/number/bool used as a key
 	ErrExpectedValue     // Expected a value but found something else

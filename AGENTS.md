@@ -14,7 +14,8 @@ This file contains rules for AI agents working with this codebase.
 You may research online about new language and stdlib features.
 
 - **Do not create or run tests** unless explicitly asked, or you modify code that requires testing
-- **Do not generate, remove, or modify blank lines and comments** except when code really needs explanation (or requested)
+- **Do not generate, remove, or modify blank lines and comments** except when code really needs explanation, or requested
+- Don't modify or remove my comments unless they're irrelevant
 - Group variables of 3+ with `var ( ... )` in Go
 - Use `(*testing.B).Loop()` instead of `b.N` in benchmarks
 - Use `min(...)` and `max(...)` when appropriate

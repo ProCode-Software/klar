@@ -57,7 +57,7 @@ func (rd *reader) tokenError(code klonerrs.Code, tok Token, msg string, v ...any
 	} else {
 		text = fmt.Sprintf(msg, v...)
 	}
-	rd.errs = append(rd.errs, &Error{
+	rd.addErrorOrWarning(&Error{
 		Code:  code,
 		Range: tok.Range(),
 		Token: tok,
@@ -72,7 +72,18 @@ func (rd *reader) rangeError(code klonerrs.Code, r ranges.Range, msg string, v .
 	} else {
 		text = fmt.Sprintf(msg, v...)
 	}
-	rd.errs = append(rd.errs, &Error{Code: code, Range: r, Text: text})
+	rd.addErrorOrWarning(&Error{Code: code, Range: r, Text: text})
+}
+
+func (rd *reader) addErrorOrWarning(err *Error) {
+	if rd.ctx.WarningKinds != nil && rd.ctx.Warnings != nil {
+		if _, ok := rd.ctx.WarningKinds[err.Code]; ok {
+			err.Warning = true
+			rd.ctx.Warnings = append(rd.ctx.Warnings, err)
+			return
+		}
+	}
+	rd.errs = append(rd.errs, err)
 }
 
 func (rd *reader) expect(
