@@ -1,8 +1,6 @@
 package klarbuild
 
-import (
-	"github.com/ProCode-Software/klar/internal/target"
-)
+import "github.com/ProCode-Software/klar/internal/target"
 
 // TODO: add documentation which will also be added to schema
 // TODO: transform features in klon unmarshaller, such as mapping strings
@@ -46,8 +44,8 @@ type Configuration struct {
 	// pattern can be provided, otherwise the outputs must match the number of inputs.
 	Output []string
 
-	// Whether a full package structure with a package.json file should be built.
-	EmitPackage bool
+	// Whether a full package structure with a package.json file should be generated.
+	GeneratePackage bool
 	// Rebuild files when they are modified. Useful for development.
 	Watch bool
 	// Whether comments in source files should be removed from built files. This value
@@ -73,23 +71,27 @@ type AssetOptions struct {
 }
 
 type JSOptions struct {
-	// Global objects that should be made available to use in source files.
+	// Global objects that should be made available to use in the `klar.js` module.
+	// Type declarations for these objects can be provided via `typescriptLibs`.
 	Globals map[string]GlobalType `options:"GlobalType"`
+	// TypeScript declaration libraries that should be loaded to the
+	// `klar.js` module when type-checking. These can be bundled with
+	// TypeScript, or paths to *.d.ts files (must start with './' or '../').
+	TypeScriptLibs []string `klon:"typescriptLibs"`
+	// Whether TypeScript declarations (.d.ts files) should be generated for
+	// all public exports. Recommended for all JavaScript libraries so users
+	// can get code completion for your library in supporting IDEs.
+	Declaration bool
+	// Directory that *.d.ts files should be built to. If `bundleDeclaration` is on,
+	// a single file will be generated here, otherwise a file for each input
+	// module will be generated.
+	DeclarationPath string
+	// Bundle all TypeScript declarations for input modules into one file.
+	BundleDeclaration bool
 	// Options for the dev server.
 	Server *JSServerOptions
-	// Path to a .d.ts file containing type definitions for items defined in `globals`.
-	GlobalTypeDefs string
-	// Directory that *.d.ts files should be built to. If `bundleDeclaration` is on,
-	// a single file will be generated here.
-	DeclarationPath string
-	// Code to add at the top of each built file, usually a comment.
+	// JavaScript code to add at the top of each built file, usually a comment.
 	Banner string
-	// The name of the global namespace for the compiled UMD module. Only supported if
-	// 'format' is set to 'umd'.
-	UMDNamespace string
-	// TypeScript declaration libraries that should be loaded when type-checking. These
-	// can be bundled with TypeScript, or paths to *.d.ts files.
-	TypeScriptLibs []string
 	// How built JavaScript files should be bundled.
 	Bundle BundleMode `options:"BundleMode"`
 	// Whether source map files should be created. If set to `true`, *.js.map files are
@@ -105,23 +107,16 @@ type JSOptions struct {
 	// reducing the size of JavaScript files.
 	Minify bool
 	// Whether a `node_modules` directory should be created in the output directory.
+	// This has no effect if `generatePackage` is off.
 	CopyNodeModules bool
-	// Bundle all TypeScript declarations into one file.
-	BundleDeclaration bool
-	// Whether TypeScript declarations (.d.ts files) should be generated for
-	// all public exports. Recommended for all JavaScript libraries so users
-	// can get code completion for your library in supporting IDEs.
-	Declaration bool
 }
 
 // In the dev server, links to compiled modules are made available.
 type JSServerOptions struct {
-	// The HTML file to serve. This may also be a directory.
-	Document string
+	Document string // The HTML file to serve. This may also be a directory.
 	Host     string
 	Port     int
-	// Enable the dev server.
-	Enabled bool
+	Enabled  bool // Enable the dev server.
 }
 
 type CheckerOptions struct {
@@ -165,7 +160,7 @@ const (
 	EnumExhaustiveness
 )
 
-// Determines whether and when assertions are allowed in code.
+// Determines whether and when assertions (`!!` operator) are allowed in code.
 type CheckedAssertionOption int
 
 const (
@@ -175,7 +170,7 @@ const (
 	// Programs must crashout explicitly. This prevents hidden crashes
 	// in production code.
 	DisallowAssertions
-	// Require comments on all lines containing assertions
+	// Require comments for all lines containing assertions,
 	// stating that you know what you're doing.
 	AllowAssertionsWithComments
 )
@@ -199,7 +194,7 @@ const (
 type GlobalType uint16
 
 const (
-	GlobalObject   GlobalType = 1 << iota // Object
+	GlobalObject   GlobalType = 1 << iota // Object. Can be used with another type.
 	GlobalString                          // String
 	GlobalNumber                          // Number
 	GlobalFunction                        // Function
@@ -216,8 +211,9 @@ const (
 	// Don't generate source maps.
 	SourceMapDisabled SourceMapMode = iota
 	// Generate separate source map files for each built JavaScript file.
+	// They will be in the same directory as each JavaScript file.
 	SourceMapEnabled
-	// Append source map data to the end of each file instead of
+	// Append source map data (data URI) to the end of each file instead of
 	// creating separate files.
 	SourceMapInline
 )
