@@ -1,5 +1,9 @@
 package lexer
 
+import (
+	"strings"
+)
+
 type NumberAttrs struct {
 	Format IntFormat
 	Flags  NumberFlags
@@ -37,120 +41,116 @@ const (
 	ErrInvalidDecimalPoint   // Decimal point can only be used in decimal (base 10) format
 )
 
-func (l *Lexer) ReadNumber(pos Position) *Token {
+func (l *Lexer) ReadNumber(pos Position, first rune) *Token {
+	num, params := ReadNumber(l, first)
+	return NewToken(pos, Numeric, num).withAttrs(attrs{"params": params})
+}
+
+func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 	var (
+		b            strings.Builder
 		format       IntFormat
 		flags        NumberFlags
-		errorType    NumberErrorCode
-		errPos       int
+		err          *NumberError
 		isExp, isDec bool
 		last         rune
 	)
-	newError := func(code NumberErrorCode, b *Builder) {
-		errorType = code
-		if b != nil {
-			errPos = b.Len()
+	newError := func(code NumberErrorCode, errPos int) {
+		if err == nil {
+			err = &NumberError{Code: code, Offset: uint32(errPos)}
 		}
 	}
-	l.Backup()
-	t := l.NewTokenizer(true)
-readNumber:
-	for r, b := range t.Tokenize {
-		// 0 prefix
-		if b.String() == "0" {
+
+	b.WriteRune(first)
+	last = first
+
+	if first == '0' {
+		if r, er := rd.CurrRune(); er == nil {
 			switch r {
-			case 'x':
+			case 'x', 'X':
 				format = NumberFormatHex
-				goto writeAndContinue
-			case 'b':
+				b.WriteRune(r)
+				rd.AdvanceRune()
+				last = r
+			case 'b', 'B':
 				format = NumberFormatBinary
-				goto writeAndContinue
+				b.WriteRune(r)
+				rd.AdvanceRune()
+				last = r
 			default:
 				format = NumberFormatDecimal
 			}
 		}
+	}
+
+readNumber:
+	for {
+		r, er := rd.CurrRune()
+		if er != nil {
+			break
+		}
 		switch r {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			if format == NumberFormatBinary && r > '1' {
+				newError(ErrIntIncompatibleDigit, b.Len())
+			}
 		case 'e', 'E':
 			// Exponent or hex digit
 			if format == NumberFormatDecimal {
 				if isExp {
-					newError(ErrIntIncompatibleDigit, b)
+					newError(ErrIntIncompatibleDigit, b.Len())
 					break
 				}
 				if last == '_' {
-					newError(ErrIntMisplacedSeparator, b)
-					errPos--
+					newError(ErrIntMisplacedSeparator, b.Len()-1)
 				}
 				isExp = true
 				flags |= HasExponent | IsFloat
 				break
 			}
 			fallthrough // Hex or invalid digit
-		case 'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'f', 'F':
+		case 'a', 'b', 'c', 'd', 'f', 'A', 'B', 'C', 'D', 'F':
 			if format != NumberFormatHex {
 				// Hex letter or e on other format
-				newError(ErrIntIncompatibleDigit, b)
-			}
-		case '+', '-': // After 'e'
-			if last != 'e' && last != 'E' {
-				if !IsDigit(last) {
-					// 12e+-
-					newError(ErrIntIncompatibleDigit, b)
-				}
-				break readNumber
+				newError(ErrIntIncompatibleDigit, b.Len())
 			}
 		case '.':
-			switch {
-			case isDec:
+			if isDec || isExp || format != NumberFormatDecimal {
 				break readNumber
-			case format != NumberFormatDecimal:
-				newError(ErrIntIncompatibleDigit, b)
-			case last == '_':
-				newError(ErrIntMisplacedSeparator, b)
-				errPos--
 			}
-			if n, isEOF := l.BackupPeek(); isEOF || !IsDigit(rune(n)) {
+			if last == '_' {
+				newError(ErrIntMisplacedSeparator, b.Len()-1)
+			}
+			// Check if next character is a digit
+			next, err2 := rd.PeekRune()
+			if err2 != nil || !IsDigit(next) {
 				break readNumber
 			}
 			isDec = true
 			flags |= IsFloat
 		case '_':
-			// Underscore separators: no consecutive, must be in between digits
 			if last == '_' || (format == NumberFormatDecimal && !IsDigit(last)) {
-				newError(ErrIntMisplacedSeparator, b)
+				newError(ErrIntMisplacedSeparator, b.Len())
 			}
 			flags |= HasSeparator
-		default:
-			switch {
-			case !IsDigit(r):
+		case '+', '-':
+			if (last != 'e' && last != 'E') || format != NumberFormatDecimal {
 				break readNumber
-			case format == NumberFormatDecimal,
-				format == NumberFormatHex,
-				format == NumberFormatBinary && r <= '1':
-			default:
-				newError(ErrIntIncompatibleDigit, b)
 			}
+		default:
+			break readNumber
 		}
-	writeAndContinue:
+
 		b.WriteRune(r)
+		rd.AdvanceRune()
 		last = r
 	}
-	num := t.String()
-	// Last character validation
+
+	num := b.String()
 	if last == '_' {
-		// Last digit can't be a separator
-		newError(ErrIntMisplacedSeparator, nil)
-		errPos = len(num) - 1
+		newError(ErrIntMisplacedSeparator, len(num)-1)
 	} else if format != NumberFormatHex && !IsDigit(last) {
-		// "1e-" .. EOF
-		newError(ErrIntIncompatibleDigit, nil)
-		errPos = len(num)
+		newError(ErrIntIncompatibleDigit, len(num))
 	}
-	var err *NumberError
-	if errorType != 0 {
-		err = &NumberError{Code: errorType, Offset: uint32(errPos)}
-	}
-	return NewToken(pos, Numeric, num).withAttrs(attrs{
-		"params": NumberAttrs{Format: format, Flags: flags, Error: err},
-	})
+	return num, NumberAttrs{Format: format, Flags: flags, Error: err}
 }

@@ -8,8 +8,6 @@ import (
 	"unicode/utf8"
 )
 
-type Builder = strings.Builder
-
 type Lexer struct {
 	Pos             Position
 	Reader          *bufio.Reader
@@ -83,7 +81,7 @@ func (l *Lexer) Tokenize() *Token {
 		case unicode.IsSpace(r):
 			continue
 		case IsDigit(r):
-			return l.ReadNumber(pos)
+			return l.ReadNumber(pos, r)
 		case unicode.IsLetter(r), r == '_':
 			return l.ReadIdentifier(pos, r)
 		case r == 0xfeff:
@@ -189,7 +187,7 @@ func (l *Lexer) NewTokenizer(backupLast bool) *Tokenizer {
 	return &Tokenizer{Builder: strings.Builder{}, BackupLast: backupLast, Lexer: l}
 }
 
-func (t *Tokenizer) Tokenize(yield func(rune, *Builder) bool) {
+func (t *Tokenizer) Tokenize(yield func(rune, *strings.Builder) bool) {
 	for {
 		r, _, err := t.Reader.ReadRune()
 		t.Pos.Col++
@@ -230,3 +228,47 @@ func (t *Tokenizer) ResetKeepBuilder(backupLast bool) {
 	t.BackupLast = backupLast
 	t.eof = false
 }
+
+// RuneReader is an interface for reading runes from a stream.
+type RuneReader interface {
+	AdvanceRune() (rune, error)
+	CurrRune() (rune, error)
+	PeekRune() (rune, error)
+	Position() Position
+}
+
+func (l *Lexer) AdvanceRune() (rune, error) {
+	r, _, err := l.Reader.ReadRune()
+	if err != nil {
+		return 0, err
+	}
+	l.Pos.Col++
+	if r == '\n' {
+		l.ResetPosition()
+	}
+	return r, nil
+}
+
+func (l *Lexer) CurrRune() (rune, error) {
+	b, err := l.Reader.Peek(4)
+	if err != nil && len(b) == 0 {
+		return 0, err
+	}
+	r, _ := utf8.DecodeRune(b)
+	return r, nil
+}
+
+func (l *Lexer) PeekRune() (rune, error) {
+	b, err := l.Reader.Peek(8)
+	if err != nil && len(b) == 0 {
+		return 0, err
+	}
+	_, size1 := utf8.DecodeRune(b)
+	if len(b) <= size1 {
+		return 0, io.EOF
+	}
+	r2, _ := utf8.DecodeRune(b[size1:])
+	return r2, nil
+}
+
+func (l *Lexer) Position() Position { return l.Pos }

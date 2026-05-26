@@ -49,6 +49,41 @@ func (rd *reader) resetLineIf(r rune) {
 	}
 }
 
+func (rd *reader) AdvanceRune() (rune, error) { return rd.readRune() }
+func (rd *reader) CurrRune() (rune, error) {
+	if rd.pos >= len(rd.buffer) {
+		if err := rd.refill(); err != nil {
+			return 0, err
+		}
+	}
+	r, _ := utf8.DecodeRune(rd.buffer[rd.pos:])
+	return r, nil
+}
+func (rd *reader) PeekRune() (rune, error) {
+	if rd.pos >= len(rd.buffer) {
+		if err := rd.refill(); err != nil {
+			return 0, err
+		}
+	}
+	_, n := utf8.DecodeRune(rd.buffer[rd.pos:])
+	nextPos := rd.pos + n
+	if nextPos >= len(rd.buffer) {
+		if rd.reader != nil {
+			if err := rd.refill(); err != nil {
+				return 0, err
+			}
+			_, n = utf8.DecodeRune(rd.buffer[rd.pos:])
+			nextPos = rd.pos + n
+		}
+	}
+	if nextPos >= len(rd.buffer) {
+		return 0, io.EOF
+	}
+	r2, _ := utf8.DecodeRune(rd.buffer[nextPos:])
+	return r2, nil
+}
+func (rd *reader) Position() lexer.Position { return rd.offset }
+
 func (rd *reader) peekRune() (rune, int, error) {
 	if rd.needsMore() {
 		if err := rd.tryRefill(); err != nil {
@@ -111,10 +146,6 @@ func (rd *reader) readToken() Token {
 				return rd.readNumber(r, start, bufPos)
 			}
 		case '.':
-			// TODO: Don't allow leading/trailing decimal point for numbers
-			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
-				return rd.readNumber(r, start, bufPos)
-			}
 			if (rd.parseFlags & allowDot) == 0 {
 				return Token{Kind: Dot, Pos: start, Src: ".", BufPos: bufPos}
 			}
@@ -204,41 +235,45 @@ func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int,
 }
 
 func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token {
-	var b strings.Builder
-	isNumber := true
-	var isDecimal, wasUnderscore bool
-	value := func() Token {
-		tok := Token{Kind: Number, Src: b.String(), Pos: start, BufPos: bufPos}
-		if !isNumber || tok.Src[0] < '0' || tok.Src[0] > '9' {
-			tok.Kind = String
+	var (
+		prefix   string
+		isNumber = true
+	)
+	if first == '-' || first == '+' {
+		prefix = string(first)
+		r, n, err := rd.currRune()
+		if err != nil || !lexer.IsDigit(r) {
+			b := &strings.Builder{}
+			b.WriteRune(first)
+			return rd.readUnquotedString(b, start, bufPos)
 		}
-		return tok
+		rd.advanceBytes(n)
+		first = r
 	}
-	// Check first digit or +, -, .
-	b.WriteRune(first)
-	for {
-		r, size, err := rd.currRune()
-		if err != nil {
-			return value()
-		}
-		switch {
-		case r == '_' && wasUnderscore, r == '.' && isDecimal:
-			isNumber = false
-		case r == '_':
-			wasUnderscore = true
-		case r == '.':
-			isDecimal = true
-		case unicode.IsSpace(r), rd.isPunct(r):
-			return value()
-		case r < '0' || r > '9':
-			isNumber = false
-		}
-		b.WriteRune(r)
-		rd.advanceBytes(size)
-		if !isNumber {
-			return rd.readUnquotedString(&b, start, bufPos)
+
+	literal, params := lexer.ReadNumber(rd, first)
+
+	// Klon transitions to unquoted string for certain numeric patterns
+	if literal[0] == '.' || literal[len(literal)-1] == '_' {
+		isNumber = false
+	}
+
+	r, _, err := rd.currRune()
+	isDelim := err != nil || unicode.IsSpace(r) || rd.isPunct(r) || r == ','
+
+	if isNumber && isDelim {
+		return Token{
+			Kind:   Number,
+			Src:    prefix + literal,
+			Pos:    start,
+			BufPos: bufPos,
+			Attrs:  attrs{"params": params},
 		}
 	}
+
+	b := &strings.Builder{}
+	b.WriteString(prefix + literal)
+	return rd.readUnquotedString(b, start, bufPos)
 }
 
 func (rd *reader) isPunct(r rune) bool {

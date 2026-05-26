@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -147,7 +148,7 @@ func (l *Lexer) readStrInterp() StringEscape {
 		err     *EscapeError
 		tokens  []Token
 		braceCt = 1
-		b       Builder
+		b       strings.Builder
 	)
 	b.WriteRune('{')
 loop:
