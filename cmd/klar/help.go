@@ -19,7 +19,7 @@ var RandomDescriptions = []string{
 func KlarGradient(text string) string {
 	// This is just for the VSCode color dialog
 	rgba := func(r, g, b, _ uint8) [3]int { return [3]int{int(r), int(g), int(b)} }
-	return ansi.Gradient(text, rgba(189, 247, 90, 1), rgba(117, 246, 255, 1))
+	return ansi.Gradient(text, rgba(189, 247, 90, 1), rgba(91, 220, 230, 1))
 }
 
 func ShowHelp(w io.Writer, full bool) {
@@ -43,11 +43,11 @@ func ShowHelp(w io.Writer, full bool) {
 
 	hb.Title("Commands")
 
-	hb.Color = ansi.BrightMagenta
+	hb.Color = ansi.BrightGreen
 	hb.Command("run", "Run a Klar file or project")
 	hb.Command("repl", "Start an interactive REPL session with Klar")
 
-	hb.Split(ansi.BrightYellow)
+	hb.Split(ansi.BrightBlue)
 	hb.Command("build", "Compile a Klar project")
 	hb.Command("check", "Typecheck a Klar project")
 	hb.Command("format", "Format source code")
@@ -55,7 +55,7 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Command("new", "Create a new Klar project")
 	hb.Command("test", "Run tests for a Klar project")
 
-	hb.Split(ansi.BrightCyan)
+	hb.Split(ansi.Cyan)
 	hb.Command("clean", "Clean build cache")
 	hb.Command("upgrade", "Upgrade Klar to the latest version")
 	hb.Command("zen", "Show the Zen of Klar")
