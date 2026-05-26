@@ -24,8 +24,8 @@ type structFields struct {
 
 type structField struct {
 	Name   string
-	Decode decodeFunc
-	Encode any // TODO
+	Decode decodeFunc // Value decoder
+	Encode any        // TODO
 	Type   reflect.Type
 	// Path to reach the actual field when embedded. If the field is not embedded,
 	// len(Indices) == 1. Each index is passed to [reflect.Value.FieldByIndex].
@@ -99,7 +99,13 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 				isNormalField := name != "" || !f.Anonymous || rt.Kind() != reflect.Struct
 				if isNormalField || flag.Has(klonflags.KeyedEmbeddedFields) {
 					if name == "" {
-						name = camelCaseField(f.Name, flag)
+						// No Klon struct field: use a default name
+						if flag.Has(klonflags.CaseSensitiveFields)  {
+							name = f.Name
+						} else {
+							// Klon converts field names to camel case by default
+							name = camelCaseField(f.Name, flag)
+						}
 					}
 					new := &structField{
 						Name:    name,
@@ -114,6 +120,8 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 						// - 2 fields with same struct tag name
 						// - FieldA `klon:Field_A` and Field_A
 						// - Embedded field and non-embedded field with same name
+						// TODO: Check if there are exceptions and precedence rules
+						// to avoid returning an error
 						return strFields, fmt.Errorf("duplicate field: %s", name)
 					} else {
 						strFields.Fields[name] = new
@@ -134,6 +142,9 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 				})
 			}
 		}
+	}
+	if flag.Has(klonflags.NoSortFields) {
+		return strFields, nil // Don't sort fields
 	}
 	slices.SortFunc(strFields.Flat, func(a, b *structField) int {
 		return cmp.Or(strings.Compare(a.Name, b.Name), len(a.Indices)-len(b.Indices))
@@ -158,6 +169,7 @@ func camelCaseField(name string, flags klonflags.Flags) string {
 	return strings.ToLower(name[:numUpper]) + name[numUpper:]
 }
 
+// TODO: Enum decoder for slice/array items and map values
 func makeEnumDecoder(optsKey string) decodeFunc {
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
 		if d.ctx == nil || d.ctx.Enums == nil {

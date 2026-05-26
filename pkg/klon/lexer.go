@@ -137,10 +137,9 @@ func (rd *reader) readToken() Token {
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				return rd.readNumber(r, start, bufPos)
 			}
-			if rd.parseFlags&objectValue != 0 {
-				break
+			if (rd.parseFlags & objectValue) == 0 {
+				return Token{Kind: Dash, Pos: start, Src: string(r), BufPos: bufPos}
 			}
-			return Token{Kind: Dash, Pos: start, Src: string(r), BufPos: bufPos}
 		case '+':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				return rd.readNumber(r, start, bufPos)

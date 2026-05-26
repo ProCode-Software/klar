@@ -2,8 +2,8 @@
 target: browser
 verbose: true
 
-input: ./src/mylang
-emitPackage: true
+input: ./src/mylang/mylang.klar
+generatePackage: true
 output: ./dist
 
 js:
@@ -15,6 +15,7 @@ js:
     - server:
         -- port: 3000
         -- document: ./index.html
+    - esnext: true
 
 postBuild: @print Build complete!
 

@@ -51,6 +51,7 @@ type Number struct {
 	BaseNode
 	Source string
 	Value  float64
+	Float  bool
 }
 
 type List struct {

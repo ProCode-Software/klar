@@ -34,13 +34,11 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Pointer:
 		return d.makePointerDecoder(rt)
 	case reflect.Interface:
-		return d.makeInterfaceDecoder(rt)
+		return decodeInterface
 	default:
 		// Including reflect.Function, Complex, Chan, and UnsafePointer
 		return func(rv reflect.Value, val ast.Value, d *decoder) error {
-			return decodeError(klonerrs.ErrUnsupportedValue, rv, val,
-				"Unsupported Go type %s", rv.Type().String(),
-			)
+			return fmt.Errorf("unsupported Go type: %s", rv.Type().String())
 		}
 	}
 }
@@ -422,79 +420,27 @@ func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
 	}
 }
 
-func (d *decoder) makeInterfaceDecoder(rt reflect.Type) decodeFunc {
-	// TODO
-	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		var v any
-		switch node := val.(type) {
-		case *ast.String:
-			v = node.Raw
-		case *ast.Boolean:
-			v = node.Value
-		case *ast.Number:
-			v = node.Value
-		case *ast.List:
-			l := make([]any, 0, len(node.Items))
-			for _, item := range node.Items {
-				if rest, ok := item.(*ast.ArrowRef); ok {
-					// Resolve and preprocess the rest list
-					res, err := d.resolveVar(rest.Var)
-					if err != nil {
-						return err
-					}
-					restList, ok := res.(*ast.List)
-					if !ok {
-						if _, ok := res.(*ast.None); ok {
-							continue // Rest can be 'none'
-						}
-						return decodeError(klonerrs.ErrInvalidRest, rv, res,
-							"'%s' must be a list in order to use it as a rest", rest.Var.Name,
-						)
-					}
-					// Recursively decode items from the resolved list
-					for _, subItem := range restList.Items {
-						var itemAny any
-						if err := d.decodeValue(subItem, reflect.ValueOf(&itemAny).Elem()); err != nil {
-							return err
-						}
-						l = append(l, itemAny)
-					}
-					continue
-				}
-
-				var itemAny any
-				if err := d.decodeValue(item, reflect.ValueOf(&itemAny).Elem()); err != nil {
-					return err
-				}
-				l = append(l, itemAny)
+func decodeInterface(rv reflect.Value, val ast.Value, d *decoder) error {
+	// If the interface is set to a pointer, decode into the pointer's value
+	if !rv.IsNil() {
+		// Underlying value of interface
+		// Make sure the pointer isn't a cycle
+		if next := rv.Elem(); next.Kind() == reflect.Pointer && rv != next.Elem() {
+			nextType := next.Type().Elem() // Type of the pointer implementing the interface
+			if rv.IsNil() {
+				rv.Set(reflect.New(nextType))
+				next = rv.Elem()
 			}
-			v = l
-		case *ast.Object:
-			m := make(map[string]any)
-			for _, f := range node.Fields {
-				name, err := ToString(f.Key)
-				if err != nil {
-					return err
-				}
-				var valAny any
-				if err := d.decodeValue(f.Value, reflect.ValueOf(&valAny).Elem()); err != nil {
-					return err
-				}
-				m[name] = valAny
+			decode := d.getDecoder(nextType)
+			if err := decode(next, val, d); err == nil {
+				return nil
 			}
-			v = m
-		case *ast.None:
-			v = nil
-		default:
-			return decodeError(klonerrs.ErrUnsupportedValue, rv, val,
-				"Can't decode %T into any", val,
-			)
+			// If the decode fails, fall back to decoding into any.
 		}
-		if v != nil {
-			rv.Set(reflect.ValueOf(v))
-		} else {
-			rv.SetZero()
-		}
-		return nil
 	}
+	// We can't decode into a nil interface with methods
+	if rv.NumMethod() != 0 {
+		return fmt.Errorf("can't decode into nil interface with methods: %s", rv.Type().String())
+	}
+	return d.decodeAny(rv, val)
 }

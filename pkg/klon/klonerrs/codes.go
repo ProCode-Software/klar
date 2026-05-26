@@ -23,8 +23,7 @@ const (
 	// Literal =====
 
 	ErrInvalidIdentifier // Variable name starting with a digit
-	ErrNegativeNumber    // Unexpected negative number
-	ErrTruncatedNumber   // Float value where an integer was expected
+	ErrLeadingPlusSign // Numbers can't have a leading plus sign
 	ErrUnknownEscape     // Invalid backslash escape sequence
 	ErrInvalidKey        // Non-string/number/bool used as a key
 	ErrExpectedValue     // Expected a value but found something else
@@ -42,6 +41,8 @@ const (
 
 	// Variables =====
 
+	ErrNegativeNumber     // Unexpected negative number
+	ErrTruncatedNumber    // Float value where an integer was expected
 	ErrUndefinedVar       // Use of an undefined variable
 	ErrVarNotTopLevel     // Variable declaration outside of top level
 	ErrInvalidVarDecl     // Variable declaration using braces
@@ -51,9 +52,8 @@ const (
 
 	// Decode =====
 
-	ErrTypeMismatch        // Mixed keyed and unkeyed entries in a block
+	ErrTypeMismatch        // Can't decode Klon value into Go type
 	ErrWrongArrayLength    // Mismatched array length during decoding
-	ErrUnsupportedValue    // Value type that cannot be decoded into the target Go type
 	ErrInvalidEnumOption   // Invalid enum option
 	ErrInvalidRest         // Rest must be an object or list (depending on context)
 	ErrFieldNotFound       // Field not found in the target struct
