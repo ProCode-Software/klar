@@ -127,40 +127,72 @@ func (c *Compiler) PrintInterfaceError(err *InterfaceError) {
 }
 
 func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
-	_, name := filepath.Split(ierr.Value)
 	kind := "configuration"
-	switch name {
-	case "glas.pack":
+	if filepath.Base(ierr.Value) == module.ManifestFile {
 		kind = "manifest"
 	}
 	cli.Error(ansi.Sprintf("<**>Failed to parse %s:</**>\n", kind))
 
-	// Load tokens for reporter
-	if !c.Reporter.FileLoaded(ierr.Value) {
-		absPath, err := filepath.Abs(ierr.Value)
-		if err != nil {
-			absPath = ierr.Value
-		}
-		c.Reporter.LoadFile(
-			ierr.Value,
-			cli.RelPath(c.WorkDir, absPath),
-			makeKlonTokens(ierr.Value),
-		)
-	}
-	err := ierr.Err.(*klon.Error)
-	if _, err := c.Reporter.Report(&errorWithFile{err, ierr.Value}); err != nil {
+	if err := c.printKlonDiagnostic(ierr.Err.(*klon.Error), ierr.Value, ""); err != nil {
 		PrintInterfaceError(ierr)
 		return
 	}
 }
 
+func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) error {
+	// Load tokens for reporter
+	if !c.Reporter.FileLoaded(file) {
+		absPath, err := filepath.Abs(file)
+		if err != nil {
+			absPath = file
+		}
+		c.Reporter.LoadFile(
+			file,
+			cli.RelPath(c.WorkDir, absPath),
+			makeKlonTokens(file),
+		)
+	}
+	_, err2 := c.Reporter.Report(&errorWithFile{err, file, title})
+	return err2
+}
+
+func (c *Compiler) PrintKlonWarnings(warn []*klon.Error, file string) {
+	if len(warn) == 0 {
+		return
+	}
+	
+	title := "Configuration warning"
+	if filepath.Base(file) == module.ManifestFile {
+		title = "Manifest warning"
+	}
+	if len(warn) > 10 {
+		warn = warn[:10]
+		cli.Custom(ansi.BoldBrightYellow(title),
+			fmt.Sprintf("There are %d warnings; showing only the first 10", len(warn)),
+		)
+	}
+	for _, err := range warn {
+		if err := c.printKlonDiagnostic(err, file, title); err != nil {
+			cli.Custom(ansi.BoldBrightYellow(title), err.Error())
+		}
+	}
+	fmt.Println()
+}
+
 // errorWithFile adds a custom file to a [reporter.Error].
 type errorWithFile struct {
 	reporter.Error
-	file string
+	file  string
+	title string
 }
 
 func (e *errorWithFile) FilePath() string { return e.file }
+func (e *errorWithFile) Title() string {
+	if e.title != "" {
+		return e.title
+	}
+	return e.Error.Title()
+}
 
 func makeKlonTokens(filePath string) []lexer.Token {
 	content, err := os.ReadFile(filePath)

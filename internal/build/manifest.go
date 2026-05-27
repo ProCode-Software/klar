@@ -1,14 +1,18 @@
 package build
 
-import "github.com/ProCode-Software/klar/internal/config/klarbuild"
+import (
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
+	"github.com/ProCode-Software/klar/pkg/klon"
+)
 
 // ReadKlarBuild reads a 'klar.build' file at path and returns the configurations
 // defined in it. No [Options] will contain more than one configuration. An error
-// is returned if the file cannot be read or parsed.
-func ReadKlarBuild(path string) ([]*Options, error) {
-	f, err := klarbuild.Parse(path)
+// is returned if the file cannot be read or parsed. The warnings returned from
+// the Klon parser are also returned.
+func ReadKlarBuild(path string) ([]*Options, []*klon.Error, error) {
+	f, warn, err := klarbuild.Parse(path)
 	if err != nil {
-		return nil, &InterfaceError{
+		return nil, warn, &InterfaceError{
 			Code:  ErrInvalidConfig,
 			Value: path,
 			Err:   err,
@@ -18,18 +22,18 @@ func ReadKlarBuild(path string) ([]*Options, error) {
 	if len(f.Configurations) == 0 {
 		cfg, err := MergeKlarBuild(f, nil, path)
 		if err != nil {
-			return nil, err
+			return nil, warn, err
 		}
-		return []*Options{cfg}, nil
+		return []*Options{cfg}, warn, nil
 	}
 	// Multiple configurations
 	opts := make([]*Options, len(f.Configurations))
 	for i, cfg := range f.Configurations {
 		if opts[i], err = MergeKlarBuild(f, cfg, path); err != nil {
-			return nil, err
+			return nil, warn, err
 		}
 	}
-	return opts, nil
+	return opts, warn, nil
 }
 
 // MergeKlarBuild converts f and c into an [Options] object by converting

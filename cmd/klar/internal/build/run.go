@@ -21,6 +21,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/argparse"
+	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
 // Build executes the "klar build" command.
@@ -84,13 +85,14 @@ func Build(r *command.Runner) {
 	}
 	// Force a config path if --config flag was passed
 	var configFlag *build.Options
-	if conf := r.Flag("config").String(); conf != "klar.build" && conf != "" {
+	if conf := r.Flag("config").String(); conf != "" {
 		configPath = conf
-		cfs, err := build.ReadKlarBuild(conf)
+		cfs, warn, err := build.ReadKlarBuild(conf)
 		if err != nil {
 			c.PrintInterfaceError(err.(*build.InterfaceError))
 			cli.Exit(1)
 		}
+		c.PrintKlonWarnings(warn, conf)
 		if len(cfs) == 0 {
 			// Make sure the --config has options in it
 			cli.Failure(ansi.Sprintf("The configuration at <c>%s</c> has no options in it", conf))
@@ -99,13 +101,14 @@ func Build(r *command.Runner) {
 		configFlag = cfs[0]
 		delete(r.Flags, "config")
 	}
-
 	// Read options from klar.build
 	if len(inps) == 0 && configPath != "" {
-		if c.Options, err = build.ReadKlarBuild(configPath); err != nil {
+		var warn []*klon.Error
+		if c.Options, warn, err = build.ReadKlarBuild(configPath); err != nil {
 			c.PrintInterfaceError(err.(*build.InterfaceError))
 			cli.Exit(1)
 		}
+		c.PrintKlonWarnings(warn, configPath)
 	} else {
 		c.Options = make([]*build.Options, 0, len(inps))
 	}
@@ -121,7 +124,7 @@ func Build(r *command.Runner) {
 			opt = build.DefaultKlarBuild()
 		default:
 			// Use the Input's klar.build
-			opts, err := build.ReadKlarBuild(inp.KlarBuild)
+			opts, warn, err := build.ReadKlarBuild(inp.KlarBuild)
 			switch {
 			case err != nil:
 				c.FailWithError(err)
@@ -130,6 +133,7 @@ func Build(r *command.Runner) {
 			default:
 				opt = opts[0]
 			}
+			c.PrintKlonWarnings(warn, inp.KlarBuild)
 		}
 		ParseFlags(r, opt)
 		opt.Inputs = []build.Input{inp}
@@ -242,7 +246,7 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 		case "sourcemap":
 			if v.Bool() {
 				o.JS.Sourcemap = klarbuild.SourceMapEnabled
-			} else if v.Set {
+			} else {
 				o.JS.Sourcemap = klarbuild.SourceMapDisabled
 			}
 		case "jsdoc":
