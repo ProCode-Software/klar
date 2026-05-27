@@ -101,7 +101,7 @@ func (d *decoder) objectToGoMap(o *ast.Object) (map[string]any, error) {
 			continue
 		case f.Key != nil:
 			// Normal key
-			name, err := d.ToString(f.Key)
+			name, err := d.valueToString(f.Key)
 			if err != nil {
 				return nil, err
 			}

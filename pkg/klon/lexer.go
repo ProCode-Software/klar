@@ -110,6 +110,16 @@ func (rd *reader) advanceBytes(n int) {
 	rd.offset.Col += 1
 }
 
+func (rd *reader) utf8Error(back int) {
+	pos := rd.offset
+	if back > 0 {
+		pos = pos.Sub(0, uint32(back))
+	}
+	rd.rangeError(klonerrs.ErrIllegalCharacter, ranges.SingleChar(pos),
+		"Invalid Unicode character",
+	)
+}
+
 func (rd *reader) readToken() Token {
 	for {
 		start := rd.offset
@@ -180,14 +190,14 @@ func (rd *reader) readToken() Token {
 		case '>':
 			if curr, n, _ := rd.currRune(); curr == '"' || curr == '\'' {
 				rd.advanceBytes(n)
-				return rd.readQuotedString(curr, start, bufPos, true)
+				return rd.readQuotedString(curr, true, start, bufPos)
 			}
 		case utf8.RuneError:
 			tok := Token{Kind: Illegal, Pos: start, Src: string(r), BufPos: bufPos}
-			rd.tokenError(klonerrs.ErrIllegalCharacter, tok, "Invalid Unicode character")
+			rd.utf8Error(1)
 			return tok
 		case '"', '\'':
-			return rd.readQuotedString(r, start, bufPos, false)
+			return rd.readQuotedString(r, false, start, bufPos)
 		default:
 			if unicode.IsSpace(r) {
 				continue
@@ -199,7 +209,9 @@ func (rd *reader) readToken() Token {
 	}
 }
 
-func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int, wrap bool) Token {
+func (rd *reader) readQuotedString(quote rune, wrap bool,
+	start lexer.Position, bufPos int,
+) Token {
 	var b strings.Builder
 	ret := func(unterm bool) Token {
 		return Token{
@@ -221,15 +233,17 @@ func (rd *reader) readQuotedString(quote rune, start lexer.Position, bufPos int,
 			return ret(true)
 		}
 		b.WriteRune(r)
-		if !escape {
-			if r == quote {
-				return ret(false)
-			} else if r == '\\' {
-				escape = true
-				continue
-			}
+		switch {
+		case escape:
+			escape = false
+		case r == quote:
+			return ret(false)
+		case r == utf8.RuneError:
+			// No invalid UTF-8
+			rd.utf8Error(1)
+		case r == '\\':
+			escape = true
 		}
-		escape = false
 	}
 }
 
@@ -301,6 +315,10 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 				break
 			}
 		}
+		// Error on invalid UTF-8
+		if r == utf8.RuneError {
+			rd.utf8Error(0)
+		}
 		rd.advanceBytes(n)
 		b.WriteRune(r)
 	}
@@ -314,7 +332,7 @@ func (rd *reader) readUnquotedString(b *strings.Builder, start lexer.Position, b
 			BufPos: bufPos,
 			Attrs:  attrs{"value": str == "true"},
 		}
-	case "null":
+	case "none":
 		return Token{Kind: None, Src: str, Pos: start, BufPos: bufPos}
 	}
 	return Token{

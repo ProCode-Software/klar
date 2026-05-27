@@ -79,7 +79,7 @@ func (rd *reader) refill() error {
 	if n > 0 {
 		rd.buffer = rd.buffer[:len(rd.buffer)+n]
 	}
-	if err != nil && (n == 0 || err != io.EOF) {
+	if err != nil && err != io.EOF {
 		return err
 	}
 	if len(rd.buffer) == 0 {

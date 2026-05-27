@@ -550,7 +550,7 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		}
 
 		return &ast.Field{
-			BaseNode: ast.BaseNode{ranges.Range{keyStart, value.Pos().End}},
+			BaseNode: ast.BaseNode{Range: ranges.Range{Start: keyStart, End: value.Pos().End}},
 			Key:      singleKey,
 			KeyPath:  path,
 			Value:    value,

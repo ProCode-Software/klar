@@ -76,7 +76,7 @@ func (rd *reader) rangeError(code klonerrs.Code, r ranges.Range, msg string, v .
 }
 
 func (rd *reader) addErrorOrWarning(err *Error) {
-	if rd.ctx.WarningKinds != nil && rd.ctx.Warnings != nil {
+	if rd.ctx != nil && rd.ctx.WarningKinds != nil && rd.ctx.Warnings != nil {
 		if _, ok := rd.ctx.WarningKinds[err.Code]; ok {
 			err.Warning = true
 			rd.ctx.Warnings = append(rd.ctx.Warnings, err)

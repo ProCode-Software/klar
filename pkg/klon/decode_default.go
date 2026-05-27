@@ -24,15 +24,15 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 	case reflect.Float32, reflect.Float64:
 		return decodeFloat
 	case reflect.Map:
-		return makeMapDecoder(rt)
+		return makeMapDecoder(rt, nil, nil)
 	case reflect.Struct:
 		return d.makeStructDecoder(rt)
 	case reflect.Slice:
-		return d.makeSliceDecoder(rt)
+		return makeSliceDecoder(rt, nil)
 	case reflect.Array:
-		return d.makeArrayDecoder(rt)
+		return makeArrayDecoder(rt, nil)
 	case reflect.Pointer:
-		return d.makePointerDecoder(rt)
+		return makePointerDecoder(rt)
 	case reflect.Interface:
 		return decodeInterface
 	default:
@@ -46,7 +46,7 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
 	switch v := v.(type) {
 	case *ast.String, *ast.Boolean, *ast.Number:
-		str, err := d.ToString(v)
+		str, err := d.valueToString(v)
 		if err != nil { // Ex: Variable resolution error
 			return err
 		}
@@ -115,16 +115,19 @@ func decodeFloat(rv reflect.Value, val ast.Value, d *decoder) error {
 	return typeMismatchError(rv, val)
 }
 
-func makeMapDecoder(rt reflect.Type) decodeFunc {
+func makeMapDecoder(rt reflect.Type, decodeKey, decodeValue decodeFunc) decodeFunc {
 	var (
-		keyType, valType       = rt.Key(), rt.Elem()
-		once                   sync.Once
-		decodeKey, decodeValue decodeFunc
+		keyType, valType = rt.Key(), rt.Elem()
+		once             sync.Once
 	)
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
 		once.Do(func() {
-			decodeKey = d.getDecoder(keyType)
-			decodeValue = d.getDecoder(valType)
+			if decodeKey == nil {
+				decodeKey = d.getDecoder(keyType)
+			}
+			if decodeValue == nil {
+				decodeValue = d.getDecoder(valType)
+			}
 		})
 
 		obj, ok := val.(*ast.Object)
@@ -152,7 +155,7 @@ func makeMapDecoder(rt reflect.Type) decodeFunc {
 }
 
 func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
-	strFields, _ := makeStructFields(rt, d.flags)
+	strFields, err := makeStructFields(rt, d.flags)
 	var once sync.Once
 	initDecoder := func() {
 		for _, field := range strFields.Flat {
@@ -162,6 +165,9 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		}
 	}
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
+		if err != nil {
+			return err
+		}
 		once.Do(initDecoder)
 		obj, ok := val.(*ast.Object)
 		if !ok {
@@ -186,7 +192,7 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 	}
 
 	// Keys can be strings, bools, or numbers
-	name, err := d.ToString(f.Key)
+	name, err := d.valueToString(f.Key)
 	if err != nil {
 		if err, ok := err.(*Error); ok && err.Code == klonerrs.ErrCantConvertToString {
 			// Key type should already be validated at parse-time
@@ -198,9 +204,12 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 	field, err := strFields.Lookup(name, f.Key, d.flags)
 	if err != nil {
 		if d.flags.Has(klonflags.NoUnknownFields) {
+			if d.shouldWarn(err) {
+				d.warn(err)
+				return nil
+			}
 			return err
 		}
-		d.warn(err)
 		return nil
 	}
 	// Follow the indices to find the actual field [reflect.Value]. We
@@ -223,15 +232,17 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 	return field.Decode(fv, f.Value, d)
 }
 
-func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
+func makeSliceDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 	var (
-		itemType    = rt.Elem()
-		decodeItem  decodeFunc
-		once        sync.Once
-		initDecoder = func() { decodeItem = d.getDecoder(itemType) }
+		itemType = rt.Elem()
+		once     sync.Once
 	)
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		once.Do(initDecoder)
+		once.Do(func() {
+			if decodeItem == nil {
+				decodeItem = d.getDecoder(itemType)
+			}
+		})
 		list, ok := val.(*ast.List)
 		if !ok {
 			if d.flags.Has(klonflags.NoSingleItemToArray) {
@@ -282,17 +293,19 @@ func (d *decoder) makeSliceDecoder(rt reflect.Type) decodeFunc {
 	}
 }
 
-func (d *decoder) makeArrayDecoder(rt reflect.Type) decodeFunc {
+func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 	var (
-		arrLength   = rt.Len()
-		itemType    = rt.Elem()
-		decodeItem  decodeFunc
-		once        sync.Once
-		initDecoder = func() { decodeItem = d.getDecoder(itemType) }
+		arrLength = rt.Len()
+		itemType  = rt.Elem()
+		once      sync.Once
 	)
 	// TODO: allow strings to be used as [...]byte/rune
 	return func(rv reflect.Value, val ast.Value, d *decoder) (err error) {
-		once.Do(initDecoder)
+		once.Do(func() {
+			if decodeItem == nil {
+				decodeItem = d.getDecoder(itemType)
+			}
+		})
 
 		list, ok := val.(*ast.List)
 		if !ok {
@@ -397,15 +410,14 @@ func (d *decoder) appendRestToArray(rv reflect.Value, list *ast.List, rest *ast.
 	return i, nil
 }
 
-func (d *decoder) makePointerDecoder(rt reflect.Type) decodeFunc {
+func makePointerDecoder(rt reflect.Type) decodeFunc {
 	var (
-		elm         = rt.Elem()
-		decode      decodeFunc
-		once        sync.Once
-		initDecoder = func() { decode = d.getDecoder(elm) }
+		elm    = rt.Elem()
+		once   sync.Once
+		decode decodeFunc
 	)
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		once.Do(initDecoder)
+		once.Do(func() { decode = d.getDecoder(elm) })
 		if rv.IsNil() {
 			rv.Set(reflect.New(elm))
 		}

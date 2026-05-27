@@ -38,6 +38,10 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 			return decodeError(klonerrs.ErrMisplacedRest, reflect.Value{}, node,
 				"Rests are only allowed in objects and lists",
 			)
+		case *ast.String:
+			if _, err := d.evaluateString(node); err != nil {
+				return err
+			}
 		}
 		if err != nil {
 			return err
@@ -91,7 +95,7 @@ notFound:
 	err := decodeError(klonerrs.ErrUndefinedVar, reflect.Value{}, ref,
 		"Can't find variable '%s'", ref.Name,
 	)
-	if d.shouldWarn(err.Code) {
+	if d.shouldWarn(err) {
 		d.warn(err)
 		return &ast.None{}, nil
 	}
@@ -219,18 +223,19 @@ func (d *decoder) evaluateString(str *ast.String) (string, error) {
 	if str.Evaluated != "" {
 		return str.Evaluated, nil
 	}
-	return str.Raw, nil
+	str.Evaluated = str.Raw
+	return str.Evaluated, nil
 }
 
 // stringFieldPath returns the string representation of a field's key.
 // It handles both keys and key paths.
 func (d *decoder) stringFieldPath(f *ast.Field) (string, error) {
 	if f.KeyPath == nil {
-		return d.ToString(f.Key)
+		return d.valueToString(f.Key)
 	}
 	var b strings.Builder
 	for _, p := range *f.KeyPath {
-		keyStr, err := d.ToString(p)
+		keyStr, err := d.valueToString(p)
 		if err != nil {
 			return "", err
 		}

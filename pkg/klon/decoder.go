@@ -145,21 +145,22 @@ func decodeError(code klonerrs.Code, rv reflect.Value, val ast.Value,
 
 func (d *decoder) warn(e error) {
 	w, ok := e.(*Error)
-	if ok && d.shouldWarn(w.Code) {
+	if ok {
 		w.Warning = true
 		d.ctx.Warnings = append(d.ctx.Warnings, w)
 	}
 }
 
-func (d *decoder) shouldWarn(code klonerrs.Code) bool {
-	if d.ctx == nil || d.ctx.WarningKinds == nil || d.ctx.Warnings == nil {
+func (d *decoder) shouldWarn(err error) bool {
+	e, ok := err.(*Error)
+	if !ok || d.ctx == nil || d.ctx.WarningKinds == nil || d.ctx.Warnings == nil {
 		return false
 	}
-	_, ok := d.ctx.WarningKinds[code]
+	_, ok = d.ctx.WarningKinds[e.Code]
 	return ok
 }
 
-func (d *decoder) ToString(v ast.Value) (string, error) {
+func (d *decoder) valueToString(v ast.Value) (string, error) {
 	switch v := v.(type) {
 	case *ast.String:
 		return d.evaluateString(v)

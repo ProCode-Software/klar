@@ -20,27 +20,47 @@ type testStruct struct {
 	Embedded
 }
 
-func Test_makeStructFields(t *testing.T) {
+type WithEmbedded struct {
+	Embedded
+	EmbedsAnother
+}
+
+type (
+	EmbedsAnother struct{ Count }
+	Count         struct{ N int }
+)
+
+const (
+	unkeyed klonflags.Flags = 0
+	keyed                   = klonflags.KeyedEmbeddedFields
+)
+
+func TestStructFieldCount(t *testing.T) {
 	type testCase struct {
 		name   string
+		obj    any
 		flags  klonflags.Flags
 		expect int
 	}
-	var (
-		rt    = reflect.TypeFor[testStruct]()
-		cases = []testCase{
-			{"default", 0, 4},
-			{"with KeyedEmbeddedFields", klonflags.KeyedEmbeddedFields, 5},
-		}
-	)
+
+	cases := []testCase{
+		{"Level1Embed_Unkeyed", testStruct{}, unkeyed, 4},
+		{"Level1Embed_Keyed", testStruct{}, keyed, 5},
+		{"Level2Embed_Unkeyed", WithEmbedded{}, unkeyed, 2},
+		{"Level2Embed_Keyed", WithEmbedded{}, keyed, 6},
+	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			fields, err := makeStructFields(rt, test.flags)
+			fields, err := makeStructFields(reflect.TypeOf(test.obj), test.flags)
 			if err != nil {
 				t.Error(err)
 			}
 			if len(fields.Flat) != test.expect {
-				t.Errorf("expected %d fields, got %d", test.expect, len(fields.Flat))
+				names := make([]string, len(fields.Flat))
+				for i, field := range fields.Flat {
+					names[i] = field.Name
+				}
+				t.Errorf("expected %d fields, got %d: %#v", test.expect, len(fields.Flat), names)
 			}
 		})
 	}

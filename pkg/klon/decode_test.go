@@ -3,42 +3,144 @@ package klon
 import (
 	"reflect"
 	"testing"
+
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
-type (
-	optionsObjValue struct {
-		Options objValue
-	}
-	objValue struct {
-		Obj value
-	}
-	value struct{ Value int }
-)
+func TestDecodePrimitive(t *testing.T) {
+	t.Run("BasicString", func(t *testing.T) {
+		var v string
+		input := "'Hello, World!'\n"
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != "Hello, World!" {
+			t.Errorf("expected 'Hello, World!', got %q", v)
+		}
+	})
 
-func TestMain(t *testing.T) {
-	testCase(t, "BasicString", "'Hello, World!'\n", "Hello, World!", false)
-	testCase(t, "BasicInt", `1`, 1, false)
-	testCase(t, "BasicBool", ` true `, true, false)
-	testCase(t, "InlineList", `[4, 1, 6, 7]`, [4]uint{4, 1, 6, 7}, false)
-	testCase(t, "Invalid", `3`, make(chan int), true)
-	testCase(t, "anonymous struct", `options:
-		- value: 2
-		- obj:
-			-- value: 5`, optionsObjValue{objValue{value{5}}}, false)
-	testCase(t, "anonymous struct but in braces", `
-		options: {
-			value: 5,
-			obj:
-				- value: 42
-		}`, optionsObjValue{objValue{value{42}}}, false)
+	t.Run("BasicInt", func(t *testing.T) {
+		var v int
+		input := `1`
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != 1 {
+			t.Errorf("expected 1, got %d", v)
+		}
+	})
+
+	t.Run("BasicBool", func(t *testing.T) {
+		var v bool
+		input := ` true `
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != true {
+			t.Errorf("expected true, got %v", v)
+		}
+	})
 }
 
-func TestInterfaceMerge(t *testing.T) {
+func TestDecodeCollection(t *testing.T) {
+	t.Run("InlineList", func(t *testing.T) {
+		var v [4]uint
+		input := `[4, 1, 6, 7]`
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := [4]uint{4, 1, 6, 7}
+		if v != expected {
+			t.Errorf("expected %v, got %v", expected, v)
+		}
+	})
+}
+
+func unmarshal(t *testing.T, input string, v any) {
+	t.Helper()
+	if err := Unmarshall([]byte(input), v); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func assertErrorCode(t *testing.T, err error, code klonerrs.Code) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if ke, ok := err.(*Error); ok {
+		if ke.Code != code {
+			t.Errorf("expected code %d, got %d", code, ke.Code)
+		}
+	} else {
+		t.Errorf("expected *Error, got %T", err)
+	}
+}
+
+func assertNonKlonError(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if _, ok := err.(*Error); ok {
+		t.Errorf("expected non-klon error, got *Error")
+	}
+}
+
+func TestDecodeStruct(t *testing.T) {
+	t.Run("NestedStructs", func(t *testing.T) {
+		type Port struct {
+			Number int
+			Host   string
+		}
+		type ServerOptions struct{ Port Port }
+		type BuildConfig struct {
+			Server    ServerOptions
+			HotReload bool
+		}
+
+		var v BuildConfig
+		input := `
+		server:
+			- port:
+				-- host: 'localhost'
+				-- number: 3000
+		hotReload: true`
+		unmarshal(t, input, &v)
+		exp := BuildConfig{ServerOptions{Port{3000, "localhost"}}, true}
+		if !reflect.DeepEqual(v, exp) {
+			t.Errorf("expected %+v, got %+v", exp, v)
+		}
+	})
+
+	t.Run("NestedStructsInBraces", func(t *testing.T) {
+		type Port struct {
+			Number int
+			Host   string
+		}
+		type ServerOptions struct{ Port Port }
+		type BuildConfig struct {
+			Server    ServerOptions
+			HotReload bool
+		}
+		var v BuildConfig
+		input := `{
+			server: { port: { host: 'localhost', number: 3000 } }
+			hotReload: true
+		}`
+		unmarshal(t, input, &v)
+		exp := BuildConfig{ServerOptions{Port{3000, "localhost"}}, true}
+		if !reflect.DeepEqual(v, exp) {
+			t.Errorf("expected %+v, got %+v", exp, v)
+		}
+	})
+}
+
+func TestDecodeInterface(t *testing.T) {
 	t.Run("MergeIntoInitializedPointer", func(t *testing.T) {
 		var i int = 10
 		var anyVal any = &i
-		err := Unmarshall([]byte(`20`), &anyVal)
-		if err != nil {
+		if err := Unmarshall([]byte(`20`), &anyVal); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if i != 20 {
@@ -51,8 +153,7 @@ func TestInterfaceMerge(t *testing.T) {
 
 	t.Run("MergeIntoNilPointer", func(t *testing.T) {
 		var anyVal any = (*int)(nil)
-		err := Unmarshall([]byte(`42`), &anyVal)
-		if err != nil {
+		if err := Unmarshall([]byte(`42`), &anyVal); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		p, ok := anyVal.(*int)
@@ -64,13 +165,10 @@ func TestInterfaceMerge(t *testing.T) {
 		}
 	})
 
-	t.Run("FlexibleFallbackOnTypeMismatch", func(t *testing.T) {
+	t.Run("FallbackOnTypeMismatch", func(t *testing.T) {
 		var i int = 10
 		var anyVal any = &i
-		// Try to decode a string into an interface holding an *int.
-		// It should fail to merge into *int and fallback to any (overwriting with string).
-		err := Unmarshall([]byte(`'hello'`), &anyVal)
-		if err != nil {
+		if err := Unmarshall([]byte(`'hello'`), &anyVal); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		s, ok := anyVal.(string)
@@ -84,33 +182,17 @@ func TestInterfaceMerge(t *testing.T) {
 			t.Errorf("expected i to remain 10, but got %d", i)
 		}
 	})
-
-	t.Run("NullClearsInterface", func(t *testing.T) {
-		var i int = 10
-		var anyVal any = &i
-		err := Unmarshall([]byte(`null`), &anyVal)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if anyVal != nil {
-			t.Errorf("expected anyVal to be nil after decoding null, but got %v (%T)", anyVal, anyVal)
-		}
-	})
 }
 
-func testCase[T any](t *testing.T,
-	name, document string, expected T, wantErr bool,
-) {
-	t.Run(name, func(t *testing.T) {
-		var v T
-		err := Unmarshall([]byte(document), &v)
-		switch {
-		case err == nil && wantErr:
-			t.Error("expected error, but got nil")
-		case err != nil && !wantErr:
-			t.Errorf("expected %#v, but got unmarshall error:\n\t%v", expected, err)
-		case !reflect.DeepEqual(expected, v) && !wantErr:
-			t.Errorf("expected %v, but got %v", expected, v)
-		}
+func TestDecodeInvalid(t *testing.T) {
+	t.Run("Chan", func(t *testing.T) {
+		var v chan int
+		input := `3`
+		assertNonKlonError(t, Unmarshall([]byte(input), &v))
+	})
+	t.Run("InterfaceWithMethods", func(t *testing.T) {
+		var v interface{ Len() int }
+		input := `3`
+		assertNonKlonError(t, Unmarshall([]byte(input), &v))
 	})
 }

@@ -59,7 +59,7 @@ func (e *Error) IsTypeError() bool { return e.isDecodeErr }
 
 func (err *Error) Title() string {
 	if err.IsTypeError() {
-		return "Type error"
+		return "Error"
 	}
 	return "Syntax error"
 }

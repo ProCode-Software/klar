@@ -9,7 +9,7 @@ output: ./dist
 js:
     - declaration: true
     - jsdoc: true
-    - bundle: true
+    - bundle: 'true' // Bundle everything
     - typescriptLibs: DOM
     - <- $baseJSOptions
     - server:
@@ -21,5 +21,5 @@ postBuild: @print Build complete!
 
 preBuild: [lint, generate, format]
 
-$baseJSOptions: 
-    
+$baseJSOptions:
+    - bundle: source

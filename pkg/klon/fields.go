@@ -80,11 +80,40 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 					continue // Don't include this field
 				}
 
-				// Check for "options" struct tag
+				// Check for "options:" struct tag
 				var decode decodeFunc
 				opts, ok := f.Tag.Lookup("options")
 				if ok {
-					decode = preprocessValue(makeEnumDecoder(opts))
+					switch rt := f.Type; rt.Kind() {
+					default:
+						decode = preprocessValue(makeEnumDecoder(opts))
+					case reflect.Slice:
+						decodeItem := preprocessValue(makeEnumDecoder(opts))
+						decode = preprocessValue(makeSliceDecoder(rt, decodeItem))
+					case reflect.Array:
+						decodeItem := preprocessValue(makeEnumDecoder(opts))
+						decode = preprocessValue(makeArrayDecoder(rt, decodeItem))
+					case reflect.Map:
+						// 2 options keys need to be provided
+						optsKeys := strings.Split(opts, ",")
+						if len(optsKeys) != 2 {
+							return strFields, fmt.Errorf(
+								"field %s: 'options:' struct tag must have 2 keys when type is a map, got %d",
+								f.Name, len(optsKeys),
+							)
+						}
+						optsKeys[0] = strings.TrimSpace(optsKeys[0]) // Trim whitespace around comma
+						optsKeys[1] = strings.TrimSpace(optsKeys[1])
+
+						var decodeKey, decodeValue decodeFunc
+						if key := optsKeys[0]; key != "" && key != "-" {
+							decodeKey = preprocessValue(makeEnumDecoder(optsKeys[0]))
+						}
+						if key := optsKeys[1]; key != "" && key != "-" {
+							decodeValue = preprocessValue(makeEnumDecoder(optsKeys[1]))
+						}
+						decode = preprocessValue(makeMapDecoder(rt, decodeKey, decodeValue))
+					}
 				}
 
 				indices := make([]int, len(field.Indices)+1)
@@ -99,7 +128,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 				if isNormalField || flag.Has(klonflags.KeyedEmbeddedFields) {
 					if name == "" {
 						// No Klon struct field: use a default name
-						if flag.Has(klonflags.CaseSensitiveFields)  {
+						if flag.Has(klonflags.CaseSensitiveFields) {
 							name = f.Name
 						} else {
 							// Klon converts field names to camel case by default
@@ -175,25 +204,15 @@ func makeEnumDecoder(optsKey string) decodeFunc {
 			return fmt.Errorf("enum key %s doesn't exist", optsKey)
 		}
 		opts := d.ctx.Enums[optsKey]
-		var valAsStr string
-		switch val := val.(type) {
-		case *ast.String:
-			valAsStr = val.Evaluated
-		case *ast.Number:
-			valAsStr = val.Source
-		case *ast.Boolean:
-			valAsStr = val.String()
-		default:
-			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
-			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,
-				"Invalid option: Expected one of: %s", allOpts,
-			)
+		if opts == nil {
+			return fmt.Errorf("no options defined for enum key %s", optsKey)
 		}
-		enumVal, ok := opts[valAsStr]
-		if !ok {
+		input, err := d.valueToString(val)
+		enumVal, ok := opts[input]
+		if err != nil || !ok {
 			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
 			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,
-				"Invalid option %s: Expected one of: %s", klarerrs.Quote(valAsStr), allOpts,
+				"Invalid option %s: Expected one of: %s", klarerrs.Quote(input), allOpts,
 			)
 		}
 		rv.Set(reflect.ValueOf(enumVal))
