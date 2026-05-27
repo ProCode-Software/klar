@@ -19,19 +19,6 @@ func (err ReadError) Error() string {
 
 func (err ReadError) Unwrap() error { return err.Err }
 
-// InvalidUnmarshallError is returned when the target type is not a pointer or is nil.
-type InvalidUnmarshallError struct{ Type reflect.Type }
-
-func (err *InvalidUnmarshallError) Error() string {
-	switch {
-	case err.Type == nil:
-		return "klon: nil argument passed to Unmarshall"
-	case err.Type.Kind() != reflect.Pointer:
-		return "klon: non-pointer type " + err.Type.String() + " passed to Unmarshall"
-	}
-	return "klon: nil " + err.Type.String() + " passed to Unmarshall"
-}
-
 type Error struct {
 	Code  klonerrs.Code
 	Range ranges.Range

@@ -87,3 +87,4 @@ Klon is a markup language that will be Klar's flagship configuration format. `gl
 - Ask me questions before starting or continuing. I want good code, so ask me to clarify or further explain.
 - NEVER GUESS. Ask me. You may look at other examples in the codebase for suggestions that may be part of your question.
 - If possible, call a tool (ex. `ask_user`) to prompt the user with questions.
+- Don't change things that work, unless I explicitly tell you to, or you give me a good reason before changing it.

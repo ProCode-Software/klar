@@ -1,6 +1,7 @@
 package klon
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 	"sync"
@@ -41,6 +42,39 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 			return fmt.Errorf("unsupported Go type: %s", rv.Type().String())
 		}
 	}
+}
+
+func decodeUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
+	if !rv.CanAddr() {
+		return fmt.Errorf("klon: can't decode into non-addressable value of type %s"+
+			"(is the receiver of UnmarshallKlon a pointer?)", rv.Type(),
+		)
+	}
+	rec := rv.Addr().Interface().(Unmarshaller)
+	if err := rec.UnmarshallKlon(val); err != nil {
+		if _, ok := err.(*Error); ok {
+			return err
+		}
+		return decodeError(klonerrs.ErrUnmarshallerError, rv, val, "%s", err.Error())
+	}
+	return nil
+}
+
+func decodeTextUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
+	str, err := d.valueToString(val)
+	if err != nil {
+		return err
+	}
+	if !rv.CanAddr() {
+		return fmt.Errorf("klon: can't decode into non-addressable value of type %s"+
+			"(is the receiver of UnmarshalText a pointer?)", rv.Type(),
+		)
+	}
+	rec := rv.Addr().Interface().(encoding.TextUnmarshaler)
+	if err = rec.UnmarshalText([]byte(str)); err != nil {
+		return decodeError(klonerrs.ErrUnmarshallerError, rv, val, "%s", err.Error())
+	}
+	return nil
 }
 
 func decodeString(rv reflect.Value, v ast.Value, d *decoder) error {
@@ -129,16 +163,13 @@ func makeMapDecoder(rt reflect.Type, decodeKey, decodeValue decodeFunc) decodeFu
 				decodeValue = d.getDecoder(valType)
 			}
 		})
-
 		obj, ok := val.(*ast.Object)
 		if !ok {
 			return typeMismatchError(rv, val)
 		}
-
 		if rv.IsNil() {
 			rv.Set(reflect.MakeMap(rt))
 		}
-
 		for _, f := range obj.Fields {
 			kv := reflect.New(keyType).Elem()
 			if err := decodeKey(kv, f.Key, d); err != nil {

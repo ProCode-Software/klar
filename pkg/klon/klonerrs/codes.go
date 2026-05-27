@@ -59,4 +59,5 @@ const (
 	ErrFieldNotFound       // Field not found in the target struct
 	ErrVarsDisabled        // Variables can't be resolved due to [klonflags.NoVariables]
 	ErrCantConvertToString // Can't convert value to string
+	ErrUnmarshallerError   // Custom unmarshalling logic failed
 )

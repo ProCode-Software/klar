@@ -42,7 +42,9 @@ func ResolveInputs(inputs []string, klarBuildPath string) ([]Input, error) {
 			// TODO: resolve by import path
 			i = Input{Kind: KindModule, Name: input}
 		default:
-			input = filepath.Join(klarBuildDir, input)
+			if !filepath.IsAbs(input) {
+				input = filepath.Join(klarBuildDir, input)
+			}
 			info, err := os.Stat(input)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {

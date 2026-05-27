@@ -1,9 +1,11 @@
 package klon
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
+	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
@@ -194,5 +196,90 @@ func TestDecodeInvalid(t *testing.T) {
 		var v interface{ Len() int }
 		input := `3`
 		assertNonKlonError(t, Unmarshall([]byte(input), &v))
+	})
+}
+
+type customVersion struct {
+	Major, Minor int
+}
+
+func (v *customVersion) UnmarshalKlon(node ast.Node) error {
+	s, ok := node.(*ast.String)
+	if !ok {
+		return fmt.Errorf("expected string")
+	}
+	_, err := fmt.Sscanf(s.Raw, "%d.%d", &v.Major, &v.Minor)
+	return err
+}
+
+type textVersion struct {
+	Major, Minor int
+}
+
+func (v *textVersion) UnmarshalText(text []byte) error {
+	_, err := fmt.Sscanf(string(text), "%d.%d", &v.Major, &v.Minor)
+	return err
+}
+
+type bothVersions struct {
+	Major, Minor int
+	UsedKlon     bool
+}
+
+func (v *bothVersions) UnmarshalKlon(node ast.Node) error {
+	v.UsedKlon = true
+	return nil
+}
+
+func (v *bothVersions) UnmarshalText(text []byte) error {
+	v.UsedKlon = false
+	return nil
+}
+
+func TestDecodeCustom(t *testing.T) {
+	t.Run("Unmarshaller", func(t *testing.T) {
+		var v customVersion
+		input := "'1.2'"
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Major != 1 || v.Minor != 2 {
+			t.Errorf("expected 1.2, got %d.%d", v.Major, v.Minor)
+		}
+	})
+
+	t.Run("TextUnmarshaler", func(t *testing.T) {
+		var v textVersion
+		input := "'3.4'"
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Major != 3 || v.Minor != 4 {
+			t.Errorf("expected 3.4, got %d.%d", v.Major, v.Minor)
+		}
+	})
+
+	t.Run("Priority", func(t *testing.T) {
+		var v bothVersions
+		input := "'any'"
+		if err := Unmarshall([]byte(input), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !v.UsedKlon {
+			t.Error("expected UnmarshalKlon to be used over UnmarshalText")
+		}
+	})
+
+	t.Run("ErrorWrapping", func(t *testing.T) {
+		var v customVersion
+		input := "123" // Not a string
+		err := Unmarshall([]byte(input), &v)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		ke, ok := err.(*Error)
+		if !ok || ke.Code != klonerrs.ErrUnmarshallerError {
+			t.Errorf("expected ErrUnmarshallerError, got %v", err)
+		}
 	})
 }

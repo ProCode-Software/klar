@@ -1,6 +1,8 @@
 package klon
 
 import (
+	"encoding"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -8,6 +10,11 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
+)
+
+var (
+	unmarshallerType    = reflect.TypeFor[Unmarshaller]()
+	textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 )
 
 type decoder struct {
@@ -31,9 +38,17 @@ func decode(rd *reader, ctx *Context, v any, flgs ...klonflags.Flags) (err error
 
 func decodeDocument(doc *ast.Document, ctx *Context, v any, flgs ...klonflags.Flags) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return &InvalidUnmarshallError{Type: rv.Type()}
+	// Make sure v is a non-nil pointer
+	rt := rv.Type()
+	switch {
+	case rt == nil:
+		return errors.New("klon: nil argument passed to Unmarshall")
+	case rv.Kind() != reflect.Pointer:
+		return fmt.Errorf("klon: non-pointer type %s passed to Unmarshall", rt.String())
+	case rv.IsNil():
+		return fmt.Errorf("klon: nil %s passed to Unmarshall", rt.String())
 	}
+
 	d := &decoder{
 		ctx:   ctx,
 		vars:  doc.Variables,
@@ -49,13 +64,24 @@ func (d *decoder) decodeValue(val ast.Value, rv reflect.Value) error {
 
 // Looks up a decoder or creates one if it doesn't exist.
 func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
-	if marsh, ok := decodeCache.get(rt); ok {
-		return marsh
+	if decode, ok := decodeCache.get(rt); ok {
+		return decode
 	}
-	// TODO: handle KlonUnmarshaller interface
-	marsh := preprocessValue(d.makeDefaultDecoder(rt))
-	decodeCache.set(rt, marsh)
-	return marsh
+	// If the type implements [Unmarshaller] or [encoding.TextUnmarshaler], use their decoder.
+	var decode decodeFunc
+	ptr := reflect.PointerTo(rt)
+	switch {
+	case rt.Implements(unmarshallerType), ptr.Implements(unmarshallerType):
+		decode = decodeUnmarshaller
+	case rt.Implements(textUnmarshalerType), ptr.Implements(textUnmarshalerType):
+		decode = decodeTextUnmarshaller
+	default:
+		decode = d.makeDefaultDecoder(rt)
+	}
+
+	decode = preprocessValue(decode)
+	decodeCache.set(rt, decode)
+	return decode
 }
 
 func typeMismatchError(rv reflect.Value, val ast.Value) *Error {

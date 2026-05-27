@@ -1,4 +1,5 @@
-// Package klon implements a parser, encoder, and decoder for Klon, an object notation format used by Klar configurations and manifests.
+// Package klon implements a parser, encoder, and decoder for Klon, an object
+// notation format used by Klar configurations and manifests.
 package klon
 
 import (
@@ -10,6 +11,13 @@ import (
 
 // Unmarshall
 // =======
+
+// Unmarshaller is the interface implemented by types that can unmarshall
+// themselves from a Klon AST node.
+type Unmarshaller interface {
+	// UnmarshallKlon (with 2 l's) should be implemented by a pointer receiver.
+	UnmarshallKlon(val ast.Value) error
+}
 
 // Unmarshall decodes a byte slice into v. v must be a non-nil pointer.
 func Unmarshall(b []byte, v any, f ...klonflags.Flags) error {
