@@ -17,14 +17,13 @@ var fullHelpTemplate = `
 {{ title "Examples" -}}
 {{ range .Examples }}
   {{ printf "%s:" .Description | ansi "2" }}
-  {{ exec }} {{ bold "33" .Command }} 
-  		{{- range .Args }} {{ if hasPrefix . "." -}}
-    		{{ ansi "34" . }}
-     	{{- else -}} {{ . }} {{- end}}
-    {{- end }}
-	{{- range .Flags }} {{ if hasPrefix . "-" -}} {{ ansi "36" . }} 
-		{{- else -}} {{ ansi "32" . }} {{- end -}}
-	{{ end }}
+  {{ exec }} {{ bold "33" .Command -}}
+  {{- range .Args }} {{ if hasPrefix . "." -}}
+    {{ ansi "34" . -}} {{- else -}} {{- . }}
+  {{- end -}} {{- end -}}
+  {{- range .Flags }} {{ if hasPrefix . "-" -}}
+  	{{- ansi "36" . -}} {{- else -}} {{- ansi "32" . -}} {{- end -}}
+  {{- end }}
 {{ end }}
 {{ end -}}
 
