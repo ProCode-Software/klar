@@ -73,7 +73,7 @@ type AssetOptions struct {
 type JSOptions struct {
 	// Global objects that should be made available to use in the `klar.js` module.
 	// Type declarations for these objects can be provided via `typescriptLibs`.
-	Globals map[string]GlobalType `options:"GlobalType"`
+	Globals map[string]GlobalType `options:",GlobalType"`
 	// TypeScript declaration libraries that should be loaded to the
 	// `klar.js` module when type-checking. These can be bundled with
 	// TypeScript, or paths to *.d.ts files (must start with './' or '../').

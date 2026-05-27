@@ -4,18 +4,27 @@ import (
 	"os"
 
 	"github.com/ProCode-Software/klar/pkg/klon"
+	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
+	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
 
-func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (err error) {
+const DefaultKlonFlags = klonflags.NoUnknownFields
+
+func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (warn []*klon.Error, err error) {
 	var fr *os.File
 	fr, err = os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer fr.Close()
 
-	if err = klon.UnmarshallReadContext(fr, config, ctx); err != nil {
-		return err
+	if ctx == nil {
+		ctx = &klon.Context{}
 	}
-	return nil
+	ctx.SetWarningKinds(klonerrs.ErrFieldNotFound)
+
+	if err = klon.UnmarshallReadContext(fr, config, ctx, DefaultKlonFlags); err != nil {
+		return ctx.Warnings, err
+	}
+	return ctx.Warnings, nil
 }

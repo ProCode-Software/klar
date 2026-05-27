@@ -6,12 +6,12 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
-func Parse(path string) (conf *File, err error) {
+func Parse(path string) (conf *File, warn []*klon.Error, err error) {
 	conf = &File{Configuration: Configuration{}}
-	if err = config.ReadFromFile(path, &conf, Context); err != nil {
-		return conf, err
+	if warn, err = config.ReadFromFile(path, &conf, Context); err != nil {
+		return conf, warn, err
 	}
-	return conf, nil
+	return conf, warn, nil
 }
 
 // Default returns the default build configuration.

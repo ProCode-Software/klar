@@ -160,7 +160,7 @@ func (c *Compiler) PrintKlonWarnings(warn []*klon.Error, file string) {
 	if len(warn) == 0 {
 		return
 	}
-	
+
 	title := "Configuration warning"
 	if filepath.Base(file) == module.ManifestFile {
 		title = "Manifest warning"
