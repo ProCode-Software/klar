@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 	"runtime/pprof"
 )
 
@@ -25,6 +26,7 @@ func startProf() {
 		panic(err)
 	}
 	profiler.file = file
+	runtime.SetCPUProfileRate(10_000)
 	if err = pprof.StartCPUProfile(file); err != nil {
 		panic(err)
 	}

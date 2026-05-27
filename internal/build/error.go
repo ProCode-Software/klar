@@ -167,8 +167,12 @@ func (c *Compiler) PrintKlonWarnings(warn []*klon.Error, file string) {
 	}
 	if len(warn) > 10 {
 		warn = warn[:10]
-		cli.Custom(ansi.BoldBrightYellow(title),
-			fmt.Sprintf("There are %d warnings; showing only the first 10", len(warn)),
+		cli.Custom(
+			ansi.BoldBrightYellow(title), "",
+			fmt.Sprintf(
+				ansi.BrightYellow("There are %d warnings; showing only the first 10:"),
+				len(warn),
+			), "\n",
 		)
 	}
 	for _, err := range warn {

@@ -57,8 +57,11 @@ func (rd *reader) parseValue() ast.Value {
 
 	// A. Top-level object
 	if rd.depth == 0 && tok.Kind != LeftBracket && tok.Kind != LeftCurly {
-		if (rd.parseFlags&key == 0 && rd.peekTok().Kind == Colon) ||
-			tok.Kind == Dash /* Only valid as a list */ {
+		if (rd.parseFlags & key) == 0 {
+			if peek := rd.peekTok(); peek.Kind == Colon || peek.Kind == Dot {
+				return rd.parseObject()
+			}
+		} else if tok.Kind == Dash {
 			return rd.parseObject()
 		}
 	}
@@ -128,13 +131,13 @@ loop:
 				continue
 			}
 
-		case Colon:
-			if rd.parseFlags&key != 0 {
+		case Colon, Dot:
+			if (rd.parseFlags & key) != 0 {
 				break loop
 			}
 			fallthrough
 		default:
-			rd.tokenError(klonerrs.ErrUnexpectedToken, tok, "Unexpected token")
+			rd.tokenError(klonerrs.ErrUnexpectedToken, tok, "Unexpected '%s'", tok.Src)
 			rd.advanceTok()
 			continue
 		}
@@ -406,6 +409,9 @@ func (rd *reader) parseObject() ast.Value {
 		isObject bool
 	)
 	for rd.hasTokens() {
+		if rd.skipLines(); rd.currTok().Kind == EOF {
+			break
+		}
 		item, dashes := rd.parseEntry(isObject)
 		if dashes < rd.depth {
 			break
@@ -430,6 +436,9 @@ func (rd *reader) parseObject() ast.Value {
 		fields = append(fields, field)
 	next:
 		if rd.currTok().Kind != EOF && needsNl {
+			if rd.currTok().Kind == RightCurly {
+				break // This is an object inside a braced object value
+			}
 			rd.expect(Newline, klonerrs.ErrExpectedToken, "Expected a newline between fields")
 		}
 	}
@@ -548,7 +557,6 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 			rd.declareVariable(varName, value)
 			return nil, dashes
 		}
-
 		return &ast.Field{
 			BaseNode: ast.BaseNode{Range: ranges.Range{Start: keyStart, End: value.Pos().End}},
 			Key:      singleKey,
@@ -654,10 +662,14 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
 // parseDashes parses consecutive dashes on a line, returning the count.
 func (rd *reader) parseDashes() (n int) {
 	rd.skipLines()
+	if rd.lastDashes != -1 {
+		return rd.lastDashes
+	}
 	for rd.hasTokens() && rd.currTok().Kind == Dash {
 		n++
 		rd.advanceTok()
 	}
+	rd.lastDashes = n
 	return n
 }
 

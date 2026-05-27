@@ -17,10 +17,8 @@ type reader struct {
 	reader     io.Reader
 	pos        int // Buffer position
 	offset     lexer.Position
-	curr       Token
-	peek       Token
-	hasCurr    bool
-	hasPeek    bool
+	curr       *Token
+	peek       *Token
 	parseFlags uint8
 
 	depth      int
@@ -34,18 +32,20 @@ type reader struct {
 
 func newBufferReader(buf []byte, f ...klonflags.Flags) *reader {
 	return &reader{
-		buffer: buf,
-		offset: lexer.Position{1, 1},
-		flags:  parseFlags(f...),
+		buffer:     buf,
+		offset:     lexer.Position{1, 1},
+		flags:      parseFlags(f...),
+		lastDashes: -1,
 	}
 }
 
 func newStreamReader(r io.Reader, f ...klonflags.Flags) *reader {
 	return &reader{
-		buffer: make([]byte, 0, BufferSize),
-		reader: r,
-		offset: lexer.Position{1, 1},
-		flags:  parseFlags(f...),
+		buffer:     make([]byte, 0, BufferSize),
+		reader:     r,
+		offset:     lexer.Position{1, 1},
+		flags:      parseFlags(f...),
+		lastDashes: -1,
 	}
 }
 

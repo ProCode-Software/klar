@@ -12,35 +12,40 @@ func (rd *reader) hasTokens() bool { return rd.currTok().Kind != EOF }
 
 // currTok returns the current token.
 func (rd *reader) currTok() Token {
-	if rd.hasCurr {
-		return rd.curr
+	if rd.curr != nil {
+		return *rd.curr
 	}
-	rd.curr = rd.readToken()
-	rd.hasCurr = true
-	return rd.curr
+	t := rd.readToken()
+	rd.curr = &t
+	return t
 }
 
 // peekTok returns the token after the current token without advancing r.
 func (rd *reader) peekTok() Token {
-	if rd.hasPeek {
-		return rd.peek
+	if rd.peek != nil {
+		return *rd.peek
 	}
-	rd.peek = rd.readToken()
-	rd.hasPeek = true
-	return rd.peek
+	t := rd.readToken()
+	rd.peek = &t
+	return t
 }
 
 // advanceTok returns the current token and advances r.
 func (rd *reader) advanceTok() Token {
-	if rd.hasPeek {
-		t := rd.curr
+	if rd.peek != nil {
+		t := *rd.curr
 		rd.curr = rd.peek
-		rd.hasCurr = true
-		rd.hasPeek = false
+		rd.peek = nil
+		if t.Kind == Newline {
+			rd.lastDashes = -1
+		}
 		return t
 	}
 	t := rd.currTok()
-	rd.hasCurr = false
+	rd.curr = nil
+	if t.Kind == Newline {
+		rd.lastDashes = -1
+	}
 	return t
 }
 

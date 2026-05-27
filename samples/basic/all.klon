@@ -41,8 +41,8 @@ primitives:
     - float2: -1.0
     - string: "hello"
     - string2: 'hello'
-    - string3: `Hello
-    World!`
+    - string3: "Hello
+    World!"
     - null:
 
 

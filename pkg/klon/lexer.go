@@ -59,6 +59,7 @@ func (rd *reader) CurrRune() (rune, error) {
 	r, _ := utf8.DecodeRune(rd.buffer[rd.pos:])
 	return r, nil
 }
+
 func (rd *reader) PeekRune() (rune, error) {
 	if rd.pos >= len(rd.buffer) {
 		if err := rd.refill(); err != nil {
@@ -152,7 +153,9 @@ func (rd *reader) readToken() Token {
 			}
 		case '+':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
-				return rd.readNumber(r, start, bufPos)
+				tok := rd.readNumber(r, start, bufPos)
+				rd.tokenError(klonerrs.ErrLeadingPlusSign, tok, "Redundant positive number prefix")
+				return tok
 			}
 		case '.':
 			if (rd.parseFlags & allowDot) == 0 {
@@ -248,10 +251,9 @@ func (rd *reader) readQuotedString(quote rune, wrap bool,
 }
 
 func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token {
-	var (
-		prefix   string
-		isNumber = true
-	)
+	var prefix string
+	isNumber := true
+	// Leading -/+ sign ('+' is invalid, but checked outside readNumber)
 	if first == '-' || first == '+' {
 		prefix = string(first)
 		r, n, err := rd.currRune()
@@ -263,30 +265,29 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 		rd.advanceBytes(n)
 		first = r
 	}
-
+	// Use the same number format as Klar
 	literal, params := lexer.ReadNumber(rd, first)
-
-	// Klon transitions to unquoted string for certain numeric patterns
-	if literal[0] == '.' || literal[len(literal)-1] == '_' {
+	// Read a string if the literal ends in an invalid underscore
+	if literal[len(literal)-1] == '_' {
 		isNumber = false
 	}
-
+	// Check if we should read an unquoted string instead
 	r, _, err := rd.currRune()
 	isDelim := err != nil || unicode.IsSpace(r) || rd.isPunct(r) || r == ','
-
-	if isNumber && isDelim {
-		return Token{
-			Kind:   Number,
-			Src:    prefix + literal,
-			Pos:    start,
-			BufPos: bufPos,
-			Attrs:  attrs{"params": params},
-		}
+	if !isNumber || !isDelim {
+		// Read an unquoted string instead
+		b := &strings.Builder{}
+		b.WriteString(prefix + literal)
+		return rd.readUnquotedString(b, start, bufPos)
 	}
 
-	b := &strings.Builder{}
-	b.WriteString(prefix + literal)
-	return rd.readUnquotedString(b, start, bufPos)
+	return Token{
+		Kind:   Number,
+		Src:    prefix + literal,
+		Pos:    start,
+		BufPos: bufPos,
+		Attrs:  attrs{"params": params},
+	}
 }
 
 func (rd *reader) isPunct(r rune) bool {
