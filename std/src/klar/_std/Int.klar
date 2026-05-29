@@ -1,0 +1,88 @@
+// A whole integer. Ints are 64-bit and signed (can be positive or negative).
+// On the JavaScript target, they can be from `-(2 ^ 53) - 1` to `2 ^ 53 - 1`,
+// defined by `Number.MIN/MAX_SAFE_INTEGER`.
+public type Int {}
+
+// Returns whether the number is even. `0` is considered even.
+public func Int.isEven() -> Bool = self % 2 == 0
+
+// Returns the number clamped to the range `min...max`.
+public func (num: Int).clamped(min min, max max: Int) -> Int = when self {
+    < min -> min,
+    > max -> max,
+    _ -> self
+}
+
+// Returns a pair of the number divided by the provided divisor, and
+// the remainder. As with all division operations in Klar, the
+// program crashes if `by` is 0.
+public func Int.divideWithRemainder(by: Int) -> (quotient, remainder: Int)
+    = (self / by, self % by)
+
+/*
+Returns whether the number is a multiple of the provided value.
+
+Special cases:
+- `x.isMultiple(of: 0)` is only true if `x` is `0`.
+- Negative parameters are treated as positive. `6.isMultiple(of: -3) == 6.isMultiple(of: 3)`
+*/
+public func Int.isMultiple(of of: Int) -> Bool = self % of == 0
+
+// Returns whether the number is a safe integer in JavaScript. Safe integers are
+// those that can be represented exactly without loss of precision. They are in the
+// range `(-(2 ^ 53) - 1)...(2 ^ 53 - 1)`.
+public func Int.isSafe() -> Bool
+
+public func Int.expandedForm() -> [Int] {}
+
+
+// String -> Int
+// =====
+
+public func Int(from: String, base base: Int | Radix = 10) -> Result
+
+// Parses an integer from a string in Klar numeric literal format. See the
+// [Klar docs]() on valid numeric literals. Integers with exponents are
+// allowed. Numbers with decimal points aren't allowed (use [Float(_, klarFormat:)] instead).
+public func Int(from: String, klarFormat klarFormat: Bool) -> Result
+
+
+// Int -> String
+// =====
+
+
+// Returns the number as a string.
+public func String(num: Int)
+
+// Returns the number as a string in the specified base. `base` must be in the range `2...36`.
+public func String(num: Int, base base: Int)
+
+// Returns the number as a string in the specified base. if `includeKlarPrefix` is `true`,
+// the string will be prefixed with `0x` for hexadecimal or `0b` for binary,
+// as with Klar numeric literals.
+//
+// ```klar
+// String(15, base: .hex, includeKlarPrefix: true) // '0xf'
+// ```
+public func String(
+    num: Int, base base: Radix,
+    includeKlarPrefix includeKlarPrefix: Bool = false,
+)
+
+// Returns a number as a string, separating thousands with the specified separator.
+// Separators are usually `,`, `.`, or `_` (for Klar numeric literals).
+//
+// ```klar
+// String(1234567, separator: ",") // "1,234,567"
+// ```
+public func String(num: Int, separator separator: String)
+
+/*
+Returns a number as a string, formatted according to the specified locale.
+
+```klar
+String(1234567, localeFormat: 'en-us') // "1,234,567"
+String(1234567, localeFormat: 'de') // "1.234.567"
+```
+*/
+public func String(num: Int, localeFormat localeFormat: Locale)

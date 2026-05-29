@@ -1,0 +1,207 @@
+import klar.js.{Object}
+
+type #K
+type #V
+
+/*
+Stores key-value pairs. In `#{K: V}`, `K` is the type used for keys, and `V` for values.
+
+Items can be declared into maps by setting `key: value` in a map literal, or using
+`map[key] = value`. The map can later be indexed via `map[key]`, returning `value`
+if the key is found, or `none` otherwise. All values obtained from a map are of
+type `V?` (optional `V`). An entry can be removed by assigning its value to `none`,
+using `map[key] = none`.
+
+```
+flagCountries: #{String: String} := #{
+    '🇺🇸': 'United States',
+    '🇦🇺': 'Australia',
+    '🇯🇵': 'Japan',
+    '🇫🇷': 'France',
+    '🇩🇪': 'Germany',
+    '🇬🇭': 'Ghana',
+    '🇿🇦': 'South Africa',
+}
+
+// Get a country
+myFlag := '🇺🇸'
+country := flagCountries[myFlag]!!
+print(country)
+
+// Add a country later
+flagCountries['🇰🇷'] = 'South Korea'
+
+```
+
+Like lists, maps can store multiple values, however, there are many key differences:
+- Maps are indexed by keys, while lists are indexed by integers.
+- Items are stored in a random order, while the order of list items are determined by their index.
+- Maps can find keys in constant time, while lists require each item to be checked sequentially.
+- Maps contain no duplicate keys.
+
+Maps are best designed for quick lookups of corresponding items using a specific key,
+such as mapping country flags to their corresponding names.
+*/
+public type Map {
+    length: Int
+}
+
+public func Map(fromPairs pairs: [(K, V)]) {
+    map: #{K: V} := #{}
+    for (key, value) in pairs {
+        when key in map {
+            false -> map[key] = value
+            true -> crashout(
+                "Pairs passed to 'Map(fromPairs:)' can't contain duplicate keys; found {key} more than once",
+            )
+        }
+    }
+    return map
+}
+
+// Returns a list of the map's key-value pairs. These pairs can be passed to
+// [Map(fromPairs:)] to create an equivalent map to this one. The length of
+// the result is equal to the length of the map.
+//
+// The length of the result is equal to the length of the map. Items are in
+// a random order; to return pairs in a deterministic order, use [Map.sorted] instead.
+public func Map.pairs() -> [(K, V)] = Object.entries(self)
+
+public func Map.sorted(
+    with sortFunc: (func(a, b: K) -> collections.SortOrder)?,
+    reverse reverse: Bool = false,
+) -> [(K, V)]
+
+public func Map.sorted(
+    by sortFunc: collections.BuiltinSortMode,
+    reverse reverse: Bool = false,
+) -> [(K, V)]
+
+public func Map.sortedByValues(
+    with sortFunc: (func(a, b: K) -> collections.SortOrder)?,
+    reverse reverse: Bool = false,
+) -> [(K, V)]
+
+public func Map.sortedByValues(
+    by sortFunc: collections.BuiltinSortMode,
+    reverse reverse: Bool = false,
+) -> [(K, V)]
+
+public func Map.isDisjoint(from map: #{K: V}) -> Bool {
+    when { self.length or map.length == 0 -> return true }
+    for key, _ in map {
+        when key in self { true -> return false }
+    }
+    return true
+}
+
+// Returns all of the keys in the map. As maps don't contain duplicate keys, the
+// result will have no duplicate items.
+public func Map.keys() -> [K] = Object.keys(self)
+
+// Returns all of the values in the map. The returned list may contain duplicates.
+public func Map.values() -> [V] = Object.values(self)
+
+// Returns all of the keys in the map that are set to `value`.
+public func Map.keys(withValue value: V) -> [K] {
+    result: [K] := []
+    for key, itemVal in self {
+        when itemVal { value -> result += [key] }
+    }
+    return result
+}
+
+// Returns the value for the given key, setting the key to `default` if it doesn't exist.
+public func Map.getOrSet(key: K, default default: V) -> V {
+    when key in self {
+        true -> return self[key]
+        false -> {
+            self[key] = default
+            return default
+        }
+    }
+}
+
+// Returns a map with the keys as values, and the values as keys. If a value appears
+// in the map more than once, a random key will be used in the result.
+public func Map.keysAsValues() -> #{V: K} = for k, v in self -> (v, k)
+
+// Deletes each of the provided keys from the map if they exist.
+public func Map.delete(keys: ...K) {
+    for key in keys {
+        self[key] = none
+    }
+}
+
+// Returns a new map with all of the keys from this map except the ones specified.
+public func Map.without(keys: ...K) -> #{K: V} = clone(self) |. delete(keys...)
+
+// Returns a new map without the keys that have the same value as those in the provided map.
+public func Map.without(valuesFrom map: #{K: V}) -> #{K: V} {
+    result: #{K: V} := clone(self)
+    for k, v in map.keys {
+        when self[k] {
+            v -> result[k] = none
+        }
+    }
+    return result
+}
+
+// Returns a new map with the keys and values that are common to both this
+// map and the provided map.
+public func Map.common(with map: #{K: V}) -> #{K: V} {
+    result: #{K: V} := #{}
+    for k, v in self {
+        when map[k] {
+            v -> result[k] = v
+        }
+    }
+    return result
+}
+
+// Returns a new map with all of the keys from this map that satisfy the function.
+public func Map.filter(where filter: func (K, V) -> Bool) -> #{K: V} {
+    result: #{K: V} := #{}
+    for key, value in self {
+        when filter(key, value) { true -> result[key] = value }
+    }
+    return result
+}
+
+public func Map.reduce<A>(from init: A, with fn: func (A, K, V) -> A) -> A {
+    result := init
+    for key, value in self {
+        result = fn(result, key, value)
+    }
+    return result
+}
+
+// Sets the value of a key in the map only if it exists. If the key doesn't
+// currently exist in the map, it isn't set.
+public func Map.setIfExists(key: K, to value: V) {
+    when self[key] {
+        none -> self[key] = value
+    }
+}
+
+// Removes a key in the map, moving its value to a new key.
+public func Map.changeKey(from, to newKey: K) {
+    self[to] = self[from]
+    self[from] = none
+}
+
+// Deletes all keys from the map.
+public func Map.clear() {
+    for k, _ in keys {
+        self[k] = none
+    }
+}
+
+// Returns a new map 
+public func Map.take(keys: ...K) -> #{K: V} {
+    result: #{K: V} := #{}
+    for k in keys {
+        result[k] = self[k]
+    }
+    return result
+}

@@ -1,0 +1,88 @@
+// A decimal number. Floats are 64-bit, signed (can be negative or positive)
+// [floating-point numbers](https://en.wikipedia.org/wiki/Floating-point_arithmetic).
+// As defined by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754), the maximum
+// value is approximately `1.79769e+308`, and the minimum is `5e-324`.
+//
+// The Float type also defines `NaN` (not a number, defined in `math.NAN`), and
+// positive and negative `Infinity` ([math.INFINITY] and [math.NEGATIVE_INFINITY]).
+//
+// It's important to keep in mind that floating-point arithmetic isn't exact -- causing
+// the notorious `0.1 + 0.2 != 0.3` -- and arithmetic involving `Infinity`, `NaN`, and
+// values outside the minimum/maximum range may produce unexpected, system-specific
+// results (including behavior specific to JavaScript). If you need exact decimal
+// arithmetic, consider using the `math.Decimal` type instead. For storing large
+// numbers outside the minimum/maximum range, use the `math.BigFloat` type.
+public type Float {}
+
+// Returns true if the number is infinite (either positive or negative).
+// 
+// ```
+// Float(1.0).isInfinite() // false
+// Float(0.0).isInfinite() // false
+// Float(math.INFINITY).isInfinite() // true
+// Float(math.NEGATIVE_INFINITY).isInfinite() // true
+// ```
+public func Float.isInfinite() -> Bool
+
+// Splits a float into its whole number and decimal parts. `whole + decimal`
+// equals the original float.
+//
+// Special cases:
+// - `NaN.splitDecimal()` returns `(0.0, NaN)`
+// - `±Infinity.splitDecimal()` returns `(0.0, ±Infinity)`
+public func Float.splitDecimal() -> (whole, decimal: Float) {
+    
+}
+
+// Converts the float to a string representation. The result will use the least
+// number of decimal places necessary to represent the number exactly. A whole
+// number will not have a decimal point. 
+//
+// The result will be written in scientific notation if the number is
+// greater or equal to `10 ^ 21` or less than `10 ^ -6`, or if `exponential` is true.
+//
+// Special cases:
+// - `NaN` is represented as `'NaN'`
+// - `Infinity` (positive infinity) is represented as `'Infinity'`
+// - `-Infinity` (negative infinity) is represented as `'-Infinity'`
+public func String(num: Float)
+
+// Converts the float to a string representation. If `includeZeroDecimal` is true,
+// the `.0` will be included even if the decimal part is zero.
+public func String(num: Float, includeZeroDecimal includeZero: Bool)
+
+// Converts the float to a string representation with a maximum number of
+// decimal places. Whole floats are written without a decimal point.
+//
+// The result will be written in scientific notation following the same rules
+// as [String(Float)].
+public func String(num: Float, maxDecimalPlaces decimalPlaces: Int)
+
+// Converts the float to a string representation with an exact number of
+// decimal places. Numbers with less decimal places than `exactDecimalPlaces`
+// will be padded with zeros.
+//
+// The result will be written in scientific notation following the same rules
+// as [String(Float)].
+public func String(num: Float, exactDecimalPlaces decimalPlaces: Int)
+
+// Converts the float to a string representation in scientific notation.
+// The result will consist of a coefficient written in decimal notation,
+// with a value between -10 and 10, followed by `e` (in lowercase) and the exponent.
+public func String(num: Float, exponential exponential: Bool)
+
+// Converts the float to a string representation in scientific notation,
+// with a maximum number of decimal places. Whole floats are still written
+// in scientific notation.
+public func String(
+    num: Float, maxDecimalPlaces decimalPlaces: Int,
+    exponential exponential: Bool,
+)
+
+// Converts the float to a string representation in scientific notation,
+// with an exact number of decimal places. Numbers with less decimal
+// places than `exactDecimalPlaces` will be padded with zeros.
+public func String(
+    num: Float, exactDecimalPlaces decimalPlaces: Int,
+    exponential exponential: Bool,
+)

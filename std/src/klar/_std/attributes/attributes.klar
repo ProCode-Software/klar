@@ -1,0 +1,63 @@
+/// Contains attributes. In Klar files, top-level objects, usually exported
+/// objects, can be marked with these attributes prefixed with '@':
+///
+/// ```
+/// type Date { ... }
+///
+/// // Assuming `date.js` contains an exported function 'now'
+/// @external(js: "date.js", export: "now")
+/// func now() -> Date
+/// ```
+///
+/// This file is part of the Klar compiler and exists for documentation purposes.
+
+// A version literal. This is here for documentation purposes.
+type #Version
+
+type Target {
+    .js // Any JavaScript runtime
+    .browser // Any web browser (JavaScript)
+    .node // [Node.js](https://nodejs.org) (JavaScript)
+    .deno // [Deno](https://deno.land) (JavaScript)
+    .bun // [Bun](https://bun.com) (JavaScript)
+
+    .klarvm // The Klar interpreter
+}
+
+// Information on when this was added to show on documentation.
+public func added(version: Version) {}
+
+// Mark this as deprecated, optionally telling users what to use instead.
+public func deprecated(
+    reason: String?,
+    since _: Version?,
+    use _: Any?, // What users should use instead
+    target _: ...Target, // Platforms this is deprecated on
+) {}
+
+// Mark this as externally implemented in another language. You must make
+// sure the implementation exists and the types labelled here are accurate.
+// 
+// This attribute can be applied multiple times on the same object to
+// provide different implementations for different targets.
+public func external(
+    // The targets to provide an implementation for.
+    targets: Target | [Target],
+
+    // Path to the JavaScript file implementing this. `{target}` may be
+    // interpolated into the string to insert the target into the path.
+    file file: String,
+
+    // The name of the exported object implementing this. If omitted
+    // (or set to 'default'), the default export will be used.
+    export _: Any?,
+) {}
+
+// Override the name of this export on other targets. Useful if for example,
+// the current name is a JavaScript keyword or conflicts with the name of
+// a global object.
+public func name(js _: String) {}
+
+// Targets this should be built for. The compiler will prevent users from
+// importing this on other targets.
+public func target(targets: ...Target) {}
