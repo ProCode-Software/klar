@@ -6,12 +6,17 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
+type boxOptions struct {
+	margin     int
+	digitWidth int
+	color      string
+}
+
 type state struct {
 	tokens     []lexer.Token
-	digitWidth int
-	margin     int
 	highlights []klarerrs.Highlight
 	hlColors   map[klarerrs.Highlight]string
+	boxOptions
 }
 
 // groupHighlights are the groups of highlights created by [groupHighlights].
@@ -25,16 +30,16 @@ type groupedHighlights struct {
 // and labels from the error. mainHl will be colored with mainHlColor.
 // All other highlights will be colored with colors from r's ColorPalette.
 // All lines, including the first line, contain the margin.
-func (r *Reporter) printBox(fileName string,
+func (r *Reporter) printBox(
+	fileName string, startLine, endLine uint32,
 	highlights []klarerrs.Highlight, mainHl *klarerrs.Highlight, mainHlColor string,
-	startLine, endLine uint32, digitWidth, margin int,
+	opts boxOptions,
 ) {
 	var (
 		file = r.getFile(fileName)
 		s    = &state{
+			boxOptions: opts,
 			tokens:     file.tokens,
-			digitWidth: digitWidth,
-			margin:     margin,
 			highlights: highlights,
 			hlColors:   make(map[klarerrs.Highlight]string, len(highlights)),
 		}
@@ -137,12 +142,12 @@ func (r *Reporter) highlightsEndOnLine(line uint32, highlights []klarerrs.Highli
 
 func (r *Reporter) printLineNumber(s *state, line uint32) {
 	r.appendSpace(s.margin)
-	r.appendf(r.ColorPalette.Box, "%*d %c ", s.digitWidth, line, r.CharacterSet.BoxL)
+	r.appendf(s.color, "%*d %c ", s.digitWidth, line, r.CharacterSet.BoxL)
 }
 
 func (r *Reporter) printEmptyLineNumber(s *state) {
 	r.appendSpace(s.margin + s.digitWidth + 1)
-	r.appendf(r.ColorPalette.Box, "%c ", r.CharacterSet.HighlightLine)
+	r.appendf(s.color, "%c ", r.CharacterSet.HighlightLine)
 }
 
 func (r *Reporter) printHighlightPipes(s *state, activeHls []klarerrs.Highlight) {
@@ -163,7 +168,7 @@ func (r *Reporter) printCollapsedLineNumber(s *state, highlights []klarerrs.High
 
 	// Print the dashed line number
 	r.appendSpace(s.margin)
-	r.appendf(r.ColorPalette.Box, "%s %c ",
+	r.appendf(s.color, "%s %c ",
 		// Dashes in line num position
 		char.RepeatRune(r.CharacterSet.SkipLine, s.digitWidth),
 		borderChar, // Box border
@@ -182,7 +187,7 @@ func (r *Reporter) printCollapsedLineNumber(s *state, highlights []klarerrs.High
 		return
 	}
 	// No active multiline highlights: ellipsis only in the box color
-	r.appendf(r.ColorPalette.Box, "%[1]c%[1]c%[1]c\n", r.CharacterSet.CollapsedEllipsis)
+	r.appendf(s.color, "%[1]c%[1]c%[1]c\n", r.CharacterSet.CollapsedEllipsis)
 }
 
 // printHighlights prints a line with the highlights that start or end on line.

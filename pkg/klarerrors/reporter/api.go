@@ -15,6 +15,7 @@ import (
 // A Reporter prints compile errors with colored file context and highlights.
 type Reporter struct {
 	MaxLines     int           // If set to 0, MaxLines is set to 3.
+	Margin       int           // Number of spaces to add to the left of the box.
 	Output       io.Writer     // If set to nil, [os.Stderr] is used.
 	ColorPalette *ColorPalette // If set to nil, colored tokens are disabled.
 	CharacterSet *CharacterSet // If set to nil, [DefaultCharacterSet] is used.

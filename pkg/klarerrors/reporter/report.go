@@ -70,12 +70,12 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	r.blankLine()
 
 	// 2. Header (-- file.klar:1:2)
-	r.printHeader(e.FilePath(), e.Location(), digitWidth)
+	r.printHeader(e.FilePath(), e.Location(), 0, digitWidth, r.ColorPalette.Box)
 
 	// 3. Box (file content and highlights)
-	r.printBox(e.FilePath(),
+	r.printBox(e.FilePath(), startLine, endLine,
 		highlights, &msgHighlight, hlc,
-		startLine, endLine, digitWidth, 0,
+		boxOptions{digitWidth: digitWidth, margin: r.Margin, color: r.ColorPalette.Box},
 	)
 
 	// 4. Details
@@ -135,10 +135,12 @@ func (r *Reporter) printMessage(e Error, hlc string) {
 }
 
 // printHeader prints the file name and position in the header.
-func (r *Reporter) printHeader(file string, rang ranges.Range, digitWidth int) {
-	r.appendSpace(digitWidth + 1)
-	r.appendRune(r.CharacterSet.BoxTL, r.ColorPalette.Box)
-	r.appendRune(r.CharacterSet.BoxT, r.ColorPalette.Box)
+func (r *Reporter) printHeader(file string, rang ranges.Range,
+	margin, digitWidth int, boxColor string,
+) {
+	r.appendSpace(margin + digitWidth + 1)
+	r.appendRune(r.CharacterSet.BoxTL, boxColor)
+	r.appendRune(r.CharacterSet.BoxT, boxColor)
 	r.appendSpace(1)
 	rel := r.getFile(file).rel
 	if rel == "" {
@@ -163,7 +165,7 @@ func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 	const detailMargin = 2
 	// Title
 	r.appendSpace(detailMargin)
-	r.appendf(r.ColorPalette.DetailColor, "%s:", det.Message)
+	r.appendf(r.ColorPalette.DetailColor, "%c %s:", r.CharacterSet.DetailIcon, det.Message)
 	r.blankLine()
 
 	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
@@ -171,19 +173,21 @@ func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 
 	// Only print a header if the file is different from the main error
 	if !sameFile {
-		r.printHeader(det.File, ranges.Range{}, digitWidth)
+		r.printHeader(det.File, ranges.Range{},
+			detailMargin, digitWidth, r.ColorPalette.DetailBox,
+		)
 	}
 	// Box. Only the range is highlighted (no text)
 	// TODO: should we repeat the detail text in the undeline? Or even show
 	// an underline only?
-	oldBoxColor := r.ColorPalette.Box
-	r.ColorPalette.Box = r.ColorPalette.DetailBox
-	defer func() { r.ColorPalette.Box = oldBoxColor }()
-
 	hl := klarerrs.Highlight{Range: det.Range}
-	r.printBox(det.File,
+	r.printBox(det.File, startLine, endLine,
 		[]klarerrs.Highlight{hl}, &hl, r.ColorPalette.HintColor,
-		startLine, endLine, digitWidth, detailMargin+2,
+		boxOptions{
+			margin:     r.Margin + detailMargin,
+			digitWidth: digitWidth,
+			color:      r.ColorPalette.DetailBox,
+		},
 	)
 }
 

@@ -90,7 +90,9 @@ type CharacterSet struct {
 	ArrowT  rune // The top of underline arrows where the stem begins
 	ArrowBL rune // Underline arrow curves
 
-	ErrorDivider rune // The character used to separate errors
+	ErrorDivider rune // Repeated to separate errors
+
+	DetailIcon rune // Displayed to the left of each detail message
 }
 
 // DefaultCharacterSet returns a character set that uses default
@@ -116,6 +118,7 @@ func DefaultCharacterSet() *CharacterSet {
 		ArrowBL: '╰',
 
 		ErrorDivider: '-',
+		DetailIcon:   '▪',
 	}
 }
 
@@ -141,6 +144,8 @@ func ASCIICharacterSet() *CharacterSet {
 		ArrowBL: '`',
 
 		ErrorDivider: '-',
+
+		DetailIcon: '*',
 	}
 }
 
@@ -152,7 +157,7 @@ func makeDefaultTokenColors() map[lexer.TokenType]string {
 		colorNumber   = ansi.CodeYellow
 		colorString   = ansi.CodeGreen
 		colorBoolean  = colorNumber
-		colorComment  = ansi.CodeDim
+		colorComment  = ansi.CodeDim // TODO: Italic?
 		colorPunct    = ansi.CodeGray
 		colorType     = ansi.CodeCyan
 		colorIllegal  = ansi.CodeReset
