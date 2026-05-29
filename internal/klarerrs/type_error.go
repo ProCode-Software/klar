@@ -14,6 +14,7 @@ const (
 	ErrUnsupportedSelfType  // Self type doesn't support methods
 	ErrUnsupportedInitType  // Initializer target doesn't support initializers
 	ErrInvalidInheritedType // Invalid inherited type in declaration
+	ErrAliasAndMethodSameName // Method and alias have the same name
 
 	// Old errors
 
