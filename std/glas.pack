@@ -1,0 +1,6 @@
+name: klar/std
+description: The Klar standard library, written in Klar
+version: v0.0.1
+
+klar: v0.0.1
+target: [js]
