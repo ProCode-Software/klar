@@ -17,15 +17,18 @@ func (a *TypeAlias) Resolve() Type {
 func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
 func (a *TypeAlias) Underlying() Type { return a.Resolve() }
 
-func (c *Checker) checkTypeAlias(
-	o *Object, node *ast.TypeAliasDeclaration, fileCtx *Context,
-) {
-	rhs := c.parseType(node.Type, fileCtx)
+func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration, fctx *Context) {
+	rhs := c.parseType(node.Type, fctx)
 	o.typ.(*TypeName).Type = &TypeAlias{Type: rhs}
 }
 
-// TODO
 func (c *Checker) resolveFuncAlias(fa *Object) {
+	decl := c.moduleDecls[fa]
+	targetExpr := decl.node.(*ast.FuncAliasDeclaration).Target
+	// TODO: Lookup the target expression and make sure it resolves to a function
+	var target *Object = nil
+	_ = targetExpr
+	fa.typ.(*FunctionAlias).Target = target
 }
 
 func Unalias(t Type) Type {

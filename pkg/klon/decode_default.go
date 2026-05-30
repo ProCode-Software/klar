@@ -46,8 +46,9 @@ func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
 
 func decodeUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
 	if !rv.CanAddr() {
-		return fmt.Errorf("klon: can't decode into non-addressable value of type %s"+
-			"(is the receiver of UnmarshallKlon a pointer?)", rv.Type(),
+		return fmt.Errorf(
+			"klon: can't decode into non-addressable value of type %s"+
+				"(is the receiver of UnmarshallKlon a pointer?)", rv.Type(),
 		)
 	}
 	rec := rv.Addr().Interface().(Unmarshaller)
@@ -66,8 +67,9 @@ func decodeTextUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
 		return err
 	}
 	if !rv.CanAddr() {
-		return fmt.Errorf("klon: can't decode into non-addressable value of type %s"+
-			"(is the receiver of UnmarshalText a pointer?)", rv.Type(),
+		return fmt.Errorf(
+			"klon: can't decode into non-addressable value of type %s"+
+				"(is the receiver of UnmarshalText a pointer?)", rv.Type(),
 		)
 	}
 	rec := rv.Addr().Interface().(encoding.TextUnmarshaler)
@@ -107,7 +109,8 @@ func decodeInt(rv reflect.Value, val ast.Value, d *decoder) error {
 	asInt := int64(num.Value)
 	if float64(asInt) != num.Value && !d.flags.Has(klonflags.ClampNumbers) {
 		// Truncated
-		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
+		return decodeError(
+			klonerrs.ErrTruncatedNumber, rv, num,
 			"Number '%s' must be a whole integer", num.Source,
 		)
 	}
@@ -124,7 +127,8 @@ func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
 	asUInt := uint64(num.Value)
 	if float64(asUInt) != num.Value && !clamp {
 		// Truncated
-		return decodeError(klonerrs.ErrTruncatedNumber, rv, num,
+		return decodeError(
+			klonerrs.ErrTruncatedNumber, rv, num,
 			"Number '%s' must be a whole integer", num.Source,
 		)
 	}
@@ -133,7 +137,8 @@ func decodeUInt(rv reflect.Value, val ast.Value, d *decoder) error {
 			rv.SetUint(0)
 			return nil
 		}
-		return decodeError(klonerrs.ErrNegativeNumber, rv, num,
+		return decodeError(
+			klonerrs.ErrNegativeNumber, rv, num,
 			"Number '%s' can't be negative", num.Source,
 		)
 	}
@@ -345,11 +350,13 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 			}
 			if !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1 {
 				if arrLength == 0 {
-					return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
+					return decodeError(
+						klonerrs.ErrWrongArrayLength, rv, val,
 						"Expected no items in the list",
 					)
 				}
-				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
+				return decodeError(
+					klonerrs.ErrWrongArrayLength, rv, val,
 					"Not enough items in the list: Expected %d, but found 1", arrLength,
 				)
 			}
@@ -383,7 +390,8 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 				if i > arrLength {
 					plus = '+'
 				}
-				return decodeError(klonerrs.ErrWrongArrayLength, rv, list,
+				return decodeError(
+					klonerrs.ErrWrongArrayLength, rv, list,
 					"Too many items in the list: Expected %d, but found %d%c",
 					arrLength, i+1, plus,
 				)
@@ -397,11 +405,13 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 		// Check if there weren't enough items. (Here 'i' is 1-based)
 		if i < arrLength {
 			if arrLength == 0 {
-				return decodeError(klonerrs.ErrWrongArrayLength, rv, val,
+				return decodeError(
+					klonerrs.ErrWrongArrayLength, rv, val,
 					"Expected no items in the list",
 				)
 			}
-			return decodeError(klonerrs.ErrWrongArrayLength, rv, list,
+			return decodeError(
+				klonerrs.ErrWrongArrayLength, rv, list,
 				"Not enough items in the list: Expected %d, but found %d", arrLength, i,
 			)
 		}
@@ -428,7 +438,8 @@ func (d *decoder) appendRestToArray(rv reflect.Value, list *ast.List, rest *ast.
 			if i > arrLength {
 				plus = '+'
 			}
-			return i, decodeError(klonerrs.ErrWrongArrayLength, rv, list,
+			return i, decodeError(
+				klonerrs.ErrWrongArrayLength, rv, list,
 				"Too many items in the list: Expected %d, but found %d%c",
 				arrLength, i+len(restList.Items), plus,
 			)

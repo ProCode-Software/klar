@@ -206,13 +206,15 @@ func (e *Error) handleSyntaxError() string {
 			return "I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf("The string starting at %s was left open",
+		return fmt.Sprintf(
+			"The string starting at %s was left open",
 			e.Params["start"].(lexer.Position),
 		)
 	case ErrMultilineQuotedString:
 		return "Only strings quoted with backticks '`' can contain line breaks"
 	case ErrUnterminatedRegex:
-		return fmt.Sprintf("The regular expression starting at %s was left open",
+		return fmt.Sprintf(
+			"The regular expression starting at %s was left open",
 			e.Params["start"].(lexer.Position),
 		)
 	case ErrExpectedTypeAssignment:
@@ -307,7 +309,8 @@ func (e *Error) handleSyntaxError() string {
 		}
 		return "A method must be declared in the same scope as its self type"
 	case ErrInvalidVersion:
-		return fmt.Sprintf("'%s' isn't a valid version",
+		return fmt.Sprintf(
+			"'%s' isn't a valid version",
 			e.Node.(*ast.VersionLiteral).Version,
 		)
 	case ErrSelfExecFunc:
@@ -423,8 +426,9 @@ func (e *Error) handleSyntaxError() string {
 	case ErrEmptyRegexInterpolation:
 		return "A regex interpolation can't be empty"
 	case ErrPositiveSign:
-		e.Hint("A leading '+' sign doesn't affect a number's value. Remove it.\n" +
-			"To convert a number to an integer or float, use the 'Int()' or 'Float()' function.",
+		e.Hint(
+			"A leading '+' sign doesn't affect a number's value. Remove it.\n" +
+				"To convert a number to an integer or float, use the 'Int()' or 'Float()' function.",
 		)
 		return "A '+' prefix isn't allowed in Klar"
 	case ErrDoubleNot:

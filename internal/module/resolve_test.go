@@ -43,7 +43,8 @@ func TestPackageRoot(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			pkg, proj := PackageRoot(tc.input)
 			if pkg != tc.wantPkg || proj != tc.wantProj {
-				t.Errorf("PackageRoot(%#v) = (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
+				t.Errorf(
+					"PackageRoot(%#v) = (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
 					short(tc.input),
 					short(pkg), short(proj),
 					short(tc.wantPkg), short(tc.wantProj),

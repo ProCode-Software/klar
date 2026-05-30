@@ -195,7 +195,8 @@ func (d *decoder) valueToString(v ast.Value) (string, error) {
 	case *ast.Number:
 		return v.Source, nil
 	default:
-		return "", decodeError(klonerrs.ErrCantConvertToString, reflect.Value{}, v,
+		return "", decodeError(
+			klonerrs.ErrCantConvertToString, reflect.Value{}, v,
 			"Can't convert %s to a string", FormatNodeType(v),
 		)
 	}

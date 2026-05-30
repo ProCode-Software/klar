@@ -10,11 +10,13 @@ import (
 const (
 	_ Code = TypeErrorPrefix + iota
 
-	ErrAliasSelfType        // Method self type can't be a type alias
-	ErrUnsupportedSelfType  // Self type doesn't support methods
-	ErrUnsupportedInitType  // Initializer target doesn't support initializers
-	ErrInvalidInheritedType // Invalid inherited type in declaration
+	ErrAliasSelfType          // Method self type can't be a type alias
+	ErrUnsupportedSelfType    // Self type doesn't support methods
+	ErrUnsupportedInitType    // Initializer target doesn't support initializers
+	ErrInvalidInheritedType   // Invalid inherited type in declaration
 	ErrAliasAndMethodSameName // Method and alias have the same name
+	ErrEnumSameValue          // Enum value must be unique
+	ErrCantInferStringEnum    // Can't infer string enum value
 
 	// Old errors
 
@@ -74,11 +76,19 @@ func (e *Error) handleTypeError() string {
 		allowed := e.StringParam("allowedTypes")
 		kind := e.StringParam("kind")
 		return kind + " can only inherit " + allowed
+	case ErrEnumSameValue:
+		key := e.StringParam("key")
+		otherKey := e.StringParam("otherKey")
+		return fmt.Sprintf(
+			"Enum item %s has the same value as %s",
+			Quote(key), Quote(otherKey),
+		)
 
 	// OLD ERRORS
 	// =======
 	case ErrTypeMismatch:
-		return fmt.Sprintf("TypeError: This is supposed to be a %T, not %T",
+		return fmt.Sprintf(
+			"TypeError: This is supposed to be a %T, not %T",
 			expType, gotType,
 		)
 	case ErrInvalidEnumValue:
@@ -144,7 +154,8 @@ func (e *Error) handleTypeError() string {
 			QuoteType(expType), QuoteType(gotType),
 		)
 	case ErrUncomparableTypes:
-		return fmt.Sprintf("TypeError: Can't compare type %s with %s operator",
+		return fmt.Sprintf(
+			"TypeError: Can't compare type %s with %s operator",
 			QuoteType(gotType),
 			FormatTokenType(e.TokenTypeParam("operator")),
 		)

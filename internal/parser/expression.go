@@ -99,13 +99,15 @@ func (p *Parser) multidirCompareErr(ops []ast.Operator, got lexer.TokenType) {
 		next = lexer.GreaterEqualTo
 	}
 	if len(ops) == 1 { // 3 operands
-		err.Hintf("Reorder the comparison: (e.g. 'a %s c %s b')\n"+
-			"Or, split it into multiple comparisons: (e.g. 'a %[1]s b && b %[3]s c')",
+		err.Hintf(
+			"Reorder the comparison: (e.g. 'a %s c %s b')\n"+
+				"Or, split it into multiple comparisons: (e.g. 'a %[1]s b && b %[3]s c')",
 			ops[0], next, got,
 		)
 	} else {
-		err.Hint("Reorder the comparison, or split it into multiple comparisons" +
-			" (e.g. 'a < b > c' to 'a < b && b > c')",
+		err.Hint(
+			"Reorder the comparison, or split it into multiple comparisons" +
+				" (e.g. 'a < b > c' to 'a < b && b > c')",
 		)
 	}
 	p.ErrorLabelled(err, klarerrs.Quote(next.String())+" must be used")
@@ -131,7 +133,8 @@ func (p *Parser) ParseParenExpression() ast.Expression {
 	for p.WhileNot(lexer.RightParenthesis) {
 		tuple.Values = append(tuple.Values, p.ParseExpression(ExpressionBindingPower))
 		if p.CurrKind() != lexer.RightParenthesis {
-			p.Expect(lexer.Comma,
+			p.Expect(
+				lexer.Comma,
 				noAdvance, withMessage("between tuple items"),
 				withLabel("Expected a comma after this item"),
 			)
@@ -605,8 +608,9 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	}
 	t.Expression = p.ParseExpression(UnaryBindingPower)
 	if _, ok := t.Expression.(*ast.CallExpression); !ok {
-		p.ErrorLabelled(klarerrs.Node(klarerrs.ErrMustBeFuncCall, t.Expression).
-			SetParam("expr", lexer.Try),
+		p.ErrorLabelled(
+			klarerrs.Node(klarerrs.ErrMustBeFuncCall, t.Expression).
+				SetParam("expr", lexer.Try),
 			"This must be a function call",
 		)
 	}

@@ -94,10 +94,20 @@ func ResolveKlarBuild(i *Input) {
 	if i.Kind == KindFile {
 		dir = filepath.Dir(i.Path)
 	}
+	checkDir := func(dir string) bool {
+		klarBuild := dir + sep + module.BuildFile
+		if _, err := os.Stat(klarBuild); err == nil {
+			i.KlarBuild = klarBuild
+			return true
+		}
+		return false
+	}
 	// Look inside directory before outside
-	klarBuild := dir + sep + module.BuildFile
-	if _, err := os.Stat(klarBuild); err == nil {
-		i.KlarBuild = klarBuild
+	if checkDir(dir) {
+		return
+	}
+	_, projRoot := module.PackageRoot(dir)
+	if dir == projRoot || checkDir(projRoot) { // Check project root
 		return
 	} else if i.Kind == KindFile {
 		return // For projectless input: don't look outside
@@ -112,9 +122,7 @@ func ResolveKlarBuild(i *Input) {
 			return // At root
 		}
 		dir = parent
-		klarBuild := dir + sep + module.BuildFile
-		if _, err := os.Stat(klarBuild); err == nil {
-			i.KlarBuild = klarBuild
+		if checkDir(dir) || dir == projRoot /* Stop at project root */ {
 			return
 		}
 	}
@@ -247,7 +255,8 @@ func (c *Compiler) resolvePackage(
 ) (klarFiles int, err error) {
 	defer func() {
 		if err != nil {
-			c.Error("Error while resolving package",
+			c.Error(
+				"Error while resolving package",
 				slog.String("package", path), slog.Any("error", err),
 			)
 		}
@@ -287,7 +296,8 @@ func (c *Compiler) resolvePackage(
 				n, err := c.resolvePackage(fullPkg, modules, true, info)
 				klarFiles += n
 				if err != nil {
-					c.Error("Failed to resolve subpackage",
+					c.Error(
+						"Failed to resolve subpackage",
 						slog.String("package", fullPkg), slog.Any("error", err),
 					)
 					return klarFiles, err

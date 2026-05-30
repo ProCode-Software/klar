@@ -41,7 +41,8 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 			if shouldPrintLabel {
 				stemChar = r.CharacterSet.HighlightMulti
 			}
-			r.appendf(s.hlColors[hl], "%s%c%s",
+			r.appendf(
+				s.hlColors[hl], "%s%c%s",
 				char.RepeatRune(r.CharacterSet.HighlightMulti, stemOffset),
 				stemChar,
 				char.RepeatRune(r.CharacterSet.HighlightMulti, ulLen-stemOffset-1),
@@ -53,7 +54,8 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 		if shouldPrintLabel {
 			// Number of spaces to add after the line number
 			startCol := pipeLen + int(hl.Range.Start.Col-1)
-			r.printLabel(hl.Message, s.hlColors[hl],
+			r.printLabel(
+				hl.Message, s.hlColors[hl],
 				startCol, int(hl.Range.LineLength()), func() { printLineStart(remHls) },
 			)
 		} else {
@@ -116,7 +118,8 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 		color := s.hlColors[hl]
 		// Draw extra parts that aren't underlined to make up for other active pipes
 		pipeLen := ((len(highlights[:i]) - i) * 2) - 1 // TODO: what is -1 for?
-		r.appendf(color, "%c%s%s",
+		r.appendf(
+			color, "%c%s%s",
 			r.CharacterSet.HighlightMultilineBL,
 			char.RepeatRune(r.CharacterSet.BoxT, max(0, pipeLen)),
 			char.RepeatRune(r.CharacterSet.HighlightMulti, int(hl.Range.End.Col)),

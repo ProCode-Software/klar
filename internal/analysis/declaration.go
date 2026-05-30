@@ -19,9 +19,11 @@ type DeclarationInfo struct {
 }
 
 func (c *Checker) declareTopLevelObject(obj *Object,
-	attrs *[]*ast.Attribute, info *DeclarationInfo,
+	attrs *[]*ast.Attribute, info *DeclarationInfo, appendToCtx bool,
 ) {
-	c.declare(c.rootContext, obj)
+	if appendToCtx {
+		c.declare(c.rootContext, obj)
+	}
 	c.moduleDecls[obj] = info
 	if attrs != nil {
 		info.Attributes = c.parseAttributes(*attrs, attrTargetKindOf(info.node))
@@ -91,12 +93,10 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	if !c.validateReceiver(typeName, selfObj, methods, false) {
 		return
 	}
-	self := Underlying(selfObj.typ).(MethodAdder)
+	self := Underlying(selfObj.typ).(SupportsMethods)
 	for _, meth := range methods {
 		// TODO: wrap Overloads in Functions
-		if existing := self.AddMethod(meth.obj); existing != nil {
-			// Already declared
-			err := redeclaredError(meth.obj, existing, false)
+		if err := self.AddMethod(meth.obj); err != nil {
 			c.fileError(err, meth.obj.file)
 			return
 		}
@@ -134,7 +134,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, node)
 			err.SetParam("initializer", true)
 			err.Details = det
-			c.error(err)
+			c.fileError(err, o.file)
 		}
 		return
 	}
@@ -174,11 +174,12 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		}
 	}
 	// Error if:
-	// Object is nil
-	// Object is declared in another scope
-	// Object is in another module or is a builtin (TODO)
-	// Object is a type alias
-	// Object doesn't accept methods
+	// - Object is nil
+	// - Object is not a type
+	// - Object is declared in another scope
+	// - Object is in another module or is a builtin (TODO)
+	// - Object is a type alias
+	// - Object doesn't accept methods
 	switch {
 	case self == nil:
 		// Self type doesn't exist
@@ -196,7 +197,7 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		for _, meth := range methods {
 			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, meth.decl)
 			err.Details = det
-			c.error(err)
+			c.fileError(err, meth.obj.file)
 		}
 	case self.module != methods[0].obj.module:
 		// TODO: check that receiver is not a primitive
@@ -204,29 +205,30 @@ func (c *Checker) validateReceiver(name string, self *Object,
 	default:
 		tn, ok := self.typ.(*TypeName)
 		if !ok {
-			panic("receiver type is not *TypeName")
-			// return false
+			// Receiver is not a type
+			for _, m := range methods {
+				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType, selfRange(m))
+				err.Label = "This isn't a type"
+				c.fileError(err, m.obj.file)
+			}
+			return false
 		}
 		switch tn.Type.(type) {
 		case *TypeAlias:
 			// Self type is a type alias
 			for _, m := range methods {
-				err := klarerrs.Range(klarerrs.ErrAliasSelfType,
-					selfRange(m),
-				)
+				err := klarerrs.Range(klarerrs.ErrAliasSelfType, selfRange(m))
 				err.Label = "Self type can't be an alias"
 				c.fileError(err, m.obj.file)
 			}
 		default:
 			// Self type doesn't support methods
 			for _, m := range methods {
-				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType,
-					selfRange(m),
-				)
+				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType, selfRange(m))
 				err.Label = "Can't declare methods on this kind of type"
 				c.fileError(err, m.obj.file)
 			}
-		case MethodAdder:
+		case SupportsMethods:
 			return true
 		}
 	}

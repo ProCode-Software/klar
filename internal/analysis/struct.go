@@ -7,11 +7,11 @@ import (
 type Struct struct {
 	Fields       []*Object          // Type is [*StructField]
 	fieldMap     map[string]*Object // Contains fields and methods
-	Methods      []*Object          // Type is [*Function]
 	Initializers []*Object          // Type is [*Overload]
+	MethodSet
 }
 
-var _ MethodAdder = (*Struct)(nil)
+var _ SupportsMethods = (*Struct)(nil)
 
 type StructField struct {
 	*Variable
@@ -62,18 +62,6 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *C
 // makeDefaultInitializers creates the default initializers for the
 // underlying struct type in o.
 func (c *Checker) makeDefaultInitializers(o *Object) {
-}
-
-func (s *Struct) AddMethod(o *Object) (existing *Object) {
-	if s.fieldMap == nil {
-		s.fieldMap = make(map[string]*Object)
-	}
-	existing = s.fieldMap[o.name]
-	if existing != nil {
-		return
-	}
-	s.fieldMap[o.name] = o
-	return nil
 }
 
 func (s *Struct) Kind() Kind                        { return KindStruct }

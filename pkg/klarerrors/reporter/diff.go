@@ -192,7 +192,8 @@ func (r *Reporter) printDiffLineNumber(s *diffState, line uint32, add, fullLine 
 
 func (r *Reporter) printSkippedDiffLineNumber(s *diffState) {
 	r.appendSpace(hintMargin)
-	r.appendf(r.ColorPalette.Box, "%*c %c %[3]c%[3]c%[3]c\n",
+	r.appendf(
+		r.ColorPalette.Box, "%*c %c %[3]c%[3]c%[3]c\n",
 		s.digitWidth, r.CharacterSet.SkipLine,
 		r.CharacterSet.SkipLineL,
 		r.CharacterSet.CollapsedEllipsis,

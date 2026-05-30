@@ -211,7 +211,8 @@ func makeEnumDecoder(optsKey string) decodeFunc {
 		enumVal, ok := opts[input]
 		if err != nil || !ok {
 			allOpts := strings.Join(slices.Sorted(maps.Keys(opts)), ", ")
-			return decodeError(klonerrs.ErrInvalidEnumOption, rv, val,
+			return decodeError(
+				klonerrs.ErrInvalidEnumOption, rv, val,
 				"Invalid option %s: Expected one of: %s", klarerrs.Quote(input), allOpts,
 			)
 		}
@@ -233,7 +234,8 @@ func (sf *structFields) Lookup(name string, val ast.Value, flag klonflags.Flags)
 		}
 	}
 	// TODO: Recommend a similar field name, or hint about whitespace ('a ' vs. 'a')
-	return nil, decodeError(klonerrs.ErrFieldNotFound, reflect.Value{}, val,
+	return nil, decodeError(
+		klonerrs.ErrFieldNotFound, reflect.Value{}, val,
 		"Unknown field '%s'", name,
 	)
 }

@@ -23,7 +23,8 @@ func (c *Compiler) ParseModules(
 	pc *processContext, numFiles int, moduleCh chan *Module,
 ) {
 	defer close(moduleCh)
-	c.Info("Begin parsing modules", slog.Int("modules", len(c.Modules)),
+	c.Info(
+		"Begin parsing modules", slog.Int("modules", len(c.Modules)),
 		slog.Int("files", numFiles),
 	)
 	var fileMu sync.Mutex
@@ -98,7 +99,8 @@ func (c *Compiler) parseFile(pc *processContext,
 
 	// Send syntax errors
 	if len(res.Errors) > 0 {
-		c.Error("Errors found while parsing file",
+		c.Error(
+			"Errors found while parsing file",
 			slog.Int("errors", len(res.Errors)), slog.String("file", filePath),
 		)
 		select {

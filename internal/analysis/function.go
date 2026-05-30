@@ -1,9 +1,11 @@
 package analysis
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // Function represents a function type, either a declared function or a lambda.
@@ -49,12 +51,27 @@ type Generic struct {
 	Name string
 }
 
+// MethodAdder is implemented by types that can have methods added to them.
+// Per the spec, this is implemented by [*Struct], [*Interface], and [*Enum].
+type SupportsMethods interface {
+	// AddMethod adds the method m to the type. If a method or field with the
+	// same name already exists on the type, an error is returned. m should
+	// have type [*Overload] or [*FunctionAlias].
+	AddMethod(m *Object) (err *klarerrs.Error)
+}
+
+type MethodSet struct {
+	Methods      []*Object // [*Function] or [*FunctionAlias]
+	methodMap    map[string]*Object
+	nonMethodMap *map[string]*Object // For validating name collisions. Nil for enums.
+}
+
 func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
 	for _, ov := range fn.Overloads {
 		ovInfo := c.moduleDecls[ov.Object]
 		stmt := ovInfo.node.(*ast.FunctionDeclaration)
-		ctx := NewContext(o.context) // Function body context
+		ctx := NewContext(o.context, o.file) // Function body context
 
 		// 1. Self/Receiver
 		if stmt.SelfType != nil {
@@ -242,3 +259,62 @@ func (o *Overload) String() string {
 func (g *Generic) Kind() Kind { return KindGeneric }
 
 func (a *FunctionAlias) Kind() Kind { return KindFunction }
+
+func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
+	if m.methodMap == nil {
+		m.methodMap = make(map[string]*Object)
+	}
+	var funcAndAliasConflict bool
+	existing, ok := m.methodMap[obj.name]
+	if !ok {
+		// New method
+		//
+		// Check if a method shares the same name as something else (such as a field
+		// for structs)
+		if m.nonMethodMap != nil && *m.nonMethodMap != nil {
+			if _, ok := (*m.nonMethodMap)[obj.name]; ok {
+				return nil
+			}
+		}
+		if ov, ok := obj.typ.(*Overload); ok {
+			obj = NewObject(obj.name, obj.file, obj.rang, obj.module, &Function{
+				Overloads: []*Overload{ov},
+			})
+		}
+		m.methodMap[obj.name] = obj
+		m.Methods = append(m.Methods, obj)
+		return nil
+	}
+
+	switch old := existing.typ.(type) {
+	case *Function:
+		if _, ok := obj.typ.(*FunctionAlias); ok {
+			funcAndAliasConflict = true
+			break
+		}
+		// Add overload to existing function
+		old.Overloads = append(old.Overloads, obj.typ.(*Overload))
+		m.Methods = append(m.Methods, obj)
+		return nil
+	case *FunctionAlias:
+		if _, ok := obj.typ.(*Function); ok {
+			funcAndAliasConflict = true // Just for a better error
+			break
+		}
+		// Two aliases with the same name
+		return redeclaredError(obj, existing, false)
+	default:
+		panic(fmt.Sprintf("method should be *Function or *FunctionAlias: found %T", old))
+	}
+	// Report the error
+	if funcAndAliasConflict {
+		err := klarerrs.Range(klarerrs.ErrAliasAndMethodSameName, obj.rang)
+		err.AddDetail(
+			"Other definition of "+klarerrs.Quote(obj.name),
+			existing.FilePath(), existing.rang,
+		)
+		err.Hint("An alias can't be used as an overload")
+		return err
+	}
+	panic("unreachable")
+}

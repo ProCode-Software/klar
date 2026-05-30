@@ -112,7 +112,7 @@ func (c *Checker) initFileContexts() map[string]*Context {
 	var i FileID
 	for name := range c.Programs {
 		c.module.fileID[i] = name
-		fileContexts[name] = NewContext(c.rootContext, 0).setAttribute(ContextFile, i)
+		fileContexts[name] = NewContext(c.rootContext, i)
 		i++
 	}
 	return fileContexts

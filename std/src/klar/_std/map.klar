@@ -25,7 +25,7 @@ flagCountries: #{String: String} := #{
 
 // Get a country
 myFlag := '🇺🇸'
-country := flagCountries[myFlag]!!
+country := flagCountries[myFlag]!! // Asserting because we know the entry exists
 print(country)
 
 // Add a country later
@@ -127,14 +127,14 @@ public func Map.getOrSet(key: K, default default: V) -> V {
 public func Map.keysAsValues() -> #{V: K} = for k, v in self -> (v, k)
 
 // Deletes each of the provided keys from the map if they exist.
-public func Map.delete(keys: ...K) {
+public func Map.delete(keys keys: ...K) {
     for key in keys {
         self[key] = none
     }
 }
 
 // Returns a new map with all of the keys from this map except the ones specified.
-public func Map.without(keys: ...K) -> #{K: V} = clone(self) |. delete(keys...)
+public func Map.without(keys keys: ...K) -> #{K: V} = clone(self) |. delete(keys...)
 
 // Returns a new map without the keys that have the same value as those in the provided map.
 public func Map.without(valuesFrom map: #{K: V}) -> #{K: V} {
@@ -197,11 +197,15 @@ public func Map.clear() {
     }
 }
 
-// Returns a new map 
+// Returns a new map with the entries of this map that have the specified keys.
 public func Map.take(keys: ...K) -> #{K: V} {
     result: #{K: V} := #{}
     for k in keys {
         result[k] = self[k]
     }
     return result
+}
+
+// Returns a random entry from the map.
+public func Map.randomItem() -> (K, V) {
 }

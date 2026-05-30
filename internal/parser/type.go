@@ -74,7 +74,8 @@ func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericTy
 		p.Error(klarerrs.Token(klarerrs.ErrEmptyGeneric, p.Curr()))
 		params = nil
 	}
-	parseSeries(p, &params,
+	parseSeries(
+		p, &params,
 		func() ast.Type { return p.ParseType(DefaultTypeBindingPower) },
 		lexer.GreaterThan, lexer.Comma, false,
 	)

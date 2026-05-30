@@ -108,7 +108,8 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		full = src[1:]
 		if a.QuoteStyle != '`' && src[len(src)-1] == '\n' {
 			// Use a better error for quoted strings with newline
-			p.Error(klarerrs.Position(klarerrs.ErrMultilineQuotedString,
+			p.Error(klarerrs.Position(
+				klarerrs.ErrMultilineQuotedString,
 				token.End(),
 			))
 		} else {

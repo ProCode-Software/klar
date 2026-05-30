@@ -32,7 +32,7 @@ func NewModule(
 	klarVersion *version.Version,
 	target target.Target,
 ) *Module {
-	ctx := NewContext(BuiltInContext, 0)
+	ctx := NewContext(BuiltInContext, -1)
 	return &Module{
 		Name:        name,
 		Path:        path,

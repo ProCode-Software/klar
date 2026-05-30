@@ -7,7 +7,7 @@ LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'
 # ldflags: separate with another -X ...
 
 # Generate files
-go generate "$KLAR_DIR"/internal/errors
+go generate "$KLAR_DIR"/internal/klarerrs
 # go generate "$KLAR_DIR/"{cmd,internal,pkg}/...
 
 # Clear console

@@ -154,7 +154,8 @@ func (p *Parser) ParseEnum(
 		}
 		if p.isEqual(p.Curr()) {
 			p.Advance()
-			item.Value = p.ParseExpressionFilter(excludeIf(lexer.Dot),
+			item.Value = p.ParseExpressionFilter(
+				excludeIf(lexer.Dot),
 				MemberBindingPower, allowIfSameLine,
 			)
 		}
@@ -339,7 +340,8 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// Can't be assigned, only inferred
 	if p.CurrKind() == lexer.LessThan {
 		p.Advance()
-		parseSeries(p, &f.GenericParams, p.ParseIdentifier,
+		parseSeries(
+			p, &f.GenericParams, p.ParseIdentifier,
 			lexer.GreaterThan, lexer.Comma, false,
 		)
 		if len(f.GenericParams) == 0 {

@@ -52,14 +52,22 @@ func PackageRoot(p string) (pkg, project string) {
 	if info, err := os.Stat(p); err == nil && !info.IsDir() {
 		p = filepath.Dir(p)
 		if info.Name() == ManifestFile {
-			return p, ""
+			proj := p
+			if maybePkg := DirFast(p); filepath.Base(maybePkg) == PkgDir {
+				proj = DirFast(maybePkg)
+			}
+			return p, proj
 		}
 	}
 	if _, err := os.Stat(p + sep + ManifestFile); err == nil {
-		return p, ""
+		proj := p
+		if maybePkg := filepath.Dir(p); filepath.Base(maybePkg) == PkgDir {
+			proj = DirFast(maybePkg)
+		}
+		return p, proj
 	}
 	// Walk up the directory tree
-	curr, prev := p, ""
+	curr, prev := filepath.Clean(p), ""
 	for {
 		parent, name := splitPath(curr)
 		// Stop if we've reached the root
@@ -76,7 +84,7 @@ func PackageRoot(p string) (pkg, project string) {
 				return parent, parent
 			}
 			// Check if parent is 'pkg' (e.g: x/pkg/y/src)
-			if pkgPar, pkg := splitPath(filepath.Dir(parent)); pkg == PkgDir {
+			if pkgPar, pkg := splitPath(DirFast(parent)); pkg == PkgDir {
 				return parent, pkgPar
 			}
 			return parent, parent
@@ -110,4 +118,19 @@ func IsPackage(p string) bool {
 		p = parent
 		depth++
 	}
+}
+
+// DirFast is [filepath.Dir] without running [filepath.Clean] on the result.
+func DirFast(path string) string {
+	vol := filepath.VolumeName(path)
+	i := len(path) - 1
+	for i >= len(vol) && !os.IsPathSeparator(path[i]) {
+		i--
+	}
+	dir := path[len(vol) : i+1]
+	if dir == "." && len(vol) > 2 {
+		// must be UNC
+		return vol
+	}
+	return vol + dir
 }

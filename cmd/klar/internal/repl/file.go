@@ -62,13 +62,15 @@ func (s *Session) SaveFile(args []lexer.Token) {
 		if path = s.lastSaveLoc; path == "" {
 			if args == nil {
 				// Keyboard shortcut used
-				s.Printf(ansi.CodeBrightRed,
+				s.Printf(
+					ansi.CodeBrightRed,
 					"Please provide a file path by manually typing %s",
 					ansi.Cyan("save <file>"),
 				)
 			} else {
 				// Command line arguments used
-				s.Printf(ansi.CodeBrightRed,
+				s.Printf(
+					ansi.CodeBrightRed,
 					"Please provide a file path after the %s command",
 					ansi.Cyan("save"),
 				)

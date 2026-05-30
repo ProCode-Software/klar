@@ -142,8 +142,9 @@ func ParseSpecifierAndMatch(
 		return false, err
 	}
 	if spec.IsLatest() && matchesLatest == nil {
-		return false, errors.New("ParseSpecifierAndMatch(_, v, matchesLatest): " +
-			"matchesLatest must be provided to match latest version specifier v",
+		return false, errors.New(
+			"ParseSpecifierAndMatch(_, v, matchesLatest): " +
+				"matchesLatest must be provided to match latest version specifier v",
 		)
 	}
 	spec.MatchesLatest = matchesLatest

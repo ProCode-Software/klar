@@ -43,7 +43,8 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	msgHighlight := klarerrs.Highlight{e.Location(), e.MainHighlight()}
 	highlights := append([]klarerrs.Highlight{msgHighlight}, e.ErrorHighlights()...)
 	sortHighlights(highlights)
-	startLine, endLine := r.getBoxRanges(highlights[0].Range,
+	startLine, endLine := r.getBoxRanges(
+		highlights[0].Range,
 		highlights[len(highlights)-1].Range,
 	)
 
@@ -73,7 +74,8 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	r.printHeader(e.FilePath(), e.Location(), 0, digitWidth, r.ColorPalette.Box)
 
 	// 3. Box (file content and highlights)
-	r.printBox(e.FilePath(), startLine, endLine,
+	r.printBox(
+		e.FilePath(), startLine, endLine,
 		highlights, &msgHighlight, hlc,
 		boxOptions{digitWidth: digitWidth, margin: r.Margin, color: r.ColorPalette.Box},
 	)
@@ -173,7 +175,8 @@ func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 
 	// Only print a header if the file is different from the main error
 	if !sameFile {
-		r.printHeader(det.File, ranges.Range{},
+		r.printHeader(
+			det.File, ranges.Range{},
 			detailMargin, digitWidth, r.ColorPalette.DetailBox,
 		)
 	}
@@ -181,7 +184,8 @@ func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 	// TODO: should we repeat the detail text in the undeline? Or even show
 	// an underline only?
 	hl := klarerrs.Highlight{Range: det.Range}
-	r.printBox(det.File, startLine, endLine,
+	r.printBox(
+		det.File, startLine, endLine,
 		[]klarerrs.Highlight{hl}, &hl, r.ColorPalette.HintColor,
 		boxOptions{
 			margin:     r.Margin + detailMargin,

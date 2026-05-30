@@ -69,7 +69,8 @@ type ParseResult struct {
 
 // UseStdParser sets c's Parser to the standard parser [StdParser].
 func (c *Compiler) UseStdParser() {
-	c.Parser = NewStdParser(c.WorkDir,
+	c.Parser = NewStdParser(
+		c.WorkDir,
 		&parser.Options{MaxErrors: MaxErrors + 1},
 	)
 }

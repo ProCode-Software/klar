@@ -221,6 +221,8 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 			case first != nil:
 				pair.Keys = append(pair.Keys, first)
 				first = nil
+			case p.CurrKind() == lexer.Underscore:
+				pair.Keys = append(pair.Keys, rangeFromToken(&ast.Discard{}, p.Advance()))
 			case isForLoop:
 				// If parsing variables for a 'for' loop, exclude 'in' expressions
 				pair.Keys = append(pair.Keys, p.validateAssignable(
@@ -244,7 +246,8 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 				Start: pair.Keys[0].GetRange().Start,
 				End:   pair.Keys[len(pair.Keys)-1].GetRange().End,
 			})
-			p.missingParamTypeAnnotError(err, "variable", len(pair.Keys),
+			p.missingParamTypeAnnotError(
+				err, "variable", len(pair.Keys),
 				(*pairs)[len(*pairs)-1].GetRange(),
 			)
 			p.Error(err)

@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-var errorTypes = map[string] Code{
-	"SyntaxError": SyntaxErrorPrefix,
-	"TypeError": TypeErrorPrefix,
+var errorTypes = map[string]Code{
+	"SyntaxError":    SyntaxErrorPrefix,
+	"TypeError":      TypeErrorPrefix,
 	"ReferenceError": ReferenceErrorPrefix,
-	"Warning": WarningPrefix,
+	"Warning":        WarningPrefix,
 }
 
 func runTest(name string, prefix Code, t *testing.T) {
@@ -23,7 +23,7 @@ func runTest(name string, prefix Code, t *testing.T) {
 					// If it panics, that means the error message needs data
 					// (such as an AST node) to print the message, and therefore,
 					// an error exists.
-					return 
+					return
 				}
 			}()
 			err := &Error{Code: code}

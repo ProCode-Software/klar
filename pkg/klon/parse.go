@@ -115,7 +115,8 @@ loop:
 		case Dash:
 			// Invalid dash
 			if rd.depth == 0 {
-				rd.tokenError(klonerrs.ErrDashAtTopLevel, tok,
+				rd.tokenError(
+					klonerrs.ErrDashAtTopLevel, tok,
 					"Top-level objects and lists can't start with a dash",
 				)
 				// Still parse the object
@@ -124,7 +125,8 @@ loop:
 				rd.depthDown()
 				res = &ast.Bad{BaseNode: ast.BaseNode{res.Pos()}, Value: res}
 			} else {
-				rd.tokenError(klonerrs.ErrDashWithoutNewline, tok,
+				rd.tokenError(
+					klonerrs.ErrDashWithoutNewline, tok,
 					"An object or list must begin on a new line",
 				)
 				rd.advanceTok()
@@ -228,7 +230,8 @@ func (rd *reader) parseInlineList(lb Token) *ast.List {
 		items = append(items, rd.parseValue())
 		rd.skipLines()
 		if rd.currTok().Kind != RightBracket {
-			rd.expect(Comma, klonerrs.ErrExpectedToken,
+			rd.expect(
+				Comma, klonerrs.ErrExpectedToken,
 				"Expected ',' between list items or ']' to end the list",
 			)
 		}
@@ -494,7 +497,8 @@ func (rd *reader) parseBracedObject(lc Token) ast.Value {
 
 		if curr := rd.currTok(); curr.Kind != RightCurly {
 			if curr.Kind != Comma && curr.Kind != Newline {
-				rd.tokenError(klonerrs.ErrExpectedToken, curr,
+				rd.tokenError(
+					klonerrs.ErrExpectedToken, curr,
 					"Expected ',' or newline to separate inline object fields",
 				)
 				continue
@@ -502,7 +506,8 @@ func (rd *reader) parseBracedObject(lc Token) ast.Value {
 			rd.advanceTok()
 		}
 	}
-	rc := rd.expect(RightCurly, klonerrs.ErrUnterminatedObject,
+	rc := rd.expect(
+		RightCurly, klonerrs.ErrUnterminatedObject,
 		"Expected '}' to close inline object",
 	)
 	return &ast.Object{
@@ -574,7 +579,8 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 	}
 	// If forceObject == true, report an error because this should be a key-value pair
 	if forceObject {
-		rd.rangeError(klonerrs.ErrExpectedKeyValue, singleKey.Pos(),
+		rd.rangeError(
+			klonerrs.ErrExpectedKeyValue, singleKey.Pos(),
 			"Expected a key-value pair in this object",
 		)
 		singleKey = &ast.Field{Key: &ast.Bad{Value: singleKey}}
@@ -585,20 +591,24 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 	switch {
 	case rd.flags.Has(klonflags.NoVariables):
-		rd.rangeError(klonerrs.ErrVarsDisabled, name.Range,
+		rd.rangeError(
+			klonerrs.ErrVarsDisabled, name.Range,
 			"Variables aren't allowed to be declared in this file",
 		)
 	case rd.depth != 0:
-		rd.rangeError(klonerrs.ErrVarNotTopLevel, name.Range,
+		rd.rangeError(
+			klonerrs.ErrVarNotTopLevel, name.Range,
 			"Variables must be declared at the top level",
 		)
 	case name.Braces:
-		rd.rangeError(klonerrs.ErrInvalidVarDecl, name.Range,
+		rd.rangeError(
+			klonerrs.ErrInvalidVarDecl, name.Range,
 			"Variable declarations can't use braces",
 		)
 	case rd.vars != nil && rd.vars[name.Name] != nil:
 		existing := rd.vars[name.Name]
-		rd.rangeError(klonerrs.ErrVarAlreadyDeclared, name.Range,
+		rd.rangeError(
+			klonerrs.ErrVarAlreadyDeclared, name.Range,
 			"Variable '%s' was already declared at %s", name.Name, existing.Pos(),
 		)
 	default:
@@ -627,7 +637,8 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
 			return true
 		default:
-			rd.rangeError(klonerrs.ErrInvalidKey, v.Pos(),
+			rd.rangeError(
+				klonerrs.ErrInvalidKey, v.Pos(),
 				"A field key must be a string, number, or boolean",
 			)
 			return false
@@ -680,11 +691,13 @@ func (rd *reader) checkDashes(n int) bool {
 	if n > rd.depth+1 {
 		// Too many dashes
 		if rd.depth == 0 {
-			rd.tokenError(klonerrs.ErrDashSkip, rd.currTok(),
+			rd.tokenError(
+				klonerrs.ErrDashSkip, rd.currTok(),
 				"The top level object shouldn't include a dash",
 			)
 		} else {
-			rd.tokenError(klonerrs.ErrDashSkip, rd.currTok(),
+			rd.tokenError(
+				klonerrs.ErrDashSkip, rd.currTok(),
 				"Too many dashes: expected up to %d, there are %d", rd.depth+1, n,
 			)
 		}

@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -123,7 +125,7 @@ const (
 func (k Kind) Kind() Kind { return k }
 
 // String returns the name of the type k represents if k is a builtin.
-func (k Kind) String() string { return "" } // TODO
+func (k Kind) String() string { return fmt.Sprintf("Kind(%d)", k) } // TODO
 
 // StringWithName implements [Type] and is equivalent to k.String()
 func (k Kind) StringWithName(string) string { return k.String() }
@@ -164,18 +166,6 @@ func (n *TypeName) Underlying() Type { return n.Type }
 type Underlyer interface {
 	Type
 	Underlying() Type
-}
-
-// MethodAdder is implemented by types that can have methods added to them.
-// Per the spec, this is implemented by [*Struct] and [*Enum].
-type MethodAdder interface {
-	// Method returns the method with the given name, or nil if it doesn't exist.
-	// Method(name string) *Function
-
-	// AddMethod adds the method m to the type. If a method with the same name
-	// already exists on the type, the existing method is returned instead.
-	// m should have type [*Function], however, existing's type may not be [*Function].
-	AddMethod(m *Object) (existing *Object)
 }
 
 func Underlying(t Type) Type {

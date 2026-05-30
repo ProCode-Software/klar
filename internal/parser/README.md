@@ -84,8 +84,8 @@ The parser parses in different contexts to separate where operators can be used 
 Note that in the destructure context, everything is handled as a NUD.
 
 ## Errors
-- [`internal/errors/parse_error.go`](../errors/parse_error.go)
+- [`internal/klarerrs/syntax_error.go`](../klarerrs/syntax_error.go)
 - `(*Parser).Error`
 - `(*Parser).Expect...`
 
-Errors are stored as `ParseErrors`
+Errors have the prefix `SyntaxErrorPrefix`.

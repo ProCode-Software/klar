@@ -1,6 +1,6 @@
 package analysis
 
-var BuiltInContext = &Context{}
+var BuiltInContext = &Context{File: -1}
 
 type List struct{ Elem Type }
 

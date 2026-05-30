@@ -19,7 +19,8 @@ func Run(c *command.Runner) {
 	case ok:
 	case c.Flag("d").Bool():
 		// Show documentation online
-		cli.Eprintf("Searching documentation for %s on %s\n",
+		cli.Eprintf(
+			"Searching documentation for %s on %s\n",
 			ansi.Cyan(name), ansi.Magenta("site.url"),
 		)
 	default:

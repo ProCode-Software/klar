@@ -33,7 +33,7 @@ func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 		Range:   old.Range(),
 		Message: klarerrs.Quote(old.name) + " was originally declared here",
 	})
-	err.Label = klarerrs.Quote(old.name) + "already exists"
+	err.Label = klarerrs.Quote(old.name) + " already exists"
 	err.SetParam("oldKind", kindOf(old.typ))
 	err.SetParam("newKind", kindOf(new.typ))
 	err.SetParam("name", old.name)

@@ -43,12 +43,14 @@ func (p *Parser) nudError() {
 	case lexer.If:
 		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrIfStatement, curr), "Use a 'when' block instead")
 	case lexer.Plus:
-		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrPositiveSign, curr),
+		p.ErrorLabelled(
+			klarerrs.Token(klarerrs.ErrPositiveSign, curr),
 			"A leading '+' sign doesn't change a number",
 		)
 	case lexer.NotNot:
 		count := p.countConsecutiveNot()
-		err := klarerrs.Range(klarerrs.ErrDoubleNot,
+		err := klarerrs.Range(
+			klarerrs.ErrDoubleNot,
 			ranges.Offset(curr.Position, 0, uint32(count)),
 		)
 		err.SetParam("count", count)

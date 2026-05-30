@@ -10,25 +10,25 @@ CODE_EXTS=(go sh klar ts js)
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all | -a)
-            all_flag=true
-            ;;
-        -l | --list | --board)
-            list_flag=true
-            if [[ "$2" =~ ^[0-9]+$ ]]; then
-                list_limit="$2"
-                shift
-            fi
-            ;;
-        -*)
-            # Ignore unknown flags or handle them if needed
-            ;;
-        *)
-            # First non-flag argument is treated as a custom extension
-            if [ -z "$ext_arg" ]; then
-                ext_arg="$1"
-            fi
-            ;;
+    --all | -a)
+        all_flag=true
+        ;;
+    -l | --list | --board)
+        list_flag=true
+        if [[ $2 =~ ^[0-9]+$ ]]; then
+            list_limit="$2"
+            shift
+        fi
+        ;;
+    -*)
+        # Ignore unknown flags or handle them if needed
+        ;;
+    *)
+        # First non-flag argument is treated as a custom extension
+        if [ -z "$ext_arg" ]; then
+            ext_arg="$1"
+        fi
+        ;;
     esac
     shift
 done
@@ -50,11 +50,11 @@ else
         done
         files=$(git ls-files "${patterns[@]}")
     fi
-    
+
     # Exclude generated files
     if [ -n "$files" ]; then
         # grep -L returns files that DO NOT match the pattern
-        files=$(echo "$files" | xargs grep -L '^// Code generated .* DO NOT EDIT\.$' 2>/dev/null)
+        files=$(xargs grep -L '^// Code generated .* DO NOT EDIT\.$' <<< "$files" 2> /dev/null)
     fi
 fi
 
@@ -64,8 +64,8 @@ if [ -z "$files" ]; then
 fi
 
 if [ "$list_flag" = true ]; then
-    echo "$files" | xargs -I {} wc -l {} | sort -nr | head -n "$list_limit"
+    xargs -I {} wc -l {} <<< "$files" | sort -nr | head -n "$list_limit"
 else
     # shellcheck disable=SC2086
-    echo "$files" | xargs cat | grep -v '^\s*//' | grep -cv '^\s*$'
+    xargs cat <<< "$files" | grep -v '^\s*//' | grep -cv '^\s*$'
 fi

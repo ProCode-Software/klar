@@ -26,27 +26,7 @@ func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 	case *ast.TypeAliasDeclaration:
 		c.checkTypeAlias(o, node, decl.file)
 	case *ast.TagDeclaration:
-		tag := &TagType{Implements: make(map[Type]struct{}, len(node.InheritedTypes))}
-		existingMap := make(map[Type]ranges.Range, len(node.InheritedTypes))
-		for _, tn := range node.InheritedTypes {
-			typ := c.parseType(tn, decl.file)
-			if _, ok := tag.Implements[typ]; ok {
-				// Type specified twice
-				err := klarerrs.Range(klarerrs.ErrDuplicateInheritedType, tn.GetRange())
-				err.Highlights = append(err.Highlights, klarerrs.Highlight{
-					Range:   existingMap[typ],
-					Message: "It was already specified here",
-				})
-				c.fileError(err, o.file)
-				continue
-			}
-			if !c.validateInheritedType(tn, typ, KindTag, o.file) {
-				continue
-			}
-			tag.Implements[typ] = struct{}{}
-			existingMap[typ] = tn.GetRange()
-		}
-		o.typ.(*TypeName).Type = tag
+		c.checkTagType(o, decl)
 	case *ast.InterfaceDeclaration:
 		c.checkInterfaceDecl(o, node, decl.file)
 	default:
@@ -54,12 +34,48 @@ func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 	}
 }
 
+func (c *Checker) checkTagType(o *Object, decl *DeclarationInfo) {
+	node := decl.node.(*ast.TagDeclaration)
+	o.typ.(*TypeName).Type = &TagType{
+		Implements: c.checkInheritedTypes(node.InheritedTypes, KindTag, o.file, decl.file),
+	}
+}
+
+// checkInheritedTypes checks the inherited types of a tag declaration and
+// returns a map of the types that are inherited. Errors are reported for
+// undefined and duplicate types.
+func (c *Checker) checkInheritedTypes(names []ast.Type, kind Kind,
+	fid FileID, ctx *Context,
+) (inherited map[Type]struct{}) {
+	inherited = make(map[Type]struct{}, len(names))
+	existingMap := make(map[Type]ranges.Range, len(names))
+	for _, tn := range names {
+		typ := c.parseType(tn, ctx)
+		if _, ok := inherited[typ]; ok {
+			// Type specified twice
+			err := klarerrs.Range(klarerrs.ErrDuplicateInheritedType, tn.GetRange())
+			err.Highlights = append(err.Highlights, klarerrs.Highlight{
+				Range:   existingMap[typ],
+				Message: "It was already specified here",
+			})
+			c.fileError(err, fid)
+			continue
+		}
+		if !c.validateInheritedType(tn, typ, kind, fid) {
+			continue
+		}
+		inherited[typ] = struct{}{}
+		existingMap[typ] = tn.GetRange()
+	}
+	return inherited
+}
+
 // validateInheritedType checks the inherited type represented by node n
 // and type t for validity as an inherited type for declaration kind declKind.
 func (c *Checker) validateInheritedType(n ast.Type, t Type,
-	declKind Kind, fid FileID,
+	expKind Kind, fid FileID,
 ) bool {
-	kind := t.Kind()
+	gotKind := t.Kind()
 	// Validate the node
 	newError := func(currType, allowedTypes string) {
 		err := klarerrs.Range(klarerrs.ErrInvalidInheritedType, n.GetRange())
@@ -70,36 +86,39 @@ func (c *Checker) validateInheritedType(n ast.Type, t Type,
 		err.Label = "Can't inherit from this kind of type"
 		c.fileError(err, fid)
 	}
+	if expKind == gotKind || gotKind == InvalidType {
+		return true
+	}
 	switch n.(type) {
 	case *ast.TypeAlias, *ast.PrimitiveType, *ast.GenericType:
 	default:
 		// Change the kind so an error is reported below
-		kind = InvalidType
+		gotKind = InvalidType
 	}
 	// Validate the actual type
-	switch declKind {
+	switch expKind {
 	case KindTag:
-		if kind != KindTag {
-			newError("A tag", "another tags")
+		if gotKind != KindTag {
+			newError("A tag", "another tag")
 			return false
 		}
 	case KindStruct:
-		if kind != KindInterface && kind != KindStruct && kind != KindTag {
+		if gotKind != KindInterface && gotKind != KindStruct && gotKind != KindTag {
 			newError("A struct", "an interface, tag, or another struct")
 			return false
 		}
 	case KindInterface:
-		if kind != KindInterface && kind != KindStruct {
+		if gotKind != KindInterface && gotKind != KindStruct {
 			newError("An interface", "a struct or another interface")
 			return false
 		}
 	case KindEnum:
-		if kind != KindInterface && kind != KindEnum && kind != KindTag {
+		if gotKind != KindInterface && gotKind != KindEnum && gotKind != KindTag {
 			newError("An enum", "an interface, tag, or another enum")
 			return false
 		}
 	default:
-		panic(fmt.Sprintf("invalid target type kind %d", declKind))
+		panic(fmt.Sprintf("invalid target type kind %d", expKind))
 	}
 	return true
 }

@@ -1,9 +1,12 @@
 import mylang.lexer.{Token}
+import mylang.ast.{
+    BoolValue, Command, Comment, Flag, Program, StringValue, Value,
+}
 
 type Parser {
     tokens: [Token]
     index: Int = 0
-    comments: [ast.Comment] = []
+    comments: [Comment] = []
 }
 
 func Parser.current() -> Token = self.tokens[self.index]
@@ -13,9 +16,10 @@ func Parser.advance() -> (current: Token) {
     self.index += 1
 }
 
-func (parser: Parser).parse() -> Result<ast.Program, [SyntaxError]> {
-    program := ast.Program(commands: [], comments: parser.comments)
+func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
+    program := Program(commands: [], comments: parser.comments)
     errors: [SyntaxError] := []
+    
     while parser.hasTokens() {
         cmd := parser.parseCommand()
         when cmd {
@@ -40,15 +44,15 @@ func (parser: Parser).parse() -> Result<ast.Program, [SyntaxError]> {
     }
 }
 
-func Parser.parseCommand() -> Result<ast.Command, SyntaxError> {
+func Parser.parseCommand() -> Result<Command, SyntaxError> {
     cmdName := when self.current() {
         .identifier(name) -> name
         _ -> return SyntaxError.expected("command name", cmdNameToken)
     }
     self.advance()
 
-    args: [ast.Value] := []
-    flags: [ast.Flag] := []
+    args: [Value] := []
+    flags: [Flag] := []
     while self.hasTokens() {
         when self.current() {
             .newline | .eof -> stop while,
@@ -68,17 +72,17 @@ func Parser.parseCommand() -> Result<ast.Command, SyntaxError> {
                 }
                 self.advance()
                 when self.current() {
-                    .dash -> flags += [.(name, isShort, ast.BoolValue(true))]
+                    .dash -> flags += [.(name, isShort, BoolValue(true))]
                     _ -> flags += [.(name, isShort, try self.parseValue())]
                 }
             }
             _ -> args += [try self.parseValue()]
         }
     }
-    return ast.Command(name: cmdName, :args, :flags)
+    return .(name: cmdName, :args, :flags)
 }
 
-func Parser.parseValue() -> Result<ast.Value, SyntaxError> {
+func Parser.parseValue() -> Result<Value, SyntaxError> {
     token := self.advance()
     when token {
         .number(num) -> {

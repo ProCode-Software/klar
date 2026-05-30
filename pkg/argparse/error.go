@@ -48,13 +48,15 @@ func (err *ExtraArgsError) Error() string {
 }
 
 func (err *InvalidValueError) Error() string {
-	return fmt.Sprintf("invalid %s for flag %s: %s",
+	return fmt.Sprintf(
+		"invalid %s for flag %s: %s",
 		TypeNames[err.Type], err.Flag, err.Input,
 	)
 }
 
 func (err *InvalidOptionError) Error() string {
-	return fmt.Sprintf("invalid option for flag %s: expected one of: %s",
+	return fmt.Sprintf(
+		"invalid option for flag %s: expected one of: %s",
 		err.Flag, strings.Join(err.ExpOptions, ", "),
 	)
 }

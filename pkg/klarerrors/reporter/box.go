@@ -168,7 +168,8 @@ func (r *Reporter) printCollapsedLineNumber(s *state, highlights []klarerrs.High
 
 	// Print the dashed line number
 	r.appendSpace(s.margin)
-	r.appendf(s.color, "%s %c ",
+	r.appendf(
+		s.color, "%s %c ",
 		// Dashes in line num position
 		char.RepeatRune(r.CharacterSet.SkipLine, s.digitWidth),
 		borderChar, // Box border

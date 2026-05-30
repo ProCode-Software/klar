@@ -35,7 +35,8 @@ func preprocessValue(decode decodeFunc) decodeFunc {
 			val, err = d.preprocessObject(node)
 		case *ast.ArrowRef:
 			// ArrowRefs are invalid outside lists (manually handled) and Object (*Field.Arrow)
-			return decodeError(klonerrs.ErrMisplacedRest, reflect.Value{}, node,
+			return decodeError(
+				klonerrs.ErrMisplacedRest, reflect.Value{}, node,
 				"Rests are only allowed in objects and lists",
 			)
 		case *ast.String:
@@ -79,12 +80,14 @@ func (d *decoder) resolveVar(ref *ast.VarRef) (ast.Value, error) {
 		if ref.Name == origRef.Name {
 			// Circular reference detected
 			if len(chain) > 1 {
-				return nil, decodeError(klonerrs.ErrVarCycle, reflect.Value{}, ref,
+				return nil, decodeError(
+					klonerrs.ErrVarCycle, reflect.Value{}, ref,
 					"Variable '%s' refers to itself in a cycle (%[1]s -> %s)",
 					ref.Name, strings.Join(chain, " -> "),
 				)
 			} else {
-				return nil, decodeError(klonerrs.ErrVarCycle, reflect.Value{}, ref,
+				return nil, decodeError(
+					klonerrs.ErrVarCycle, reflect.Value{}, ref,
 					"Variable '%s' is defined in terms of itself", ref.Name,
 				)
 			}
@@ -92,7 +95,8 @@ func (d *decoder) resolveVar(ref *ast.VarRef) (ast.Value, error) {
 	}
 
 notFound:
-	err := decodeError(klonerrs.ErrUndefinedVar, reflect.Value{}, ref,
+	err := decodeError(
+		klonerrs.ErrUndefinedVar, reflect.Value{}, ref,
 		"Can't find variable '%s'", ref.Name,
 	)
 	if d.shouldWarn(err) {
@@ -119,7 +123,8 @@ func resolveRest[T ast.Value](d *decoder, rest *ast.ArrowRef, rv reflect.Value) 
 		case *ast.Object:
 			kind = "an object"
 		}
-		return val, false, decodeError(klonerrs.ErrInvalidRest, rv, res,
+		return val, false, decodeError(
+			klonerrs.ErrInvalidRest, rv, res,
 			"'%s' must be %s in order to use it as a rest", rest.Var.Name, kind,
 		)
 	}
@@ -148,7 +153,8 @@ func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
 			return nil, err
 		}
 		if existing, ok := literalKeys[path]; ok {
-			return nil, decodeError(klonerrs.ErrDuplicateField, reflect.Value{}, f,
+			return nil, decodeError(
+				klonerrs.ErrDuplicateField, reflect.Value{}, f,
 				"Field %s was already defined at %s", klarerrs.Quote(path), existing.Pos(),
 			)
 		}

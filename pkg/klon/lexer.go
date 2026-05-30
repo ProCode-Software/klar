@@ -116,7 +116,8 @@ func (rd *reader) utf8Error(back int) {
 	if back > 0 {
 		pos = pos.Sub(0, uint32(back))
 	}
-	rd.rangeError(klonerrs.ErrIllegalCharacter, ranges.SingleChar(pos),
+	rd.rangeError(
+		klonerrs.ErrIllegalCharacter, ranges.SingleChar(pos),
 		"Invalid Unicode character",
 	)
 }

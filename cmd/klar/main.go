@@ -36,7 +36,8 @@ func main() {
 		command.Run(commands["repl"])
 	case "-c":
 		if len(args) < 3 {
-			cli.Failure("Expected program as string\n\nUsage: ",
+			cli.Failure(
+				"Expected program as string\n\nUsage: ",
 				ansi.BoldMagenta("klar ")+ansi.Cyan("-c ")+ansi.Blue("<program>\n\n"),
 				"Use "+ansi.Cyan("'klar --help'")+" for more information.",
 			)
@@ -49,7 +50,8 @@ func main() {
 		fmt.Printf("Klar %s\n", cli.KlarVersion)
 	case "test", "glas", "upgrade", "new", "format", "check",
 		"docs", "lint", "clean", "generate", "zen":
-		cli.Failure(ansi.ColorSprintf(ansi.CodeBold,
+		cli.Failure(ansi.ColorSprintf(
+			ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "help":

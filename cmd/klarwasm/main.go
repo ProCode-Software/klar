@@ -10,7 +10,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/errors/jsonerrors"
+	"github.com/ProCode-Software/klar/internal/klarerrs/jsonerrors"
 )
 
 func main() {

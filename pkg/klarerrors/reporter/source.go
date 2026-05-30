@@ -43,7 +43,8 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 				lastCol = tok.Position.Col
 			} else if pad < 0 {
 				// Error with input tokens
-				panic(fmt.Sprintf("invalid token offsets: A(%s), B(%s)",
+				panic(fmt.Sprintf(
+					"invalid token offsets: A(%s), B(%s)",
 					s.tokens[i-1], tok,
 				))
 			}
@@ -64,7 +65,8 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 	tok := tokens[i]
 	rang := ranges.FromToken(tok)
 	errNoNewline := func() {
-		panic(fmt.Sprintf("impossible: newline not found in %s token_: %q",
+		panic(fmt.Sprintf(
+			"impossible: newline not found in %s token_: %q",
 			tok.Kind, tok.Source,
 		))
 	}

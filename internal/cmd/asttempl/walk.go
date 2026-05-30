@@ -14,7 +14,8 @@ func GenerateWalk(b *bytes.Buffer, nodes NodeList, pkg Package) error {
 		if node.Name() == "Identifier" {
 			continue
 		}
-		fmt.Fprintf(b,
+		fmt.Fprintf(
+			b,
 			`func (n *%s) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c,`, node.Name(),
 		)

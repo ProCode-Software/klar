@@ -22,8 +22,8 @@ type Declaration struct {
 	Constant bool
 }
 
-func NewContext(parent *Context, flags ...Flag) *Context {
-	ctx := &Context{Parent: parent, Flags: parseFlags(flags)}
+func NewContext(parent *Context, fid FileID, flags ...Flag) *Context {
+	ctx := &Context{Parent: parent, Flags: parseFlags(flags), File: fid}
 	if parent != nil && parent != BuiltInContext {
 		parent.Children = append(parent.Children, ctx)
 		ctx.index = len(parent.Children)
@@ -33,7 +33,6 @@ func NewContext(parent *Context, flags ...Flag) *Context {
 
 const (
 	_ ContextAttribute = iota
-	ContextFile
 	firstStmtIndex
 )
 

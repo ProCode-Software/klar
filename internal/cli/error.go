@@ -69,8 +69,9 @@ func ErrNoManifest(dir string) {
 		}
 		dir = cwd
 	}
-	Failure("Project not found: ", "Can't find a "+
-		ansi.Yellow(module.ManifestFile)+" file for "+ansi.Cyan(dir),
+	Failure(
+		"Project not found: ", "Can't find a "+
+			ansi.Yellow(module.ManifestFile)+" file for "+ansi.Cyan(dir),
 	)
 }
 

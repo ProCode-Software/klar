@@ -17,7 +17,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli/icons"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
-	"github.com/ProCode-Software/klar/internal/errors/jsonerrors"
+	"github.com/ProCode-Software/klar/internal/klarerrs/jsonerrors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/argparse"
@@ -165,7 +165,8 @@ func Build(r *command.Runner) {
 			panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
 		}
 	default:
-		ansi.Fprintfln(os.Stderr,
+		ansi.Fprintfln(
+			os.Stderr,
 			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
 			icons.Check, cli.FormatDuration(res.Elapsed),
 		)
@@ -195,7 +196,8 @@ func printErrors(res *build.Result, b *build.Compiler, jsonOutput bool, err erro
 		return
 	}
 	// Show "build failed" message
-	ansi.Fprintfln(os.Stderr,
+	ansi.Fprintfln(
+		os.Stderr,
 		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
 		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
 	)

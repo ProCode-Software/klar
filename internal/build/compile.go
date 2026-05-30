@@ -76,10 +76,16 @@ func (pc *processContext) wait() error {
 	select {
 	case <-pc.done:
 		return nil
-	case <-pc.ctx.Done():
-		return pc.ctx.Err()
 	case err := <-pc.fatalErrCh:
 		return err
+	case <-pc.ctx.Done():
+		// Check fatalErrCh one last time in case it was cancelled due to a fatal error
+		select {
+		case err := <-pc.fatalErrCh:
+			return err
+		default:
+			return pc.ctx.Err()
+		}
 	}
 }
 
@@ -102,11 +108,11 @@ func (c *Compiler) collectErrors(pc *processContext, done chan struct{}) {
 			c.Errors = append(c.Errors, errs...)
 			// Stop compilation if there are too many errors
 			if tooManyErrors {
-				pc.cancel()
 				select {
 				case pc.fatalErrCh <- &InterfaceError{Code: ErrTooManyErrors}:
-				case <-pc.ctx.Done():
+				default:
 				}
+				pc.cancel()
 				return
 			}
 		case <-pc.ctx.Done():

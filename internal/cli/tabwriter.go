@@ -192,7 +192,8 @@ func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth int) 
 	target -= tw.WrapIndent
 	for next < len(cell.content) {
 		cont, next = tw.noBreakWords(cell.content, next, next+target)
-		writeArray = append(writeArray,
+		writeArray = append(
+			writeArray,
 			newline, tw.margin(), tw.fill(prevColWidth+tw.WrapIndent-tw.Margin), cont,
 		)
 	}
