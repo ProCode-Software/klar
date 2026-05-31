@@ -29,7 +29,7 @@ var primitives = []struct {
 }
 
 // Builtin functions
-var builtinFuncs = []string{"print", "crashout", "clone", "TODO"}
+var BuiltinFuncs = []string{"print", "crashout", "clone", "TODO"}
 
 type List struct{ Elem Type }
 
@@ -85,7 +85,7 @@ func declareBuiltinTypes() {
 }
 
 func declareBuiltinFunctions() {
-	for _, name := range builtinFuncs {
+	for _, name := range BuiltinFuncs {
 		obj := builtinModule.Context.Lookup(name)
 		if obj == nil {
 			panic(fmt.Sprintf("builtin function %s not found", name))

@@ -1,10 +1,12 @@
 package reporter
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -52,7 +54,8 @@ func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 		color = r.ColorPalette.Type
 	case next == lexer.LeftParenthesis:
 		// Function call: x(...
-		if _, ok := builtinFuncs[tok.Source]; ok && r.ColorPalette.BuiltinFunc != "" {
+		if slices.Contains(builtinFuncs, tok.Source) &&
+			r.ColorPalette.BuiltinFunc != "" {
 			// Built-in function: print(...
 			color = r.ColorPalette.BuiltinFunc
 			break
@@ -76,9 +79,7 @@ func isPrimitive(name string) bool {
 }
 
 // TODO: builtins should be defined somewhere else
-var builtinFuncs = map[string]struct{}{
-	"print": {}, "crashout": {}, "TODO": {}, "clone": {},
-}
+var builtinFuncs = analysis.BuiltinFuncs
 
 // colorizeString colorizes a string token. It only prints the contents
 // of the string that are on the given line number. It returns the length
