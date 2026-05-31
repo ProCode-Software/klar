@@ -77,7 +77,7 @@ func isPrimitive(name string) bool {
 
 // TODO: builtins should be defined somewhere else
 var builtinFuncs = map[string]struct{}{
-	"print": {}, "crashout": {}, "assert": {}, "TODO": {}, "clone": {},
+	"print": {}, "crashout": {}, "TODO": {}, "clone": {},
 }
 
 // colorizeString colorizes a string token. It only prints the contents

@@ -25,7 +25,6 @@
     - crashout
     - TODO
     - unreachable
-    - assert??
     - typeOf??
     - typeNameOf??
     - sleep??
