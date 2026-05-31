@@ -8,6 +8,23 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
+// TypeName represents a type declaration.
+//
+// Type is one of these types:
+//   - [*TypeAlias]
+//   - [*Struct]
+//   - [*Interface]
+//   - [*Enum]
+//   - [*TagType]
+type TypeName struct {
+	Type
+	Name string
+}
+
+// String returns the name of the type.
+func (n *TypeName) String() string   { return n.Name }
+func (n *TypeName) Underlying() Type { return n.Type }
+
 // TagType represents a Klar tag type.
 type TagType struct{ Implements map[Type]struct{} }
 

@@ -1,19 +1,22 @@
 package analysis
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // Not a value.
 type Enum struct {
 	ItemType     Type
 	Items        []*EnumItem
-	Union        *EnumItem // Params in common with all items. Can be nil
 	itemMap      map[string]*EnumItem
+	Union        *EnumItem // Params in common with all items. Can be nil
+	Generics     []*Generic
 	Methods      []*Object // Type [*Function]
 	Initializers []*Object // Type [*Overload]
 }
@@ -41,10 +44,17 @@ func (item *EnumItem) ParamByName(label string) Type {
 }
 
 func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration, fctx *Context) {
-	e := o.typ.(*Enum)
-	// TODO: Generics
-	e.Items = make([]*EnumItem, 0, len(node.Values))
+	e := &Enum{
+		Items:    make([]*EnumItem, 0, len(node.Values)),
+		itemMap:  make(map[string]*EnumItem, len(node.Values)),
+		Generics: c.parseGenerics(node.Generics, o.file, fctx),
+	}
+	o.typ.(*TypeName).Type = e
+
+	// Keep track of unique values
 	valueMap := make(map[ConstValue]*EnumItem)
+	// Value of [ConstValue.ConstValue](), or casing mode if [StringConst]
+	var firstValue any
 	for _, entry := range node.Values {
 		ei := &EnumItem{
 			Name:       entry.Identifier.Name,
@@ -53,70 +63,11 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration, fctx *Cont
 		e.Items = append(e.Items, ei)
 		e.itemMap[ei.Name] = ei
 
-		// Value of [ConstValue.ConstValue](), or casing mode if [StringConst]
-		var firstValue any
 		// Value - must be unique for each item
-		if entry.Value != nil {
-			// Check type of value
-			cons := c.checkEnumValue(entry.Value, fctx)
-			valType := cons.Type()
-			if e.ItemType == nil {
-				// First value. Determine type
-				e.ItemType = valType
-				firstValue = cons.ConstValue()
-				// For strings, determine casing mode
-				if valType == StringType {
-					str := cons.ConstValue().(string)
-					firstValue = getCasingMode(ei.Name, str)
-				}
-			} else if e.ItemType != valType {
-				// TODO: Untyped Int then Float is allowed
-
-				err := klarerrs.Node(klarerrs.ErrTypeMismatch, entry.Value)
-				err.Label = "Enum values must have the same type"
-				err.SetParam("expected", e.ItemType)
-				err.SetParam("actual", valType)
-				c.fileError(err, o.file)
-			}
-			// Check uniqueness of value
-			if otherItem, ok := valueMap[cons]; ok {
-				err := klarerrs.Node(klarerrs.ErrEnumSameValue, entry.Value)
-				err.Label = "Enum values must be unique"
-				err.SetParam("key", ei.Name)
-				err.SetParam("otherKey", otherItem.Name)
-				err.AddDetail(
-					"Item "+klarerrs.Quote(otherItem.Name)+" was declared here",
-					c.module.ResolveFile(o.file), entry.Value.GetRange(),
-				)
-				c.fileError(err, o.file)
-			} else {
-				valueMap[cons] = ei
-			}
-		} else { // No explicit value
-			var value ConstValue
-			switch e.ItemType {
-			case nil:
-				// First value
-				// Enum values are Int by default
-				e.ItemType = IntType
-				firstValue = int64(0)
-
-			// Infer item value. None of these will be the first value.
-			case IntType:
-				value = IntConst{firstValue.(int64) + int64(len(e.Items)) - 1}
-			case FloatType:
-				value = FloatConst{firstValue.(float64) + float64(len(e.Items)) - 1}
-			case StringType:
-				switch firstValue.(casingMode) {
-				case noCasePattern:
-					// Can't infer this value
-				}
-			default:
-				panic("invalid enum item type: " + TypeToString(e.ItemType))
-			}
-			ei.Value = value
-			valueMap[value] = ei
-		}
+		c.checkEnumValue(
+			o, e, ei, entry.Range, entry.Value,
+			valueMap, &firstValue, &ranges.Range{}, fctx,
+		)
 
 		// Params
 		if ei.Params == nil {
@@ -139,6 +90,97 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration, fctx *Cont
 			}
 			ei.Params = append(ei.Params, typ)
 		}
+	}
+}
+
+func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
+	r ranges.Range, expr ast.Expression,
+	valueMap map[ConstValue]*EnumItem, firstValue *any, firstRange *ranges.Range,
+	fctx *Context,
+) {
+	if expr != nil {
+		// Parse the expression as a constant and validate uniqueness
+		cons := c.checkEnumValueExpr(expr, fctx)
+		valType := cons.Type()
+		if *firstValue == nil {
+			// First value. Determine type for the entire enum
+			e.ItemType = valType
+			*firstValue = cons.ConstValue()
+			// For strings, determine casing mode and store that in firstValue
+			if valType == StringType {
+				str := cons.ConstValue().(string)
+				*firstValue = getCasingMode(ei.Name, str)
+			}
+		} else if e.ItemType != valType { // Type mismatch
+			// TODO: Untyped Int then Float is allowed
+			err := typeMismatch(e.ItemType, valType, expr.GetRange())
+			if !firstRange.IsZero() {
+				err.AddHighlight(
+					"First value of the enum has type "+klarerrs.Quote(TypeToString(e.ItemType)),
+					*firstRange,
+				)
+			}
+			c.fileError(err, o.file)
+		}
+
+		// Check uniqueness of value
+		if otherItem, ok := valueMap[cons]; ok {
+			err := klarerrs.Node(klarerrs.ErrEnumSameValue, expr)
+			err.Label = "Enum values must be unique"
+			err.SetParam("key", ei.Name)
+			err.SetParam("otherKey", otherItem.Name)
+			err.AddDetail(
+				"Item "+klarerrs.Quote(otherItem.Name)+" was declared here",
+				c.module.ResolveFile(o.file), expr.GetRange(),
+			)
+			c.fileError(err, o.file)
+		} else {
+			valueMap[cons] = ei
+		}
+	} else {
+		// No explicit value
+		var value ConstValue
+		i := len(e.Items) - 1
+		switch e.ItemType {
+		case nil:
+			// First value
+			// Enum values are Int by default
+			e.ItemType = IntType
+			*firstValue = int64(0)
+
+		// Infer item value. None of these will be the first value.
+		case IntType:
+			// First value (or 0) + index of current item
+			value = IntConst{(*firstValue).(int64) + int64(i)}
+		case FloatType:
+			value = FloatConst{(*firstValue).(float64) + float64(i)}
+		case StringType:
+			// Set the value to the name in a modified case (based on first value)
+			var str string
+			switch (*firstValue).(casingMode) {
+			case noCasePattern:
+				// Can't infer this value
+				c.fileError(klarerrs.Range(klarerrs.ErrCantInferStringEnum, r), o.file)
+				str = ei.Name
+			case nameCase:
+				str = ei.Name
+			case lowerCasing:
+				str = strings.ToLower(ei.Name)
+			case upperCasing:
+				str = strings.ToUpper(ei.Name)
+			case pascalCasing:
+				str = toPascalCase(ei.Name)
+			default:
+				panic(fmt.Sprintf(
+					"invalid string casing mode: %d", (*firstValue).(casingMode),
+				))
+			}
+			value = NewStringConst(str)
+		default:
+			panic("invalid enum item type: " + TypeToString(e.ItemType))
+		}
+		ei.Value = value
+		valueMap[value] = ei
 	}
 }
 
@@ -180,10 +222,8 @@ func getCasingMode(name, value string) casingMode {
 	}
 }
 
-func toPascalCase(s string) string {
-	return s
-}
+func toPascalCase(s string) string { return strings.ToUpper(s[:1]) + s[1:] }
 
-func (c *Checker) checkEnumValue(expr ast.Expression, ctx *Context) ConstValue {
-	return nil
+func (c *Checker) checkEnumValueExpr(expr ast.Expression, ctx *Context) ConstValue {
+	return &IntConst{0} // TODO
 }

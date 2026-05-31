@@ -14,6 +14,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
@@ -148,7 +149,7 @@ func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) erro
 		}
 		c.Reporter.LoadFile(
 			file,
-			cli.RelPath(c.WorkDir, absPath),
+			util.RelPath(c.WorkDir, absPath),
 			makeKlonTokens(file),
 		)
 	}

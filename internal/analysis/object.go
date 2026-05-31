@@ -118,7 +118,6 @@ const (
 	KindModule
 
 	KindGeneric
-	KindUnreachable // Nothing
 )
 
 // Kind returns the receiver.
@@ -145,22 +144,10 @@ type Type interface {
 	// StringWithName(string) string
 }
 
-// TypeName represents a type declaration.
-//
-// Type is one of these types:
-//   - [*TypeAlias]
-//   - [*Struct]
-//   - [*Interface]
-//   - [*Enum]
-//   - [*TagType]
-type TypeName struct {
-	Type
-	Name string
-}
+// The result of a function call that doesn't return (guranteed crashouts).
+type Unreachable struct{ Type }
 
-// String returns the name of the type.
-func (n *TypeName) String() string   { return n.Name }
-func (n *TypeName) Underlying() Type { return n.Type }
+func (u *Unreachable) Underlying() Type { return u.Type }
 
 // Underlyer is implemented by types or objects that have an underlying type.
 type Underlyer interface {

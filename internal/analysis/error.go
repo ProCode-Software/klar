@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // If stopParsing is passed to panic, the checker will immediately stop parsing.
@@ -56,5 +57,13 @@ func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 		File:  obj.FilePath(),
 		Code:  code,
 	}
+	return err
+}
+
+func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
+	err := klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange)
+	err.Label = "This should have type " + klarerrs.Quote(TypeToString(exp))
+	err.SetParam("expected", TypeToString(exp))
+	err.SetParam("got", TypeToString(got))
 	return err
 }

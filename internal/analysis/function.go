@@ -12,7 +12,7 @@ import (
 // A Function can take multiple sets of parameters using [Overload]s.
 type Function struct {
 	Overloads []*Overload
-	Return    Type
+	Return    Type // TODO: If returns can be Result/optional, move to Overload
 	Arity     Arity
 }
 
@@ -212,9 +212,7 @@ func (fn *Function) StringWithName(name string) string {
 		b.WriteString(fn.Overloads[0].String())
 	}
 	if fn.Return != nil {
-		switch fn.Return.Kind() {
-		case NothingType, InvalidType, KindUnreachable:
-		default:
+		if ret := fn.Return.Kind(); ret != NothingType && ret != InvalidType {
 			b.WriteString(" -> ")
 			b.WriteString(TypeToString(fn.Return))
 		}

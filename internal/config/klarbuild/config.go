@@ -19,6 +19,7 @@ type File struct {
 	// Compiler warnings to hide during build.
 	SuppressWarnings []string
 	// Compiler warnings that should be shown as errors and fail the build.
+	// Use `*` to display all warnings as errors.
 	WarningsAsErrors []string
 
 	// The environment to build for.

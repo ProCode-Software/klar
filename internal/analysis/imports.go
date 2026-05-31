@@ -22,6 +22,9 @@ type ImportContext interface {
 	DirPath() string
 	// Whether the module that is importing is a single file.
 	SingleFile() bool
+	// Whether the module was imported for internal compiler purposes rather than
+	// an import statement from the user.
+	Internal() bool
 }
 
 // importCtx is the implementation of [ImportContext].
@@ -30,12 +33,14 @@ type importCtx struct {
 	importPath imports.ImportPath
 	fileDir    string
 	singleFile bool
+	internal   bool
 }
 
 func (c *importCtx) Target() target.Target          { return c.target }
 func (c *importCtx) ImportPath() imports.ImportPath { return c.importPath }
 func (c *importCtx) DirPath() string                { return c.fileDir }
 func (c *importCtx) SingleFile() bool               { return c.singleFile }
+func (c *importCtx) Internal() bool                 { return c.internal }
 
 type importQueueEntry struct {
 	stmt       *ast.ImportStatement

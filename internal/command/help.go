@@ -12,6 +12,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
@@ -145,7 +146,7 @@ var templFuncs = template.FuncMap{
 	"wrap": func(s string) string {
 		b := strings.Builder{}
 		b.Grow(len(s) + len(s)/termWidth)
-		cli.Wrap(s, &b, termWidth, 0, 0)
+		util.Wrap(s, &b, termWidth, 0, 0)
 		return b.String()
 	},
 

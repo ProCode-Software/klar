@@ -12,8 +12,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
-type FileID int
-
 type Options struct {
 	// The [Importer] to use for importing modules. If set to nil, an error is
 	// raised when attempting to import a module.
@@ -39,8 +37,9 @@ type Options struct {
 type Checker struct {
 	Programs    map[string]*ast.Program // Files in the module that is being checked.
 	Errors      []*klarerrs.Error       // Errors reported while type checking.
-	Options     *Options                // Options for type checking.
-	rootContext *Context                // Context where top-level objects are defined.
+	Info        *Info
+	Options     *Options // Options for type checking.
+	rootContext *Context // Context where top-level objects are defined.
 	module      *Module
 
 	importMap    map[string]*Module
@@ -53,6 +52,8 @@ type Checker struct {
 
 	delayed []action
 }
+
+type FileID int
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
 // If opts == nil, default options are used.
@@ -71,24 +72,7 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	c.Programs = mod.Programs
 	c.Options = opts
 	c.moduleDecls = make(map[*Object]*DeclarationInfo)
-}
-
-func (c *Checker) Reset() {
-	c.module = nil
-	c.Errors = nil
-	c.rootContext = nil
-	c.Programs = nil
-	c.Options = nil
-	c.moduleDecls = nil
-	c.nodeContexts = nil
-	c.moduleDecls = nil
-}
-
-func (c *Checker) filePath(name string) string {
-	if (c.module.Flags & SingleFileModule) != 0 {
-		return c.module.Path
-	}
-	return filepath.Join(c.module.Path, name)
+	c.loadInternalModules()
 }
 
 func (c *Checker) Check() {
@@ -116,6 +100,24 @@ func (c *Checker) initFileContexts() map[string]*Context {
 		i++
 	}
 	return fileContexts
+}
+
+func (c *Checker) Reset() {
+	c.module = nil
+	c.Errors = nil
+	c.rootContext = nil
+	c.Programs = nil
+	c.Options = nil
+	c.moduleDecls = nil
+	c.nodeContexts = nil
+	c.moduleDecls = nil
+}
+
+func (c *Checker) filePath(name string) string {
+	if (c.module.Flags & SingleFileModule) != 0 {
+		return c.module.Path
+	}
+	return filepath.Join(c.module.Path, name)
 }
 
 func (c *Checker) pushToPath(o *Object) {

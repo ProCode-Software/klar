@@ -5,6 +5,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
+// Contains the definitions of attributes
+var attributesModule *Module
+
 type Attributes struct {
 	Deprecated *Deprecation
 	External   []*External
