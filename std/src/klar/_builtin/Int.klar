@@ -31,8 +31,19 @@ public func Int.isMultiple(of of: Int) -> Bool = self % of == 0
 // Returns whether the number is a safe integer in JavaScript. Safe integers are
 // those that can be represented exactly without loss of precision. They are in the
 // range `(-(2 ^ 53) - 1)...(2 ^ 53 - 1)`.
-public func Int.isSafe() -> Bool
+public func Int.isInSafeRange() -> Bool
 
+/*
+Returns the number in expanded form. Each item is up to 1/10th the value of the previous.
+The number of items in the result is equivalent to the number of digits in the number,
+and the sum of all items in the result equals the original number.
+
+```
+42.expandedForm() // [40, 2]
+1240.expandedForm() // [1000, 200, 40, 0]
+0.expandedForm() // [0]
+```
+*/
 public func Int.expandedForm() -> [Int] {}
 
 

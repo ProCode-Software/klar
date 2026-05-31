@@ -70,21 +70,25 @@ public func Map.pairs() -> [(K, V)] = Object.entries(self)
 public func Map.sorted(
     with sortFunc: (func(a, b: K) -> collections.SortOrder)?,
     reverse reverse: Bool = false,
+    stable stable: Bool = false,
 ) -> [(K, V)]
 
 public func Map.sorted(
     by sortFunc: collections.BuiltinSortMode,
     reverse reverse: Bool = false,
+    stable stable: Bool = false,
 ) -> [(K, V)]
 
 public func Map.sortedByValues(
     with sortFunc: (func(a, b: K) -> collections.SortOrder)?,
     reverse reverse: Bool = false,
+    stable stable: Bool = false,
 ) -> [(K, V)]
 
 public func Map.sortedByValues(
     by sortFunc: collections.BuiltinSortMode,
     reverse reverse: Bool = false,
+    stable stable: Bool = false,
 ) -> [(K, V)]
 
 public func Map.isDisjoint(from map: #{K: V}) -> Bool {
@@ -206,6 +210,17 @@ public func Map.take(keys: ...K) -> #{K: V} {
     return result
 }
 
-// Returns a random entry from the map.
+// Returns a random entry from the map. Crashouts if the map is empty.
 public func Map.randomItem() -> (K, V) {
+    when self.length {
+        0 -> crashout("Map is empty")
+    }
+    i := 0
+    randomI := random.int(from: 0, to: self.length - 1)
+    for k, v in self {
+        when i {
+            randomI -> return (k, v)
+        }
+        i += 1
+    }
 }

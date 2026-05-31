@@ -24,6 +24,9 @@ public type Float {}
 // ```
 public func Float.isInfinite() -> Bool
 
+// Returns whether the float is `NaN` (Not a Number).
+public func Float.isNaN() -> Bool
+
 // Splits a float into its whole number and decimal parts. `whole + decimal`
 // equals the original float.
 //

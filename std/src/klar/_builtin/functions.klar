@@ -1,0 +1,34 @@
+// Prints values to the console. When running outside the browser, this is
+// standard output (stdout). Any value can be printed. Values are displayed
+// in a way that is easy to debug -- such as displaying field keys and values
+// for structs.
+// 
+// This is a very basic function that is primarilly used for debugging and
+// easily writing messages for CLI applications. For more customizable reporting
+// to the console, consider using the [@klar.console] module.
+public func print(values: ...Any?)
+
+// Prints an error message to the console, or standard error (stderr) for programs
+// running outside the browser, and terminates the program. Once you crashout,
+// there is no recovering! Klar does not have JavaScript's *try-catch* or Go's
+// `recover()`. Therefore, this should only be used for unrecoverable scenarios
+// or cases where the developer is at fault. [Result]s are strongly preferred
+// for error handling, especially for errors that could be caused by the user.
+public func crashout(msg: ...Any?)
+
+// Creates a deep copy of the provided value. This is primarilly useful for
+// returning a copy of an object without actually mutating it, like how
+// [List.sorted] returns a new list rather than mutating the same one.
+//
+// This returns a different reference to an object from the original.
+// However, functions can't be cloned, and will still bear the original
+// reference.
+// The returned value can be compared to the original for equality. In Klar,
+// equality is determined by structure, rather than just reference.
+public func clone<T>(value: T) -> T
+
+// Marks part of your code as unimplemented. When a `TODO` call is reached while
+// running your code, the program will crash, displaying the provided message.
+public func TODO(message: String?) -> Any
+
+

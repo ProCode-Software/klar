@@ -1,0 +1,152 @@
+// Stores a sequence of characters.
+public type String {
+    // The number of characters in the string. Characters are counted by [Unicode
+    // grapheme clusters](), which count the number of visible characters rather
+    // than the number of Unicode code points or bytes.
+    length: Int
+}
+
+// Returns the index in the string where the first occurence of substring
+// `sub` starts, or `nil` if it isn't found in the string, or the string is empty.
+public func String.index(of sub: String) -> Int?
+
+// Returns all the indices where the substring `sub` starts in the string. It
+// does not count overlapping occurences, and if `sub` isn't found in the string,
+// or the string is empty, an empty list is returned.
+public func String.allIndices(of sub: String) -> [Int]
+
+public func String.count(of sub: String) -> Int
+
+public func String.uppercase() -> String
+public func String.lowercase() -> String
+
+// Capitalizes the first character of the string.
+public func String.capitalize() -> String
+
+/*
+Returns a new string where each word is capitalized. By default, articles such
+as *a, an, the, of, and*, won't be capitalized, unless `includingArticles` is true.
+Capitalization of letters in the middle of words are preserved.
+```
+"the origin of species".capitalizeWords() // "The Origin of Species"
+"the origin of species"
+    .capitalizeWords(includingArticles: true) // "The Origin Of Species"
+"klar and javascript".capitalizeWords() // "Klar and Javascript"
+"klar and JavaScript".capitalizeWords() // "Klar and JavaScript"
+```
+*/
+public func String.capitalizeWords(includingArticles all: Bool = false) -> String
+
+public func String.pascalCase() -> String
+public func String.camelCase() -> String
+public func String.kebabCase() -> String
+public func String.snakeCase() -> String
+public func String.randomCase() -> String
+
+/*
+Converts all letters to uppercase and replaces spaces and hyphens with underscores.
+This is the casing used for names of constants in Klar.
+```
+"The quick brown fox".screamingSnakeCase() // "THE_QUICK_BROWN_FOX"
+"the-quick-brown-fox".screamingSnakeCase() // "THE_QUICK_BROWN_FOX"
+```
+*/
+public func String.screamingSnakeCase() -> String
+
+// Returns whether the string is empty or only consists of whitespace characters.
+public func String.isBlank() -> Bool
+
+public func String.reverse() -> String
+
+public func String.randomize() -> String
+
+public func String.starts(with prefix: String) -> Bool
+public func String.ends(with suffix: String) -> Bool
+
+// Returns the first character (grapheme cluster) in the string, or `none` if
+// the string is empty.
+public func String.firstChar() -> String?
+
+// Returns the last character (grapheme cluster) in the string, or `none` if
+// the string is empty.
+public func String.lastChar() -> String?
+
+// Returns the first word in the string, or `none` if the string is empty.
+public func String.firstWord() -> String?
+
+// Returns the last word in the string, or `none` if the string is empty.
+public func String.lastWord() -> String?
+
+// Splits the string around the first occurence of the substring, returning
+// the parts before and after it. If the substring isn't present in the string,
+// the `before` will contain the entire string, and `after` will be empty.
+public func String.splitAround(sub: String) -> (before, after: String)
+
+public func String.split(by separator: String) -> [String]
+public func String.split(afterEach delimiter: String) -> [String]
+
+// If `limit` is 0 or less, there is no limit.
+public func String.split(by separator: String, limit limit: Int) -> [String]
+public func String.split(afterEach delimiter: String, limit limit: Int) -> [String]
+
+// Grapheme clusters
+public func String.splitChars() -> [String]
+public func String.splitLines() -> [String]
+public func String.splitSpaces() -> [String]
+public func String.splitWords = .splitSpaces
+
+
+public func String.padStart(untilLength targetLen: Int, with char: String = " ") -> String
+public func String.padEnd(untilLength targetLen: Int, with char: String = " ") -> String
+
+public func String.removePrefix(prefix: String) -> String
+public func String.removePrefix(anyOf prefixes: ...String) -> String
+public func String.removeSuffix(suffix: String) -> String
+public func String.removeSuffix(anyOf suffixes: ...String) -> String
+
+public func String.trimStart(prefix: String) -> String
+public func String.trimStart(allOf prefixes: ...String) -> String
+
+// Trim both sides
+public func String.trim(str: ...String) -> String
+public func String.trim(anyOf chars: ...String) -> String
+
+public func String.trimEnd(suffix: String) -> String
+public func String.trimEnd(allOf suffixes: ...String) -> String
+
+public func String.trimSpaces() -> String
+public func String.trimLeadingSpaces() -> String
+public func String.trimTrailingSpaces() -> String
+
+public func String.replace(first match: String, with rep: String) -> String
+public func String.replace(last match: String, with rep: String) -> String
+public func String.replace(all match: String, with rep: String) -> String
+
+// Returns an empty string if `count` is 0. Crashouts if `count` is negative.
+//
+// If you wish to not use a separator, multiply this string by `count`.
+public func String.repeat(count: Int, separator sep: Int) -> String
+
+public func String.codepoints() -> [Int]
+
+// Returns `none` if the string is empty, otherwise the original string.
+public func String.toOptional() -> String?
+
+// 
+public func String(codePoint char: Int)
+
+// Returns a string from the provided Unicode codepoints. The length of the string
+// may be different from `codepoints.length`
+public func String(codePoints codepoints: [Int])
+
+// 
+public func List(str: String) -> [Int]
+
+/*
+Returns a string from combining the provided strings, optionally separated
+by `sep`.
+```
+String(combining: 'never', 'the', 'less') // 'nevertheless'
+```
+*/
+public func String(combining strings: ...String, by sep: String?)

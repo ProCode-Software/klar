@@ -1,0 +1,54 @@
+// Stores multiple values of the same type. Each item can be accessed
+// by its numeric index, from `0` (the first item) to, and exclusive
+// of, `List.length` -- the last item is `List.length - 1`.
+public type List {
+    length: Int
+}
+
+type #T
+
+/*
+
+```
+list := ['apple', 'banana', 'cherry']
+list.reverse()
+print(list) // ['cherry', 'banana', 'apple']
+```
+*/
+public func List.reverse()
+
+// Returns a new list
+public func List.reversed() -> [T]
+
+// Whether all of the items in the list are unique from each other, with no
+// duplicates.
+public func List.allUnique() -> Bool
+
+// Removes all duplicate items from the list, keeping only the first occurences.
+public func List.dedupe()
+
+// Returns a new list with duplicate items from this list removed. Only the
+// first occurence of each duplicate item will be kept.
+public func List.deduped() -> [T]
+
+public func List.index(of item: T) -> Int?
+public func List.lastIndex(of item: T) -> Int?
+public func List.allIndices(of item: T) -> [Int]
+
+// Returns whether `predicate` returns true for each item in the list.
+// If there are no items in the list, returns `true`.
+public func List.all(satisfy predicate: func(T) -> Bool)
+
+// Returns whether `predicate` returns true for at least 1 item in the list.
+// If there are no items in the list, returns `false`.
+public func List.some(satisfy predicate: func(T) -> Bool)
+
+public func List.sort()
+public func List.sorted() -> [T]
+
+public func List.randomItem() -> T
+
+public func List.randomize()
+public func List.randomized() -> [T]
+
+public func List.join(with separator: String = ',') -> String
