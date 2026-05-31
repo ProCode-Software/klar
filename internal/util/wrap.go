@@ -1,4 +1,4 @@
-package cli
+package util
 
 import (
 	"strings"
@@ -112,6 +112,8 @@ func findVisibleEnd(s string, width int) (byteEnd int, hasNewline bool) {
 	}
 	return byteEnd, false
 }
+
+const ansiEndMax byte = 0x7E
 
 // skipANSI includes the '\x1b' byte in the returned length.
 func skipANSI(s string) (n int) {

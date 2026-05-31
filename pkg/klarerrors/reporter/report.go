@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
+	"github.com/ProCode-Software/klar/internal/util"
 )
 
 // Width is the width of the terminal. This may be replaced by [Reporter.Output]'s
@@ -133,7 +133,7 @@ func (r *Reporter) printMessage(e Error, hlc string) {
 			b.WriteString(code)
 		}
 	}
-	cli.Wrap(b.String(), r.buf, Width, 0, 2)
+	util.Wrap(b.String(), r.buf, Width, 0, 2)
 }
 
 // printHeader prints the file name and position in the header.
@@ -206,7 +206,7 @@ func (r *Reporter) printHint(hint klarerrs.Hint, file string) {
 		r.buf.WriteString(": ")
 	}
 
-	cli.Wrap(hint.Message, r.buf, Width, Width-len("Hint: "), 2)
+	util.Wrap(hint.Message, r.buf, Width, Width-len("Hint: "), 2)
 	r.newline()
 
 	if hint.Diff != nil {

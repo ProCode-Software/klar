@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/util"
 )
 
 // TODO: Should these be bright?
@@ -28,7 +29,7 @@ func ShowHelp(w io.Writer, full bool) {
 	// Title
 	hb.Println(
 		ansi.Bold(KlarGradient("Klar:")),
-		cli.RandomSlice(RandomDescriptions),
+		util.RandomSlice(RandomDescriptions),
 		ansi.Gray("v"+cli.KlarVersion),
 	)
 

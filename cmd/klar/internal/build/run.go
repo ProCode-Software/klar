@@ -20,6 +20,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs/jsonerrors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
+	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
@@ -168,7 +169,7 @@ func Build(r *command.Runner) {
 		ansi.Fprintfln(
 			os.Stderr,
 			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
-			icons.Check, cli.FormatDuration(res.Elapsed),
+			icons.Check, util.FormatDuration(res.Elapsed),
 		)
 	}
 }
@@ -199,7 +200,7 @@ func printErrors(res *build.Result, b *build.Compiler, jsonOutput bool, err erro
 	ansi.Fprintfln(
 		os.Stderr,
 		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
-		icons.ThinXLarge, count.String(), cli.FormatDuration(res.Elapsed),
+		icons.ThinXLarge, count.String(), util.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
 	b.PrintAllErrors(errs)
