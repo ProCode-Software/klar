@@ -3,8 +3,6 @@ package klarbuild
 import "github.com/ProCode-Software/klar/internal/target"
 
 // TODO: add documentation which will also be added to schema
-// TODO: transform features in klon unmarshaller, such as mapping strings
-// to enums
 
 type File struct {
 	// Additional build configurations to override the top-level. All configurations are run.
@@ -99,6 +97,13 @@ type JSOptions struct {
 	// created alongside built JavaScript files. If set to `'inline'`, source maps are
 	// stored as data URIs at the end of JavaScript files.
 	Sourcemap SourceMapMode `options:"SourceMapMode"`
+	// Controls how Klar language features are compiled to JavaScript. If set to `klar`,
+	// the compiler will generate wrapper code for language features to ensure compatibility
+	// with KlarVM. This involves generating wrapper functions for features such as
+	// integer truncation, division by 0 checks, string and grapheme cluster parsing. If
+	// set to `native`, these features will be ignored and JavaScript semantics will be
+	// used instead, such as returning decimals as-is.
+	Semantics JSSemanticsMode `options:"JSSemanticsMode"`
 	// Add JSDoc comments to exports in the resulting JavaScript files.
 	JSDoc bool
 	// Enable experimental ECMAScript libraries. If enabled, generated JavaScript files
@@ -189,6 +194,16 @@ const (
 	BundlePerModule
 	// Bundle everything including the standard library into one file
 	BundleStd
+)
+
+// The mode for semantics to use when compiling to JavaScript.
+type JSSemanticsMode int
+
+const (
+	// Prefer Klar semantics for language features.
+	KlarSemantics JSSemanticsMode = iota
+	// Use native JavaScript semantics and avoid generating wrapper code.
+	NativeSemantics
 )
 
 // The JavaScript type for global objects.

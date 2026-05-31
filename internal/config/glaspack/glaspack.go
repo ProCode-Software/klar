@@ -20,7 +20,7 @@ type Manifest struct {
 	// (and thus install) this package. Features introduced in newer Klar
 	// versions can't be used in this package's code.
 	// TODO: support ranges
-	Klar version.Specifier
+	Klar version.CodableSpecifier
 	// Supported targets this package can be built for. All code in this
 	// module must be implemented for all of these targets, but '@target'
 	// directives can be used to exclude individual objects.
@@ -46,6 +46,10 @@ type Manifest struct {
 	// Packages that are only needed as build tools and aren't included
 	// when this package is installed normally.
 	DevelopmentDependencies DependencyList // TODO: devDependencies instead?
+	// Aliases for import paths used in this package. An NPM package name
+	// can also be used as a key to set its import path to a custom value.
+	// Once an import path is set, it must be used instead of the original.
+	ModuleAliases map[string]string
 }
 
 type Link struct{ Label, URL string }
@@ -82,16 +86,17 @@ type DeprecationOptions struct {
 	Message string
 }
 
+// Dependencies
+// =====
+
 type (
-	DependencyList      map[string]DependencySpecifier
+	DependencyList      []DependencyCoder
 	DependencySpecifier interface{ depSpec() }
 )
 
 // VersionSpecifier is the default specifier, specifying a range
 // of versions of a package that can be installed.
-type VersionSpecifier struct {
-	version.Specifier
-}
+type VersionSpecifier struct{ version.CodableSpecifier }
 
 // LocalSpecifier specifies that a dependency is a local package.
 type LocalSpecifier struct {
@@ -105,7 +110,6 @@ type WorkspaceSpecifier struct{}
 // NPMSpecifier specifies that a dependency is from NPM.
 type NPMSpecifier struct {
 	Version version.Specifier
-	As      string // Name of root module
 }
 
 // GitSpecifier specifies that a package is on a Git repo.
@@ -120,5 +124,3 @@ func (*LocalSpecifier) depSpec()     {}
 func (*WorkspaceSpecifier) depSpec() {}
 func (*NPMSpecifier) depSpec()       {}
 func (*VersionSpecifier) depSpec()   {}
-
-// TODO: other providers and http

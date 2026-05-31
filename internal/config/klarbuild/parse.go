@@ -48,6 +48,10 @@ var Context = &klon.Context{
 			"inline": SourceMapInline,
 		},
 		"Target": target.Names,
+		"JSSemanticsMode": {
+			"klar":   KlarSemantics,
+			"native": NativeSemantics,
+		},
 	},
 }
 

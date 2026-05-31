@@ -23,6 +23,11 @@ func ParseSpecifier(s string) (*Specifier, error) {
 // GetMatches returns the versions in vs that match the specifier.
 func (s *Specifier) GetMatches(vs []*Version) []*Version { return nil }
 
+// CodableSpecifier wraps [Specifier] and implements [encoding.TextMarshaler]
+// and [encoding.TextUnmarshaler] to allow it to be serialized and deserialized
+// as a string.
+type CodableSpecifier struct{ Specifier }
+
 // Components
 // ==========
 

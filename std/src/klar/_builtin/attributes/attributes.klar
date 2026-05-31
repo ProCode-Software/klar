@@ -61,3 +61,5 @@ public func name(js _: String) {}
 // Targets this should be built for. The compiler will prevent users from
 // importing this on other targets.
 public func target(targets: ...Target) {}
+
+// TODO: should we add @jsWorker attribute to mark a function as a web worker script?

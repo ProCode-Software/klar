@@ -6,7 +6,24 @@
 // This is a very basic function that is primarilly used for debugging and
 // easily writing messages for CLI applications. For more customizable reporting
 // to the console, consider using the [@klar.console] module.
-public func print(values: ...Any?)
+public func print(
+    values: ...Any?,
+    separator sep: String?,
+    withFinalNewline addNewline: Bool = true,
+)
+
+// Prints values to a file. It returns an error if an error is returned while
+// writing to `writable`. By default, values are separated by spaces, and a
+// newline is written at the end of the output.
+public func print(
+    values: ...Any?,
+    to writable: Writable,
+    separator sep: String?,
+    withFinalNewline addNewline: Bool = false,
+) -> Result
+
+// Includes [klar.io.Writable]. This is validated by the type checker.
+type Writable = Any | [Int] | [String]
 
 // Prints an error message to the console, or standard error (stderr) for programs
 // running outside the browser, and terminates the program. Once you crashout,
@@ -14,7 +31,7 @@ public func print(values: ...Any?)
 // `recover()`. Therefore, this should only be used for unrecoverable scenarios
 // or cases where the developer is at fault. [Result]s are strongly preferred
 // for error handling, especially for errors that could be caused by the user.
-public func crashout(msg: ...Any?)
+public func crashout(msg: ...Any)
 
 // Creates a deep copy of the provided value. This is primarilly useful for
 // returning a copy of an object without actually mutating it, like how
@@ -29,6 +46,5 @@ public func clone<T>(value: T) -> T
 
 // Marks part of your code as unimplemented. When a `TODO` call is reached while
 // running your code, the program will crash, displaying the provided message.
+// A `TODO` call can be assigned to any value.
 public func TODO(message: String?) -> Any
-
-

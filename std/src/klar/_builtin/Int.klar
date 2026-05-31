@@ -1,6 +1,6 @@
 // A whole integer. Ints are 64-bit and signed (can be positive or negative).
 // On the JavaScript target, they can be from `-(2 ^ 53) - 1` to `2 ^ 53 - 1`,
-// defined by `Number.MIN/MAX_SAFE_INTEGER`.
+// defined by `Number.MIN/MAX_SAFE_INTEGER` or [klar.math.MIN_INT]/[klar.math.MAX_INT].
 public type Int {}
 
 // Returns whether the number is even. `0` is considered even.

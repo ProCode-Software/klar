@@ -63,16 +63,20 @@ func (v *Version) Part(n int) int {
 func (v *Version) String() string {
 	var b strings.Builder
 	for _, part := range v.Parts {
-		b.WriteString("." + strconv.Itoa(part))
+		b.WriteByte('.')
+		b.WriteString(strconv.Itoa(part))
 	}
 	if v.Build != Release {
-		b.WriteString("-" + v.Build.String())
+		b.WriteByte(' ')
+		b.WriteString(v.Build.String())
 	}
 	if v.BuildNum > 0 {
-		b.WriteString("-" + strconv.Itoa(v.BuildNum))
+		b.WriteByte(' ')
+		b.WriteString(strconv.Itoa(v.BuildNum))
 	}
 	if v.Commit != "" {
-		b.WriteString("+" + v.Commit)
+		b.WriteByte('+')
+		b.WriteString(v.Commit)
 	}
 	return "v" + b.String()[1:]
 }
