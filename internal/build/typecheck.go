@@ -46,6 +46,7 @@ func (c *Compiler) typeCheckModule(
 	ch := pool.Get(mod, opts)
 	defer pool.Put(ch)
 	ch.Check()
+	parsedMod.Checked = ch.CheckedModule()
 	return ch.Errors
 }
 
@@ -56,9 +57,11 @@ func (c *Compiler) getCheckerOptions(mod *Module) *analysis.Options {
 	opts := &analysis.Options{
 		CheckerOptions: conf.Options.Checker,
 		Target:         conf.Options.Target,
+		IsTest:         c.Mode == ModeTest,
+		MaxErrors:      MaxErrors,
 		// TODO
-		KlarVersion: nil,
-		Importer:    nil,
+		KlarVersion: nil, // TODO: [version.Specifier].Min()
+		Importer:    c.GetImporter(mod),
 	}
 	return opts
 }

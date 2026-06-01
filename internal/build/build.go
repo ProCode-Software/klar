@@ -6,12 +6,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
@@ -87,14 +89,14 @@ type Module struct {
 	Assets     []string                // Non-Klar file paths
 	Name, Path string                  // Module name and folder/file path
 	Programs   map[string]*ast.Program // Base name of files
-	Manifest   *glaspack.Manifest
-	SingleFile bool // Whether the input was a single file
-	// TODO: typechecked ast
+	SingleFile bool                    // Whether the input was a single file
+	Checked    *analysis.Module
 }
 
 type InputOptions struct {
 	Modules  []*Module
 	Manifest *glaspack.Manifest
+	PkgInfo  *module.PackageInfo
 	Options  *Options
 }
 

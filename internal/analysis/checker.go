@@ -19,6 +19,7 @@ type Options struct {
 	// The target platform for which the program is being compiled.
 	// This is needed for resolving platform-specific implementations
 	// and modules.
+	// TODO: Support multiple targets
 	Target target.Target
 	// The minimum version of Klar required to compile the program.
 	KlarVersion *version.Version
@@ -101,6 +102,8 @@ func (c *Checker) initFileContexts() map[string]*Context {
 	}
 	return fileContexts
 }
+
+func (c *Checker) CheckedModule() *Module { return c.module }
 
 func (c *Checker) Reset() {
 	c.module = nil

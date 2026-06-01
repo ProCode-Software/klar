@@ -2,7 +2,6 @@ package klarbuild
 
 import (
 	"github.com/ProCode-Software/klar/internal/config"
-	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
@@ -47,7 +46,6 @@ var Context = &klon.Context{
 			"true":   SourceMapEnabled,
 			"inline": SourceMapInline,
 		},
-		"Target": target.Names,
 		"JSSemanticsMode": {
 			"klar":   KlarSemantics,
 			"native": NativeSemantics,

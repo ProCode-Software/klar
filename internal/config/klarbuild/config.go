@@ -21,7 +21,7 @@ type File struct {
 	WarningsAsErrors []string
 
 	// The environment to build for.
-	Target target.Target `options:"Target"`
+	Target target.Target
 	// Enable verbose logging during build. Useful for bug reporting.
 	Verbose bool
 }

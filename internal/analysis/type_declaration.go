@@ -92,6 +92,7 @@ func (c *Checker) checkInheritedTypes(names []ast.Type, kind Kind,
 func (c *Checker) validateInheritedType(n ast.Type, t Type,
 	expKind Kind, fid FileID,
 ) bool {
+	// TODO: Maybe we should allow inheriting from primitive types (not lists)
 	gotKind := t.Kind()
 	// Validate the node
 	newError := func(currType, allowedTypes string) {

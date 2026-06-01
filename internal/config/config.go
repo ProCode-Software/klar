@@ -20,6 +20,8 @@ func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (warn []*klo
 
 	if ctx == nil {
 		ctx = &klon.Context{}
+	} else {
+		ctx.Warnings = ctx.Warnings[:0] // Clear previous warnings
 	}
 	ctx.SetWarningKinds(klonerrs.ErrFieldNotFound)
 

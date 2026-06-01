@@ -2,6 +2,8 @@
 set -e
 
 KLAR_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+KLAR_STD=$(realpath "$KLAR_DIR/std")
+export KLAR_STD
 VERSION="0.1.0"
 LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'"
 # ldflags: separate with another -X ...

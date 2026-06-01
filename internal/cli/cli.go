@@ -4,7 +4,7 @@ import "github.com/ProCode-Software/klar/internal/version"
 
 var KlarVersion, KlarCommit string
 
-var ParsedKlarVersion version.Version
+var ParsedKlarVersion *version.Version
 
 func init() {
 	var err error

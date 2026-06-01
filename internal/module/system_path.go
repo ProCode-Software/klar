@@ -40,11 +40,15 @@ func KlarDataDir() (string, error) {
 }
 
 // KlarStdDir returns the directory where Klar standard library source code
-// is stored. If the current executable is located in the user's home directory,
+// is stored. If a $KLAR_STD environment variable is set, it is returned.
+// Otherwise, if the current executable is located in the user's home directory,
 // the data directory is located in the user's system data directory
 // (e.g. ~/.local/share/klar on Linux). Otherwise, the data directory is located
 // in the system root. (e.g. /usr/share/klar on Linux).
 func KlarStdDir() (string, error) {
+	if klarStd := os.Getenv("KLAR_STD"); klarStd != "" {
+		return klarStd, nil
+	}
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", err

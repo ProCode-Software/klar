@@ -145,9 +145,9 @@ type Type interface {
 }
 
 // The result of a function call that doesn't return (guranteed crashouts).
-type Unreachable struct{ Type }
+type NoReturn struct{ Type }
 
-func (u *Unreachable) Underlying() Type { return u.Type }
+func (u *NoReturn) Underlying() Type { return u.Type }
 
 // Underlyer is implemented by types or objects that have an underlying type.
 type Underlyer interface {

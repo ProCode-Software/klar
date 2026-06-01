@@ -1,5 +1,9 @@
 package target
 
+import (
+	"fmt"
+)
+
 type Target int
 
 const (
@@ -33,6 +37,15 @@ func (t Target) String() string {
 		Deno:       "deno",
 		Bun:        "bun",
 	}[t]
+}
+
+func (t *Target) UnmarshalText(text []byte) error {
+	s := string(text)
+	if name, ok := Names[s]; ok {
+		*t = name.(Target)
+		return nil
+	}
+	return fmt.Errorf("Unknown target '%s'", s)
 }
 
 // IsJavaScript returns true if the target is a JavaScript environment.

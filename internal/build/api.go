@@ -47,7 +47,8 @@ func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
 	}
 }
 
-// AddInputs adds the given inputs to a new [Options] inside c.
+// AddInputs adds the given inputs to a new [Options] inside c. Each input's
+// klar.build is left empty.
 func (c *Compiler) AddInputs(inputs ...Input) {
 	c.Options = append(c.Options, &Options{Inputs: inputs})
 }

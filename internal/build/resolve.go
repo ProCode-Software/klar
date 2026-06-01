@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
+	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/module"
+	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
 const sep = string(filepath.Separator)
@@ -74,7 +76,7 @@ func ResolveInputs(inputs []string, klarBuildPath string) ([]Input, error) {
 			}
 			// Get path to closest klar.build file
 			if i.KlarBuild = klarBuildPath; klarBuildPath == "" {
-				ResolveKlarBuild(&i)
+				i.ResolveKlarBuild()
 			}
 		}
 		res = append(res, i)
@@ -87,9 +89,13 @@ func IsKlarFile(file string) bool {
 	return strings.HasSuffix(file, ".klar") || filepath.Ext(file) == ""
 }
 
+func IsTestFile(file string) bool {
+	return strings.HasSuffix(file, ".test.klar")
+}
+
 // ResolveKlarBuild sets i's [Input.KlarBuild] to the closest 'klar.build' file
 // to its [Input.Path], if it is found. Otherwise, ResolveKlarBuild does nothing.
-func ResolveKlarBuild(i *Input) {
+func (i *Input) ResolveKlarBuild() {
 	dir := i.Path
 	if i.Kind == KindFile {
 		dir = filepath.Dir(i.Path)
@@ -143,6 +149,9 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 	c.inputs = make(map[*Input]*InputOptions, len(c.Options))
 	c.moduleInputs = make(map[*Module]*InputOptions, len(c.Options))
 	c.Modules = make([]*Module, 0, len(c.Options))
+	if manifestCache == nil {
+		manifestCache = make(map[string]*glaspack.Manifest, len(c.Options))
+	}
 	// Show an error if no Klar files to compile were found
 	checkFileCount := func(klarFiles int, path string, err *error) {
 		if klarFiles == 0 && *err == nil {
@@ -164,6 +173,9 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 					return totalFiles, err
 				}
 			case KindFile:
+				if c.Mode != ModeTest && IsTestFile(inp.Name) {
+					return totalFiles, &InterfaceError{Code: ErrTestInput, Value: inp.Path}
+				}
 				info.Modules = []*Module{{
 					Name:       inp.Name,
 					Path:       inp.Path,
@@ -182,6 +194,13 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				totalFiles++
 				c.Info("Resolved file from stdin")
 			case KindModule:
+				if c.Mode != ModeTest && inp.Name == module.TestDir {
+					return totalFiles, &InterfaceError{Code: ErrTestInput, Value: inp.Path}
+				}
+				// Resolve the manifest
+				if err = c.resolveInputManifest(inp.Path, info); err != nil {
+					return totalFiles, err
+				}
 				c.Info("Resolving module", slog.String("modulePath", inp.Path))
 				klarFiles, err := c.moduleFromDir(
 					inp.Name, inp.Path, &info.Modules, 0, info,
@@ -233,7 +252,7 @@ func (c *Compiler) moduleFromDir(
 			if err != nil {
 				return klarFiles, err
 			}
-		case strings.HasSuffix(name, ".test.klar"):
+		case IsTestFile(name):
 			if moduleName != module.TestDir {
 				// Test files must be in test/ folders
 				err = &InterfaceError{Value: path, Code: ErrMisplacedTest}
@@ -261,6 +280,11 @@ func (c *Compiler) resolvePackage(
 			)
 		}
 	}()
+	// Resolve the package's manifest
+	if err = c.resolveInputManifest(path, info); err != nil {
+		return klarFiles, err
+	}
+
 	items, err := os.ReadDir(path)
 	if err != nil {
 		return klarFiles, &FilesystemError{"read", path, err}
@@ -316,7 +340,7 @@ func (c *Compiler) resolvePackage(
 			fallthrough
 		case module.SrcDir, module.CmdDir, module.TestDir: // src, cmd, test
 			if name == module.TestDir && c.Mode != ModeTest {
-				break
+				break // Load test folder only in test mode
 			}
 			// The only Klar project directories that contain buildable modules
 			c.Info("Resolving modules in", slog.String("path", fullPath))
@@ -332,4 +356,67 @@ func (c *Compiler) resolvePackage(
 		}
 	}
 	return klarFiles, nil
+}
+
+var manifestCache map[string]*glaspack.Manifest
+
+// resolveInputManifest resolves the manifest for an input and sets io.
+// It also initializes the package's info.
+func (c *Compiler) resolveInputManifest(dir string, io *InputOptions) error {
+	man, projDir, err := c.resolveManifest(dir)
+	if err != nil {
+		return err
+	}
+	io.Manifest = man
+	io.PkgInfo = module.NewPackageInfo(projDir, man)
+	return nil
+}
+
+// resolveManifest resolves the manifest located in dir and parses it.
+func (c *Compiler) resolveManifest(dir string) (
+	m *glaspack.Manifest, projDir string, err error,
+) {
+	exists := func(p string) bool {
+		_, err := os.Stat(p)
+		return err == nil
+	}
+	newKlonError := func(err error, path string) *InterfaceError {
+		return &InterfaceError{Code: ErrInvalidConfig, Err: err, Value: path}
+	}
+	pkgDir, projDir := module.PackageRoot(dir)
+	var (
+		pkgFile  = filepath.Join(pkgDir, module.ManifestFile)
+		projFile = filepath.Join(projDir, module.ManifestFile)
+		warn     []*klon.Error
+		ok       bool
+	)
+	if m, ok = manifestCache[projFile]; !ok && exists(pkgFile) {
+		m, warn, err = glaspack.Parse(pkgFile)
+		if err != nil {
+			return nil, projDir, newKlonError(err, pkgFile)
+		}
+		manifestCache[projFile] = m
+		c.PrintKlonWarnings(warn, pkgFile)
+	}
+	if pkgDir == projDir || !exists(projFile) {
+		// Make sure at least one manifest exists
+		if m == nil {
+			cli.ErrNoManifest(pkgDir)
+		}
+		return m, projDir, nil
+	}
+	// Check cache for project manifest
+	if m2, ok := manifestCache[projFile]; ok {
+		m, err = glaspack.Merge(m, m2)
+		return m, projDir, err
+	}
+	// Project-level manifest
+	m2, warn, err := glaspack.Parse(projFile)
+	if err != nil {
+		return nil, projDir, newKlonError(err, projFile)
+	}
+	manifestCache[projFile] = m2
+	c.PrintKlonWarnings(warn, projFile)
+	m, err = glaspack.Merge(m, m2)
+	return m, projDir, err
 }

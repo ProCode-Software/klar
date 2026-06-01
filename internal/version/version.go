@@ -1,6 +1,7 @@
 package version
 
 import (
+	"encoding"
 	"strconv"
 	"strings"
 )
@@ -58,6 +59,17 @@ func (v *Version) Part(n int) int {
 		return 0
 	}
 	return v.Parts[n]
+}
+
+var _ encoding.TextUnmarshaler = (*Version)(nil)
+
+func (v *Version) UnmarshalText(text []byte) (err error) {
+	v2, err := Parse(string(text))
+	if err != nil {
+		return err
+	}
+	*v = *v2
+	return nil
 }
 
 func (v *Version) String() string {

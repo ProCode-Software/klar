@@ -7,7 +7,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/module/imports"
 )
 
+// This file declares the builtin types and functions from the Klar language.
+// It loads the builtin module (`klar._builtin`, bootstrapped)
+// and the attributes module `klar._builtin.attributes` for use by the checker.
+//
+// Definitions: "Primitive" types are those that don't depend on other types,
+// while "builtins" refer to both types and functions that don't need to
+// be imported from another stdlib module. Primitive types, and types that
+// depend on other types (lists, maps, functions, etc.), are included.
+// =======
+
 // Contains the method definitions for builtin types and functions.
+// Bootstrapped and typechecked Klar module.
 var builtinModule *Module
 
 var BuiltInContext = &Context{File: -2}
@@ -82,6 +93,7 @@ func declareBuiltinTypes() {
 			file:    -2,
 		})
 	}
+	// TODO: The non-primitive types
 }
 
 func declareBuiltinFunctions() {
@@ -97,6 +109,6 @@ func declareBuiltinFunctions() {
 	// after a call to them should be deemed unreachable.
 	crashout := BuiltInContext.Lookup("crashout").typ.(*Function)
 	todo := BuiltInContext.Lookup("TODO").typ.(*Function)
-	crashout.Return = &Unreachable{Type: crashout.Return}
-	todo.Return = &Unreachable{Type: todo.Return}
+	crashout.Return = &NoReturn{Type: crashout.Return}
+	todo.Return = &NoReturn{Type: todo.Return}
 }

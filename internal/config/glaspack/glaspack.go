@@ -96,7 +96,7 @@ type (
 
 // VersionSpecifier is the default specifier, specifying a range
 // of versions of a package that can be installed.
-type VersionSpecifier struct{ version.CodableSpecifier }
+type VersionSpecifier struct{ *version.CodableSpecifier }
 
 // LocalSpecifier specifies that a dependency is a local package.
 type LocalSpecifier struct {
@@ -108,9 +108,7 @@ type LocalSpecifier struct {
 type WorkspaceSpecifier struct{}
 
 // NPMSpecifier specifies that a dependency is from NPM.
-type NPMSpecifier struct {
-	Version version.Specifier
-}
+type NPMSpecifier struct{ Version version.Specifier }
 
 // GitSpecifier specifies that a package is on a Git repo.
 type GitSpecifier struct {

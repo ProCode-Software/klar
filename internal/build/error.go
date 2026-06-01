@@ -41,6 +41,7 @@ const (
 
 	ErrModuleDescriptor // Invalid '@' in input path
 	ErrNotAKlarFile     // Input file is not a klar file
+	ErrTestInput        // Test input provided in non-test mode
 	ErrIsADirectory     // Path is a directory
 	ErrTooManyErrors    // More than 10 errors globally
 	ErrMaxModuleDepth   // No more than 4 submodules
@@ -107,6 +108,10 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return "Test files must be in the <c>test</c> directory", ""
 	case ErrInvalidConfig:
 		return fmt.Sprintf("Failed to parse <c>%s</c>: ", err.Value), err.Err.Error()
+	case ErrTestInput:
+		return fmt.Sprintf(
+			"Can't pass <c>%s</c> as an input outside of", err.Value,
+		), "<m>klar test</m>"
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

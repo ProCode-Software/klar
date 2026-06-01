@@ -80,7 +80,7 @@ public func String.lastWord() -> String?
 // Splits the string around the first occurence of the substring, returning
 // the parts before and after it. If the substring isn't present in the string,
 // the `before` will contain the entire string, and `after` will be empty.
-public func String.splitAround(sub: String) -> (before, after: String)
+public func String.cut(around sub: String) -> (before, after: String)
 
 public func String.split(by separator: String) -> [String]
 public func String.split(afterEach delimiter: String) -> [String]

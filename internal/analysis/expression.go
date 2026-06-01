@@ -1,8 +1,6 @@
 package analysis
 
-type Operand struct {
-	
-}
+type Operand struct{}
 
 type ExprKind int
 

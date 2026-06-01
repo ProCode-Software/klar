@@ -16,8 +16,8 @@ type Specifier struct {
 
 // ParseSpecifier parses the version specifier represented by s, returning
 // an error if the specifier is invalid.
-func ParseSpecifier(s string) (*Specifier, error) {
-	return nil, nil
+func ParseSpecifier(s string) (Specifier, error) {
+	return Specifier{}, nil
 }
 
 // GetMatches returns the versions in vs that match the specifier.
@@ -27,6 +27,19 @@ func (s *Specifier) GetMatches(vs []*Version) []*Version { return nil }
 // and [encoding.TextUnmarshaler] to allow it to be serialized and deserialized
 // as a string.
 type CodableSpecifier struct{ Specifier }
+
+func (c *CodableSpecifier) UnmarshalText(text []byte) error {
+	spec, err := ParseSpecifier(string(text))
+	if err != nil {
+		return err
+	}
+	c.Specifier = spec
+	return nil
+}
+
+func (c *CodableSpecifier) MarshalText() ([]byte, error) {
+	return []byte(c.Specifier.String()), nil
+}
 
 // Components
 // ==========
