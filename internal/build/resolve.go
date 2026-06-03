@@ -146,9 +146,11 @@ const MaxModuleDepth = 4
 // a module's directories, if [MaxModuleDepth] is exceeded, or if no Klar files
 // were found for an input.
 func (c *Compiler) ResolveModules() (totalFiles int, err error) {
-	c.inputs = make(map[*Input]*InputOptions, len(c.Options))
-	c.moduleInputs = make(map[*Module]*InputOptions, len(c.Options))
-	c.Modules = make([]*Module, 0, len(c.Options))
+	inputCt := len(c.Options)
+	c.inputs = make(map[*Input]*InputOptions, inputCt)
+	c.moduleInputs = make(map[*Module]*InputOptions, inputCt)
+	c.Modules = make([]*Module, 0, inputCt)
+	c.moduleMap = make(map[string]*Module, inputCt)
 	if manifestCache == nil {
 		manifestCache = make(map[string]*glaspack.Manifest, len(c.Options))
 	}
@@ -219,6 +221,14 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 	return totalFiles, nil
 }
 
+func (c *Compiler) newModule(name, path string, info *InputOptions) *Module {
+	m := &Module{Name: name, Path: path}
+	c.Modules = append(c.Modules, m)
+	c.moduleMap[path] = m
+	c.moduleInputs[m] = info
+	return m
+}
+
 // moduleFromDir reads the contents of dir, assigning dir to a [*File] with
 // dir's contents groupd by submodules (directories), Klar files, and assets
 // (non-Klar files). moduleFromDir reports an error if it encounters a
@@ -226,10 +236,8 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 func (c *Compiler) moduleFromDir(
 	moduleName, dir string, modules *[]*Module, depth int, info *InputOptions,
 ) (klarFiles int, err error) {
-	m := &Module{Name: moduleName, Path: dir}
-	c.Modules = append(c.Modules, m)
+	m := c.newModule(moduleName, dir, info)
 	*modules = append(*modules, m)
-	c.moduleInputs[m] = info
 
 	items, err := os.ReadDir(dir)
 	if err != nil {
@@ -263,12 +271,14 @@ func (c *Compiler) moduleFromDir(
 			m.Files = append(m.Files, path)
 			klarFiles++
 		default:
+			// TODO: filter by klar.build's asset extensions
 			m.Assets = append(m.Assets, path)
 		}
 	}
 	return
 }
 
+// TODO: src shouldn't be a module
 func (c *Compiler) resolvePackage(
 	path string, modules *[]*Module, nesting bool, info *InputOptions,
 ) (klarFiles int, err error) {
@@ -338,13 +348,20 @@ func (c *Compiler) resolvePackage(
 				return
 			}
 			fallthrough
-		case module.SrcDir, module.CmdDir, module.TestDir: // src, cmd, test
+		case module.CmdDir, module.TestDir: // cmd, test
 			if name == module.TestDir && c.Mode != ModeTest {
 				break // Load test folder only in test mode
 			}
-			// The only Klar project directories that contain buildable modules
+			// The only Klar project directories that contain buildable modules,
+			// inclding shared/, other than src/
 			c.Info("Resolving modules in", slog.String("path", fullPath))
 			n, err := c.moduleFromDir(name, fullPath, modules, 0, info)
+			klarFiles += n
+			if err != nil {
+				return klarFiles, err
+			}
+		case module.SrcDir: // src
+			n, err := c.resolveSrcDir(fullPath, modules, info)
 			klarFiles += n
 			if err != nil {
 				return klarFiles, err
@@ -356,6 +373,46 @@ func (c *Compiler) resolvePackage(
 		}
 	}
 	return klarFiles, nil
+}
+
+func (c *Compiler) resolveSrcDir(
+	dir string, modules *[]*Module, info *InputOptions,
+) (klarFiles int, err error) {
+	var srcMod *Module // Initialized only if there are assets in the src folder
+
+	items, err := os.ReadDir(dir)
+	if err != nil {
+		return klarFiles, &FilesystemError{"read", dir, err}
+	}
+	for _, d := range items {
+		name := d.Name()
+		path := dir + sep + name
+		switch {
+		case d.IsDir(): // Module
+			c.Info("Resolving module", slog.String("modulePath", path))
+			n, err := c.moduleFromDir(name, path, modules, 0, info)
+			klarFiles += n
+			if err != nil {
+				return klarFiles, err
+			}
+		case IsTestFile(name):
+			err = &InterfaceError{Value: path, Code: ErrMisplacedTest}
+			return
+		case IsKlarFile(name):
+			err = &InterfaceError{Value: path, Code: ErrFileInRoot}
+			return
+		default:
+			// Asset in the src folder
+			// TODO: We will allow it, but we currently don't know how it
+			// will be handled
+			if srcMod == nil {
+				srcMod = c.newModule("src", dir, info)
+				*modules = append(*modules, srcMod)
+			}
+			srcMod.Assets = append(srcMod.Assets, path)
+		}
+	}
+	return
 }
 
 var manifestCache map[string]*glaspack.Manifest
