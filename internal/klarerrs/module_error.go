@@ -13,7 +13,8 @@ const (
 	_ Code = ModuleErrorPrefix + iota
 
 	ErrModuleNotFound          // Module not found
-	ErrModuleCycle             // Modules depend on each other
+	ErrImportCycle             // Modules depend on each other
+	ErrSelfImport              // Module imports itself
 	ErrModuleKlarTooNew        // Module being imported requires a newer Klar version
 	ErrImporterError           // Importer returned a miscellaneous error
 	ErrImporterNotFound        // Importer not set up
@@ -21,6 +22,8 @@ const (
 	ErrPrivateImport           // Can't import a private module
 	ErrSingleFileImport        // Can't import from a single-file module
 	ErrUnsupportedImportTarget // Current target doesn't support importing a module
+	ErrImportPathAliased       // You must use the aliased import path when provided
+	ErrImportEmpty             // Module being imported has no files or exports
 )
 
 func (e *Error) handleModuleError() string {
@@ -57,5 +60,8 @@ func (e *Error) handleModuleError() string {
 	case ErrUnsupportedImportTarget:
 		return "Can't import " + path + " because it doesn't support the " +
 			e.GetParam("currTarget").(target.Target).String() + " target"
+	case ErrSelfImport:
+		// Module my.mod directly imports my.mod
+		return "Module " + path + " can't import itself!"
 	}
 }

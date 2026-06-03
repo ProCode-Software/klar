@@ -51,14 +51,10 @@ func (c *Checker) loadInternalModules() {
 	var (
 		builtinImportPath    = imports.ImportPath{"klar", "_builtin"}
 		attributesImportPath = imports.ImportPath{"klar", "_builtin", "attributes"}
+		currImpPath          = c.module.ImportPath
 	)
-	// TODO: Remove when Importer is implemented. An importer will be required to typecheck.
-	if c.Options.Importer == nil {
-		return
-	}
 	// The internal module is currently being typechecked
 	isBootstrap := c.module.Flags.Has(BootstrapModule)
-	currImpPath := c.module.ImportPath
 
 	// Prevent cycles while bootstrapping the internal modules.
 	// We want to make primitive types accessible to the attributes module, and

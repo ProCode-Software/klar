@@ -1,8 +1,6 @@
 package build
 
 import (
-	"fmt"
-
 	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -20,7 +18,6 @@ type CompileFunc = func(p imports.ImportPath, dir string, t target.Target) (
 // the given host module. This is used by [module.BaseImporter].
 func (c *Compiler) makeImportCompiler(hostMod *Module) CompileFunc {
 	return func(p imports.ImportPath, dir string, t target.Target) (*analysis.Module, error) {
-		fmt.Println("import", p)
 		// If the compiler already typechecked the module, look for it
 		// TODO: add a module map to [Compiler]?
 		for _, mod := range c.Modules {
@@ -80,7 +77,9 @@ func (c1 *Compiler) CompileImport(hostMod *Module,
 		return nil, newError(res.Errors[0])
 	}
 	if len(res.Modules) > 1 { // For debugging only
-		println("multiple modules", fmt.Sprintf("%#v", res.Modules))
+		for _, mod := range res.Modules {
+			println("module", mod.Name, mod.Path)
+		}
 	}
 	// Hopefully, this should be the correct (and only) module.
 	return res.Modules[0].Checked, nil

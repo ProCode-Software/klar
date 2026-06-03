@@ -122,6 +122,12 @@ public func String.replace(first match: String, with rep: String) -> String
 public func String.replace(last match: String, with rep: String) -> String
 public func String.replace(all match: String, with rep: String) -> String
 
+// Lazily-evaluated replacement
+
+public func String.replace(first match: String, with getRep: func() -> String) -> String
+public func String.replace(last match: String, with getRep: func() -> String) -> String
+public func String.replace(all match: String, with getRep: func() -> String) -> String
+
 // Returns an empty string if `count` is 0. Crashouts if `count` is negative.
 //
 // If you wish to not use a separator, multiply this string by `count`.

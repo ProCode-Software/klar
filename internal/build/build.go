@@ -38,6 +38,7 @@ type Compiler struct {
 	// To avoid reparsing the same file. The same individual file and the
 	// file's whole module can be inputs to the compiler.
 	flatFiles map[string]*ast.Program
+	moduleMap map[string]*Module // Keys are module directories
 
 	moduleInputs  map[*Module]*InputOptions // Map modules back to configurations
 	Reporter      *reporter.Reporter        // Reports errors to the console
@@ -91,6 +92,7 @@ type Module struct {
 	Programs   map[string]*ast.Program // Base name of files
 	SingleFile bool                    // Whether the input was a single file
 	Checked    *analysis.Module
+	Ready      <-chan struct{}
 }
 
 type InputOptions struct {
