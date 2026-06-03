@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
+	"github.com/ProCode-Software/klar/internal/module/imports"
 )
 
 type PackageInfo struct {
@@ -16,6 +18,8 @@ type PackageInfo struct {
 	LocalCache bool
 	// First part of import path : local path
 	// `cmd` and `shared` are local to the current package.
+	// Example:
+	// 	map[string]string{"klar", ".../src/klar", "cmd": ".../cmd"}
 	moduleMap map[string]string
 	// Conflicting import paths without manifest-defined aliases.
 	// First part of import path : package names
@@ -33,6 +37,26 @@ func NewPackageInfo(dir string, man *glaspack.Manifest) *PackageInfo {
 		Dir:        dir,
 		LocalCache: false,
 		moduleMap:  nil,
+	}
+}
+
+func (pi *PackageInfo) ImportPathOf(p string) imports.ImportPath {
+	var err error
+	if p, err = filepath.Rel(pi.Dir, p); err != nil {
+		panic(fmt.Sprintf(
+			"pi.ImportPathOf(%q): argument is not located in pi.Dir [%s]",
+			p, pi.Dir,
+		))
+	}
+	parts := strings.Split(p, string(filepath.Separator))
+	switch base := parts[0]; base {
+	case CmdDir, SharedDir, TestDir:
+		return imports.ImportPath(parts)
+	case SrcDir:
+		return imports.ImportPath(parts[1:])
+	default:
+		// TODO: If this could happen, should this function return an error instead?
+		panic(fmt.Sprintf("pi.ImportPathOf(%q): invalid base directory %q", p, base))
 	}
 }
 
@@ -61,6 +85,7 @@ func (pi *PackageInfo) MakeModuleMap() error {
 	}
 	// Special directories: Part of Klar base folder structure,
 	// and local to the current package.
+	// Base import path = directory name
 	for _, name := range [...]string{CmdDir, SharedDir, TestDir} {
 		dir := filepath.Join(pi.Dir, name)
 		if _, err := os.Stat(dir); err == nil {

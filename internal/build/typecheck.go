@@ -33,15 +33,19 @@ func (c *Compiler) typeCheckModule(
 	parsedMod *Module, pool *checkerPool,
 ) []*klarerrs.Error {
 	opts := c.getCheckerOptions(parsedMod)
+	importPath := c.moduleInputs[parsedMod].PkgInfo.ImportPathOf(parsedMod.Path)
 	mod := analysis.NewModule(
 		parsedMod.Name, parsedMod.Path,
-		nil, // TODO: import path
+		importPath,
 		parsedMod.Programs,
 		opts.KlarVersion,
 		opts.Target,
 	)
 	if parsedMod.SingleFile {
 		mod.Flags |= analysis.SingleFileModule
+	}
+	if importPath[0] == "klar" && len(importPath) > 1 && importPath[1] == "_builtin" {
+		mod.Flags |= analysis.BootstrapModule
 	}
 	ch := pool.Get(mod, opts)
 	defer pool.Put(ch)
