@@ -27,6 +27,7 @@ func _() {
 	_ = x[ErrUnsupportedImportTarget-610]
 	_ = x[ErrImportPathAliased-611]
 	_ = x[ErrImportEmpty-612]
+	_ = x[ErrImportPathConflict-613]
 	_ = x[ErrUndefined-501]
 	_ = x[ErrEnumUndefined-502]
 	_ = x[ErrEnumCycle-503]
@@ -175,7 +176,7 @@ const (
 	_Code_name_2 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_Code_name_3 = "TypeErrorPrefixErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
 	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycle"
-	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrImportCycleErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmpty"
+	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrImportCycleErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmptyErrImportPathConflict"
 	_Code_name_6 = "ImplementationErrorPrefix"
 )
 
@@ -185,7 +186,7 @@ var (
 	_Code_index_2 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_Code_index_3 = [...]uint16{0, 15, 31, 53, 75, 98, 123, 139, 161, 174, 193, 207, 227, 245, 263, 281, 296, 308, 321, 341, 360, 385, 406, 426, 443, 459, 474, 492, 509, 530, 550, 570, 587, 606}
 	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60}
-	_Code_index_5 = [...]uint8{0, 17, 34, 48, 61, 80, 96, 115, 136, 152, 171, 197, 217, 231}
+	_Code_index_5 = [...]uint8{0, 17, 34, 48, 61, 80, 96, 115, 136, 152, 171, 197, 217, 231, 252}
 )
 
 func (i Code) String() string {
@@ -205,7 +206,7 @@ func (i Code) String() string {
 	case 500 <= i && i <= 503:
 		i -= 500
 		return _Code_name_4[_Code_index_4[i]:_Code_index_4[i+1]]
-	case 600 <= i && i <= 612:
+	case 600 <= i && i <= 613:
 		i -= 600
 		return _Code_name_5[_Code_index_5[i]:_Code_index_5[i+1]]
 	case i == 700:

@@ -70,18 +70,7 @@ func (pi *PackageInfo) MakeModuleMap() error {
 		if err != nil {
 			return err
 		}
-		base = pi.GetModuleAlias(base) // Respect user-defined aliases
-
-		// Check for import conflicts
-		if firstDir, ok := pi.moduleMap[base]; ok {
-			pi.addImportConflict(base, firstDir)
-			pi.addImportConflict(base, dir)
-			delete(pi.moduleMap, base)
-			continue
-		} else if pi.getImportConflict(base) != nil {
-			pi.addImportConflict(base, dir)
-		}
-		pi.moduleMap[base] = dir
+		pi.addBaseToModuleMap(base, dir)
 	}
 	// Special directories: Part of Klar base folder structure,
 	// and local to the current package.
@@ -89,10 +78,33 @@ func (pi *PackageInfo) MakeModuleMap() error {
 	for _, name := range [...]string{CmdDir, SharedDir, TestDir} {
 		dir := filepath.Join(pi.Dir, name)
 		if _, err := os.Stat(dir); err == nil {
-			pi.moduleMap[pi.GetModuleAlias(name)] = dir
+			pi.addBaseToModuleMap(name, dir)
 		}
 	}
 	return nil
+}
+
+func (pi *PackageInfo) addBaseToModuleMap(base, dir string) {
+	base = pi.GetModuleAlias(base) // Respect user-defined aliases. TODO
+	if firstDir, ok := pi.moduleMap[base]; ok {
+		// Import conflict: add existing and new dir to conflict list
+		pi.addImportConflict(base, firstDir)
+		pi.addImportConflict(base, dir)
+		delete(pi.moduleMap, base) // Can't import with base if there's a conflict
+	} else if pi.getImportConflict(base) != nil {
+		// Existing conflict
+		pi.addImportConflict(base, dir)
+	}
+	pi.moduleMap[base] = dir // No conflict (yet)
+}
+
+func (pi *PackageInfo) getDirFromBase(base string) (dir string, found, conflict bool) {
+	dir, found = pi.moduleMap[base]
+	if found {
+		return dir, true, false
+	}
+	conflict = pi.getImportConflict(base) != nil
+	return dir, !conflict, conflict
 }
 
 func (pi *PackageInfo) ResolveDependency(d glaspack.DependencySpecifier) (
@@ -127,6 +139,8 @@ func (pi *PackageInfo) getImportConflict(base string) []string {
 
 // GetModuleAlias returns the alias for a given module path, if one is defined
 // in the manifest. Otherwise, it returns the original path.
+// TODO: The manifest can contain aliases for import paths with
+// multiple parts, not just the base.
 func (pi *PackageInfo) GetModuleAlias(path string) string {
 	if pi.Manifest == nil || pi.Manifest.ModuleAliases == nil ||
 		pi.Manifest.ModuleAliases[path] == "" {

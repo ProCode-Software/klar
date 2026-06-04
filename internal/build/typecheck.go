@@ -14,17 +14,22 @@ import (
 // error to errCh and a signal to done when finished.
 func (c *Compiler) TypeCheckModules(pc *processContext, moduleCh chan *Module) {
 	checkerPool := newCheckerPool()
+	var wg sync.WaitGroup
 	for parsedMod := range moduleCh {
-		// Typecheck the module
-		errs := c.typeCheckModule(parsedMod, checkerPool)
-		if len(errs) > 0 {
-			select {
-			case pc.errorCh <- errs:
-			case <-pc.ctx.Done():
-				return
+		// Typecheck in separate goroutines so modules that are inputs can
+		// import each other.
+		wg.Go(func() {
+			defer close(parsedMod.Ready) // Allow importing this typechecked module
+			if errs := c.typeCheckModule(parsedMod, checkerPool); len(errs) > 0 {
+				select {
+				case pc.errorCh <- errs:
+				case <-pc.ctx.Done():
+					return
+				}
 			}
-		}
+		})
 	}
+	wg.Wait()
 	pc.done <- struct{}{}
 }
 

@@ -48,6 +48,10 @@ func (l *List) Kind() Kind     { return KindList }
 func (l *List) String() string { return "[" + TypeToString(l.Elem) + "]" }
 
 func (c *Checker) loadInternalModules() {
+	if builtinModule != nil && attributesModule != nil &&
+		builtinModule.Target == c.module.Target {
+		return // Already loaded
+	}
 	var (
 		builtinImportPath    = imports.ImportPath{"klar", "_builtin"}
 		attributesImportPath = imports.ImportPath{"klar", "_builtin", "attributes"}

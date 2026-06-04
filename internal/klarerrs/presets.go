@@ -3,6 +3,7 @@ package klarerrs
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -82,5 +83,16 @@ func Undefined(name string, rang ranges.Range) *Error {
 		Name:  name,
 		Range: rang,
 		Label: "I can't find " + Quote(name),
+	}
+}
+
+func ImportError(code Code, p imports.ImportPath, path string, err error) *Error {
+	return &Error{
+		Code: code,
+		Info: ModuleErrorInfo{
+			ModulePath: path,
+			ImportPath: p.String(),
+			Err:        err,
+		},
 	}
 }

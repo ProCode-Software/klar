@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
@@ -38,17 +39,18 @@ type Compiler struct {
 	// To avoid reparsing the same file. The same individual file and the
 	// file's whole module can be inputs to the compiler.
 	flatFiles map[string]*ast.Program
-	moduleMap map[string]*Module // Keys are module directories
+	moduleMap moduleMap
 
 	moduleInputs  map[*Module]*InputOptions // Map modules back to configurations
 	Reporter      *reporter.Reporter        // Reports errors to the console
-	WarningLevels map[string]uint8          // Severity levels for warnings
+	WarningLevels map[string]WarnLevel      // Severity levels for warnings
 	*slog.Logger
 }
 
 type (
 	InputKind int
 	BuildMode int
+	WarnLevel uint8
 )
 
 const (
@@ -64,6 +66,12 @@ const (
 	KindPackage
 	KindModule
 	KindStdin
+)
+
+const (
+	_ WarnLevel = iota
+	SuppressWarning
+	WarningAsError
 )
 
 type Options struct {
@@ -92,7 +100,7 @@ type Module struct {
 	Programs   map[string]*ast.Program // Base name of files
 	SingleFile bool                    // Whether the input was a single file
 	Checked    *analysis.Module
-	Ready      <-chan struct{}
+	Ready      chan struct{}
 }
 
 type InputOptions struct {
@@ -102,11 +110,40 @@ type InputOptions struct {
 	Options  *Options
 }
 
-const (
-	_ uint8 = iota
-	SuppressWarning
-	WarningAsError
-)
+type moduleMap struct {
+	mu      sync.RWMutex
+	modules map[string]*Module
+}
+
+// Get returns the module with the given directory path. Get is thread-safe.
+func (mm *moduleMap) Get(path string) *Module {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+	return mm.modules[path]
+}
+
+// insertSafe inserts m into the map if it doesn't already exist. It returns
+// the existing module if found, or m otherwise. insertSafe is thread-safe.
+func (mm *moduleMap) insertSafe(path string, m *Module) *Module {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+	if mm.modules == nil {
+		mm.modules = make(map[string]*Module)
+	}
+	if existing := mm.modules[path]; existing != nil {
+		return existing
+	}
+	mm.modules[path] = m
+	return m
+}
+
+// insert inserts m into the map. Not thread-safe
+func (mm *moduleMap) insert(path string, m *Module) {
+	if mm.modules == nil {
+		mm.modules = make(map[string]*Module)
+	}
+	mm.modules[path] = m
+}
 
 // Logging
 // ==========

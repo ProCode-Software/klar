@@ -7,6 +7,7 @@ const (
 	BootstrapModule       // Module used inside the Klar compiler
 	REPLModule            // Module used for the REPL. Allow unused values
 	VariadicParam         // *Variable is a variadic function param
+	ModuleWithErrors      // Module has errors and cannot be imported
 )
 
 func parseFlags(flags []Flag) (flag Flag) {

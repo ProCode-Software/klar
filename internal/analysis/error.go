@@ -10,6 +10,7 @@ type stopChecker struct{}
 
 func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 	c.Errors = append(c.Errors, err)
+	c.module.Flags |= ModuleWithErrors
 	if c.Options.Error != nil {
 		c.Options.Error(err)
 	}

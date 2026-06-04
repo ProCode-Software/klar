@@ -24,6 +24,7 @@ const (
 	ErrUnsupportedImportTarget // Current target doesn't support importing a module
 	ErrImportPathAliased       // You must use the aliased import path when provided
 	ErrImportEmpty             // Module being imported has no files or exports
+	ErrImportPathConflict      // Packages have conflicting base import paths
 )
 
 func (e *Error) handleModuleError() string {

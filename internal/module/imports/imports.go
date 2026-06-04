@@ -11,6 +11,8 @@ func (p ImportPath) String() string {
 	return strings.Join(p, ".")
 }
 
+// Namespace returns the last component of the import path, which is
+// usually used as the namespace for the module.
 func (p ImportPath) Namespace() string {
 	if len(p) == 0 {
 		return ""
@@ -36,4 +38,8 @@ func (p ImportPath) IsPrivate() bool {
 	return slices.ContainsFunc(p, func(d string) bool {
 		return strings.HasPrefix(d, "_")
 	})
+}
+
+func (p ImportPath) CanImport(p2 ImportPath) bool {
+	return !p2.IsPrivate() || p[0] == p2[0]
 }

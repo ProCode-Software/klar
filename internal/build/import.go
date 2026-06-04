@@ -1,47 +1,56 @@
 package build
 
 import (
+	"sync"
+
 	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
-	"github.com/ProCode-Software/klar/internal/module/imports"
-	"github.com/ProCode-Software/klar/internal/target"
 )
 
-// CompileFunc is [module.BaseImporter.Compile].
-type CompileFunc = func(p imports.ImportPath, dir string, t target.Target) (
-	*analysis.Module, error,
-)
+// makeImportCompiler returns a [module.CompileFunc] that compiles
+// dependencies for hostMod, the module that is importing the dependency.
+// This is used by [module.BaseImporter].
+func (c *Compiler) makeImportCompiler(hostMod *Module) module.CompileFunc {
+	return func(ctx module.ImportContext, dir string) (*analysis.Module, error) {
+		// When a module is requested by Importer, there are 3 possibilities:
+		//
+		// 1. The module is a Compiler input, and is already typechecked
+		// 2. The module is an input, but is awaiting typechecking
+		// 3. The module is a dependency that needs to be loaded from cache
+		// or compiled from scratch
 
-// makeImportCompiler returns a CompileFunc that compiles dependencies for
-// the given host module. This is used by [module.BaseImporter].
-func (c *Compiler) makeImportCompiler(hostMod *Module) CompileFunc {
-	return func(p imports.ImportPath, dir string, t target.Target) (*analysis.Module, error) {
-		// If the compiler already typechecked the module, look for it
-		// TODO: add a module map to [Compiler]?
-		for _, mod := range c.Modules {
-			if mod.Path == dir && mod.Checked != nil {
-				return mod.Checked, nil
+		// The module is an input, typechecked or not
+		if mod := c.moduleMap.Get(dir); mod != nil {
+			if mod.Checked == nil {
+				<-mod.Ready // Wait for typechecking to complete
 			}
+			// Check if the module has errors
+			if mod.Checked.Flags.Has(analysis.ModuleWithErrors) {
+				return nil, klarerrs.ImportError(
+					klarerrs.ErrModuleCompileError,
+					mod.Checked.ImportPath, dir, nil,
+				)
+			}
+			return mod.Checked, nil
 		}
-		// Compile from scratch
-		return c.CompileImport(hostMod, p, dir, t)
+		// The module isn't an input -- a dependency.
+		// Module cache hasn't been implemented yet (TODO), so modules will
+		// always be compiled from scratch each compile session.
+		return c.CompileImport(hostMod, dir, ctx)
 	}
 }
 
-// TODO: Store a map of [Compiler] to avoid recreating compilers for the same
-// host module and target package.
-
-func (c1 *Compiler) CompileImport(hostMod *Module,
-	p imports.ImportPath, dir string, t target.Target,
+func (c1 *Compiler) CompileImport(
+	hostMod *Module, dir string, ctx module.ImportContext,
 ) (*analysis.Module, error) {
 	newError := func(err error) *klarerrs.Error {
 		return &klarerrs.Error{
 			Code: klarerrs.ErrModuleCompileError,
 			Info: klarerrs.ModuleErrorInfo{
 				ModulePath: dir,
-				ImportPath: p.String(),
+				ImportPath: ctx.ImportPath().String(),
 				Err:        err,
 			},
 		}
@@ -51,7 +60,7 @@ func (c1 *Compiler) CompileImport(hostMod *Module,
 		return nil, err
 	}
 	c.UseStdParser()
-	input := Input{Path: dir, Name: p.Namespace(), Kind: KindModule}
+	input := Input{Path: dir, Name: ctx.ImportPath().Namespace(), Kind: KindModule}
 	input.ResolveKlarBuild()
 
 	// Parse the dependency's klar.build
@@ -64,7 +73,7 @@ func (c1 *Compiler) CompileImport(hostMod *Module,
 		}
 		// Merge it with the host's klar.build
 		klarBuild = mergeDependencyKlarBuild(klarBuild, config)
-		klarBuild.Target = t
+		klarBuild.Target = ctx.Target()
 	}
 	c.Options = append(c.Options, &Options{Inputs: []Input{input}, File: *klarBuild})
 
@@ -112,7 +121,24 @@ func mergeDependencyKlarBuild(host, dep *klarbuild.File) *klarbuild.File {
 	return kb
 }
 
+// Avoid recreating importers for the same package.
+// string = Package directory (with glas.pack)
+// TODO: not target-aware
+var (
+	importerMu    sync.Mutex
+	importerCache = make(map[string]analysis.Importer)
+)
+
 func (c *Compiler) GetImporter(m *Module) analysis.Importer {
-	i := module.NewBaseImporter(c.moduleInputs[m].PkgInfo, c.makeImportCompiler(m))
+	mi := c.moduleInputs[m]
+	importerMu.Lock()
+	defer importerMu.Unlock()
+	if importerCache == nil {
+		importerCache = make(map[string]analysis.Importer)
+	} else if cached, ok := importerCache[mi.PkgInfo.Dir]; ok {
+		return cached
+	}
+	i := module.NewBaseImporter(mi.PkgInfo, c.makeImportCompiler(m))
+	importerCache[mi.PkgInfo.Dir] = i
 	return i
 }

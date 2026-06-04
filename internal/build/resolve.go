@@ -150,7 +150,6 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 	c.inputs = make(map[*Input]*InputOptions, inputCt)
 	c.moduleInputs = make(map[*Module]*InputOptions, inputCt)
 	c.Modules = make([]*Module, 0, inputCt)
-	c.moduleMap = make(map[string]*Module, inputCt)
 	if manifestCache == nil {
 		manifestCache = make(map[string]*glaspack.Manifest, len(c.Options))
 	}
@@ -178,21 +177,18 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 				if c.Mode != ModeTest && IsTestFile(inp.Name) {
 					return totalFiles, &InterfaceError{Code: ErrTestInput, Value: inp.Path}
 				}
-				info.Modules = []*Module{{
-					Name:       inp.Name,
-					Path:       inp.Path,
-					SingleFile: true,
-					Files:      []string{inp.Path},
-				}}
-				c.Modules = append(c.Modules, info.Modules[0])
-				c.moduleInputs[info.Modules[0]] = info
+				m := c.newModule(inp.Name, inp.Path, info)
+				m.SingleFile = true
+				m.Files = []string{inp.Path}
+				info.Modules = []*Module{m}
 				totalFiles++
 				c.Info("Resolved file", slog.String("path", inp.Path))
 			case KindStdin:
 				// Empty paths are stdin
-				info.Modules = []*Module{{Files: []string{""}, SingleFile: true}}
-				c.Modules = append(c.Modules, info.Modules[0])
-				c.moduleInputs[info.Modules[0]] = info
+				m := c.newModule("", "", info)
+				m.SingleFile = true
+				m.Files = []string{""}
+				info.Modules = []*Module{m}
 				totalFiles++
 				c.Info("Resolved file from stdin")
 			case KindModule:
@@ -222,9 +218,9 @@ func (c *Compiler) ResolveModules() (totalFiles int, err error) {
 }
 
 func (c *Compiler) newModule(name, path string, info *InputOptions) *Module {
-	m := &Module{Name: name, Path: path}
+	m := &Module{Name: name, Path: path, Ready: make(chan struct{})}
 	c.Modules = append(c.Modules, m)
-	c.moduleMap[path] = m
+	c.moduleMap.insert(path, m)
 	c.moduleInputs[m] = info
 	return m
 }
