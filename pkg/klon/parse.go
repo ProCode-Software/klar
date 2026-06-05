@@ -547,7 +547,7 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 		singleKey = varName
 	default:
 		// Normal key or list item
-		singleKey, path, keyStart = rd.parseKey()
+		singleKey, path, keyStart = rd.parseKey(forceObject)
 	}
 
 	// Key-value field
@@ -629,7 +629,7 @@ func (rd *reader) convertKeyPath(path *[]ast.Value) ast.Value {
 
 // parseKey parses a key for a field. The key can be either a single value,
 // or a dot-path.
-func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
+func (rd *reader) parseKey(forceObject bool) (singleKey ast.Value, dotPath *[]ast.Value,
 	start lexer.Position,
 ) {
 	validate := func(v ast.Value) bool {
@@ -637,6 +637,9 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
 			return true
 		default:
+			if !forceObject {
+				return false
+			}
 			rd.rangeError(
 				klonerrs.ErrInvalidKey, v.Pos(),
 				"A field key must be a string, number, or boolean",
@@ -651,6 +654,10 @@ func (rd *reader) parseKey() (singleKey ast.Value, dotPath *[]ast.Value,
 	singleKey = rd.parseValue()
 	start = singleKey.Pos().Start
 	if !validate(singleKey) {
+		// An invalid key may be a valid list item
+		if !forceObject {
+			return singleKey, nil, start
+		}
 		singleKey = &ast.Bad{Value: singleKey}
 	}
 	if rd.currTok().Kind != Dot {
