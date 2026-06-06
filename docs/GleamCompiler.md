@@ -1,7 +1,7 @@
-# ⭐🩷 Gleam Compiler Notes (for Project Compilation)
+# ⭐🩷 Gleam Compiler Spec (for Project Compilation)
 
 1. Dependencies from manifests are installed
-2. Those deps are compiled first
+2. Those deps are compiled first (`ProjectCompiler.compile_dependencies`) [compiler-core/src/build/project_compiler.rs](https://github.com/gleam-lang/gleam/blob/874b0bb616a9111d2d34dd79b4ee8763c9767c5b/compiler-core/src/build/project_compiler.rs#L297)
     1. Deps are toposorted
     2. Deps are loaded from cache, or compiled using the build tool listed in the manifest `manifest.toml` (for Hex)
     3. Calls `compile_gleam_dep_package`
@@ -34,8 +34,9 @@ For compiling deps, `is_root = false`
 3. `PackageCompiler` initialized
 4. Whether to compile modules
     ```rust
-   compiler.compile_modules = !(self.options.compile == Compile::DepsOnly && is_root);
-   // compiler.compile_modules = self.options.compile != Compile::DepsOnly || !is_root;
+    compiler.compile_modules = !(self.options.compile == Compile::DepsOnly && is_root);
+    // I rewrote the condition as:
+    compiler.compile_modules = self.options.compile != Compile::DepsOnly || !is_root;
     ```
 5. Enforce target support
     ```rust
