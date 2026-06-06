@@ -2,7 +2,7 @@ name: mylang
 version: v1.0.0
 description: A programming language written in Klar
 
-klar: v0.1.0
+klar: v0.0.1
 target: js
 
 js:
