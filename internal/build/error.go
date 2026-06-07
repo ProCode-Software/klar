@@ -82,7 +82,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return "There are too many errors", ""
 	case ErrMaxModuleDepth:
 		return "Only up to 4 submodules are allowed: ",
-			fmt.Sprintf("<c>%s</c> has %d", err.Value, MaxModuleDepth+1)
+			fmt.Sprintf("<c>%s</c> has %d", err.Value, module.MaxModuleDepth+1)
 	case ErrFileInRoot:
 		return "A Klar file isn't allowed in the package or project root: ",
 			"I found <c>" + err.Value + "</c>"
@@ -122,9 +122,9 @@ func PrintInterfaceError(err *InterfaceError) {
 	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
 
-// PrintInterfaceError is [PrintInterfaceError], but uses b's [Reporter] to
+// PrintInterfaceOrKlonError is [PrintInterfaceError], but uses b's [Reporter] to
 // report Klon errors if needed.
-func (c *Compiler) PrintInterfaceError(err *InterfaceError) {
+func (c *Compiler) PrintInterfaceOrKlonError(err *InterfaceError) {
 	if IsKlonError(err) {
 		c.PrintKlonError(err)
 	} else {
@@ -154,7 +154,7 @@ func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) erro
 		}
 		c.Reporter.LoadFile(
 			file,
-			util.RelPath(c.WorkDir, absPath),
+			util.RelPath(c.Cwd, absPath),
 			makeKlonTokens(file),
 		)
 	}
@@ -248,7 +248,7 @@ func IsKlonError(err error) bool {
 func (c *Compiler) FailWithError(err error) {
 	switch err := err.(type) {
 	case *InterfaceError:
-		c.PrintInterfaceError(err)
+		c.PrintInterfaceOrKlonError(err)
 	case *FilesystemError:
 		cli.FailureError(err)
 	default:

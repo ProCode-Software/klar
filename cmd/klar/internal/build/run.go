@@ -28,11 +28,13 @@ import (
 // Build executes the "klar build" command.
 func Build(r *command.Runner) {
 	inputArgs := r.Parser.VarArgByName("inputs")
-	c, err := build.NewCompiler(build.ModeBuild)
+	cwd, err := build.Cwd()
 	if err != nil {
 		cli.FailureError(err)
 	}
-	c.UseStdParser()
+	c := build.NewCompiler(build.ModeBuild, cwd)
+	pc := build.NewProjectCompiler(c)
+
 	// Logging
 	jsonOutput := r.Flag("json-output").Bool()
 	if err := build.SetLogger(c, r.Flag("verbose").Bool(), jsonOutput); err != nil {
@@ -43,105 +45,59 @@ func Build(r *command.Runner) {
 			cli.Failure("Failed to write log file: ", err)
 		}
 	}()
-	// Avoid reparsing flags in [ParseFlags]
-	delete(r.Flags, "verbose")
-	delete(r.Flags, "json-output")
 
-	// Resolve all inputs if provided
-	if len(inputArgs) > 0 {
-		c.Info("Resolving inputs", slog.Any("inputs", inputArgs))
-	}
 	c.StartTime = time.Now() // Start timer at resolution process
-	var configPath string    // Config path if resolved from cwd or --config flag
-	inps, err := build.ResolveInputs(inputArgs, "")
-	if err == nil && len(inps) == 0 {
-		// Try reading from the cwd's klar.build if no inputs provided
-		if _, err := os.Stat("klar.build"); err == nil {
-			configPath = "klar.build"
-			c.Info("klar.build found in current directory")
-		} else {
-			// Build the nearest *package* if no path provided
-			pkgPath, _ := module.PackageRoot(".")
-			if false {
-				cli.ErrNoManifest(pkgPath)
-			}
-			c.Info("Resolving inputs at current package", slog.String("package", pkgPath))
-			//nolint:ineffassign // False positive
-			inps, err = build.ResolveInputs([]string{pkgPath}, configPath)
-		}
-	}
-	switch err := err.(type) {
-	case nil:
-	case *build.FilesystemError:
-		// Show a better error for file not found
-		if err.IsNotExist() {
-			cli.ErrNotFound(err.Path, "")
-		}
-		cli.Failure(err.Error())
-	case *build.InterfaceError:
-		c.PrintInterfaceError(err)
-		cli.Exit(1)
-	default:
-		cli.Failure(err.Error())
-	}
-	// Force a config path if --config flag was passed
-	var configFlag *build.Options
-	if conf := r.Flag("config").String(); conf != "" {
-		configPath = conf
-		cfs, warn, err := build.ReadKlarBuild(conf)
-		if err != nil {
-			c.PrintInterfaceError(err.(*build.InterfaceError))
-			cli.Exit(1)
-		}
-		c.PrintKlonWarnings(warn, conf)
-		if len(cfs) == 0 {
-			// Make sure the --config has options in it
-			cli.Failure(ansi.Sprintf("The configuration at <c>%s</c> has no options in it", conf))
-		}
-		c.Info("Using --config flag:", slog.String("path", conf))
-		configFlag = cfs[0]
-		delete(r.Flags, "config")
-	}
-	// Read options from klar.build
-	if len(inps) == 0 && configPath != "" {
+
+	// --config flag
+	var (
+		configFlag      = r.Flag("config")
+		forcedKlarBuild *klarbuild.File
+		klarBuildMode   int
+	)
+	if configFlag.String() != "" {
 		var warn []*klon.Error
-		if c.Options, warn, err = build.ReadKlarBuild(configPath); err != nil {
-			c.PrintInterfaceError(err.(*build.InterfaceError))
-			cli.Exit(1)
+		forcedKlarBuild, warn, err = klarbuild.Parse(configFlag.String())
+		if err != nil {
+			c.FailWithError(err)
 		}
-		c.PrintKlonWarnings(warn, configPath)
-	} else {
-		c.Options = make([]*build.Options, 0, len(inps))
+		c.PrintKlonWarnings(warn, configFlag.String())
+		ParseFlags(r, forcedKlarBuild)
+		klarBuildMode = 1
+	} else if configFlag.Set {
+		klarBuildMode = 2 // Provided, but empty
 	}
-	// Apply options for each input
-	for _, inp := range inps {
-		var opt *build.Options
-		switch {
-		case configPath != "":
-			// Use --config flag
-			opt = configFlag
-			inp.KlarBuild = configPath
-		case inp.KlarBuild == "":
-			opt = build.DefaultKlarBuild()
-		default:
-			// Use the Input's klar.build
-			opts, warn, err := build.ReadKlarBuild(inp.KlarBuild)
-			switch {
-			case err != nil:
-				c.FailWithError(err)
-			case len(opts) == 0:
-				opt = build.DefaultKlarBuild()
-			default:
-				opt = opts[0]
-			}
-			c.PrintKlonWarnings(warn, inp.KlarBuild)
+
+	// Resolve command-line inputs
+	pc.Inputs = make([]build.ProjectInput, 0, len(inputArgs))
+	addInput := func(path string) {
+		input, err := pc.ResolveInput(path, klarBuildMode, false)
+		if err != nil {
+			c.FailWithError(err)
 		}
-		ParseFlags(r, opt)
-		opt.Inputs = []build.Input{inp}
-		c.Options = append(c.Options, opt)
+		if forcedKlarBuild != nil {
+			// Use the klar.build config from the --config flag
+			input.Config = forcedKlarBuild
+		} else {
+			// Apply command-line flags
+			ParseFlags(r, input.Config)
+		}
+		pc.Inputs = append(pc.Inputs, *input)
 	}
+	for _, path := range inputArgs {
+		if path == "" {
+			continue
+		}
+		addInput(path)
+	}
+	if len(pc.Inputs) == 0 {
+		// If no inputs were provided, compile the current *package*
+		pkgPath, _ := module.PackageRoot(".")
+		c.Info("Building current package", slog.String("package", pkgPath))
+		addInput(pkgPath)
+	}
+
 	// TODO: error if --output is file and there are multiple inputs
-	res, err := c.Compile()
+	res, err := pc.Compile()
 	switch {
 	case len(res.Errors) > 0:
 		if r.Flag("sound-on-error").Bool() {
@@ -157,10 +113,10 @@ func Build(r *command.Runner) {
 		switch err := err.(type) {
 		case *build.InterfaceError:
 			// For InterfaceErrors: print a prettier error
-			c.PrintInterfaceError(err)
+			c.PrintInterfaceOrKlonError(err)
 			cli.Exit(1)
 		case *build.FilesystemError:
-			cli.Failure(err.Error())
+			cli.FailureError(err)
 		default:
 			// Errors should be a struct such as InterfaceError or FilesystemError
 			panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
@@ -216,13 +172,8 @@ func printJSONErrors(res *build.Result, err error, isMaxErrors bool) {
 	os.Stdout.WriteString("\n")
 }
 
-var jsFlags = []string{
-	"declaration", "minify", "inline-sourcemap", "sourcemap", "jsdoc",
-	"copy-node-modules", "banner", "bundle", "declaration-path",
-}
-
 // ParseFlags parses flags from r into o.
-func ParseFlags(r *command.Runner, o *build.Options) {
+func ParseFlags(r *command.Runner, f *klarbuild.File) {
 	var firstJSFlag string
 	for flag, v := range r.Flags {
 		if v == nil {
@@ -233,40 +184,40 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 			continue // Already handled
 		case "sound-on-error":
 		case "watch":
-			o.Watch = v.Bool()
+			f.Watch = v.Bool()
 		case "output":
-			o.Output = []string{v.String()}
+			f.Output = []string{v.String()}
 		case "target":
-			o.Target = v.EnumValue().(target.Target)
+			f.Target = v.EnumValue().(target.Target)
 		case "declaration":
-			o.JS.Declaration = v.Bool()
+			f.JS.Declaration = v.Bool()
 		case "minify":
-			o.JS.Minify = v.Bool()
+			f.JS.Minify = v.Bool()
 		case "inline-sourcemap":
 			if v.Bool() {
-				o.JS.Sourcemap = klarbuild.SourceMapInline
+				f.JS.Sourcemap = klarbuild.SourceMapInline
 			}
 		case "sourcemap":
 			if v.Bool() {
-				o.JS.Sourcemap = klarbuild.SourceMapEnabled
+				f.JS.Sourcemap = klarbuild.SourceMapEnabled
 			} else {
-				o.JS.Sourcemap = klarbuild.SourceMapDisabled
+				f.JS.Sourcemap = klarbuild.SourceMapDisabled
 			}
 		case "jsdoc":
-			o.JS.JSDoc = v.Bool()
+			f.JS.JSDoc = v.Bool()
 		case "copy-node-modules":
-			o.JS.CopyNodeModules = v.Bool()
+			f.JS.CopyNodeModules = v.Bool()
 		case "banner":
-			o.JS.Banner = v.String()
+			f.JS.Banner = v.String()
 		case "bundle":
-			o.JS.Bundle = v.EnumValue().(klarbuild.BundleMode)
+			f.JS.Bundle = v.EnumValue().(klarbuild.BundleMode)
 		case "declaration-path":
-			o.JS.DeclarationPath = v.String()
+			f.JS.DeclarationPath = v.String()
 		default:
 			panic("unhandled flag: " + flag)
 		}
 		// Check if a JavaScript flag was used when not targeting JavaScript
-		if o.JS != nil && !o.Target.IsJavaScript() && slices.Contains(jsFlags, flag) &&
+		if f.JS != nil && !f.Target.IsJavaScript() && slices.Contains(jsFlags, flag) &&
 			firstJSFlag == "" {
 			firstJSFlag = flag
 		}
@@ -274,7 +225,7 @@ func ParseFlags(r *command.Runner, o *build.Options) {
 	if firstJSFlag != "" {
 		cli.Failure(fmt.Sprintf(
 			"Can't use JavaScript flag '%s' with target '%s'",
-			argparse.FormatFlag(firstJSFlag), o.Target,
+			argparse.FormatFlag(firstJSFlag), f.Target,
 		))
 	}
 }

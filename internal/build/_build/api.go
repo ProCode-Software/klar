@@ -17,11 +17,7 @@ import (
 	pkgparse "github.com/ProCode-Software/klar/pkg/parser"
 )
 
-func NewCompiler(mode BuildMode) (*Compiler, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd, err = "", &FilesystemError{"get", "working directory", err}
-	}
+func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	return &Compiler{
 		Mode:    mode,
 		WorkDir: cwd,
@@ -33,7 +29,16 @@ func NewCompiler(mode BuildMode) (*Compiler, error) {
 			UseColor:     !ansi.DisableColor,
 		},
 		Logger: slog.New(slog.DiscardHandler),
-	}, err
+	}
+}
+
+// Cwd is [os.Getwd], but returns a [*FilesystemError] if it fails.
+func Cwd() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", &FilesystemError{"determine", "working directory", err}
+	}
+	return cwd, nil
 }
 
 // PrintError prints an error to the error printer.
@@ -148,7 +153,11 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 }
 
 func CompileString(s, fileName string) (c *Compiler, res *Result, err error) {
-	c, _ = NewCompiler(ModeBuild)
+	cwd, err := Cwd()
+	if err != nil {
+		return nil, nil, err
+	}
+	c = NewCompiler(ModeBuild, cwd)
 	c.Parser = NewStaticParser(fileName, &StaticParserFile{Reader: strings.NewReader(s)})
 	c.AddInputs(Input{Kind: KindFile, Name: fileName, Path: fileName})
 

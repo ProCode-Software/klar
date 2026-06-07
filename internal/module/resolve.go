@@ -40,12 +40,15 @@ func IsProjectDir(name string) bool {
 	return ok
 }
 
+// Per Project Structure Spec: No more than 4 parts of a module
+const MaxModuleDepth = 4
+
 func splitPath(p string) (string, string) {
 	parent, base := filepath.Split(p)
 	return strings.TrimSuffix(parent, sep), base
 }
 
-// PackageRoot returns the theoretical package root and project root
+// PackageRoot returns the package root and project root
 // for a given path, following the Klar Project Structure Spec.
 func PackageRoot(p string) (pkg, project string) {
 	// Check if a manifest is located in dir
@@ -100,6 +103,9 @@ func PackageRoot(p string) (pkg, project string) {
 // IsPackage reports whether p is a path to a package, as defined by the Klar
 // Project Structure Spec. IsPackage assumes that p is a directory path.
 func IsPackage(p string) bool {
+	if _, err := os.Stat(filepath.Join(p, ManifestFile)); err == nil {
+		return true
+	}
 	var depth int
 	var parent, name string
 	for {

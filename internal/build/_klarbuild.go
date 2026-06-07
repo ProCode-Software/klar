@@ -41,7 +41,7 @@ func ReadKlarBuild(path string) ([]*Options, []*klon.Error, error) {
 // configuration. The resulting Configuration will have a single top-level config.
 func MergeKlarBuild(
 	f *klarbuild.File, c *klarbuild.Configuration, path string,
-) (*Options, error) {
+) (*klarbuild.File, error) {
 	// Single top-level configuration
 	if c == nil {
 		c := f.Configuration
@@ -49,7 +49,7 @@ func MergeKlarBuild(
 		if err != nil {
 			return nil, err
 		}
-		return &Options{File: *f, Inputs: inputs}, nil
+		return f, nil
 	}
 	// c is an individual config. Duplicate the file and replace the top-level config.
 	f2 := *f

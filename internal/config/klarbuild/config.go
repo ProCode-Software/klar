@@ -24,6 +24,8 @@ type File struct {
 	Target target.Target
 	// Enable verbose logging during build. Useful for bug reporting.
 	Verbose bool
+	// Options for the type checker
+	Checker *CheckerOptions
 }
 
 type Configuration struct {
@@ -33,8 +35,6 @@ type Configuration struct {
 	Assets *AssetOptions
 	// Options when building JavaScript files
 	JS *JSOptions
-	// Options for the type checker
-	Checker *CheckerOptions
 
 	// Klar source files and directories that should be compiled. Glob patterns are
 	// allowed. If omitted, the entire package is compiled.
@@ -62,6 +62,7 @@ type Configuration struct {
 
 type AssetOptions struct {
 	// Directory that assets should be copied to. Relative to the build output directory.
+	// Required if module bundling is enabled.
 	AssetDir string
 	// File extensions that should be copied to the output directory.
 	Extensions []string
