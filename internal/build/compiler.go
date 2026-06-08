@@ -9,6 +9,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
@@ -17,6 +18,7 @@ type Compiler struct {
 	Mode      BuildMode
 	Reporter  *reporter.Reporter
 	StartTime time.Time
+	Errors    []*klarerrs.Error
 	*slog.Logger
 }
 
@@ -35,7 +37,7 @@ func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	}
 }
 
-type InputKind int
+type BuildMode int
 
 const (
 	ModeBuild   BuildMode = iota // Full compilation
@@ -58,6 +60,21 @@ func (c *Compiler) Abs(path string) string {
 		return path
 	}
 	return filepath.Join(c.Cwd, path)
+}
+
+func (c *Compiler) ResetState() {
+	c.Errors = nil
+}
+
+// PrintError prints an error to the error printer.
+func (c *Compiler) PrintError(err *klarerrs.Error) (int64, error) {
+	return c.Reporter.Report(err)
+}
+
+func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
+	for _, err := range errs {
+		c.PrintError(err)
+	}
 }
 
 // Logging

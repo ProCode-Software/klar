@@ -23,22 +23,14 @@ func ParseSpecifier(s string) (Specifier, error) {
 // GetMatches returns the versions in vs that match the specifier.
 func (s *Specifier) GetMatches(vs []*Version) []*Version { return nil }
 
-// CodableSpecifier wraps [Specifier] and implements [encoding.TextMarshaler]
-// and [encoding.TextUnmarshaler] to allow it to be serialized and deserialized
-// as a string.
-type CodableSpecifier struct{ Specifier }
 
-func (c *CodableSpecifier) UnmarshalText(text []byte) error {
-	spec, err := ParseSpecifier(string(text))
-	if err != nil {
-		return err
-	}
-	c.Specifier = spec
-	return nil
+func (s *Specifier) UnmarshalText(text []byte) (err error) {
+	*s, err = ParseSpecifier(string(text))
+	return err
 }
 
-func (c *CodableSpecifier) MarshalText() ([]byte, error) {
-	return []byte(c.Specifier.String()), nil
+func (s *Specifier) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
 }
 
 // Components

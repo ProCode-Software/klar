@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -96,15 +97,11 @@ func Build(r *command.Runner) {
 		addInput(pkgPath)
 	}
 
+	// TODO: Download deps
+
 	// TODO: error if --output is file and there are multiple inputs
 	res, err := pc.Compile()
 	switch {
-	case len(res.Errors) > 0:
-		if r.Flag("sound-on-error").Bool() {
-			playErrorSound()
-		}
-		printErrors(res, c, jsonOutput, err)
-		cli.Exit(1)
 	case err != nil:
 		if jsonOutput {
 			printJSONErrors(res, err, false)
@@ -121,6 +118,12 @@ func Build(r *command.Runner) {
 			// Errors should be a struct such as InterfaceError or FilesystemError
 			panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
 		}
+	case len(res.Errors) > 0:
+		if r.Flag("sound-on-error").Bool() {
+			playErrorSound()
+		}
+		printErrors(res, c, jsonOutput, err)
+		cli.Exit(1)
 	default:
 		ansi.Fprintfln(
 			os.Stderr,
@@ -133,7 +136,7 @@ func Build(r *command.Runner) {
 // printErrors prints the "Build failed" message to standard error with the
 // compile errors from res. isMaxErrors is whether compilation stopped early
 // due to too many errors. Errors are printed using b's errorPrinter.
-func printErrors(res *build.Result, b *build.Compiler, jsonOutput bool, err error) {
+func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool, err error) {
 	errs := res.Errors
 	// Format error count
 	var count strings.Builder
@@ -159,7 +162,7 @@ func printErrors(res *build.Result, b *build.Compiler, jsonOutput bool, err erro
 		icons.ThinXLarge, count.String(), util.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
-	b.PrintAllErrors(errs)
+	c.PrintAllErrors(errs)
 	if isMaxErrors {
 		cli.Error("There are too many errors")
 	}
@@ -174,23 +177,41 @@ func printJSONErrors(res *build.Result, err error, isMaxErrors bool) {
 
 // ParseFlags parses flags from r into o.
 func ParseFlags(r *command.Runner, f *klarbuild.File) {
-	var firstJSFlag string
-	for flag, v := range r.Flags {
-		if v == nil {
+	for _, setting := range klarBuildFlags {
+		flag, ok := r.Flags[setting]
+		if !ok || !flag.Set {
 			continue
 		}
-		switch flag {
-		case "config", "verbose":
-			continue // Already handled
-		case "sound-on-error":
+		switch setting {
 		case "watch":
-			f.Watch = v.Bool()
+			f.Watch = flag.Value.(bool)
 		case "output":
-			f.Output = []string{v.String()}
+			f.Output = flag.Value.([]string)
 		case "target":
-			f.Target = v.EnumValue().(target.Target)
+			f.Target = flag.Value.(target.Target)
+		default:
+			panic("unhandled flag: " + setting)
+		}
+	}
+	for _, setting := range jsFlags {
+		v, ok := r.Flags[setting]
+		if !ok || !v.Set {
+			continue
+		}
+		// Check if a JavaScript flag was used when not targeting JavaScript
+		if !f.Target.IsJavaScript() {
+			// Get the first JS flag the user provided
+			firstJSFlag := slices.SortedFunc(maps.Keys(r.Flags), func(a, b string) int {
+				return r.Flags[a].Index - r.Flags[b].Index
+			})[0]
+			cli.Failure(fmt.Sprintf(
+				"Can't use JavaScript flag '%s' with target '%s'",
+				argparse.FormatFlag(firstJSFlag), f.Target,
+			))
+		}
+		switch setting {
 		case "declaration":
-			f.JS.Declaration = v.Bool()
+			f.JS.Declaration = v.Value.(bool)
 		case "minify":
 			f.JS.Minify = v.Bool()
 		case "inline-sourcemap":
@@ -214,19 +235,8 @@ func ParseFlags(r *command.Runner, f *klarbuild.File) {
 		case "declaration-path":
 			f.JS.DeclarationPath = v.String()
 		default:
-			panic("unhandled flag: " + flag)
+			panic("unhandled flag: " + setting)
 		}
-		// Check if a JavaScript flag was used when not targeting JavaScript
-		if f.JS != nil && !f.Target.IsJavaScript() && slices.Contains(jsFlags, flag) &&
-			firstJSFlag == "" {
-			firstJSFlag = flag
-		}
-	}
-	if firstJSFlag != "" {
-		cli.Failure(fmt.Sprintf(
-			"Can't use JavaScript flag '%s' with target '%s'",
-			argparse.FormatFlag(firstJSFlag), f.Target,
-		))
 	}
 }
 

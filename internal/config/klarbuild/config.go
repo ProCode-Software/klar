@@ -151,6 +151,10 @@ type CheckerOptions struct {
 	// be reported if a `Result` value is unused or discarded, such as
 	// via `_ = fn()` or calling `fn()` as a statement.
 	CheckAllResults bool
+	// Require all expressions that return a value to be used or discarded
+	// via `_ = expr`. This is similar to `checkAllResults`, but applies
+	// to all expressions that return values, not just `Result`s.
+	UseAllValues bool
 }
 
 // Determines the level of exhaustiveness checking for 'when' expressions.

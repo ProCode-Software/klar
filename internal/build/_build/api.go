@@ -41,17 +41,6 @@ func Cwd() (string, error) {
 	return cwd, nil
 }
 
-// PrintError prints an error to the error printer.
-func (c *Compiler) PrintError(err *klarerrs.Error) (int64, error) {
-	return c.Reporter.Report(err)
-}
-
-func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
-	for _, err := range errs {
-		c.PrintError(err)
-	}
-}
-
 // AddInputs adds the given inputs to a new [Options] inside c. Each input's
 // klar.build is left empty.
 func (c *Compiler) AddInputs(inputs ...Input) {

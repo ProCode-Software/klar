@@ -1,8 +1,8 @@
 package build
 
 type (
-	BuildMode int
 	WarnLevel uint8
+	InputKind int
 )
 
 const (

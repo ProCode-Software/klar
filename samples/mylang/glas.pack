@@ -9,4 +9,8 @@ js:
   - defaultRuntime: bun
 
 dependencies:
-  - @npm proicons/react latest as proiconsreact
+  - @npm proicons/react latest
+  - github.com/ProCode-Software/proicons @pkg proicons-react v4.2
+  - mysite.com/myrepo +commitid @pkg whatever 
+  - @workspace myother
+

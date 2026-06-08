@@ -19,8 +19,9 @@ type Manifest struct {
 	// be built with. Users with a lower version than this can't build
 	// (and thus install) this package. Features introduced in newer Klar
 	// versions can't be used in this package's code.
-	// TODO: support ranges
-	Klar version.CodableSpecifier
+	//
+	// '*' can't be used as a version.
+	Klar version.Specifier
 	// Supported targets this package can be built for. All code in this
 	// module must be implemented for all of these targets, but '@target'
 	// directives can be used to exclude individual objects.
@@ -94,31 +95,41 @@ type (
 	DependencySpecifier interface{ depSpec() }
 )
 
-// VersionSpecifier is the default specifier, specifying a range
-// of versions of a package that can be installed.
-type VersionSpecifier struct{ *version.CodableSpecifier }
-
 // LocalSpecifier specifies that a dependency is a local package.
 type LocalSpecifier struct {
-	Path string // Path to a package
+	Path string // Path to a package or subpackage
 }
 
 // WorkspaceSpecifier specifies that a dependency is found as
 // a subpackage in the current project.
-type WorkspaceSpecifier struct{}
+type WorkspaceSpecifier struct{ Subpackage string }
 
 // NPMSpecifier specifies that a dependency is from NPM.
-type NPMSpecifier struct{ Version version.Specifier }
-
-// GitSpecifier specifies that a package is on a Git repo.
-type GitSpecifier struct {
-	URL string
-	Ref string
+type NPMSpecifier struct {
+	Name    string
+	Version version.Specifier
 }
+
+// GitSpecifier specifies that a package is on a Git repo. This
+// is the default specifier
+type GitSpecifier struct {
+	URL        string
+	Subpackage string // Specified via `@pkg`
+	RefKind    GitRefKind
+	Ref        string             // Commit (`+hash`) or branch (`branch`)
+	Version    *version.Specifier // If [RefKind] is [RefKindTag]
+}
+
+type GitRefKind int
+
+const (
+	BranchRef GitRefKind = iota // @branch. Uses the latest commit on the branch.
+	TagRef                      // @tag
+	CommitRef                   // @commit
+)
 
 // Implements [DependencySpecifier]
 func (*GitSpecifier) depSpec()       {}
 func (*LocalSpecifier) depSpec()     {}
 func (*WorkspaceSpecifier) depSpec() {}
 func (*NPMSpecifier) depSpec()       {}
-func (*VersionSpecifier) depSpec()   {}
