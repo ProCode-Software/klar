@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -12,7 +13,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/run"
-	"github.com/ProCode-Software/klar/pkg/parser"
 	"github.com/ergochat/readline"
 	"github.com/sanity-io/litter"
 )
@@ -105,7 +105,7 @@ func (s *Session) Prompt() {
 		s.checkMultilineEnd()
 		return
 	}
-	tokens := parser.TokenizeString(input)
+	tokens := tokenize(strings.NewReader(input), int64(len(input)/10))
 	if len(tokens) > 1 && tokens[0].Kind == lexer.Identifier {
 		valid, exit := s.handleCommand(tokens[0].Source, tokens[1:len(tokens)-1])
 		if exit {
@@ -244,10 +244,14 @@ func (s *Session) checkMultilineEnd() {
 }
 
 func (s *Session) sendMultiline() {
-	s.tokens = parser.TokenizeBytes(s.buf)
+	s.tokens = tokenize(bytes.NewReader(s.buf), int64(len(s.buf)/10))
 	s.send()
 	s.line = 0
 	s.buf = nil
+}
+
+func tokenize(r io.Reader, cap int64) []lexer.Token {
+	return lexer.NewLexer(r).TokenizeAll(cap)
 }
 
 func linePrompt(n uint32) string {

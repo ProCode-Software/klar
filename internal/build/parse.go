@@ -11,7 +11,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/util"
-	parser2 "github.com/ProCode-Software/klar/pkg/parser"
 )
 
 // Compilation stops after exceeding this number of errors.
@@ -100,9 +99,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	// =========
 	lex := p.GetLexer(f)
 	defer p.PutLexer(lex)
-	l.Info("Tokenizing file", slog.String("file", filePath))
-
-	res.Tokens = parser2.TokenizeLexer(lex, sizeEst)
+	res.Tokens = lex.TokenizeAll(sizeEst)
 
 	// Parse
 	// ========

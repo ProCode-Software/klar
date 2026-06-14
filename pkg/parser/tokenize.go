@@ -20,27 +20,9 @@ func TokenizeFile(file *os.File) []lexer.Token {
 	return Tokenize(file, est)
 }
 
-func TokenizeLexer(l *lexer.Lexer, cap int64) (tokens []lexer.Token) {
-	if cap > 0 {
-		tokens = make([]lexer.Token, 0, cap)
-	} else {
-		tokens = make([]lexer.Token, 0)
-	}
-	// Recover if the lexer panics (read error)
-	for {
-		token := l.Tokenize()
-		tokens = append(tokens, *token)
-		if token.Kind == lexer.EOF {
-			break
-		}
-	}
-	return tokens
-}
-
 // Tokenize reads from r and converts it into lexer tokens.
 func Tokenize(r io.Reader, cap int64) []lexer.Token {
-	lex := lexer.NewLexer(r)
-	return TokenizeLexer(lex, cap)
+	return lexer.NewLexer(r).TokenizeAll(cap)
 }
 
 // TokenizeString reads from src and converts it into lexer tokens.

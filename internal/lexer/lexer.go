@@ -18,6 +18,18 @@ func NewLexer(reader io.Reader) *Lexer {
 	return &Lexer{Position{1, 1}, bufio.NewReader(reader), false}
 }
 
+func (l *Lexer) TokenizeAll(cap int64) []Token {
+	tokens := make([]Token, 0, cap)
+	for {
+		tok := l.Tokenize()
+		tokens = append(tokens, *tok)
+		if tok.Kind == EOF {
+			break
+		}
+	}
+	return tokens
+}
+
 func (l *Lexer) Tokenize() *Token {
 	for {
 		pos := l.Pos

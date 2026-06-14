@@ -10,7 +10,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
-	parser2 "github.com/ProCode-Software/klar/pkg/parser"
 )
 
 // StaticParser is a [Parser] implementation that parses only a set of files.
@@ -69,7 +68,7 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 		case *bytes.Buffer:
 			size = int64(r.Len())
 		}
-		f.Tokens = parser2.Tokenize(f.Reader, size/10)
+		f.Tokens = lexer.NewLexer(f.Reader).TokenizeAll(size / 10)
 		fallthrough
 	default:
 		// Need to parse

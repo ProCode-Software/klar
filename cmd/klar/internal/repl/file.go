@@ -9,8 +9,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	astParser "github.com/ProCode-Software/klar/internal/parser"
-	"github.com/ProCode-Software/klar/pkg/parser"
+	"github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/printer"
 )
 
@@ -19,7 +18,7 @@ func parseArg(tokens []lexer.Token) (string, bool) {
 		return "", false
 	}
 	if tokens[0].Kind == lexer.String {
-		p := astParser.Parser{Tokens: tokens}
+		p := parser.New(tokens, nil)
 		str := p.ParseString()
 		return str.Content, true
 	}
@@ -37,8 +36,10 @@ func (s *Session) fileError(file, op string, err error) {
 func (s *Session) LoadFile(args []lexer.Token) {
 	path, ok := parseArg(args)
 	if !ok {
-		s.Printf(ansi.CodeBrightRed, "Missing file path. Usage: %s %s",
-			ansi.Yellow("load"), ansi.Cyan("<file>"))
+		s.Printf(
+			ansi.CodeBrightRed, "Missing file path. Usage: %s %s",
+			ansi.Yellow("load"), ansi.Cyan("<file>"),
+		)
 		return
 	}
 	f, err := os.Open(path)
@@ -51,7 +52,11 @@ func (s *Session) LoadFile(args []lexer.Token) {
 		return
 	}
 	defer f.Close()
-	tokens := parser.TokenizeFile(f)
+	var size int64
+	if info, err := f.Stat(); err == nil {
+		size = info.Size()
+	}
+	tokens := lexer.NewLexer(f).TokenizeAll(size / 10)
 	s.runTokens(tokens)
 }
 
