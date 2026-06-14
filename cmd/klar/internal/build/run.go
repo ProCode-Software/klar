@@ -37,6 +37,7 @@ func Build(r *command.Runner) {
 	pc := build.NewProjectCompiler(c)
 
 	// Logging
+	// ==========
 	jsonOutput := r.Flag("json-output").Bool()
 	if err := build.SetLogger(c, r.Flag("verbose").Bool(), jsonOutput); err != nil {
 		cli.FailureError(err)
@@ -50,39 +51,45 @@ func Build(r *command.Runner) {
 	c.StartTime = time.Now() // Start timer at resolution process
 
 	// --config flag
+	// =========
 	var (
 		configFlag      = r.Flag("config")
 		forcedKlarBuild *klarbuild.File
 		klarBuildMode   int
 	)
 	if configFlag.String() != "" {
+		configPath := configFlag.String()
 		var warn []*klon.Error
-		forcedKlarBuild, warn, err = klarbuild.Parse(configFlag.String())
-		if err != nil {
+		if forcedKlarBuild, warn, err = klarbuild.Parse(configPath); err != nil {
 			c.FailWithError(err)
 		}
-		c.PrintKlonWarnings(warn, configFlag.String())
+		c.PrintKlonWarnings(warn, configPath)
 		ParseFlags(r, forcedKlarBuild)
 		klarBuildMode = 1
 	} else if configFlag.Set {
-		klarBuildMode = 2 // Provided, but empty
+		klarBuildMode = 2 // Provided, but empty. Use default config
 	}
+	// If unset, a klar.build will be searched for
 
 	// Resolve command-line inputs
-	pc.Inputs = make([]build.ProjectInput, 0, len(inputArgs))
+	// =========
+	pc.Inputs = make([]*build.Input, 0, len(inputArgs))
 	addInput := func(path string) {
 		input, err := pc.ResolveInput(path, klarBuildMode, false)
-		if err != nil {
+		switch {
+		case err != nil:
 			c.FailWithError(err)
-		}
-		if forcedKlarBuild != nil {
+		case forcedKlarBuild != nil:
 			// Use the klar.build config from the --config flag
-			input.Config = forcedKlarBuild
-		} else {
+			input.KlarBuild = forcedKlarBuild
+		default:
 			// Apply command-line flags
-			ParseFlags(r, input.Config)
+			ParseFlags(r, input.KlarBuild)
+			if targetFlag := r.Flag("target"); targetFlag.Set {
+				input.Targets = []target.Target{targetFlag.EnumValue().(target.Target)}
+			}
 		}
-		pc.Inputs = append(pc.Inputs, *input)
+		pc.Inputs = append(pc.Inputs, input)
 	}
 	for _, path := range inputArgs {
 		if path == "" {
@@ -97,10 +104,19 @@ func Build(r *command.Runner) {
 		addInput(pkgPath)
 	}
 
-	// TODO: Download deps
+	// Resolve lockfiles and download dependencies for each input
+	// ========
+	if err := pc.DownloadDeps(); err != nil {
+		c.FailWithError(err)
+	}
 
+	// Compile!
+	// ==========
 	// TODO: error if --output is file and there are multiple inputs
 	res, err := pc.Compile()
+
+	// Print error/success messages
+	// ===========
 	switch {
 	case err != nil:
 		if jsonOutput {

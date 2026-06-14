@@ -2,6 +2,7 @@ package ast
 
 import (
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -67,4 +68,13 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 	"Nothing": PrimitiveNothing,
 	"Result":  PrimitiveResult,
 	"Error":   PrimitiveError,
+}
+
+func (p *Program) Deps(yield func(imports.ImportPath) bool) {
+	for _, stmt := range p.Body {
+		imp, ok := stmt.(*ImportStatement)
+		if !ok || !yield(imp.Module) {
+			return
+		}
+	}
 }

@@ -3,13 +3,20 @@ package build
 import (
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
+	"github.com/ProCode-Software/klar/internal/analysis"
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
@@ -19,6 +26,11 @@ type Compiler struct {
 	Reporter  *reporter.Reporter
 	StartTime time.Time
 	Errors    []*klarerrs.Error
+	Warnings  []*klarerrs.Error
+	Progress  Progress
+	Parser    Parser
+	errChan   chan *klarerrs.Error
+	warnChan  chan *klarerrs.Error
 	*slog.Logger
 }
 
@@ -33,8 +45,13 @@ func NewCompiler(mode BuildMode, cwd string) *Compiler {
 			CharacterSet: reporter.DefaultCharacterSet(),
 			UseColor:     !ansi.DisableColor,
 		},
-		Logger: slog.New(slog.DiscardHandler),
+		Logger:   slog.New(slog.DiscardHandler),
+		Progress: HiddenProgress{},
 	}
+}
+
+func (c *Compiler) UseStdParser() {
+	c.Parser = NewStdParser(c.Cwd, &parser.Options{MaxErrors: MaxErrors + 1})
 }
 
 type BuildMode int
@@ -46,6 +63,68 @@ const (
 	ModeParse                    // Untyped + resolved AST: format
 	ModeTest                     // Resolve test files
 )
+
+type Module struct {
+	Path       string                  // Directory path, or file if single-file
+	Programs   map[string]*ast.Program // Keys are file basenames (with extensions)
+	ModTimes   map[string]time.Time    // Same basenames as Programs
+	Checked    *analysis.Module        // Typechecked module
+	SingleFile bool
+	Assets     []string
+	Failed     bool // Has errors
+}
+
+func (m *Module) IsStdin() bool {
+	if !m.SingleFile || m.Programs == nil {
+		return false
+	}
+	_, ok := m.Programs[""]
+	return ok
+}
+
+// Includes the file extension
+func (m *Module) FilePath(base string) string {
+	if m.SingleFile {
+		return m.Path
+	}
+	return filepath.Join(m.Path, base)
+}
+
+func (m *Module) Name() string {
+	if m.IsStdin() {
+		return stdinName
+	}
+	return filepath.Base(m.Path)
+}
+
+func (m *Module) Deps(yield func(imports.ImportPath) bool) {
+	// Sort the file names for reproducible debugging results
+	for _, file := range slices.Sorted(maps.Keys(m.Programs)) {
+		for dep := range m.Programs[file].Deps {
+			if !yield(dep) {
+				return
+			}
+		}
+	}
+}
+
+type Deps map[string]*Module // Keys are stringed import paths
+
+func (d *Deps) Set(m *Module, importPath string) {
+	if *d == nil {
+		*d = make(Deps)
+	}
+	(*d)[importPath] = m
+}
+
+func (d *Deps) TryGet(importPath string) (*Module, bool) {
+	mod, ok := (*d)[importPath]
+	return mod, ok
+}
+
+func (d *Deps) Get(importPath string) *Module {
+	return (*d)[importPath]
+}
 
 func Cwd() (string, error) {
 	cwd, err := os.Getwd()
@@ -75,6 +154,25 @@ func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
 	for _, err := range errs {
 		c.PrintError(err)
 	}
+}
+
+// Parser
+// ==========
+
+// Parser parses files into untyped ASTs.
+type Parser interface {
+	// Parse reads and parses the file at the given path and returns the short
+	// file path, a [ParseResult] object, and a fatal error if one occurs, such
+	// as during reading. If path == "", Parse should read from standard input.
+	// l may be used to log status. Parse may be called concurrently.
+	Parse(path string, l *slog.Logger) (shortPath string, res *ParseResult, err error)
+}
+
+type ParseResult struct {
+	Tokens  []lexer.Token
+	Program *ast.Program
+	Errors  []*klarerrs.Error
+	ModTime time.Time
 }
 
 // Logging

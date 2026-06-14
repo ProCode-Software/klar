@@ -145,7 +145,11 @@ func (s *Session) runTokens(t []lexer.Token) {
 	if err != nil {
 		return
 	}
-	litter.Dump(res.Modules[0].Programs["repl"])
+	for _, mod := range res.Modules {
+		if mod.Name() == "repl" {
+			litter.Dump(mod.Programs["repl"])
+		}
+	}
 	s.evaluated = append(s.evaluated, t)
 }
 

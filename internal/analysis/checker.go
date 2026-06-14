@@ -31,6 +31,8 @@ type Options struct {
 	MaxErrors int
 	// Whether to skip type checking function bodies.
 	IgnoreFuncBodies bool
+	// Whether to enforce that objects are supported on all targets in [Options.Target].
+	EnforceTargetSupport bool
 	// Type checker options from klar.build
 	*klarbuild.CheckerOptions
 }

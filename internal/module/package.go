@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 )
@@ -14,6 +15,8 @@ type PackageInfo struct {
 	Manifest *glaspack.Manifest
 	// Absolute path to the package directory where glas.pack is
 	Dir string
+	// Only different from Dir in workspaces
+	ProjectDir string
 	// Whether cache is stored in the `.klar` folder in Dir
 	LocalCache bool
 	// First part of import path : local path
@@ -28,14 +31,22 @@ type PackageInfo struct {
 
 // NewPackageInfo creates a new PackageInfo instance. If the manifest is nil,
 // NewPackageInfo returns nil.
-func NewPackageInfo(dir string, man *glaspack.Manifest) *PackageInfo {
+func NewPackageInfo(pkgDir, projDir string, man *glaspack.Manifest) *PackageInfo {
 	if man == nil {
 		return nil
 	}
+	if projDir == "" {
+		projDir = pkgDir
+	}
+	var localCache bool
+	if _, err := os.Stat(filepath.Join(projDir, LocalDataDir)); err == nil {
+		localCache = true
+	}
 	return &PackageInfo{
 		Manifest:   man,
-		Dir:        dir,
-		LocalCache: false,
+		Dir:        pkgDir,
+		ProjectDir: pkgDir,
+		LocalCache: localCache,
 		moduleMap:  nil,
 	}
 }
@@ -85,7 +96,6 @@ func (pi *PackageInfo) MakeModuleMap() error {
 }
 
 func (pi *PackageInfo) addBaseToModuleMap(base, dir string) {
-	base = pi.GetModuleAlias(base) // Respect user-defined aliases. TODO
 	if firstDir, ok := pi.moduleMap[base]; ok {
 		// Import conflict: add existing and new dir to conflict list
 		pi.addImportConflict(base, firstDir)
@@ -111,8 +121,6 @@ func (pi *PackageInfo) ResolveDependency(d glaspack.DependencySpecifier) (
 	dir, importBase string, err error,
 ) {
 	switch d := d.(type) {
-	case *glaspack.VersionSpecifier:
-		_ = d
 	case *glaspack.NPMSpecifier:
 	case *glaspack.WorkspaceSpecifier:
 	case *glaspack.LocalSpecifier:
@@ -137,14 +145,50 @@ func (pi *PackageInfo) getImportConflict(base string) []string {
 	return pi.importConflicts[base]
 }
 
-// GetModuleAlias returns the alias for a given module path, if one is defined
-// in the manifest. Otherwise, it returns the original path.
-// TODO: The manifest can contain aliases for import paths with
-// multiple parts, not just the base.
-func (pi *PackageInfo) GetModuleAlias(path string) string {
-	if pi.Manifest == nil || pi.Manifest.ModuleAliases == nil ||
-		pi.Manifest.ModuleAliases[path] == "" {
-		return path
+func (pi *PackageInfo) CacheDir() string {
+	if pi.LocalCache {
+		return filepath.Join(pi.ProjectDir, LocalDataDir, "cache")
 	}
-	return pi.Manifest.ModuleAliases[path]
+	return SystemDirs.Cache
+}
+
+func (pi *PackageInfo) DataDir() string {
+	if pi.LocalCache {
+		return filepath.Join(pi.ProjectDir, LocalDataDir)
+	}
+	return SystemDirs.Data
+}
+
+func (pi *PackageInfo) PackageDirOf(p *glaslock.Package) string {
+	switch p.From {
+	case glaslock.NPM:
+		panic("npm packages not supported with PackageDirOf")
+	case glaslock.Local:
+		path := p.LocalInfo().Path
+		if filepath.IsAbs(path) {
+			return path
+		}
+		return filepath.Join(pi.Dir, path)
+	case glaslock.Workspace:
+		dir := p.WorkspaceInfo().Dir
+		return filepath.Join(pi.ProjectDir, PkgDir, dir)
+	case glaslock.Git:
+		data := p.GitInfo()
+		root := filepath.Join(
+			pi.DataDir(), "packages",
+			strings.ReplaceAll(data.URL, "/", "+"), data.Integrity,
+		)
+		if data.Subpath == "" {
+			return root
+		}
+		return filepath.Join(root, PkgDir, data.Subpath)
+	default:
+		panic(fmt.Sprintf("unhandled package source: %v", p.From))
+	}
+}
+
+// The 'klar' base may be aliased (either 'klar' -> something else, or something
+// else -> 'klar') in the manifest and will not point to the standard library.
+func (pi *PackageInfo) IsStdlib(p imports.ImportPath) bool {
+	return p.IsStdlib()
 }

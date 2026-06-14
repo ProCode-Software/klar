@@ -4,10 +4,7 @@ import "github.com/ProCode-Software/klar/pkg/klon/ast"
 
 // This file declares wrapper types for encoding/decoding from Klon.
 
-type DependencyCoder struct {
-	Name string
-	DependencySpecifier
-}
+type DependencyCoder struct{ DependencySpecifier }
 
 // DependencyCoder should handle classes
 func (dc *DependencyCoder) UnmarshallKlon(val ast.Value) error {

@@ -24,6 +24,7 @@ const sep = string(filepath.Separator)
 const (
 	ManifestFile = "glas.pack"
 	BuildFile    = "klar.build"
+	LockFile     = "glas.lock"
 
 	PkgDir       = "pkg"
 	LocalDataDir = ".klar"
@@ -121,7 +122,7 @@ func IsPackage(p string) bool {
 		case p == parent:
 			return true
 		}
-		p = parent
+		p = strings.TrimSuffix(parent, sep)
 		depth++
 	}
 }

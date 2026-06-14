@@ -12,6 +12,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
@@ -53,6 +54,8 @@ const (
 	ErrMisplacedTest    // Test file in a non-test directory
 	ErrLexer            // Lexer error
 	ErrInvalidConfig    // Failed to parse configuration
+	ErrKlarVersion      // Compiler version too old to compile a package
+	ErrDepResolve       // Failed to resolve dependency
 )
 
 type InterfaceError struct {
@@ -255,4 +258,43 @@ func (c *Compiler) FailWithError(err error) {
 		cli.FailureError(err)
 	}
 	cli.Exit(1)
+}
+
+// Compiler Error Collector
+// ==========
+
+func (c *Compiler) startCollectingErrors() {
+	c.errChan = make(chan *klarerrs.Error)
+	c.warnChan = make(chan *klarerrs.Error)
+	c.collectErrors()
+}
+
+// hasErrs is whether errs contains errors that fail compilation. If all
+// errs are warnings, or errs is empty, hasErrs is false.
+func (c *Compiler) sendErrors(errs []*klarerrs.Error) (hasErrs bool) {
+	if len(errs) == 0 {
+		return false
+	}
+	for _, err := range errs {
+		if err.IsWarning() {
+			c.warnChan <- err
+			hasErrs = true
+		} else {
+			c.errChan <- err
+		}
+	}
+	return
+}
+
+func (c *Compiler) collectErrors() {
+	go func() {
+		for err := range c.errChan {
+			c.Errors = append(c.Errors, err)
+		}
+	}()
+	go func() {
+		for warn := range c.warnChan {
+			c.Warnings = append(c.Warnings, warn)
+		}
+	}()
 }

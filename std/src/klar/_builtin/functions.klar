@@ -1,3 +1,9 @@
+// NOTE: As this module is being bootstrapped, it cannot refer to attributes.
+// This is a limitation because the attributes bootstrapped module references
+// builtin types.
+// TODO: We could declare "fake" builtin types that the attributes could use,
+// as they don't need the methods.
+
 // Prints values to the console. When running outside the browser, this is
 // standard output (stdout). Any value can be printed. Values are displayed
 // in a way that is easy to debug -- such as displaying field keys and values

@@ -56,32 +56,23 @@ func (c *Checker) loadInternalModules() {
 		builtinImportPath    = imports.ImportPath{"klar", "_builtin"}
 		attributesImportPath = imports.ImportPath{"klar", "_builtin", "attributes"}
 		currImpPath          = c.module.ImportPath
+		// True if the internal module is currently being typechecked
+		isBootstrap = c.module.Flags.Has(BootstrapModule)
 	)
-	// The internal module is currently being typechecked
-	isBootstrap := c.module.Flags.Has(BootstrapModule)
-
-	// Prevent cycles while bootstrapping the internal modules.
-	// We want to make primitive types accessible to the attributes module, and
-	// vice versa. The primitives module already declares its own objects.
+	// As a temporary limitation, the builtin module can't reference attributes.
+	// The attributes module needs the builtin types.
+	if isBootstrap {
+		attributesAllowed = false
+		if slices.Equal(currImpPath, builtinImportPath) {
+			builtinModule = c.module
+		} else if slices.Equal(currImpPath, attributesImportPath) {
+			attributesModule = c.module
+		}
+	}
 	if !isBootstrap || slices.Equal(currImpPath, attributesImportPath) {
-		builtinModule = c.importInternally(builtinImportPath)
 		declareBuiltinTypes()
 		declareBuiltinFunctions()
 	}
-	if !isBootstrap || slices.Equal(currImpPath, builtinImportPath) {
-		attributesModule = c.importInternally(attributesImportPath)
-	}
-}
-
-func (c *Checker) importInternally(path imports.ImportPath) *Module {
-	mod, err := c.Options.Importer.Import(path, &importCtx{
-		target:   c.Options.Target,
-		internal: true,
-	})
-	if err != nil {
-		panic(fmt.Sprintf("failed to perform internal import for %s: %v", path, err))
-	}
-	return mod
 }
 
 func declareBuiltinTypes() {

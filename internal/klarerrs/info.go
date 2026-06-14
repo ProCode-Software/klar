@@ -14,7 +14,6 @@ func (SyntaxErrorInfo) info()      {}
 func TokenInfo(t lexer.Token) Info { return SyntaxErrorInfo{Token: t} }
 
 type ModuleErrorInfo struct {
-	ModulePath string
 	ImportPath string
 	Err        error
 }

@@ -20,7 +20,7 @@ type Manifest struct {
 	// (and thus install) this package. Features introduced in newer Klar
 	// versions can't be used in this package's code.
 	//
-	// '*' can't be used as a version.
+	// `*` or `latest` aren't allowed.
 	Klar version.Specifier
 	// Supported targets this package can be built for. All code in this
 	// module must be implemented for all of these targets, but '@target'
@@ -47,10 +47,15 @@ type Manifest struct {
 	// Packages that are only needed as build tools and aren't included
 	// when this package is installed normally.
 	DevelopmentDependencies DependencyList // TODO: devDependencies instead?
-	// Aliases for import paths used in this package. An NPM package name
-	// can also be used as a key to set its import path to a custom value.
-	// Once an import path is set, it must be used instead of the original.
-	ModuleAliases map[string]string
+	// Set namespaces (values) for installed packages (keys). When a package's
+	// namespace is set, all of its modules will be qualified under the
+	// namespace. For example, by setting package `pkgA`'s namespace to `pkga`:
+	// 	pkgA: pkga // Package -> Namespace
+	// If the package provides modules `a` and `b`, they will be imported as
+	// `pkga.a` and `pkga.b`.
+	// This is useful for changing the Klar-generated names of NPM packages,
+	// or resolving conflicts with import paths.
+	ImportPaths map[string]string // Keys: package names, Values: import bases
 }
 
 type Link struct{ Label, URL string }

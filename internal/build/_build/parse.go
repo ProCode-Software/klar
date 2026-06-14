@@ -111,24 +111,6 @@ func (c *Compiler) parseFile(pc *processContext,
 	}
 }
 
-// Standard parser implementation
-// ==============================
-
-// StdParser is the default [Parser] implementation for Klar.
-type StdParser struct {
-	*parsePool
-	cwd string
-}
-
-func NewStdParser(cwd string, parseOpts *parser.Options) *StdParser {
-	return &StdParser{parsePool: newParsePool(parseOpts), cwd: cwd}
-}
-
-func (p *StdParser) Reset() {
-	p.parsePool = nil
-	p.cwd = ""
-}
-
 const stdinName = "standardInput"
 
 func (p *StdParser) Parse(filePath string, l *slog.Logger) (
@@ -158,14 +140,13 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 		}
 		sizeEst = stat.Size() / 10
 		shortPath = util.RelPath(p.cwd, filePath) // Get relative path
-		l.Info("Successfully opened file")
 	}
 	res = &ParseResult{}
 	// Tokenize
 	// =========
 	lex := p.GetLexer(f)
 	defer p.PutLexer(lex)
-	l.Info("Tokenizing file")
+	l.Info("Tokenizing file", slog.String("file", filePath))
 
 	res.Tokens = pkgparser.TokenizeLexer(lex, sizeEst)
 
@@ -174,50 +155,8 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	pa := p.GetParser(res.Tokens, filePath)
 	defer p.PutParser(pa)
 
-	l.Info("Parsing file")
+	l.Info("Parsing file", slog.String("file", filePath))
 	res.Program = pa.Parse()
 	res.Errors = pa.Errors
 	return shortPath, res, nil
-}
-
-// Lexer/parser pool
-// =================
-
-// parsePool provides a pool of [lexer.Lexer] and [parser.Parser].
-type parsePool struct{ parser, lexer sync.Pool }
-
-// newParsePool creates a new [parsePool] with the provided
-// [lexer.Flags] and [pkgparser.Options] as defaults.
-func newParsePool(parseOpts *parser.Options) *parsePool {
-	return &parsePool{
-		lexer: sync.Pool{New: func() any {
-			return lexer.NewLexer(nil)
-		}},
-		parser: sync.Pool{New: func() any {
-			return parser.New(nil, parseOpts)
-		}},
-	}
-}
-
-func (p *parsePool) GetLexer(r io.Reader) *lexer.Lexer {
-	l := p.lexer.Get().(*lexer.Lexer)
-	l.Reader = bufio.NewReader(r)
-	return l
-}
-
-func (p *parsePool) PutLexer(l *lexer.Lexer) {
-	l.Reset()
-	p.lexer.Put(l)
-}
-
-func (p *parsePool) GetParser(tokens []lexer.Token, file string) *parser.Parser {
-	pa := p.parser.Get().(*parser.Parser)
-	pa.Tokens = tokens
-	pa.Options.File = file
-	return pa
-}
-
-func (p *parsePool) PutParser(pa *parser.Parser) {
-	pa.Reset()
-	p.parser.Put(pa)
 }

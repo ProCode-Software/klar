@@ -88,7 +88,7 @@ loop:
 			break loop
 		case RightBracket, RightCurly:
 			if len(items) == 0 {
-				rd.tokenError(klonerrs.ErrUnmatchedBracket, tok, "Unmatched '%s'", tok.Src)
+				rd.tokenError(klonerrs.ErrUnmatchedBracket, tok, "'%s' should be escaped", tok.Src)
 				rd.advanceTok()
 			}
 			break loop

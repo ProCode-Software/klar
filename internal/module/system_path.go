@@ -1,7 +1,9 @@
 package module
 
 import (
+	"cmp"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -112,4 +114,32 @@ func KlarConfigDir() (string, error) {
 	default:
 		return filepath.Join(dir, "klar"), nil
 	}
+}
+
+type systemDirs struct {
+	Data   string
+	Cache  string
+	Config string
+	Std    string
+}
+
+var SystemDirs *systemDirs
+
+func LoadSystemDirs() (err error) {
+	var (
+		klarData, err1   = KlarDataDir()
+		klarCache, err2  = KlarCacheDir()
+		klarConfig, err3 = KlarConfigDir()
+		klarStd, err4    = KlarStdDir()
+	)
+	if err = cmp.Or(err1, err2, err3, err4); err != nil {
+		return fmt.Errorf("failed to load Klar directories: %w", err)
+	}
+	SystemDirs = &systemDirs{
+		Data:   klarData,
+		Cache:  klarCache,
+		Config: klarConfig,
+		Std:    klarStd,
+	}
+	return nil
 }

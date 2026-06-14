@@ -10,6 +10,7 @@
 /// ```
 ///
 /// This file is part of the Klar compiler and exists for documentation purposes.
+import _ = klar._builtin
 
 // A version literal. This is here for documentation purposes.
 type #Version

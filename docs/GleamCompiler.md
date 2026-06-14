@@ -102,4 +102,4 @@ Direct deps: Normal deps + dev deps
     let _ = module_types.insert(module.name.clone(), module.ast.type_info.clone());
     ```
 4. Emit empty module warnings
-5. If typechecking partially fails, its module data is still registered for the LSP. But will not be reloaded from cache
+5. If typechecking partially fails, its module data is still registered for the LSP (as an incomplete module). But will not be reloaded from cache

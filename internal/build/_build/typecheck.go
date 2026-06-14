@@ -74,29 +74,3 @@ func (c *Compiler) getCheckerOptions(mod *Module) *analysis.Options {
 	}
 	return opts
 }
-
-// Pool of [analysis.Checker] objects (similar to parsePool)
-// =========
-
-type checkerPool struct{ sync.Pool }
-
-func newCheckerPool() *checkerPool {
-	return &checkerPool{sync.Pool{
-		New: func() any { return new(analysis.Checker) },
-	}}
-}
-
-// Get returns an [analysis.Checker] from the pool, initializing it with mod and opts.
-func (p *checkerPool) Get(
-	mod *analysis.Module, opts *analysis.Options,
-) *analysis.Checker {
-	ch := p.Pool.Get().(*analysis.Checker)
-	ch.Init(mod, opts)
-	return ch
-}
-
-// Put resets ch and puts it back into the pool.
-func (p *checkerPool) Put(ch *analysis.Checker) {
-	ch.Reset()
-	p.Pool.Put(ch)
-}

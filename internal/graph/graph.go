@@ -2,6 +2,8 @@ package graph
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -11,100 +13,74 @@ type CycleError[T comparable] struct {
 }
 
 func (e *CycleError[T]) Error() string {
-	var sb strings.Builder
-	sb.WriteString("circular dependency detected: ")
+	var b strings.Builder
+	b.WriteString("circular dependency detected: ")
 	for i, node := range e.Cycle {
 		if i > 0 {
-			sb.WriteString(" -> ")
+			b.WriteString(" -> ")
 		}
-		fmt.Fprintf(&sb, "%v", node)
+		fmt.Fprintf(&b, "%v", node)
 	}
-	return sb.String()
+	return b.String()
 }
 
-// Graph represents a directed acyclic graph.
+// Graph represents a directed acyclic graph (DAG).
 type Graph[T comparable] struct {
-	edges map[T][]T
-	nodes map[T]struct{}
+	edges    [][2]T
+	vertices []T
 }
 
 // New creates a new directed graph.
 func New[T comparable]() *Graph[T] {
-	return &Graph[T]{
-		edges: make(map[T][]T),
-		nodes: make(map[T]struct{}),
-	}
+	return &Graph[T]{}
 }
 
-// AddNode adds a node to the graph without any edges.
-func (g *Graph[T]) AddNode(node T) {
-	g.nodes[node] = struct{}{}
+func NewWithCapacity[T comparable](capacity int) *Graph[T] {
+	return &Graph[T]{edges: make([][2]T, 0, capacity)}
 }
 
-// AddEdge adds a directed edge from 'from' to 'to'.
-// In a dependency graph, this typically means 'from' depends on 'to'.
+// AddEdge adds a directed edge from 'from' to 'to' (from -> to).
+// In a dependency graph, this typically means 'to' depends on 'from'.
 func (g *Graph[T]) AddEdge(from, to T) {
-	g.nodes[from] = struct{}{}
-	g.nodes[to] = struct{}{}
-	g.edges[from] = append(g.edges[from], to)
+	g.edges = append(g.edges, [2]T{from, to})
 }
 
-// TopoSort performs a topological sort on the graph using depth-first search.
-// If 'from' depends on 'to' (edge from -> to), then 'to' will appear before 'from' in the result.
-// If a cycle is detected, it returns a CycleError containing the path of the cycle.
-func (g *Graph[T]) TopoSort() ([]T, error) {
-	var (
-		result  []T
-		visited = make(map[T]bool)
-		temp    = make(map[T]bool)
-		path    []T
-	)
+func (g *Graph[T]) AddVertex(vertex T) {
+	g.vertices = append(g.vertices, vertex)
+}
 
-	var visit func(node T) error
-	visit = func(node T) error {
-		if temp[node] {
-			// Cycle detected
-			// Extract the cycle from the path
-			var cycle []T
-			inCycle := false
-			for _, p := range path {
-				if p == node {
-					inCycle = true
-				}
-				if inCycle {
-					cycle = append(cycle, p)
-				}
-			}
-			cycle = append(cycle, node)
-			return &CycleError[T]{Cycle: cycle}
-		}
-		if visited[node] {
-			return nil
-		}
-
-		temp[node] = true
-		path = append(path, node)
-
-		for _, dep := range g.edges[node] {
-			if err := visit(dep); err != nil {
-				return err
-			}
-		}
-
-		temp[node] = false
-		path = path[:len(path)-1]
-		visited[node] = true
-		result = append(result, node)
-		return nil
+// Port of the JavaScript implementation of ProCode's Algorithm
+// See: https://github.com/ProCode-Software/TopoBench
+func (g *Graph[T]) Toposort() (sorted []T, err error) {
+	// 1. Create the initial dependency map
+	deps := make(map[T][]T, len(g.vertices)+len(g.edges)/4)
+	for _, vertex := range g.vertices {
+		deps[vertex] = nil
 	}
-
-	for node := range g.nodes {
-		if !visited[node] {
-			if err := visit(node); err != nil {
-				return nil, err
-			}
+	for _, edge := range g.edges {
+		dependency, dependent := edge[0], edge[1]
+		// 2. For every `a -> b`, append `a` to `depMap[b]`
+		deps[dependent] = append(deps[dependent], dependency)
+		
+		// This is for #1
+		if _, ok := deps[dependency]; !ok {
+			deps[dependency] = nil
 		}
 	}
-
-	return result, nil
+	// 3. For every { a: [b, c] }, append the direct dependencies of b and c and
+	// the direct deps of those
+	for v := range deps {
+		for i := 0; i < len(deps[v]); i++ {
+			dep := deps[v][i]
+			if dep == v {
+				// Cycle
+				return nil, nil // TODO
+			}
+			deps[v] = append(deps[v], deps[dep]...)
+		}
+	}
+	// 4. Whichever vertice has the least dependencies goes first
+	return slices.SortedFunc(maps.Keys(deps), func(a, b T) int {
+		return len(deps[a]) - len(deps[b])
+	}), nil
 }

@@ -144,7 +144,7 @@ func (r *Reporter) printHeader(file string, rang ranges.Range,
 	r.appendRune(r.CharacterSet.BoxTL, boxColor)
 	r.appendRune(r.CharacterSet.BoxT, boxColor)
 	r.appendSpace(1)
-	rel := r.getFile(file).rel
+	rel := r.getFile(file).shortPath
 	if rel == "" {
 		rel = file
 	}

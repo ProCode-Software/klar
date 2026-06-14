@@ -86,13 +86,9 @@ func Undefined(name string, rang ranges.Range) *Error {
 	}
 }
 
-func ImportError(code Code, p imports.ImportPath, path string, err error) *Error {
+func ImportError(code Code, p imports.ImportPath, err error) *Error {
 	return &Error{
 		Code: code,
-		Info: ModuleErrorInfo{
-			ModulePath: path,
-			ImportPath: p.String(),
-			Err:        err,
-		},
+		Info: ModuleErrorInfo{ImportPath: p.String(), Err: err},
 	}
 }

@@ -20,9 +20,10 @@ func ParseSpecifier(s string) (Specifier, error) {
 	return Specifier{}, nil
 }
 
+func (s *Specifier) IsZero() bool { return s.specComponent == nil }
+
 // GetMatches returns the versions in vs that match the specifier.
 func (s *Specifier) GetMatches(vs []*Version) []*Version { return nil }
-
 
 func (s *Specifier) UnmarshalText(text []byte) (err error) {
 	*s, err = ParseSpecifier(string(text))

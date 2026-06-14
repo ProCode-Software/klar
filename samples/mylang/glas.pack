@@ -1,4 +1,4 @@
-name: mylang
+name: klar/compilerTypes
 version: v1.0.0
 description: A programming language written in Klar
 
@@ -13,4 +13,3 @@ dependencies:
   - github.com/ProCode-Software/proicons @pkg proicons-react v4.2
   - mysite.com/myrepo +commitid @pkg whatever 
   - @workspace myother
-

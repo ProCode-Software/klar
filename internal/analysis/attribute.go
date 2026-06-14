@@ -5,6 +5,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
+// False if bootstrapping
+var attributesAllowed = true
+
 // Contains the definitions of attributes
 var attributesModule *Module
 

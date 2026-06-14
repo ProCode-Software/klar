@@ -28,7 +28,7 @@ type Reporter struct {
 
 type file struct {
 	tokens      []lexer.Token
-	rel         string // Name used when printing
+	shortPath   string // Name used when printing
 	lastLine    uint32 // Line number of last reported error
 	lastLineTok int    // Index of first token on line of last reported error
 }
@@ -55,15 +55,15 @@ func NewReporterTheme(colors *ColorPalette, chars *CharacterSet) *Reporter {
 	}
 }
 
-// LoadFile loads the file and tokens into r. path is the file path as provided
-// in [Error.FilePath]. rel is the path to be displayed when printed. If rel is
-// an empty string, path is displayed. If an error's [Error.FilePath]() == path,
+// LoadFile loads the file and tokens into r. path is the file path as provided in
+// [Error.FilePath]. shortPath is the path to be displayed when printed. If shortPath
+// is an empty string, path is displayed. If an error's [Error.FilePath]() == path,
 // tokens are displayed. If the file is already loaded, rel and tokens are replaced.
-func (r *Reporter) LoadFile(path, rel string, tokens []lexer.Token) {
+func (r *Reporter) LoadFile(path, shortPath string, tokens []lexer.Token) {
 	if r.files == nil {
 		r.files = make(map[string]*file)
 	}
-	r.files[path] = &file{tokens: tokens, rel: rel}
+	r.files[path] = &file{tokens: tokens, shortPath: shortPath}
 }
 
 // RemoveFile unloads path with path's tokens from r.

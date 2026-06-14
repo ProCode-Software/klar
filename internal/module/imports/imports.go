@@ -11,6 +11,10 @@ func (p ImportPath) String() string {
 	return strings.Join(p, ".")
 }
 
+func NewImportPath(s string) ImportPath {
+	return strings.Split(s, ".")
+}
+
 // Namespace returns the last component of the import path, which is
 // usually used as the namespace for the module.
 func (p ImportPath) Namespace() string {

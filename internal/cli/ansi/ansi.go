@@ -135,3 +135,11 @@ func ColorPrintln(color, format string, a ...any) {
 func ColorFprintln(file io.Writer, color, format string, a ...any) {
 	fmt.Fprintln(file, ColorSprintf(color, format, a...))
 }
+
+/*
+isattyIn := term.IsTerminal(int(os.Stdin.Fd()))
+isattyOut := term.IsTerminal(int(os.Stdout.Fd()))
+term := os.Getenv("TERM")
+noColor := os.Getenv("NO_COLOR") != "" || os.Getenv("NO_COLOR") == "1"
+useColor := isattyOut && term != "" && term != "dumb" && !noColor
+*/

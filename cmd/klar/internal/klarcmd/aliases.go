@@ -2,6 +2,7 @@ package klarcmd
 
 var KlarCommandAliases = map[string]string{
 	"b": "build",
+	"r": "run",
 }
 
 // Set command aliases

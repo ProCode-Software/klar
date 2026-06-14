@@ -17,31 +17,38 @@ func RunString(s, fileName string) (*build.Result, error) {
 
 // Errors are already reported to standard error
 func RunInput(r io.Reader, fileName string) (*build.Result, error) {
-	// Don't need to resolve files
-	c, _ := build.NewCompiler(build.ModRun)
-	c.Parser = build.NewStaticParser(fileName, &build.StaticParserFile{
+	return compile(build.NewStaticParser(fileName, &build.StaticParserFile{
 		ShortPath: fileName,
 		Reader:    r,
-	})
-	c.AddInputs(build.Input{Kind: build.KindFile, Name: fileName, Path: fileName})
-	return compile(c)
+	}), fileName)
 }
 
 // Errors are already reported to standard error
 func RunTokens(tokens []lexer.Token, fileName string) (*build.Result, error) {
 	// Don't need to resolve files
-	c, _ := build.NewCompiler(build.ModRun)
-	c.Parser = build.NewStaticParser(fileName, &build.StaticParserFile{
+	return compile(build.NewStaticParser(fileName, &build.StaticParserFile{
 		ShortPath: fileName,
 		Tokens:    tokens,
-	})
-	c.AddInputs(build.Input{Kind: build.KindFile, Name: fileName, Path: fileName})
-	return compile(c)
+	}), fileName)
 }
 
-func compile(c *build.Compiler) (*build.Result, error) {
+func compile(parser build.Parser, fileName string) (*build.Result, error) {
+	cwd, err := build.Cwd()
+	if err != nil {
+		return nil, err
+	}
+	c := build.NewCompiler(build.ModRun, cwd)
+	c.Parser = parser
+
+	pc := build.NewProjectCompiler(c)
+	pc.Parser = parser
+	pc.Inputs = append(pc.Inputs, &build.Input{
+		Path: fileName,
+		Kind: build.KindFile,
+	})
+
 	c.StartTime = time.Now()
-	res, err := c.Compile()
+	res, err := pc.Compile()
 	reportErrors(c, res, err)
 	if err == nil && len(res.Errors) > 0 {
 		err = res.Errors[0]
@@ -50,8 +57,10 @@ func compile(c *build.Compiler) (*build.Result, error) {
 }
 
 func reportErrors(c *build.Compiler, res *build.Result, err error) {
-	// Compile errors
-	c.PrintAllErrors(res.Errors)
+	if res != nil {
+		// Compile errors
+		c.PrintAllErrors(res.Errors)
+	}
 	// Critical errors
 	switch err := err.(type) {
 	case nil, *klarerrs.Error:
