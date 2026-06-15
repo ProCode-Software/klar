@@ -35,6 +35,7 @@ func Build(r *command.Runner) {
 	}
 	c := build.NewCompiler(build.ModeBuild, cwd)
 	pc := build.NewProjectCompiler(c)
+	c.Progress = NewBuildStatus(cwd)
 
 	// Logging
 	// ==========
@@ -95,6 +96,7 @@ func Build(r *command.Runner) {
 		if path == "" {
 			continue
 		}
+		c.Progress.ResolvingInput(path, i+1, len(inputArgs))
 		addInput(path)
 	}
 	if len(pc.Inputs) == 0 {

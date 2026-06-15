@@ -52,6 +52,8 @@ const (
 	CodeDimCyan    = "\033[2;36m"
 	CodeDimBlue    = "\033[2;34m"
 	CodeDimMagenta = "\033[2;35m"
+
+	ClearLine = "\033[2K"
 )
 
 var DisableColor = os.Getenv("NO_COLOR") != ""

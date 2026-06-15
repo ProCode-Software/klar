@@ -98,7 +98,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 		return nil, err
 	}
 	modules := make([]*Module, 0, len(sorted))
-	for _, hash := range sorted {
+	for i, hash := range sorted {
 		input := hashToInput[hash]
 		if input == nil {
 			panic(fmt.Sprintf("no input associated with dependency hash %d", hash))
@@ -113,6 +113,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 				}
 			}
 		}
+		pc.Progress.CompilingDep(lockPkg.Name, i+1, len(sorted))
 		mod, err := pc.CompileDep(dependents, lockPkg)
 		if err != nil {
 			return nil, err
@@ -145,6 +146,7 @@ func (pc *ProjectCompiler) CompileInputs() (modules []*Module, err error) {
 }
 
 func (pc *ProjectCompiler) DownloadDeps() error {
+	pc.Progress.DownloadingDeps()
 	for _, input := range pc.Inputs {
 		if input.IsSingleFile() {
 			continue

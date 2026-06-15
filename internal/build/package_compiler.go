@@ -104,7 +104,7 @@ func (pkc *PackageCompiler) TypecheckModules(loaded *Loaded) (succeededModules [
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	skippedModules := make(map[*Module]struct{})
 typeCheckModules:
-	for _, importPathStr := range loaded.sortedDeps {
+	for i, importPathStr := range loaded.sortedDeps {
 		mod, ok := pkc.Deps.TryGet(importPathStr)
 		if !ok {
 			// Unknown dependency. Will be reported when dependents try to import this
@@ -130,6 +130,7 @@ typeCheckModules:
 			}
 		}
 		// Now we can actually typecheck
+		pkc.Progress.CheckingModule(mod.Path, i+1, len(loaded.sortedDeps))
 		errs := pkc.TypeCheckModule(mod, importPathStr)
 		if hasErrs := pkc.sendErrors(errs); hasErrs {
 			// Module has type errors
