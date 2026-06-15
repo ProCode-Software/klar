@@ -9,9 +9,8 @@ import (
 type Build int
 
 // Higher is newer
-// TODO: rename Release to Stable
 const (
-	Release Build = iota
+	Stable Build = iota
 	RC
 	Beta
 	Alpha
@@ -20,7 +19,7 @@ const (
 
 func (b Build) String() string {
 	switch b {
-	case Release:
+	case Stable:
 		return ""
 	case RC:
 		return "rc"
@@ -36,7 +35,7 @@ func (b Build) String() string {
 }
 
 var BuildMap = map[string]Build{
-	"":      Release,
+	"":      Stable,
 	"rc":    RC,
 	"beta":  Beta,
 	"alpha": Alpha,
@@ -47,7 +46,6 @@ type Version struct {
 	Parts    []int
 	Build    Build
 	BuildNum int
-	Commit   string
 }
 
 func (v *Version) Major() int { return v.Parts[0] }
@@ -74,11 +72,14 @@ func (v *Version) UnmarshalText(text []byte) (err error) {
 
 func (v *Version) String() string {
 	var b strings.Builder
+	if len(v.Parts) == 0 {
+		return "v0.0"
+	}
 	for _, part := range v.Parts {
 		b.WriteByte('.')
 		b.WriteString(strconv.Itoa(part))
 	}
-	if v.Build != Release {
+	if v.Build != Stable {
 		b.WriteByte(' ')
 		b.WriteString(v.Build.String())
 	}
@@ -86,11 +87,13 @@ func (v *Version) String() string {
 		b.WriteByte(' ')
 		b.WriteString(strconv.Itoa(v.BuildNum))
 	}
-	if v.Commit != "" {
-		b.WriteByte('+')
-		b.WriteString(v.Commit)
-	}
 	return "v" + b.String()[1:]
+}
+
+func (v *Version) Normalize() *Version {
+	// v1.2.0 -> v1.2
+	// Remove commit info (+...)
+	return v
 }
 
 var Regex = `(\d+)(?:\.(?P<minor>\d+)){,3}`
