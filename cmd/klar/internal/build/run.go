@@ -45,7 +45,7 @@ func Build(r *command.Runner) {
 	}
 	defer func() {
 		if err := c.CloseLogger(); err != nil {
-			cli.Failure("Failed to write log file: ", err)
+			cli.Failure("Failed to write log file:", err)
 		}
 	}()
 
@@ -92,7 +92,7 @@ func Build(r *command.Runner) {
 		}
 		pc.Inputs = append(pc.Inputs, input)
 	}
-	for _, path := range inputArgs {
+	for i, path := range inputArgs {
 		if path == "" {
 			continue
 		}
@@ -145,8 +145,8 @@ func Build(r *command.Runner) {
 	default:
 		ansi.Fprintfln(
 			os.Stderr,
-			"<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
-			icons.Check, util.FormatDuration(res.Elapsed),
+			"%s<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
+			ansi.ClearLine, icons.Check, util.FormatDuration(res.Elapsed),
 		)
 	}
 }
@@ -176,8 +176,8 @@ func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool, err erro
 	// Show "build failed" message
 	ansi.Fprintfln(
 		os.Stderr,
-		"<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
-		icons.ThinXLarge, count.String(), util.FormatDuration(res.Elapsed),
+		"%s<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
+		ansi.ClearLine, icons.ThinXLarge, count.String(), util.FormatDuration(res.Elapsed),
 	)
 	// Report the errors
 	c.PrintAllErrors(errs)
@@ -262,14 +262,14 @@ func playErrorSound() {
 	// TODO: use a different path
 	home, err := os.UserHomeDir()
 	if err != nil {
-		cli.Failure("Failed to get home directory: ", err)
+		cli.Failure("Failed to get home directory:", err)
 	}
 	soundPath := filepath.Join(home, "Downloads/fahh.mp3")
 
 	// TODO: make this cross-platform
 	cmd := exec.Command("pw-play", soundPath)
 	if err := cmd.Start(); err != nil {
-		cli.Failure("Failed to play error sound: ", err)
+		cli.Failure("Failed to play error sound:", err)
 	}
 }
 

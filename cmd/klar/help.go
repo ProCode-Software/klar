@@ -64,7 +64,7 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Flush()
 
 	hb.Println(
-		"\n", "Use",
+		"\nUse",
 		ansi.Magenta("klar"), ansi.Yellow("help"), ansi.Cyan("<subcommand>"),
 		"for more information about a command.",
 	)
