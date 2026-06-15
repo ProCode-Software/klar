@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -42,7 +43,7 @@ func Failuref(msg, detail string, v ...any) {
 }
 
 func InternalError(detail ...any) {
-	Failure("Internal Error: ", detail...)
+	Failure("Internal Error:", detail...)
 }
 
 func HintIndent(hint string) {
@@ -65,12 +66,12 @@ func ErrNoManifest(dir string) {
 	if dir == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			Failure("Unable to get current working directory: ", err)
+			Failure("Unable to get current working directory:", err)
 		}
 		dir = cwd
 	}
 	Failure(
-		"Project not found: ", "Can't find a "+
+		"Project not found:", "Can't find a "+
 			ansi.Yellow(module.ManifestFile)+" file for "+ansi.Cyan(dir),
 	)
 }
@@ -101,5 +102,30 @@ func HandleSignalExit() {
 		return
 	default:
 		panic(r)
+	}
+}
+
+func Confirm(msg string, defaultRes bool) bool {
+	// (y/n) display
+	var defaultStr string
+	if defaultRes {
+		defaultStr = ansi.ColorSprintf(ansi.CodeDim, "(%s/n)", ansi.BoldBrightGreen("Y"))
+	} else {
+		defaultStr = ansi.ColorSprintf(ansi.CodeDim, "(y/%s)", ansi.BoldBrightRed("N"))
+	}
+
+	fmt.Printf("%s %s: ", msg, defaultStr) // Prompt
+
+	var res string
+	fmt.Scanln(&res) // Response
+	switch strings.ToLower(strings.TrimSpace(res)) {
+	case "":
+		return defaultRes
+	case "y", "yes", "true":
+		return true
+	case "n", "no", "false":
+		return false
+	default:
+		return defaultRes
 	}
 }

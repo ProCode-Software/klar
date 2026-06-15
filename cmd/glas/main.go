@@ -18,6 +18,7 @@ var (
 )
 
 func main() {
+	defer cli.HandleSignalExit()
 	args := os.Args
 	if len(args) < 2 {
 		ShowHelp(os.Stderr)
@@ -59,15 +60,24 @@ func main() {
 			break
 		}
 		// Unknown command
-		cli.ColorErrorfln("Can't find Glas command <c>%s</c>", cmdName)
+		cli.ColorErrorfln("<**>Can't find Glas command <c>%s</c></**>", cmdName)
 		klarCmd := klarcmd.LookupKlarCmd(cmdName)
 		if klarCmd == nil {
-			ansi.Println("<** y>Run <c>glas help</c> to see available commands</>")
-			cli.Exit(2)
+			ansi.Println("\n<y>Run <c>glas help</c> to see available commands.</>")
+		} else {
+			promptKlarRun(klarCmd, cmdName)
 		}
-		promptKlarRun(klarCmd)
+		cli.Exit(2)
 	}
 }
 
-func promptKlarRun(cmd *command.Command) {
+func promptKlarRun(cmd *command.Command, providedName string) {
+	shouldRun := cli.Confirm(ansi.Sprintf(
+		"\n<b!>Hint</b!><dim>:</dim> I found the command <m>klar %s</m>. Do you want to run it?",
+		providedName,
+	), true)
+	if !shouldRun {
+		return
+	}
+	cli.Exit(0)
 }
