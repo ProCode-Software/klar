@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"os"
 	"slices"
@@ -274,7 +275,19 @@ func parsePackageHeader(parts []string) (p *PackageHeader, err error) {
 	default:
 		return nil, fmt.Errorf("invalid source: %s", src)
 	}
+	p.Hash = p.generateHash()
 	return p, nil
+}
+
+func (ph *PackageHeader) generateHash() PkgHash {
+	h := fnv.New64a()
+	h.Write([]byte(ph.Name))
+	h.Write([]byte(ph.Version.Normalize().String()))
+	h.Write([]byte(ph.From.String()))
+	if ph.From == Git {
+		h.Write([]byte(ph.GitCommit))
+	}
+	return PkgHash(h.Sum64())
 }
 
 // trimLine returns an empty string if the line is empty or contains only a comment.

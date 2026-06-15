@@ -21,7 +21,7 @@ const (
 	Local
 )
 
-type PkgHash uint32
+type PkgHash uint64
 
 type Lockfile struct {
 	Version    int
