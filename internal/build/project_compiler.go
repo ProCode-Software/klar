@@ -20,10 +20,13 @@ type ProjectCompiler struct {
 }
 
 type Result struct {
-	Modules []*Module        // Input modules only
-	Deps    map[*Input]*Deps // All modules compiled, including inputs
-	Errors  []*klarerrs.Error
-	Elapsed time.Duration
+	Modules     []*Module        // Input modules only. In order
+	AllModules  map[*Input]*Deps // All modules compiled, including inputs
+	DepModules  []*Module        // Excluding inputs. In order
+	Elapsed     time.Duration
+	Errors      []*klarerrs.Error
+	Warnings    []*klarerrs.Error
+	IsMaxErrors bool
 }
 
 func NewProjectCompiler(c *Compiler) *ProjectCompiler {
@@ -43,23 +46,22 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 		return nil, err
 	}
 
-	// Load the 2 bootstrapped modules that are needed for typechecking
+	// Load the bootstrapped modules that are needed for typechecking
 	if err := pc.CompileBootstrapped(); err != nil {
 		return nil, err
 	}
 
-	// Start the error collector
-	pc.startCollectingErrors()
-	defer close(pc.errChan)
-
 	// Dependencies are compiled first
-	compiledDeps, err := pc.CompileDeps()
+	depModules, err := pc.CompileDeps()
 	if err != nil {
 		return nil, err
 	}
-	_ = compiledDeps
 
-	// TODO: Reset errors?
+	// Don't display errors and warnings from dependencies. When an input imports
+	// a dependency with errors, they will have their own error. And for
+	// dependency warnings, we don't need them at all.
+	pc.ResetErrorsAndWarnings()
+
 	// Then, the inputs from the command line
 	inputModules, err := pc.CompileInputs()
 	if err != nil {
@@ -67,10 +69,12 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 	}
 
 	return &Result{
-		Deps:    pc.Deps,
-		Modules: inputModules,
-		Errors:  pc.Errors,
-		Elapsed: time.Since(pc.StartTime),
+		AllModules: pc.Deps,
+		DepModules: depModules,
+		Modules:    inputModules,
+		Errors:     pc.Errors,
+		Warnings:   pc.Warnings,
+		Elapsed:    time.Since(pc.StartTime),
 	}, nil
 }
 
@@ -84,10 +88,11 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 			continue
 		}
 		for _, pkg := range lock.Packages {
-			if pkg.DevOnly || pkg.From == glaslock.NPM {
+			if pkg.DevOnly {
 				continue // Don't compile dev deps or NPM packages
 			}
 			hashToInput[pkg.Hash] = input
+			g.AddVertex(pkg.Hash)
 			for _, dep := range pkg.Deps {
 				g.AddEdge(pkg.Hash, dep.Hash)
 			}
@@ -95,7 +100,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 	}
 	sorted, err := g.Toposort()
 	if err != nil {
-		return nil, err
+		return nil, &InterfaceError{Code: ErrDepCycle, Err: err}
 	}
 	modules := make([]*Module, 0, len(sorted))
 	for i, hash := range sorted {
@@ -114,11 +119,11 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 			}
 		}
 		pc.Progress.CompilingDep(lockPkg.Name, i+1, len(sorted))
-		mod, err := pc.CompileDep(dependents, lockPkg)
+		mods, err := pc.CompileDep(dependents, lockPkg)
 		if err != nil {
 			return nil, err
 		}
-		modules = append(modules, mod...)
+		modules = append(modules, mods...)
 	}
 	return modules, nil
 }
@@ -194,6 +199,9 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 func (pc *ProjectCompiler) CompileDep(
 	inputs []*Input, lockPkg *glaslock.Package,
 ) (depModules []*Module, err error) {
+	if lockPkg.From == glaslock.NPM {
+		return // TODO: Create virtual NPM modules
+	}
 	// Each package may have its own packages folder, but since
 	// they will refer to the same package, we're only compiling from
 	// one. Though the package will be cached to each of the inputs' cache dir

@@ -22,6 +22,7 @@ var ColorMap = map[string]string{
 	"B!": "104", "M!": "105", "C!": "106", "W!": "107",
 	// Effects
 	"bold": "1", "dim": "2", "ital": "3", "under": "4", "res": "0", "**": "1", "-": "0",
+	"i": "3", "u": "4", "d": "2",
 }
 
 func makeCode(colors []string) string {

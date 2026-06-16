@@ -396,7 +396,7 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (
 			}
 		default:
 			// Other directory: ignore
-			c.Info("Ignoring directory", slog.String("dir", fullPath))
+			c.Info("Ignoring top-level directory", slog.String("dir", fullPath))
 			continue
 		}
 	}

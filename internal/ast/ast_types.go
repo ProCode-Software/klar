@@ -413,13 +413,14 @@ type WhileStatement struct {
 
 // Examples:
 //
-//	import klar.http
-//	import klar.http.*
-//	import klar.regex.{RegEx}
-//	import fetch = klar.http.requests.{get}
+//		import klar.http
+//		import klar.http.*
+//		import klar.regex.{RegEx}
+//		import klar.http.requests.{get as fetch}
+//	 import globalThis = klar.js
 type ImportStatement struct {
 	BaseNode
-	Alias              Identifier // Alias is nil if no unqualified imports
+	Alias              *Identifier // Can be nil
 	Module             []string
 	Wildcard           bool
 	UnqualifiedImports []*IdentifierPair

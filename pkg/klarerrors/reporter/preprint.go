@@ -48,7 +48,7 @@ func getTermWidth(w io.Writer) {
 // printDivider prints a divider line that is the width of the terminal,
 // followed by a newline.
 func (r *Reporter) printDivider() {
-	div := char.RepeatRune(r.CharacterSet.ErrorDivider, max(3, Width))
+	div := char.RepeatRune(r.CharacterSet.ErrorDivider, max(5, Width))
 	r.appendf(r.ColorPalette.Divider, "%s\n", div)
 }
 

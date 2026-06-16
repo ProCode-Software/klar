@@ -70,15 +70,16 @@ func (ld *Loader) Load() (*Loaded, error) {
 	}
 	close(needsTypeCheckCh)
 
-	// 3. Order the modules
+	// 3. Order the modules by dependency order
 	g := graph.New[string]()
 	for mod := range needsTypeCheckCh {
 		importPath := ld.PkgInfo.ImportPathOf(mod.Path)
 		importPathStr := importPath.String()
-		ld.Deps.Set(mod, importPathStr) // Add the dependency
+		ld.Deps.Set(mod, importPathStr) // Add the module as a dependency
 
 		g.AddVertex(importPathStr)
 		for dep := range mod.Deps {
+			// 4. Stdlib imports are added to a separate slice to be loaded
 			if dep.IsStdlib() && importPath[0] != "klar" {
 				loaded.stdlibDeps = append(loaded.stdlibDeps, dep)
 				continue // Stdlib modules are always compiled first
@@ -86,8 +87,10 @@ func (ld *Loader) Load() (*Loaded, error) {
 			g.AddEdge(dep.String(), importPathStr)
 		}
 	}
-	loaded.sortedDeps, err = g.Toposort()
-	return loaded, err
+	if loaded.sortedDeps, err = g.Toposort(); err != nil {
+		return loaded, &InterfaceError{Code: ErrDepCycle, Err: err}
+	}
+	return loaded, nil
 }
 
 func (ld *Loader) loadOrParseFiles(m *Module, eg *errgroup.Group,

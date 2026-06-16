@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
@@ -29,8 +30,7 @@ type Compiler struct {
 	Warnings  []*klarerrs.Error
 	Progress  Progress
 	Parser    Parser
-	errChan   chan *klarerrs.Error
-	warnChan  chan *klarerrs.Error
+	collectMu sync.Mutex
 	*slog.Logger
 }
 
@@ -142,7 +142,31 @@ func (c *Compiler) Abs(path string) string {
 }
 
 func (c *Compiler) ResetState() {
-	c.Errors = nil
+	c.ResetErrorsAndWarnings()
+}
+
+func (c *Compiler) ResetErrorsAndWarnings() {
+	c.Errors = c.Errors[:0]
+	c.Warnings = c.Warnings[:0]
+}
+
+// hasErrs is whether errs contains errors that fail compilation. If all
+// errs are warnings, or errs is empty, hasErrs is false.
+func (c *Compiler) sendErrors(errs []*klarerrs.Error) (hasErrs bool) {
+	if len(errs) == 0 {
+		return false
+	}
+	c.collectMu.Lock()
+	defer c.collectMu.Unlock()
+	for _, err := range errs {
+		if err.IsWarning() {
+			c.Warnings = append(c.Warnings, err)
+		} else {
+			c.Errors = append(c.Errors, err)
+			hasErrs = true
+		}
+	}
+	return
 }
 
 // PrintError prints an error to the error printer.

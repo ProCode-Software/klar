@@ -92,3 +92,11 @@ func ImportError(code Code, p imports.ImportPath, err error) *Error {
 		Info: ModuleErrorInfo{ImportPath: p.String(), Err: err},
 	}
 }
+
+func NewReferenceError(code Code, r ranges.Range, name string) *Error {
+	return &Error{
+		Code:  code,
+		Range: r,
+		Name:  name,
+	}
+}

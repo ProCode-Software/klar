@@ -31,6 +31,8 @@ func _() {
 	_ = x[ErrUndefined-501]
 	_ = x[ErrEnumUndefined-502]
 	_ = x[ErrEnumCycle-503]
+	_ = x[ErrExportUndefined-504]
+	_ = x[ErrNotExported-505]
 	_ = x[ErrUnexpectedToken-101]
 	_ = x[ErrExpectedToken-102]
 	_ = x[ErrImportExpectedModule-103]
@@ -175,7 +177,7 @@ const (
 	_Code_name_1 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadowErrVarConstMixInDeclErrMultipleVariadicErrVariadicNotLastErrDuplicateInheritedTypeErrNoDeclAfterAttr"
 	_Code_name_2 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
 	_Code_name_3 = "TypeErrorPrefixErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUntypedNilErrUntypedEmptyListErrUntypedEnumErrUncheckedOptionalErrUncheckedResultErrInvalidRestTypeErrInvalidRestExprErrVariadicLastErrTypeCycleErrNoGenericsErrWrongTypeParamLenErrInvalidEnumValueErrInheritNonStructOrIntfErrConflictingInheritErrNonStructReceiverErrOverloadExistsErrAssignToConstErrTypeMismatchErrWrongAssignTypeErrNonBoolLogicalErrMismatchedOperandsErrMismatchedDistribErrUncomparableTypesErrIntTimesStringErrInvalidOperation"
-	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycle"
+	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycleErrExportUndefinedErrNotExported"
 	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrImportCycleErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmptyErrImportPathConflict"
 	_Code_name_6 = "ImplementationErrorPrefix"
 )
@@ -185,7 +187,7 @@ var (
 	_Code_index_1 = [...]uint16{0, 17, 35, 51, 74, 98, 124, 149, 166, 187, 211, 233, 253, 272, 287, 300, 319, 334, 349, 371, 394, 415, 435, 449, 466, 484, 501, 519, 545, 567, 580, 599, 618, 638, 659, 683, 707, 730, 753, 774, 797, 820, 839, 859, 875, 893, 913, 932, 950, 967, 986, 1004, 1028, 1043, 1061, 1085, 1109, 1133, 1162, 1189, 1206, 1221, 1245, 1272, 1290, 1319, 1337, 1364, 1389, 1414, 1440, 1455, 1477, 1496, 1517, 1537, 1558, 1579, 1594, 1612, 1628, 1649, 1668, 1685, 1696, 1710, 1724, 1738, 1753, 1765, 1778, 1789, 1810, 1830, 1844, 1864, 1879, 1899, 1918, 1936, 1961, 1979}
 	_Code_index_2 = [...]uint8{0, 13, 27, 39, 54, 64}
 	_Code_index_3 = [...]uint16{0, 15, 31, 53, 75, 98, 123, 139, 161, 174, 193, 207, 227, 245, 263, 281, 296, 308, 321, 341, 360, 385, 406, 426, 443, 459, 474, 492, 509, 530, 550, 570, 587, 606}
-	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60}
+	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60, 78, 92}
 	_Code_index_5 = [...]uint8{0, 17, 34, 48, 61, 80, 96, 115, 136, 152, 171, 197, 217, 231, 252}
 )
 
@@ -203,7 +205,7 @@ func (i Code) String() string {
 	case 400 <= i && i <= 432:
 		i -= 400
 		return _Code_name_3[_Code_index_3[i]:_Code_index_3[i+1]]
-	case 500 <= i && i <= 503:
+	case 500 <= i && i <= 505:
 		i -= 500
 		return _Code_name_4[_Code_index_4[i]:_Code_index_4[i+1]]
 	case 600 <= i && i <= 613:

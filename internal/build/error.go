@@ -12,7 +12,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/graph"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
@@ -56,6 +56,7 @@ const (
 	ErrInvalidConfig    // Failed to parse configuration
 	ErrKlarVersion      // Compiler version too old to compile a package
 	ErrDepResolve       // Failed to resolve dependency
+	ErrDepCycle         // Dependency cycle
 )
 
 type InterfaceError struct {
@@ -115,6 +116,16 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return fmt.Sprintf(
 			"Can't pass <c>%s</c> as an input outside of", err.Value,
 		), "<m>klar test</m>"
+	case ErrDepCycle:
+		cycleErr := err.Err.(*graph.CycleError[string])
+		if len(cycleErr.Cycle) == 1 {
+			// Self-cycle
+			return fmt.Sprintf("<m>%s</m> imports itself", cycleErr.Cycle[0]), ""
+		}
+		return "Import cycle found: ", fmt.Sprintf(
+			"<m>%s → %s</m>",
+			strings.Join(cycleErr.Cycle, " → "), cycleErr.Cycle[0],
+		)
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
@@ -258,43 +269,4 @@ func (c *Compiler) FailWithError(err error) {
 		cli.FailureError(err)
 	}
 	cli.Exit(1)
-}
-
-// Compiler Error Collector
-// ==========
-
-func (c *Compiler) startCollectingErrors() {
-	c.errChan = make(chan *klarerrs.Error)
-	c.warnChan = make(chan *klarerrs.Error)
-	c.collectErrors()
-}
-
-// hasErrs is whether errs contains errors that fail compilation. If all
-// errs are warnings, or errs is empty, hasErrs is false.
-func (c *Compiler) sendErrors(errs []*klarerrs.Error) (hasErrs bool) {
-	if len(errs) == 0 {
-		return false
-	}
-	for _, err := range errs {
-		if err.IsWarning() {
-			c.warnChan <- err
-			hasErrs = true
-		} else {
-			c.errChan <- err
-		}
-	}
-	return
-}
-
-func (c *Compiler) collectErrors() {
-	go func() {
-		for err := range c.errChan {
-			c.Errors = append(c.Errors, err)
-		}
-	}()
-	go func() {
-		for warn := range c.warnChan {
-			c.Warnings = append(c.Warnings, warn)
-		}
-	}()
 }

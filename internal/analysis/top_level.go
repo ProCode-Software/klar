@@ -176,7 +176,7 @@ func (c *Checker) collectTopLevelObjects(
 	}
 	// Ensure no top-level objects were shadowed by imports
 	for _, fileCtx := range fileContexts {
-		for name, impObj := range fileCtx.Declarations {
+		for name, importedObj := range fileCtx.Declarations {
 			modObj := c.module.Context.Lookup(name)
 			if modObj == nil {
 				continue
@@ -186,11 +186,11 @@ func (c *Checker) collectTopLevelObjects(
 			// - Alias of import
 			// - An unqualified import object
 			var namespace string
-			if impObj.Kind() == KindModule {
+			if importedObj.Kind() == KindNamespace {
 				// Provide the import path the namespace is from
-				namespace = impObj.module.ImportPathString()
+				namespace = importedObj.module.ImportPathString()
 			}
-			err := klarerrs.Range(klarerrs.ErrImportShadow, impObj.rang)
+			err := klarerrs.Range(klarerrs.ErrImportShadow, importedObj.rang)
 			err.Label = klarerrs.Quote(name) + " was already declared in the module"
 			err.Params = klarerrs.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
@@ -199,7 +199,7 @@ func (c *Checker) collectTopLevelObjects(
 				Range:   modObj.rang,
 				Message: "It was already declared here",
 			})
-			c.fileError(err, impObj.file)
+			c.fileError(err, importedObj.file)
 		}
 	}
 	return methods, inits

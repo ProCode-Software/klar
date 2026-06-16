@@ -35,7 +35,6 @@ func Build(r *command.Runner) {
 	}
 	c := build.NewCompiler(build.ModeBuild, cwd)
 	pc := build.NewProjectCompiler(c)
-	c.Progress = NewBuildStatus(cwd)
 
 	// Logging
 	// ==========
@@ -50,6 +49,9 @@ func Build(r *command.Runner) {
 	}()
 
 	c.StartTime = time.Now() // Start timer at resolution process
+	if !jsonOutput {
+		c.Progress = NewBuildStatus(cwd)
+	}
 
 	// --config flag
 	// =========
@@ -122,7 +124,7 @@ func Build(r *command.Runner) {
 	switch {
 	case err != nil:
 		if jsonOutput {
-			printJSONErrors(res, err, false)
+			printJSONErrors(res, err)
 			cli.Exit(1)
 		}
 		switch err := err.(type) {
@@ -140,9 +142,13 @@ func Build(r *command.Runner) {
 		if r.Flag("sound-on-error").Bool() {
 			playErrorSound()
 		}
-		printErrors(res, c, jsonOutput, err)
+		printErrors(res, c, jsonOutput)
 		cli.Exit(1)
 	default:
+		if jsonOutput {
+			printJSONErrors(res, err)
+			break
+		}
 		ansi.Fprintfln(
 			os.Stderr,
 			"%s<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
@@ -154,14 +160,13 @@ func Build(r *command.Runner) {
 // printErrors prints the "Build failed" message to standard error with the
 // compile errors from res. isMaxErrors is whether compilation stopped early
 // due to too many errors. Errors are printed using b's errorPrinter.
-func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool, err error) {
+func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool) {
 	errs := res.Errors
 	// Format error count
 	var count strings.Builder
 	count.WriteString(strconv.Itoa(len(errs)))
 	// Check to see if there were too many errors
-	isMaxErrors := build.IsMaxErrors(err)
-	if isMaxErrors {
+	if res.IsMaxErrors {
 		count.WriteByte('+')
 	}
 	count.WriteString(" error")
@@ -170,7 +175,7 @@ func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool, err erro
 	}
 	// Print JSON errors if jsonOutput is true
 	if jsonOutput {
-		printJSONErrors(res, err, isMaxErrors)
+		printJSONErrors(res, nil)
 		return
 	}
 	// Show "build failed" message
@@ -181,14 +186,15 @@ func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool, err erro
 	)
 	// Report the errors
 	c.PrintAllErrors(errs)
-	if isMaxErrors {
+	if res.IsMaxErrors {
 		cli.Error("There are too many errors")
 	}
 }
 
-func printJSONErrors(res *build.Result, err error, isMaxErrors bool) {
+func printJSONErrors(res *build.Result, err error) {
+	isMaxErrors := res != nil && res.IsMaxErrors
 	if err := jsonerrors.WriteTo(os.Stdout, res, err, isMaxErrors); err != nil {
-		cli.Error("Failed to write JSON errors: ", err)
+		cli.Error("Failed to write JSON errors:", err)
 	}
 	os.Stdout.WriteString("\n")
 }
@@ -278,6 +284,6 @@ const LongDescription = `Compiles Klar source files at the provided file or modu
 An input passed to 'klar build' can be a directory path, to compile a module or package; a file path, to compile an individual file; '-', to read from standard input and compile it as an individual file; or a name prefixed with '@' to resolve a module by its name and compile it.
 
 A 'klar.build' is used to customize the build process and how files are compiled. For more information on build settings, run 'klar help klar.build'.
-For each input, its closest 'klar.build' file is used to configure the build. The '--config' flag can be used to override the configuration for all inputs. Common build options are provided as flags to override klar.build options.
+For each input, its closest 'klar.build' file is used to configure the build. The '--config' flag can be used to override the configuration for all inputs. If the '--config' flags is provided, but empty, the default settings are used without looking for 'klar.build' files. Common build options are provided as flags to override klar.build options.
 
 Currently, Klar files can be compiled to JavaScript.`

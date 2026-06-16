@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/parser"
@@ -25,6 +24,7 @@ func (c *Compiler) parseFile(m *Module, file string,
 	}
 
 	path := m.FilePath(file)
+	c.Debug("Parsing file", slog.String("file", path))
 	shortPath, res, err := c.Parser.Parse(path, c.Logger)
 	if err != nil {
 		return err
@@ -32,6 +32,7 @@ func (c *Compiler) parseFile(m *Module, file string,
 	moduleMu.Lock()
 	if hasErrors := c.sendErrors(res.Errors); hasErrors {
 		m.Failed = true
+		c.Error("File has syntax errors", slog.String("file", path))
 	}
 	m.Programs[file] = res.Program
 	m.ModTimes[file] = res.ModTime
@@ -67,11 +68,9 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 ) {
 	// Open file
 	// ==========
-	var (
-		f       *os.File
-		sizeEst int64
-		modTime time.Time
-	)
+	var f *os.File
+	var sizeEst int64
+	res = &ParseResult{}
 	if filePath == "" {
 		// Read from standard input
 		f = os.Stdin
@@ -90,11 +89,11 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 			l.Error("Error while getting file info", slog.Any("error", err))
 			return shortPath, nil, &FilesystemError{"stat", filePath, err}
 		}
-		modTime = stat.ModTime()
+		res.ModTime = stat.ModTime()
 		sizeEst = stat.Size() / 10
 		shortPath = util.RelPath(p.cwd, filePath) // Get relative path
 	}
-	res = &ParseResult{ModTime: modTime}
+
 	// Tokenize
 	// =========
 	lex := p.GetLexer(f)
@@ -105,8 +104,6 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	// ========
 	pa := p.GetParser(res.Tokens, filePath)
 	defer p.PutParser(pa)
-
-	l.Info("Parsing file", slog.String("file", filePath))
 	res.Program = pa.Parse()
 	res.Errors = pa.Errors
 	return shortPath, res, nil

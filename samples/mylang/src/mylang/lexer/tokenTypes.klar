@@ -1,5 +1,5 @@
 // A simple group of characters read by [Lexer].
-type Token {
+public type Token {
     .identifier(name: String)
     .number(num: String) = num
     .string(content: String, singleQuote: Bool)
@@ -15,7 +15,7 @@ type Token {
 
 // Returns the string representation of the token. [Token.eof] is
 // represented as an empty string.
-func String(token: Token) = when token {
+public func String(token: Token) = when token {
     .number(num) -> String(num),
     .comment(text) -> "#{text}",
     .identifier(ident) -> ident,

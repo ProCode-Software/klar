@@ -13,11 +13,11 @@ import (
 var _ analysis.Importer = (*Importer)(nil)
 
 type Importer struct {
-	Deps, StdlibDeps *Deps
-	PkgInfo          *module.PackageInfo
-	Target           target.Target
-	ImportPath       imports.ImportPath
-	importErrs       map[string]error
+	Deps       *Deps
+	PkgInfo    *module.PackageInfo
+	Target     target.Target
+	ImportPath imports.ImportPath
+	importErrs map[string]error
 }
 
 func NewImporter(

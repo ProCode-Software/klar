@@ -18,4 +18,5 @@ const (
 	ThinX            = '✕'
 	ThinXLarge       = '✗'
 	Check            = '✓'
+	Warning          = '⚠'
 )

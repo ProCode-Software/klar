@@ -2,6 +2,7 @@ package build
 
 import (
 	"errors"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -110,9 +111,6 @@ typeCheckModules:
 			// Unknown dependency. Will be reported when dependents try to import this
 			continue
 		}
-		// The module is added to Deps even if it fails. When we compile another
-		// module, it will see this module in Deps and know it failed.
-		pkc.Deps.Set(mod, importPathStr)
 		if mod.Failed {
 			// This module has syntax errors
 			skippedModules[mod] = struct{}{}
@@ -121,12 +119,14 @@ typeCheckModules:
 		// Ensure we can actually typecheck this module. If any of the
 		// module's dependencies are failed or skipped, this one is skipped
 		// and we can't typecheck
-		for _, prog := range mod.Programs {
-			for importPath := range prog.Deps {
-				if _, ok := skippedModules[pkc.Deps.Get(importPath.String())]; ok {
-					skippedModules[mod] = struct{}{}
-					continue typeCheckModules
-				}
+		for importPath := range mod.Deps {
+			if _, ok := skippedModules[pkc.Deps.Get(importPath.String())]; ok {
+				skippedModules[mod] = struct{}{}
+				pkc.Info(
+					"Skipping typecheck of module due to errors in dependencies",
+					slog.String("module", mod.Path),
+				)
+				continue typeCheckModules
 			}
 		}
 		// Now we can actually typecheck
@@ -136,7 +136,7 @@ typeCheckModules:
 			// Module has type errors
 			mod.Failed = true
 			skippedModules[mod] = struct{}{}
-			return
+			continue
 		}
 		succeededModules = append(succeededModules, mod)
 	}

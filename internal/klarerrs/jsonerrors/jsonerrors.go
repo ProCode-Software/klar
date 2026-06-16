@@ -14,17 +14,19 @@ import (
 func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) error {
 	// TODO: add error params
 	format := struct {
-		ElapsedTime   time.Duration `json:"elapsedTime,format:units"`
-		ErrorCount    int           `json:"errorCount"`
-		TooManyErrors bool          `json:"tooManyErrors,omitempty,omitzero"`
-		Errors        errorSlice    `json:"errors"`
-		FatalError    error         `json:"fatalError,omitempty,omitzero"`
+		ElapsedTime time.Duration `json:"elapsedTime,format:units"`
+		ErrorCount  int           `json:"errorCount"`
+		IsMaxErrors bool          `json:"maxErrors,omitempty,omitzero"`
+		Errors      errorSlice    `json:"errors"`
+		Warnings    errorSlice    `json:"warnings"`
+		FatalError  error         `json:"fatalError,omitempty,omitzero"`
 	}{
-		ElapsedTime:   res.Elapsed,
-		TooManyErrors: isMaxErrors,
-		ErrorCount:    len(res.Errors),
-		Errors:        errorSlice(res.Errors),
-		FatalError:    fatalErr,
+		ElapsedTime: res.Elapsed,
+		IsMaxErrors: isMaxErrors,
+		ErrorCount:  len(res.Errors),
+		Errors:      res.Errors,
+		Warnings:    res.Warnings,
+		FatalError:  fatalErr,
 	}
 	return json.MarshalWrite(w, format, json.DefaultOptionsV2())
 }
@@ -34,10 +36,9 @@ type errorSlice []*klarerrs.Error
 func (es errorSlice) MarshalJSON() ([]byte, error) {
 	errs := make([]compileError, len(es))
 	for i, err := range es {
-		r := err.Range
 		errs[i] = compileError{
 			Message:    err.Message(),
-			Range:      rang{pos(r.Start), pos(r.End)},
+			Range:      rang{pos(err.Range.Start), pos(err.Range.End)},
 			File:       err.File,
 			Type:       err.Title(),
 			Code:       convertCode(err.Code),
@@ -45,21 +46,23 @@ func (es errorSlice) MarshalJSON() ([]byte, error) {
 			Hints:      convertHints(err.Hints),
 			Details:    convertDetails(err.Details),
 			Highlights: convertHighlights(err.Highlights),
+			Info:       err.Info,
 		}
 	}
 	return json.Marshal(errs, json.DefaultOptionsV2())
 }
 
 type compileError struct {
-	Type       string      `json:"type"`
-	Code       code        `json:"code"`
-	Message    string      `json:"message"`
-	File       string      `json:"file"`
-	Range      rang        `json:"range"`
-	Label      string      `json:"label,omitempty"`
-	Hints      []hint      `json:"hints,omitempty"`
-	Details    []detail    `json:"details,omitempty"`
-	Highlights []highlight `json:"highlights,omitempty"`
+	Type       string        `json:"type"`
+	Code       code          `json:"code"`
+	Message    string        `json:"message"`
+	File       string        `json:"file"`
+	Range      rang          `json:"range"`
+	Label      string        `json:"label,omitempty"`
+	Hints      []hint        `json:"hints,omitempty"`
+	Details    []detail      `json:"details,omitempty"`
+	Highlights []highlight   `json:"highlights,omitempty"`
+	Info       klarerrs.Info `json:"info,omitempty"`
 }
 
 type pos struct {
@@ -74,8 +77,9 @@ type hint struct {
 	Message string `json:"message"`
 }
 type detail struct {
-	File string `json:"file"`
-	highlight
+	File    string `json:"file"`
+	Range   rang   `json:"range"`
+	Message string `json:"message"`
 }
 type highlight struct {
 	Range   rang   `json:"range"`
@@ -102,11 +106,9 @@ func convertDetails(details []klarerrs.Detail) []detail {
 	ds := make([]detail, len(details))
 	for i, dt := range details {
 		ds[i] = detail{
-			File: dt.File,
-			highlight: highlight{
-				Range:   rang{pos(dt.Range.Start), pos(dt.Range.End)},
-				Message: dt.Message,
-			},
+			File:    dt.File,
+			Range:   rang{pos(dt.Range.Start), pos(dt.Range.End)},
+			Message: dt.Message,
 		}
 	}
 	return ds

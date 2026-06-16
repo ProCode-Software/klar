@@ -109,7 +109,7 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 	}
 	// Parse maybe alias
 	if p.isEqual(p.Peek()) {
-		i.Alias = p.ParseIdentOrDiscard()
+		i.Alias = new(p.ParseIdentOrDiscard())
 		p.Advance() // =
 	}
 	// First part of module

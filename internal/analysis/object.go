@@ -115,7 +115,7 @@ const (
 	KindStruct
 	KindInterface
 	KindTag
-	KindModule
+	KindNamespace
 
 	KindGeneric
 )
@@ -161,3 +161,9 @@ func Underlying(t Type) Type {
 	}
 	return t
 }
+
+type Namespace struct {
+	Context *Context
+}
+
+func (*Namespace) Kind() Kind { return KindNamespace }
