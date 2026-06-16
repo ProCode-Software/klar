@@ -2,6 +2,7 @@ package glaspack
 
 import "errors"
 
+// The package manifest will be mutated and returned.
 func Merge(pkg, proj *Manifest) (*Manifest, error) {
 	switch {
 	case pkg == nil && proj == nil:
@@ -12,5 +13,5 @@ func Merge(pkg, proj *Manifest) (*Manifest, error) {
 		return pkg, nil
 	}
 	// TODO
-	return proj, nil
+	return pkg, nil
 }

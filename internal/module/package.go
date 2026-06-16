@@ -174,21 +174,35 @@ func (pi *PackageInfo) PackageDirOf(p *glaslock.Package) string {
 		return filepath.Join(pi.ProjectDir, PkgDir, dir)
 	case glaslock.Git:
 		data := p.GitInfo()
-		root := filepath.Join(
+		return filepath.Join(
 			pi.DataDir(), "packages",
-			strings.ReplaceAll(data.URL, "/", "+"), data.Integrity,
+			strings.ReplaceAll(strings.TrimPrefix(data.URL, "https://"), "/", "+"),
+			data.Integrity, data.Subpath,
 		)
-		if data.Subpath == "" {
-			return root
-		}
-		return filepath.Join(root, PkgDir, data.Subpath)
 	default:
 		panic(fmt.Sprintf("unhandled package source: %v", p.From))
 	}
 }
 
-// The 'klar' base may be aliased (either 'klar' -> something else, or something
-// else -> 'klar') in the manifest and will not point to the standard library.
-func (pi *PackageInfo) IsStdlib(p imports.ImportPath) bool {
-	return p.IsStdlib()
+// ModuleDirOf returns the directory path of the module with the
+// given import path. ModuleDirOf expects p to be part of the package.
+// pi.ModuleDirOf is equivalent to [ModuleDirOf](p, pi.Dir, pi.ProjectDir).
+func (pi *PackageInfo) ModuleDirOf(p imports.ImportPath) string {
+	return ModuleDirOf(p, pi.Dir, pi.ProjectDir)
+}
+
+// ModuleDirOf returns the directory path of the module within the package
+// with the given import path.
+func ModuleDirOf(p imports.ImportPath, packageDir, projectDir string) string {
+	switch p[0] {
+	case TestDir, CmdDir:
+		// Located in the package, but not 'src'
+		return packageDir + sep + filepath.Join(p...)
+	case SharedDir:
+		// 'shared' directory can only be in the PROJECT root
+		return projectDir + sep + filepath.Join(p...)
+	default:
+		// Module located in the src folder of the package
+		return packageDir + sep + SrcDir + sep + filepath.Join(p...)
+	}
 }

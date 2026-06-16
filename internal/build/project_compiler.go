@@ -1,6 +1,7 @@
 package build
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -80,7 +81,7 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 
 func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 	pc.Deps = make(map[*Input]*Deps, len(pc.Inputs))
-	g := graph.New[glaslock.PkgHash]()
+	g := graph.NewWithCompare[glaslock.PkgHash](cmp.Compare)
 	hashToInput := make(map[glaslock.PkgHash]*Input)
 	for _, input := range pc.Inputs {
 		lock := input.Lockfile
@@ -119,6 +120,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 			}
 		}
 		pc.Progress.CompilingDep(lockPkg.Name, i+1, len(sorted))
+		// TODO: Run in parallel
 		mods, err := pc.CompileDep(dependents, lockPkg)
 		if err != nil {
 			return nil, err
@@ -135,7 +137,6 @@ func (pc *ProjectCompiler) CompileInput(i *Input, root bool) (modules []*Module,
 	}
 	pkc.Deps = pc.Deps[i]
 	pkc.EnforceTargetSupport = root
-	// TODO: Should it take maps of importable/defined/stale/incomplete modules?
 	return pkc.Compile()
 }
 
@@ -182,7 +183,7 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 
 	importPath := imports.ImportPath{"klar", "_builtin"}
 	modulePath := module.SystemDirs.Std + sep + module.SrcDir + sep + filepath.Join(importPath...)
-	inp, err := pc.ResolveInput(modulePath, 0, false)
+	inp, err := pc.ResolveInput(modulePath, 0)
 	if err != nil {
 		return err
 	}
@@ -198,21 +199,37 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 // Inputs that depend on the same package
 func (pc *ProjectCompiler) CompileDep(
 	inputs []*Input, lockPkg *glaslock.Package,
-) (depModules []*Module, err error) {
+) (modules []*Module, err error) {
 	if lockPkg.From == glaslock.NPM {
-		return // TODO: Create virtual NPM modules
-	}
-	// Each package may have its own packages folder, but since
-	// they will refer to the same package, we're only compiling from
-	// one. Though the package will be cached to each of the inputs' cache dir
-	root := inputs[0].PkgInfo.PackageDirOf(lockPkg)
-	inp, err := pc.ResolveInput(root, 0, false)
-	if err != nil {
-		return nil, &InterfaceError{Code: ErrDepResolve, Err: err}
-	}
-	modules, err := pc.CompileInput(inp, false)
-	if err != nil {
-		return nil, err
+		// TODO: load from cache if possible
+		// Locate the node_modules folder where the package is installed
+		nodeModules := locatePkgNodeModules(lockPkg, inputs)
+		if nodeModules == "" {
+			return nil, &InterfaceError{
+				Code:   ErrDepNotFound,
+				Value:  lockPkg.Name,
+				Detail: "npm",
+			}
+		}
+		if modules, err = MakeNPMModule(lockPkg, nodeModules); err != nil {
+			return nil, err
+		}
+	} else {
+		// Each package may have its own packages folder, but since
+		// they will refer to the same package, we're only compiling from one.
+		// Though the package will be cached to each of the inputs' cache dir
+		root := inputs[0].PkgInfo.PackageDirOf(lockPkg)
+		inp, err := pc.ResolveInput(root, 0)
+		if err != nil {
+			return nil, &InterfaceError{
+				Code:  ErrDepNotFound,
+				Value: lockPkg.Name,
+				Err:   err,
+			}
+		}
+		if modules, err = pc.CompileInput(inp, false); err != nil {
+			return nil, err
+		}
 	}
 	// Add the dependency's modules to pc.Deps so each input can import them
 	for _, mod := range modules {
@@ -221,4 +238,23 @@ func (pc *ProjectCompiler) CompileDep(
 		}
 	}
 	return modules, nil
+}
+
+// locatePkgNodeModules returns the path to the node_modules directory that
+// contains the given package, or "" if it cannot be found.
+func locatePkgNodeModules(pkg *glaslock.Package, inputs []*Input) string {
+	for _, inp := range inputs {
+		for _, dir := range [...]string{inp.PkgInfo.ProjectDir, inp.PkgInfo.Dir} {
+			joined := filepath.Join(dir, "node_modules")
+			if _, err := os.Stat(joined); err != nil {
+				continue
+			}
+			// Multiple inputs may depend on their own NPM packages. Ensure this
+			// option has this dependency in it.
+			if _, err := os.Stat(filepath.Join(joined, pkg.Name)); err == nil {
+				return joined
+			}
+		}
+	}
+	return ""
 }

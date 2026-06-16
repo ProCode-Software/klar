@@ -78,9 +78,12 @@ func Build(r *command.Runner) {
 	// =========
 	pc.Inputs = make([]*build.Input, 0, len(inputArgs))
 	addInput := func(path string) {
-		input, err := pc.ResolveInput(path, klarBuildMode, false)
+		input, err := pc.ResolveInput(path, klarBuildMode)
 		switch {
 		case err != nil:
+			if err, ok := err.(*build.FilesystemError); ok && err.IsNotExist() {
+				cli.ErrNotFound(path, "input")
+			}
 			c.FailWithError(err)
 		case forcedKlarBuild != nil:
 			// Use the klar.build config from the --config flag

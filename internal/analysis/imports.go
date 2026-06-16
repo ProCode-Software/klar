@@ -2,6 +2,8 @@ package analysis
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -74,7 +76,7 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 
 			// Apply the import or report the error
 			if res.err != nil {
-				c.reportImportError(fileName, impPathStr, res.err)
+				c.reportImportError(impPathStr, res.err, fctx.File, imp)
 				continue
 			}
 			c.applyImportedModule(res.module, imp, fctx)
@@ -146,5 +148,32 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 	}
 }
 
-func (c *Checker) reportImportError(fileName, importPath string, err error) {
+func (c *Checker) reportImportError(importPath string, err error,
+	fid FileID, stmt *ast.ImportStatement,
+) {
+	kerr, ok := err.(*klarerrs.Error)
+	if !ok {
+		kerr = &klarerrs.Error{
+			Code: klarerrs.ErrImporterError,
+			Info: klarerrs.ModuleErrorInfo{ImportPath: importPath, Err: err},
+		}
+	} else {
+		kerr = new(*kerr) // Copy the importer's error so we can add location info
+	}
+	kerr.Node = stmt
+	kerr.Range = stmt.Range
+
+	// Helpful error label
+	importPathBase, _, _ := strings.Cut(importPath, ".")
+	quotedImportPath := klarerrs.Quote(importPath)
+	switch {
+	case slices.Contains(imports.StdlibImports, importPathBase):
+		kerr.Label = quotedImportPath + " isn't in the standard library"
+	case importPathBase == c.module.ImportPath[0]:
+		kerr.Label = quotedImportPath + " isn't in the current package"
+	default:
+		kerr.Label = "Can't find " + quotedImportPath
+	}
+
+	c.fileError(kerr, fid)
 }

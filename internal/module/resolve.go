@@ -6,41 +6,6 @@ import (
 	"strings"
 )
 
-// Directories in the root of a project, as defined by the [Klar Project Structure Spec].
-//
-// [Klar Project Structure Spec]: https://github.com/ProCode-Software/klar/tree/main/docs/ProjectStructure.md
-var KlarProjectDirs = map[string]struct{}{
-	".klar": {}, "src": {}, "cmd": {}, "shared": {}, "external": {}, "pkg": {},
-	"recipes": {}, "scripts": {}, "generated": {}, "dist": {}, "docs": {},
-}
-
-var ProjectOnlyDirs = map[string]struct{}{
-	".klar": {}, "pkg": {}, "shared": {},
-}
-
-const sep = string(filepath.Separator)
-
-// Per Klar Project Structure Spec
-const (
-	ManifestFile = "glas.pack"
-	BuildFile    = "klar.build"
-	LockFile     = "glas.lock"
-
-	PkgDir       = "pkg"
-	LocalDataDir = ".klar"
-	SrcDir       = "src"
-	DistDir      = "dist"
-	ExternalDir  = "external"
-	SharedDir    = "shared"
-	CmdDir       = "cmd"
-	TestDir      = "test"
-)
-
-func IsProjectDir(name string) bool {
-	_, ok := KlarProjectDirs[name]
-	return ok
-}
-
 // Per Project Structure Spec: No more than 4 parts of a module
 const MaxModuleDepth = 4
 
@@ -78,7 +43,7 @@ func PackageRoot(p string) (pkg, project string) {
 		if curr == parent {
 			break
 		}
-		if _, ok := KlarProjectDirs[name]; ok {
+		if _, ok := KlarPackageDirs[name]; ok {
 			// Parent of 'pkg' guaranteed to be project root
 			if name == PkgDir {
 				return prev, parent // x/pkg/y -> (x/pkg/y, x, nil)
@@ -116,7 +81,7 @@ func IsPackage(p string) bool {
 		case name == PkgDir:
 			// We're one level inside pkg folder - this is a package
 			return depth == 1
-		case IsProjectDir(name):
+		case IsPackageDir(name):
 			// Found a Klar project directory - not a package (parent is)
 			return false
 		case p == parent:

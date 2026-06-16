@@ -3,7 +3,6 @@ package build
 import (
 	"errors"
 	"log/slog"
-	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -50,9 +49,9 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 	}
 
 	// Typecheck
-	modules = pkc.TypecheckModules(loaded)
+	modules = pkc.TypeCheckModules(loaded)
 
-	// TODO: Codegen
+	// TODO: Codegen?
 	return
 }
 
@@ -73,16 +72,18 @@ func (pkc *PackageCompiler) LoadStdlibDeps(stdDeps []imports.ImportPath) error {
 			continue // Module already compiled
 		}
 		if importPath[1] == "js" {
-			// klar.js is a project-specific "fake" module
+			// 'klar.js' is a project-specific virtual module. It's based on the
+			// package's targets and the input's klar.build JS options.
 			pkc.setImportError(importPath.String(), errors.New(
 				"klar.js can't be imported yet",
 			))
 			continue
 		}
-		modulePath := stdDir + sep + module.SrcDir + sep + filepath.Join(importPath...)
-		inp, err := pkc.ResolveInput(modulePath, 0, false)
+		modulePath := module.ModuleDirOf(importPath, stdDir, stdDir)
+		inp, err := pkc.ResolveInput(modulePath, 0)
 		if err != nil {
-			return err
+			// Not in the standard library. An error will be reported by the typechecker.
+			return nil
 		}
 		compiler := NewPackageCompiler(pkc.Compiler, inp)
 		compiler.Deps = pkc.Deps
@@ -101,7 +102,7 @@ func (pkc *PackageCompiler) setImportError(path string, err error) {
 	pkc.importErrs[path] = err
 }
 
-func (pkc *PackageCompiler) TypecheckModules(loaded *Loaded) (succeededModules []*Module) {
+func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (succeededModules []*Module) {
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	skippedModules := make(map[*Module]struct{})
 typeCheckModules:

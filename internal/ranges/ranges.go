@@ -28,6 +28,10 @@ func FromToken(t lexer.Token) Range {
 	return Range{Start: t.Position, End: t.End()}
 }
 
+func FromSlice[T interface{ GetRange() Range }](s []T) Range {
+	return Range{s[0].GetRange().Start, s[len(s)-1].GetRange().End}
+}
+
 // Positions
 // ===========
 

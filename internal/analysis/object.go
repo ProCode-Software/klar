@@ -144,7 +144,7 @@ type Type interface {
 	// StringWithName(string) string
 }
 
-// The result of a function call that doesn't return (guranteed crashouts).
+// The result of a function call that doesn't return (guaranteed crashouts).
 type NoReturn struct{ Type }
 
 func (u *NoReturn) Underlying() Type { return u.Type }

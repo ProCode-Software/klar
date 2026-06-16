@@ -16,8 +16,8 @@ func (pkc *PackageCompiler) TypeCheckModule(
 	// Type checker options from klar.build
 	opts := pkc.getCheckerOptions(m)
 	importer := NewImporter(pkc.Input, importPath, pkc.Deps)
+	importer.importErrs = pkc.importErrs
 	opts.Importer = importer
-	importer.Deps = pkc.Deps
 
 	// Initialized the typed module
 	mod := analysis.NewModule(
@@ -32,7 +32,8 @@ func (pkc *PackageCompiler) TypeCheckModule(
 	}
 	// Apply bootstrap flag for stdlib modules being bootstrapped
 	// (klar._builtin and klar._builtin.attributes)
-	if isBootstrapping && importPath[0] == "klar" && len(importPath) > 1 && importPath[1] == "_builtin" {
+	if isBootstrapping && len(importPath) > 1 &&
+		importPath[0] == "klar" && importPath[1] == "_builtin" {
 		mod.Flags |= analysis.BootstrapModule
 	}
 

@@ -1,8 +1,6 @@
 package build
 
 import (
-	"errors"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -47,9 +45,7 @@ func IsTestFile(file string) bool {
 // klarBuildMode == 1: No klar.build is resolved. The caller is expected
 // to parse the klar.build and set i.Config.
 // klarBuildMode == 2: ResolveInput uses the default klar.build
-func (c *Compiler) ResolveInput(s string,
-	klarBuildMode int, isFromKlarBuild bool,
-) (i *Input, err error) {
+func (c *Compiler) ResolveInput(s string, klarBuildMode int) (i *Input, err error) {
 	// If the input refers to a module import path (`@...`), use the manifest for the cwd
 	switch {
 	case s == "-":
@@ -63,13 +59,6 @@ func (c *Compiler) ResolveInput(s string,
 	}
 	s = c.Abs(s)
 	if info, err := os.Stat(s); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			kind := "input"
-			if isFromKlarBuild {
-				kind += " from klar.build"
-			}
-			cli.ErrNotFound(s, kind)
-		}
 		return nil, &FilesystemError{"stat", s, err}
 	} else if info.IsDir() {
 		// Ensure the user isn't passing the 'test' folder as an input outside of test mode
@@ -160,7 +149,7 @@ func (i *Input) ResolveKlarBuild() (path string) {
 	}
 	for {
 		// Stop after project directory (i.Path may be a project directory)
-		if _, ok := module.KlarProjectDirs[filepath.Base(dir)]; ok {
+		if _, ok := module.KlarPackageDirs[filepath.Base(dir)]; ok {
 			return
 		}
 		parent := filepath.Dir(dir)

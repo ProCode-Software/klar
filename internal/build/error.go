@@ -55,8 +55,8 @@ const (
 	ErrLexer            // Lexer error
 	ErrInvalidConfig    // Failed to parse configuration
 	ErrKlarVersion      // Compiler version too old to compile a package
-	ErrDepResolve       // Failed to resolve dependency
 	ErrDepCycle         // Dependency cycle
+	ErrDepNotFound      // Dependency not found or installed
 )
 
 type InterfaceError struct {
@@ -126,6 +126,15 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 			"<m>%s → %s</m>",
 			strings.Join(cycleErr.Cycle, " → "), cycleErr.Cycle[0],
 		)
+	case ErrDepNotFound:
+		pkg := err.Value
+		var msg string
+		if err.Detail == "npm" {
+			msg = "Can't find the location where NPM dependency <c>" + pkg + "</c> is installed. "
+		} else {
+			msg = "Dependency <c>" + pkg + "</c> isn't installed. "
+		}
+		return msg, "Run <m>glas install</m> to install it."
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}

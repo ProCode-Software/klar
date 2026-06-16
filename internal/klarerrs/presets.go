@@ -58,13 +58,7 @@ func Range(err Code, rang ranges.Range) *Error {
 }
 
 func Slice[T ast.Node](err Code, nodes []T) *Error {
-	return &Error{
-		Code: err,
-		Range: ranges.Range{
-			Start: nodes[0].GetRange().Start,
-			End:   nodes[len(nodes)-1].GetRange().End,
-		},
-	}
+	return &Error{Code: err, Range: ranges.FromSlice(nodes)}
 }
 
 func TokenPos(err Code, pos lexer.Position, tok lexer.Token) *Error {

@@ -3,10 +3,12 @@ package build
 import (
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/graph"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"golang.org/x/sync/errgroup"
 )
@@ -14,8 +16,10 @@ import (
 type Loader struct {
 	*Compiler
 	*Input
-	// StaleModules map[string]*Module // Keys are import paths
 	Deps *Deps
+	// If loading modules outside another import, avoid sorting,
+	// and add edges to graph instead
+	graph *graph.Graph[string]
 }
 
 func NewLoader(c *Compiler, i *Input, deps *Deps) *Loader {
@@ -44,7 +48,7 @@ func (ld *Loader) Load() (*Loaded, error) {
 	)
 	for _, mod := range modules {
 		eg.Go(func() error {
-			if cached := ld.loadOrParseFiles(mod, &eg, &reporterMu); cached {
+			if cached := ld.loadOrParseModule(mod, &eg, &reporterMu); cached {
 				cachedCh <- mod
 			} else {
 				needsTypeCheckCh <- mod
@@ -79,22 +83,72 @@ func (ld *Loader) Load() (*Loaded, error) {
 
 		g.AddVertex(importPathStr)
 		for dep := range mod.Deps {
-			// 4. Stdlib imports are added to a separate slice to be loaded
-			if dep.IsStdlib() && importPath[0] != "klar" {
+			// 4. Stdlib imports are added to a separate slice to be loaded,
+			// unless we're currently loading the stdlib itself. But if the stdlib
+			// imports 'klar.js', we want [PackageCompiler.LoadStdlibDeps] to create it.
+			if dep.IsStdlib() && (!importPath.IsStdlib() || (len(dep) > 1 && dep[1] == "js")) {
 				loaded.stdlibDeps = append(loaded.stdlibDeps, dep)
 				continue // Stdlib modules are always compiled first
 			}
 			g.AddEdge(dep.String(), importPathStr)
 		}
 	}
+	// 5. Load the dependency modules that are in the current package but not
+	// inputs before sorting.
+	// Example: If the input is a.b, and a.b depends on a.c, we have to load it.
+	if ld.graph != nil {
+		// We are currently doing this right now. Just add the edges
+		return nil, nil
+	}
+	if err := ld.loadPackageDeps(g); err != nil {
+		return nil, err
+	}
+
 	if loaded.sortedDeps, err = g.Toposort(); err != nil {
 		return loaded, &InterfaceError{Code: ErrDepCycle, Err: err}
 	}
 	return loaded, nil
 }
 
-func (ld *Loader) loadOrParseFiles(m *Module, eg *errgroup.Group,
-	reporterMu *sync.Mutex,
+// loadPackageDeps loads the dependencies that are in the current package
+// but not inputs, and adds them to the graph. If a dependency doesn't
+// exist, it is skipped for the typechecker to report an error when imported.
+func (ld *Loader) loadPackageDeps(g *graph.Graph[string]) error {
+	if len(g.Edges()) == 0 {
+		return nil
+	}
+	inputBase, _, _ := strings.Cut(g.Edges()[0][1], ".")
+	for _, edge := range g.Edges() {
+		dependency := edge[0]
+		if ld.Deps.Has(dependency) {
+			continue
+		}
+		// If 'dependency' is just 'a', base is 'a'
+		base, _, _ := strings.Cut(dependency, ".")
+		if base != inputBase && !module.IsPackageDir(base) {
+			// Not in the current package. An error will be reported when imported.
+			continue
+		} /* else if dependency == "klar.js" {
+			// We are currently loading an input's stdlib dependencies.
+			// (This Loader was created by [PackageCompiler.LoadStdlibDeps])
+			// As [PackageCompiler.LoadStdlibDeps] does, don't load 'klar.js'.
+			continue
+		} */
+		modulePath := ld.PkgInfo.ModuleDirOf(imports.NewImportPath(dependency))
+		inp := new(*ld.Input)
+		inp.Path, inp.Kind = modulePath, KindModule
+
+		moduleLoader := NewLoader(ld.Compiler, inp, ld.Deps)
+		moduleLoader.graph = g // Don't toposort loaded modules
+		if _, err := moduleLoader.Load(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ld *Loader) loadOrParseModule(m *Module,
+	eg *errgroup.Group, reporterMu *sync.Mutex,
 ) (cached bool) {
 	m.ModTimes = make(map[string]time.Time, len(m.Programs))
 

@@ -126,6 +126,11 @@ func (d *Deps) Get(importPath string) *Module {
 	return (*d)[importPath]
 }
 
+func (d *Deps) Has(importPath string) bool {
+	_, ok := (*d)[importPath]
+	return ok
+}
+
 func Cwd() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {

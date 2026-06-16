@@ -15,7 +15,7 @@ var _ analysis.Importer = (*Importer)(nil)
 type Importer struct {
 	Deps       *Deps
 	PkgInfo    *module.PackageInfo
-	Target     target.Target
+	Targets    []target.Target
 	ImportPath imports.ImportPath
 	importErrs map[string]error
 }
@@ -27,7 +27,7 @@ func NewImporter(
 		ImportPath: importPath,
 		Deps:       deps,
 		PkgInfo:    i.PkgInfo,
-		Target:     i.KlarBuild.Target, // TODO
+		Targets:    i.Targets,
 	}
 }
 
