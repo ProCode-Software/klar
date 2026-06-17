@@ -1,6 +1,6 @@
 //go:build js && wasm
 
-// KlarWasm provides a WASM-compatible interface for the Klar compiler.
+// Klarwasm provides a WASM-compatible interface for the Klar compiler.
 package main
 
 import (
@@ -58,7 +58,7 @@ func Parse(s string, fileName string) (out string, report func() string) {
 	}
 }
 
-func ReportErrors(c *build.Compiler, res *build.Result, err error, isMaxErrors bool) string {
+func ReportErrors(c *build.ProjectCompiler, res *build.Result, err error, isMaxErrors bool) string {
 	var buf strings.Builder
 	c.Reporter.UseColor = true
 	c.Reporter.Output = &buf

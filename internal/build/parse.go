@@ -119,12 +119,8 @@ type parsePool struct{ parser, lexer sync.Pool }
 // [lexer.Flags] and [parser2.Options] as defaults.
 func newParsePool(parseOpts *parser.Options) *parsePool {
 	return &parsePool{
-		lexer: sync.Pool{New: func() any {
-			return lexer.NewLexer(nil)
-		}},
-		parser: sync.Pool{New: func() any {
-			return parser.New(nil, parseOpts)
-		}},
+		lexer:  sync.Pool{New: func() any { return lexer.NewLexer(nil) }},
+		parser: sync.Pool{New: func() any { return parser.New(nil, parseOpts) }},
 	}
 }
 

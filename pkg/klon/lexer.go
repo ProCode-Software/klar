@@ -43,48 +43,6 @@ func (rd *reader) resetLine() {
 	rd.offset.Col = 1
 }
 
-func (rd *reader) resetLineIf(r rune) {
-	if r == '\n' {
-		rd.resetLine()
-	}
-}
-
-func (rd *reader) AdvanceRune() (rune, error) { return rd.readRune() }
-func (rd *reader) CurrRune() (rune, error) {
-	if rd.pos >= len(rd.buffer) {
-		if err := rd.refill(); err != nil {
-			return 0, err
-		}
-	}
-	r, _ := utf8.DecodeRune(rd.buffer[rd.pos:])
-	return r, nil
-}
-
-func (rd *reader) PeekRune() (rune, error) {
-	if rd.pos >= len(rd.buffer) {
-		if err := rd.refill(); err != nil {
-			return 0, err
-		}
-	}
-	_, n := utf8.DecodeRune(rd.buffer[rd.pos:])
-	nextPos := rd.pos + n
-	if nextPos >= len(rd.buffer) {
-		if rd.reader != nil {
-			if err := rd.refill(); err != nil {
-				return 0, err
-			}
-			_, n = utf8.DecodeRune(rd.buffer[rd.pos:])
-			nextPos = rd.pos + n
-		}
-	}
-	if nextPos >= len(rd.buffer) {
-		return 0, io.EOF
-	}
-	r2, _ := utf8.DecodeRune(rd.buffer[nextPos:])
-	return r2, nil
-}
-func (rd *reader) Position() lexer.Position { return rd.offset }
-
 func (rd *reader) peekRune() (rune, int, error) {
 	if rd.needsMore() {
 		if err := rd.tryRefill(); err != nil {
@@ -120,6 +78,21 @@ func (rd *reader) utf8Error(back int) {
 		klonerrs.ErrIllegalCharacter, ranges.SingleChar(pos),
 		"Invalid Unicode character",
 	)
+}
+
+// Implements [lexer.RuneReader]
+// =========
+
+func (rd *reader) AdvanceRune() (rune, error) { return rd.readRune() }
+
+func (rd *reader) CurrRune() (rune, error) {
+	r, _, err := rd.currRune()
+	return r, err
+}
+
+func (rd *reader) PeekRune() (rune, error) {
+	r, _, err := rd.peekRune()
+	return r, err
 }
 
 func (rd *reader) readToken() Token {
@@ -278,7 +251,8 @@ func (rd *reader) readNumber(first rune, start lexer.Position, bufPos int) Token
 	if !isNumber || !isDelim {
 		// Read an unquoted string instead
 		b := &strings.Builder{}
-		b.WriteString(prefix + literal)
+		b.WriteString(prefix)
+		b.WriteString(literal)
 		return rd.readUnquotedString(b, start, bufPos)
 	}
 

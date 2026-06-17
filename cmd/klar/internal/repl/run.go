@@ -119,11 +119,6 @@ func (s *Session) Prompt() {
 	s.send()
 }
 
-func (s *Session) handleLexerError(err error) {
-	s.Error("Failed to read tokens", err)
-	panic(err)
-}
-
 func (s *Session) Error(msg string, err error) {
 	ansi.Fprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v\n", msg, err)
 }

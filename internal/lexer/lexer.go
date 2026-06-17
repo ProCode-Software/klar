@@ -241,12 +241,14 @@ func (t *Tokenizer) ResetKeepBuilder(backupLast bool) {
 	t.eof = false
 }
 
+// [RuneReader] Interface
+// ==========
+
 // RuneReader is an interface for reading runes from a stream.
 type RuneReader interface {
 	AdvanceRune() (rune, error)
 	CurrRune() (rune, error)
 	PeekRune() (rune, error)
-	Position() Position
 }
 
 func (l *Lexer) AdvanceRune() (rune, error) {
@@ -272,15 +274,13 @@ func (l *Lexer) CurrRune() (rune, error) {
 
 func (l *Lexer) PeekRune() (rune, error) {
 	b, err := l.Reader.Peek(8)
-	if err != nil && len(b) == 0 {
+	if err != nil {
 		return 0, err
 	}
-	_, size1 := utf8.DecodeRune(b)
-	if len(b) <= size1 {
+	_, size := utf8.DecodeRune(b)
+	if len(b) <= size {
 		return 0, io.EOF
 	}
-	r2, _ := utf8.DecodeRune(b[size1:])
+	r2, _ := utf8.DecodeRune(b[size:])
 	return r2, nil
 }
-
-func (l *Lexer) Position() Position { return l.Pos }

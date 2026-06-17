@@ -53,19 +53,18 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 		flags        NumberFlags
 		err          *NumberError
 		isExp, isDec bool
-		last         rune
+		last         = first
 	)
 	newError := func(code NumberErrorCode, errPos int) {
 		if err == nil {
 			err = &NumberError{Code: code, Offset: uint32(errPos)}
 		}
 	}
-
 	b.WriteRune(first)
-	last = first
 
+	// Format prefix
 	if first == '0' {
-		if r, er := rd.CurrRune(); er == nil {
+		if r, err := rd.CurrRune(); err == nil {
 			switch r {
 			case 'x', 'X':
 				format = NumberFormatHex
@@ -85,8 +84,8 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 
 readNumber:
 	for {
-		r, er := rd.CurrRune()
-		if er != nil {
+		r, err := rd.CurrRune()
+		if err != nil {
 			break
 		}
 		switch r {
@@ -122,8 +121,7 @@ readNumber:
 				newError(ErrIntMisplacedSeparator, b.Len()-1)
 			}
 			// Check if next character is a digit
-			next, err2 := rd.PeekRune()
-			if err2 != nil || !IsDigit(next) {
+			if next, err := rd.PeekRune(); err != nil || !IsDigit(next) {
 				break readNumber
 			}
 			isDec = true
@@ -140,7 +138,6 @@ readNumber:
 		default:
 			break readNumber
 		}
-
 		b.WriteRune(r)
 		rd.AdvanceRune()
 		last = r
