@@ -15,6 +15,7 @@ type bootstrapType struct {
 
 func (bt *bootstrapType) Kind() Kind       { return bt.kind }
 func (bt *bootstrapType) Underlying() Type { return bt.withKind }
+func (bt *bootstrapType) String() string   { return bt.kind.String() }
 
 var _ SupportsMethods = &bootstrapType{}
 

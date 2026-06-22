@@ -162,7 +162,7 @@ func (p *Parser) ParseLED(left ast.Expression, bp BindingPower) ast.Expression {
 		kind := p.CurrKind()
 		left, handled = p.handleLED(kind, left, BindingPowerMap[kind])
 		if !handled {
-			p.unknownTokenError()
+			p.unexpectedTokenError()
 			return &ast.BadExpression{Token: kind, Value: left}
 		}
 	}

@@ -1,5 +1,12 @@
 package analysis
 
+import (
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
+)
+
 type (
 	DeclKind         uint8
 	ContextAttribute uint8
@@ -8,6 +15,7 @@ type (
 type Context struct {
 	index        int
 	Declarations map[string]*Object
+	sortedDecls  []*Object // By object order. Lazily sorted; never reference directly.
 	Parent       *Context
 	Children     []*Context
 	Flags        Flag
@@ -90,6 +98,13 @@ func (ctx *Context) LookupRecursive(name string) *Object {
 	return nil
 }
 
+func (ctx *Context) SortedDecls() []*Object {
+	if ctx.sortedDecls == nil {
+		ctx.sortedDecls = slices.SortedFunc(maps.Values(ctx.Declarations), sortByOrder)
+	}
+	return ctx.sortedDecls
+}
+
 func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
 	if obj.name == "_" {
 		return
@@ -99,4 +114,33 @@ func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
 		err := redeclaredError(obj, existing, true)
 		c.fileError(err, obj.file)
 	}
+}
+
+func (ctx *Context) String() string {
+	if ctx.Declarations == nil {
+		return fmt.Sprintf("Context (file %d) {}", ctx.File)
+	}
+	var b strings.Builder
+	var longestName int
+	for _, o := range ctx.SortedDecls() {
+		if len(o.Name()) > longestName {
+			longestName = len(o.Name())
+		}
+	}
+	fmt.Fprintf(&b, "Context (file %v) {\n", ctx.SortedDecls()[0].FilePath())
+	for _, o := range ctx.SortedDecls() {
+		var typeStr any
+		switch {
+		case !o.IsTypeName():
+			typeStr = o.typ
+		case o.typ.Underlying() == nil:
+			typeStr = "type = <incomplete>"
+		default:
+			typeStr = fmt.Sprintf("type = %v", o.typ.Underlying())
+		}
+		pad := strings.Repeat(" ", longestName-len(o.Name()))
+		fmt.Fprintf(&b, "  %s:%s %s (%s)\n", o.Name(), pad, typeStr, o.rang)
+	}
+	fmt.Fprintf(&b, "}")
+	return b.String()
 }

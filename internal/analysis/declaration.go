@@ -9,8 +9,6 @@ import (
 )
 
 type DeclarationInfo struct {
-	Attributes *Attributes
-	file       *Context
 	node       ast.Statement
 	// For variable/const declaration. Not destructured
 	rhs ast.Expression
@@ -18,18 +16,24 @@ type DeclarationInfo struct {
 	rhsType *Type
 }
 
-func (c *Checker) declareTopLevelObject(obj *Object,
-	attrs *[]*ast.Attribute, info *DeclarationInfo, appendToCtx bool,
+// declareWithInfo declares an object into the given context with the
+// given attributes and [DeclarationInfo]. If declareToCtx == false,
+// only the object's information is recorded and is not added to the context.
+// If *attrs != nil, the attributes are parsed and drained.
+func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
+	attrs *[]*ast.Attribute, declareToCtx bool,
 ) {
-	if appendToCtx {
-		c.declare(c.rootContext, obj)
+	if declareToCtx {
+		c.declare(ctx, obj)
+	} else {
+		obj.context = ctx // Still set the object's context
 	}
-	c.moduleDecls[obj] = info
+	// Parse the attributes if any (top-level only)
 	if attrs != nil {
-		info.Attributes = c.parseAttributes(*attrs, attrTargetKindOf(info.node), obj.file)
-		*attrs = nil
+		obj.attrs = c.parseAttributes(*attrs, attrTargetKindOf(obj.info.node), obj.file)
+		*attrs = (*attrs)[:0]
 	}
-	obj.order = uint32(len(c.moduleDecls))
+	// obj.order = uint32(len(ctx.declInfo))
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
@@ -38,9 +42,11 @@ func (c *Checker) checkDeclaration(o *Object) {
 		White: Type is pending. Is in objPathIndex.
 		Blue: Type is known. Not in objPathIndex.
 
-		Blue can only depend on blue. White/grey can only depend on red or blue. A dependency on white is a (possibly invalid) cycle.
+		Blue can only depend on blue. White/grey can only depend on red or blue.
+		A dependency on white is a (possibly invalid) cycle.
 
-		When marked white, it is pushed onto the object path stack, and its index is recorded in objPathIndex. It's removed from the map and the stack when marked blue.
+		When marked white, it is pushed onto the object path stack, and its index
+		is recorded in objPathIndex. It's removed from the map and the stack when marked blue.
 	*/
 	if _, ok := c.objPathIndex[o]; ok {
 		switch typ := o.typ.(type) {
@@ -60,16 +66,17 @@ func (c *Checker) checkDeclaration(o *Object) {
 			c.isValidCycle(o) // TODO: is this needed?
 		case *FunctionAlias:
 		// TODO
+		case *Overload:
 		default:
 			panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 		}
-		if Underlying(o.typ) == nil {
+		if o.typ.Underlying() == nil {
 			panic("underlying type is still nil")
 		}
 		return
 	}
 
-	if Underlying(o.typ) != nil {
+	if o.typ.Underlying() != nil {
 		return // Blue, already checked
 	}
 
@@ -77,14 +84,13 @@ func (c *Checker) checkDeclaration(o *Object) {
 	c.pushToPath(o)
 	defer c.popPath()
 
-	decl := c.moduleDecls[o]
 	switch o.typ.(type) {
 	case *Variable:
-		c.checkVarDecl(o, decl)
+		c.checkVarDecl(o)
 	case *Constant:
-		c.checkConstDecl(o, decl)
+		c.checkConstDecl(o)
 	case *TypeName:
-		c.checkCustomTypeDecl(o, decl)
+		c.checkTypeDecl(o)
 	case *Function:
 		c.checkFuncDecl(o)
 	case *Overload:
@@ -152,7 +158,6 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 		if ov, ok := meth.obj.typ.(*Overload); ok {
 			ov.Self = &Variable{VarKind: SelfVar, Type: selfObj.typ}
 		}
-		// TODO: wrap Overloads in Functions
 		if err := self.AddMethod(meth.obj); err != nil {
 			c.fileError(err, meth.obj.file)
 			return
@@ -170,7 +175,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 // within the context and validated.
 func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Object) {
 	identRange := func(obj *Object) ranges.Range {
-		return c.moduleDecls[obj].node.(*ast.FunctionDeclaration).Identifier.Range()
+		return obj.info.node.(*ast.FunctionDeclaration).Identifier.Range()
 	}
 	selfObj := ctx.Lookup(typeName)
 	if selfObj == nil {
@@ -190,7 +195,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			Message: klarerrs.Quote(typeName) + " was declared here",
 		}}
 		for _, o := range inits {
-			node := c.moduleDecls[o].node.(*ast.FunctionDeclaration)
+			node := o.info.node.(*ast.FunctionDeclaration)
 			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, node)
 			err.SetParam("initializer", true)
 			err.Details = det
@@ -219,6 +224,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			err.Label = "Can't create initializers on this kind of type"
 			c.fileError(err, o.file)
 		}
+		return
 	}
 	// TODO: check Function body
 }

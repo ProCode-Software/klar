@@ -13,15 +13,13 @@ type Interface struct {
 	MethodSet // Extension methods
 }
 
-func (*Interface) Kind() Kind { return KindInterface }
+func (*Interface) Kind() Kind     { return KindInterface }
+func (*Interface) String() string { return "<interface>" }
 
-func (c *Checker) checkInterfaceDecl(
-	o *Object, decl *ast.InterfaceDeclaration, fctx *Context,
-) {
+func (c *Checker) checkInterfaceDecl(o *Object, decl *ast.InterfaceDeclaration) {
+	fctx := o.FileContext()
 	intf := &Interface{
-		Inherited: c.checkInheritedTypes(
-			decl.InheritedTypes, KindInterface, o.file, fctx,
-		),
+		Inherited:       c.checkInheritedTypes(decl.InheritedTypes, KindInterface, fctx),
 		order:           make([]string, 0, len(decl.Items)),
 		DeclaredFields:  make(map[string]Type),
 		DeclaredMethods: make(map[string]*Function),

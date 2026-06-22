@@ -80,7 +80,7 @@ func (t Tuple) String() string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteString(TypeToString(elem))
+		b.WriteString(elem.String())
 	}
 	b.WriteByte(')')
 	return b.String()
@@ -89,19 +89,19 @@ func (t Tuple) String() string {
 type List struct{ Elem Type }
 
 func (l *List) Kind() Kind     { return KindList }
-func (l *List) String() string { return "[" + TypeToString(l.Elem) + "]" }
+func (l *List) String() string { return "[" + l.Elem.String() + "]" }
 
 type Map struct{ Key, Value Type }
 
 func (*Map) Kind() Kind { return KindMap }
 func (m *Map) String() string {
-	return fmt.Sprintf("#{%s: %s}", TypeToString(m.Key), TypeToString(m.Value))
+	return fmt.Sprintf("#{%s: %s}", m.Key.String(), m.Value.String())
 }
 
 type Optional struct{ Elem Type }
 
 func (*Optional) Kind() Kind       { return KindOptional }
-func (o *Optional) String() string { return TypeToString(o.Elem) + "?" }
+func (o *Optional) String() string { return o.Elem.String() + "?" }
 
 // TODO: Should Optional have an Underlying() type?
 
@@ -116,17 +116,20 @@ func (r *Result) String() string {
 	case r.Success == NothingType && r.Error == ErrorType:
 		return "Result"
 	case r.Error == ErrorType:
-		return "Result<" + TypeToString(r.Success) + ">"
+		return "Result<" + r.Success.String() + ">"
 	}
-	return fmt.Sprintf("Result<%s, %s>", TypeToString(r.Success), TypeToString(r.Error))
+	return fmt.Sprintf("Result<%s, %s>", r.Success.String(), r.Error.String())
 }
 
 type Task struct{ Result Type }
 
 func (*Task) Kind() Kind { return KindTask }
 func (t *Task) String() string {
-	return "Task<" + TypeToString(t.Result) + ">"
+	return "Task<" + t.Result.String() + ">"
 }
+
+// Loading
+// ==========
 
 func (c *Checker) loadInternalModules() {
 	if builtinModule != nil && attributesModule != nil {
@@ -161,11 +164,10 @@ func declareBuiltinTypes() {
 		BuiltInContext.Declare(&Object{
 			name:    p.name,
 			context: BuiltInContext,
-			typ:     p.typ,
+			typ:     &TypeName{Type: p.typ},
 			file:    -2,
 		})
 	}
-	// TODO: The non-primitive types
 }
 
 func declareBuiltinFunctions() {

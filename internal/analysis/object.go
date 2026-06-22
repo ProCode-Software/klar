@@ -14,15 +14,16 @@ type Object struct {
 	file    FileID
 	public  bool
 	module  *Module
-	typ     Type
+	typ     ObjectKind
 	order   uint32
 	flags   Flag
-	attrs   any // TODO
+	attrs   *Attributes
+	info    *DeclarationInfo
 }
 
 // NewObject returns a new [Object] without context information.
 func NewObject(
-	name string, fid FileID, rang ranges.Range, mod *Module, typ Type,
+	name string, fid FileID, rang ranges.Range, mod *Module, typ ObjectKind,
 ) *Object {
 	return &Object{name: name, module: mod, rang: rang, file: fid, typ: typ}
 }
@@ -33,10 +34,18 @@ func (obj *Object) Name() string { return obj.name }
 // Context returns the context in which the object was declared
 func (obj *Object) Context() *Context { return obj.context }
 
+// Order returns the order in which the object was declared in the module.
+func (obj *Object) Order() int { return int(obj.order) }
+
+// FileContext returns the context for the file in which the object was declared.
+// The return value is not equal to [Object.Context], but is the context where
+// imported objects (that the object could depend on) are declared.
+func (obj *Object) FileContext() *Context { return obj.module.fileContext[obj.file] }
+
 // Range returns the position of the object in the source code
 func (obj *Object) Range() ranges.Range { return obj.rang }
 
-// File returns the base name of the file in which the object was declared
+// File returns the ID of the file in which the object was declared
 func (obj *Object) File() FileID { return obj.file }
 
 // Flags returns the flags applied to obj.
@@ -49,19 +58,21 @@ func (obj *Object) Public() bool { return obj.public }
 func (obj *Object) Module() *Module { return obj.module }
 
 // Type returns the type of the object
-func (obj *Object) Type() Type { return obj.typ }
+func (obj *Object) Type() ObjectKind { return obj.typ }
 
 // Kind returns the kind of the object. Kind is equivalent to obj.Type().Kind().
 func (obj *Object) Kind() Kind { return obj.typ.Kind() }
 
 // String returns a human-readable representation of the object.
-func (obj *Object) String() string { return TypeToString(obj.typ) }
+func (obj *Object) String() string { return obj.typ.String() }
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
 	// TODO: should use '/' instead?
 	return obj.Module().ImportPathString() + "/" + obj.name
 }
+
+// TODO: If the object is top-level, these don't return a file. Find a solution
 
 // FileName returns the base name of the file o was declared in.
 func (o *Object) FileName() string { return o.module.ResolveFile(o.file) }
@@ -93,6 +104,12 @@ func (o *Object) IsTypeName() bool {
 // TypeName returns o's Type() as a [*TypeName], or panics if
 // o is not a type name.
 func (o *Object) TypeName() *TypeName { return o.typ.(*TypeName) }
+
+type ObjectKind interface {
+	Type
+	objKind()
+	Underlying() Type
+}
 
 // Type Kinds
 // ============
@@ -180,9 +197,6 @@ func (k Kind) String() string {
 	}[k]
 }
 
-// StringWithName implements [Type] and is equivalent to k.String()
-func (k Kind) StringWithName(string) string { return k.String() }
-
 // Types
 // ==========
 
@@ -192,7 +206,7 @@ type Type interface {
 	Kind() Kind
 	// String returns a human-readable string representation of the type
 	// without a name.
-	// String() string
+	String() string
 	// StringWithName returns a human-readable string representation
 	// of the type with the given name.
 	// StringWithName(string) string
@@ -227,4 +241,7 @@ type Namespace struct {
 	Context *Context
 }
 
-func (*Namespace) Kind() Kind { return KindNamespace }
+func (*Namespace) Kind() Kind        { return KindNamespace }
+func (*Namespace) Underlying() Type  { return nil }
+func (*Namespace) objKind()          {}
+func (ns *Namespace) String() string { return "<module>" }

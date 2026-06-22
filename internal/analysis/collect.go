@@ -19,13 +19,8 @@ type methodInfo struct {
 func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
 ) (methods map[string][]methodInfo, inits map[string][]*Object) {
-	declareMethod := func(s *ast.Identifier, info methodInfo) {
-		if methods == nil {
-			methods = make(map[string][]methodInfo)
-		}
-		methods[s.Name] = append(methods[s.Name], info)
-	}
-	// Sort the files for reproducible output
+	collector := &stmtCollector{topLevel: true, ctx: c.rootContext}
+	var attrs []*ast.Attribute
 	for _, fileName := range files {
 		var (
 			program = c.Programs[fileName]
@@ -34,8 +29,8 @@ func (c *Checker) collectTopLevelObjects(
 			// First statement after imports. Any import after this is misplaced.
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _ = fctx.getAttribute(firstStmtIndex).(int)
-			attrs        []*ast.Attribute // All items are *ast.Attribute
 		)
+		collector.fctx = fctx
 		for _, stmt := range program.Body[firstStmt:] {
 			var public bool
 			if ps, ok := stmt.(*ast.PublicDeclaration); ok {
@@ -53,85 +48,13 @@ func (c *Checker) collectTopLevelObjects(
 				attrs = append(attrs, stmt)
 				continue
 			case *ast.FunctionDeclaration:
-				name := stmt.Identifier.Name
-				ov := NewObject(name, fid, stmt.GetRange(), c.module, &Overload{})
-				ov.typ.(*Overload).Object = ov
-				ov.public = public
-
-				if stmt.SelfType != nil {
-					// Method
-					declareMethod(stmt.SelfType, methodInfo{decl: stmt, obj: ov})
-				} else if par, isInit := c.getOverloadParent(name, stmt, fid, fctx); isInit {
-					// If `name` refers to a type, this overload is an initializer.
-					if inits == nil {
-						inits = make(map[string][]*Object)
-					}
-					inits[name] = append(inits[name], ov)
-				} else if par == nil { // Object with same name isn't a function
-					attrs = nil
-					continue // There was an error (already reported)
-				} else { // Function
-					parFn := par.typ.(*Function)
-					parFn.Overloads = append(parFn.Overloads, ov.typ.(*Overload))
-					// If at least 1 overload is public, the entire function is public
-					if public {
-						par.public = true
-					}
-				}
-				// Initializers and methods are also declared into c.moduleDecls
-				// as top-level objects.
-				//
-				// We manually set c.moduleDecls instead of using
-				// declareTopLevelObject() so that the overload itself isn't
-				// declared into the context.
-				c.declareTopLevelObject(ov, &attrs, &DeclarationInfo{
-					file:       fctx,
-					node:       stmt,
-					Attributes: c.parseAttributes(attrs, funcAttribute, fid),
-				}, false)
+				c.declareFunc(stmt, collector, public, &attrs)
 				continue
 			case *ast.FuncAliasDeclaration:
-				// TODO: Currently, function aliases can't be used as overloads.
-				// Example that is not allowed:
-				//
-				// 	type Person
-				// 	func Person = newPerson // newPerson may have overloads, which may get confusing
-
-				// Will be resolved later
-				obj := NewObject(
-					stmt.Identifier.Name,
-					fid, stmt.Range, c.module, &FunctionAlias{},
-				)
-				obj.public = public
-				if stmt.Struct != nil {
-					// Method alias
-					declareMethod(stmt.Struct, methodInfo{alias: stmt, obj: obj})
-				}
-				// Both methods and normal aliases are declared into c.moduleDecls
-				c.declareTopLevelObject(obj, &attrs, &DeclarationInfo{
-					file: fctx,
-					node: stmt,
-				}, stmt.Struct == nil)
+				c.declareFuncAlias(stmt, collector, public, &attrs)
 				continue
 			case ast.TypeDeclaration:
-				name := stmt.Name()
-				obj := NewObject(name, fid, stmt.GetRange(), c.module, &TypeName{nil, name})
-
-				var hadInit bool
-				if maybeFnObj := c.rootContext.Lookup(name); maybeFnObj != nil {
-					if _, hadInit = maybeFnObj.typ.(*Function); hadInit {
-						// The initializer was declared earlier than this type.
-						// Change the object in the context to this type. The
-						// initializer will still be available in c.moduleDecls.
-						c.rootContext.Declarations[name] = obj
-					}
-				}
-
-				c.declareTopLevelObject(obj, &attrs, &DeclarationInfo{
-					node: stmt,
-					file: fctx,
-				}, !hadInit)
-				obj.public = public
+				c.declareType(stmt, collector, public, &attrs)
 				continue
 			case *ast.VariableDeclaration:
 				// TODO: some but not all var declarations are top level (can contain
@@ -140,7 +63,7 @@ func (c *Checker) collectTopLevelObjects(
 				if fileName == "main.klar" {
 					break
 				}
-				c.createVarPlaceholders(stmt, fid, fctx, &attrs, public)
+				c.declareVars(stmt, collector, public, &attrs)
 				continue
 
 			// Top-level statements
@@ -160,7 +83,8 @@ func (c *Checker) collectTopLevelObjects(
 			if len(attrs) > 0 {
 				// If we're here, the attributes weren't applied to a declaration.
 				// TODO: Do we need to report an error here?
-				attrs = nil
+				println("Attributes weren't applied")
+				attrs = attrs[:0]
 			}
 			// Top-level statement: only allowed in main.klar or single-file modules
 			if fileName == "main.klar" || c.module.Flags.Has(SingleFileModule) {
@@ -177,45 +101,46 @@ func (c *Checker) collectTopLevelObjects(
 				err.Label += "s"
 			}
 			c.fileError(err, fid)
-			_=1+1
-			attrs = nil
+			attrs = attrs[:0]
 		}
 	}
 	// Ensure no top-level objects were shadowed by imports
-	for _, fileCtx := range fileContexts {
-		for name, importedObj := range fileCtx.Declarations {
-			modObj := c.module.Context.Lookup(name)
-			if modObj == nil {
-				continue
+	for _, fileName := range files {
+		fctx := fileContexts[fileName]
+		for _, imported := range fctx.SortedDecls() {
+			name := imported.name
+			topLevel := c.module.Context.Lookup(name)
+			if topLevel == nil {
+				continue // No error
 			}
 			// Only imports are in the file scope. One of these could possibly share a name:
 			// - Namespace of normal import
 			// - Alias of import
 			// - An unqualified import object
 			var namespace string
-			if importedObj.Kind() == KindNamespace {
+			if imported.Kind() == KindNamespace {
 				// Provide the import path the namespace is from
-				namespace = importedObj.module.ImportPathString()
+				namespace = imported.module.ImportPathString()
 			}
-			err := klarerrs.Range(klarerrs.ErrImportShadow, importedObj.rang)
+			err := klarerrs.Range(klarerrs.ErrImportShadow, imported.rang)
 			err.Label = klarerrs.Quote(name) + " was already declared in the module"
 			err.Params = klarerrs.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
 			err.Details = append(err.Details, klarerrs.Detail{
-				File:    modObj.FilePath(),
-				Range:   modObj.rang,
+				File:    topLevel.FilePath(),
+				Range:   topLevel.rang,
 				Message: "It was already declared here",
 			})
-			c.fileError(err, importedObj.file)
+			c.fileError(err, imported.file)
 		}
 	}
 	return methods, inits
 }
 
-// checkTopLevelObjects typechecks all top-level objects, but not function bodies.
-// TODO: take a context
-func (c *Checker) checkTopLevelObjects(
-	sortedObjs []*Object, methods map[string][]methodInfo, inits map[string][]*Object,
+// checkContextDecls typechecks all declarations in the
+// given context, but not function bodies.
+func (c *Checker) checkContextDecls(
+	ctx *Context, methods map[string][]methodInfo, inits map[string][]*Object,
 ) {
 	var (
 		typeAliases []*Object // [*TypeName]
@@ -223,10 +148,10 @@ func (c *Checker) checkTopLevelObjects(
 		funcAliases []*Object // [*FunctionAlias]
 	)
 	// 1. Check new type declarations (not aliases)
-	for _, obj := range sortedObjs {
+	for _, obj := range ctx.SortedDecls() {
 		switch obj.typ.(type) {
 		case *TypeName:
-			if _, ok := c.moduleDecls[obj].node.(*ast.TypeAliasDeclaration); ok {
+			if _, ok := obj.info.node.(*ast.TypeAliasDeclaration); ok {
 				typeAliases = append(typeAliases, obj)
 			} else {
 				c.checkDeclaration(obj)
@@ -251,11 +176,142 @@ func (c *Checker) checkTopLevelObjects(
 	}
 	// 5. Methods and initializers: Associate methods/initializers with receiver types
 	for typeName, methods := range methods {
-		c.collectMethods(c.rootContext, typeName, methods)
+		c.collectMethods(ctx, typeName, methods)
 	}
 	for typeName, inits := range inits {
-		c.collectInitializers(c.rootContext, typeName, inits)
+		c.collectInitializers(ctx, typeName, inits)
 	}
+}
+
+type stmtCollector struct {
+	ctx       *Context // Where the objects will be declared to
+	fctx      *Context // File context for looking up imports
+	inits     map[string][]*Object
+	methods   map[string][]methodInfo
+	topLevel  bool
+	currOrder uint32
+}
+
+func (sc *stmtCollector) declareMethod(s *ast.Identifier, info methodInfo) {
+	if sc.methods == nil {
+		sc.methods = make(map[string][]methodInfo)
+	}
+	sc.methods[s.Name] = append(sc.methods[s.Name], info)
+}
+
+func (sc *stmtCollector) declareInitializer(ov *Object) {
+	if sc.inits == nil {
+		sc.inits = make(map[string][]*Object)
+	}
+	sc.inits[ov.name] = append(sc.inits[ov.name], ov)
+}
+
+func (sc *stmtCollector) nextOrder() uint32 {
+	sc.currOrder++
+	return sc.currOrder - 1
+}
+
+// declareFunc declares an [Overload] object for the given declaration. If the
+// declaration is a method, it is inserted into sc.methods. If the declaration
+// is an initializer, it is inserted into sc.inits. The overload is
+// associated with its parent [Function]. Signatures aren't checked yet.
+func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
+	public bool, attrs *[]*ast.Attribute,
+) {
+	name := stmt.Identifier.Name
+	ov := NewObject(name, sc.fctx.File, stmt.GetRange(), c.module, &Overload{})
+	ov.typ.(*Overload).Object = ov
+	ov.public = public
+
+	var par *Object
+	var isInit bool
+	if stmt.SelfType != nil {
+		// Method
+		sc.declareMethod(stmt.SelfType, methodInfo{decl: stmt, obj: ov})
+	} else {
+		par, isInit = c.getOverloadParent(name, stmt, sc)
+	}
+	switch {
+	case isInit:
+		// If `name` refers to a type, this overload is an initializer.
+		sc.declareInitializer(ov)
+	default:
+		// New overload (may be the first)
+		parFn := par.typ.(*Function)
+		parFn.Overloads = append(parFn.Overloads, ov.typ.(*Overload))
+		// If at least 1 overload is public, the entire function is public
+		if public {
+			par.public = true
+		}
+	case par == nil:
+		// Object with same name isn't a function. An error was already reported
+		attrs = nil
+		return
+	}
+	// Initializers and methods also have their info recorded into the context.
+	// No kind is declared into the context. For overloads, their parent has
+	// already been declared.
+	ov.info = &DeclarationInfo{node: stmt}
+	ov.order = sc.nextOrder()
+	c.declareWithInfo(ov, sc.ctx, attrs, false)
+}
+
+// declareFuncAlias declares a function alias object for the given declaration. If
+// the declaration is a method, it is inserted into sc.methods. Alias targets
+// aren't checked yet.
+func (c *Checker) declareFuncAlias(stmt *ast.FuncAliasDeclaration, sc *stmtCollector,
+	public bool, attrs *[]*ast.Attribute,
+) {
+	// TODO: Currently, function aliases can't be used as overloads.
+	// Example that is not allowed:
+	//
+	// 	type Person
+	// 	func Person = newPerson // newPerson may have overloads, which may get confusing
+
+	// Will be resolved later
+	obj := NewObject(
+		stmt.Identifier.Name,
+		sc.fctx.File, stmt.Range, c.module, &FunctionAlias{},
+	)
+	obj.public = public
+	if stmt.Struct != nil {
+		// Method alias
+		sc.declareMethod(stmt.Struct, methodInfo{alias: stmt, obj: obj})
+	}
+	// Both methods and normal aliases have their info recorded.
+	obj.info = &DeclarationInfo{node: stmt}
+	obj.order = sc.nextOrder()
+	c.declareWithInfo(obj, sc.ctx, attrs, stmt.Struct == nil)
+}
+
+// declareType declares a [TypeName] object for the given type declaration.
+// Underlying types are not checked yet.
+func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
+	public bool, attrs *[]*ast.Attribute,
+) {
+	name := stmt.Name()
+	obj := NewObject(name, sc.fctx.File, stmt.GetRange(), c.module, &TypeName{nil, name})
+
+	var hadInit bool
+	if maybeFnObj := sc.ctx.Lookup(name); maybeFnObj != nil {
+		var fn *Function
+		if fn, hadInit = maybeFnObj.typ.(*Function); hadInit {
+			// The initializer was declared earlier than this type.
+			// Change the object in the context to this type. The
+			// initializer will still be available in ctx.declInfo.
+			sc.ctx.Declarations[name] = obj
+			// Move the existing initializers to sc.inits
+			for _, ov := range fn.Overloads {
+				sc.declareInitializer(ov.Object)
+			}
+			fn.Overloads = fn.Overloads[:0]
+		}
+	}
+
+	obj.info = &DeclarationInfo{node: stmt}
+	obj.order = sc.nextOrder()
+	c.declareWithInfo(obj, sc.ctx, attrs, !hadInit)
+	obj.public = public
 }
 
 // getOverloadParent finds the [*Function] associated with f's name, which
@@ -264,43 +320,46 @@ func (c *Checker) checkTopLevelObjects(
 // a [*Function] nor a [*TypeName]. If it is a [*TypeName], isInit will
 // be true.
 func (c *Checker) getOverloadParent(
-	name string, f ast.Statement, fid FileID, fctx *Context,
+	name string, node ast.Statement, sc *stmtCollector,
 ) (par *Object, isInit bool) {
-	// p: The function we're adding overloads to
-	p := c.rootContext.Lookup(name)
-	if p == nil {
+	// par is the function we're adding overloads to
+	fid := sc.fctx.File
+	par = sc.ctx.Lookup(name)
+	if par == nil {
 		// If this is the first overload, declare a new parent function
-		p = NewObject(name, fid, f.GetRange(), c.module, &Function{})
+		par = NewObject(name, fid, node.GetRange(), c.module, &Function{})
 		// The parent's node and range are the first overload
-		c.declareTopLevelObject(p, nil, &DeclarationInfo{
-			file: fctx,
-			node: f,
-		}, true)
-	} else if _, ok := p.typ.(*Function); !ok {
-		if _, ok := p.typ.(*TypeName); ok {
+		par.info = &DeclarationInfo{node: node}
+		par.order = sc.nextOrder()
+		c.declareWithInfo(par, sc.ctx, nil, true)
+		return par, false
+	}
+	if _, ok := par.typ.(*Function); !ok {
+		if par.IsTypeName() {
+			// If the parent is a type, this is an initializer for it
 			return nil, true
 		}
 		// If the parent isn't a function, it's redeclared
-		err := redeclaredError(&Object{rang: f.GetRange()}, p, false)
+		err := redeclaredError(&Object{rang: node.GetRange()}, par, false)
 		c.fileError(err, fid)
 		return nil, false
 	}
-	return p, false
+	return par, false
 }
 
-// createVarPlaceholders declares placeholder [*Object]s for each variable
-// declared in d. Types and values aren't checked yet.
-func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
-	fid FileID, fctx *Context,
-	attrs *[]*ast.Attribute, public bool,
+// declareVars declares placeholder [*Object]s for each variable
+// declared in d. Values aren't checked yet.
+func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
+	public bool, attrs *[]*ast.Attribute,
 ) {
 	var (
 		lastDecl     *Object
 		varKind      int // 1 = var, 2 = const
 		explicitType Type
+		fid          = sc.fctx.File
 	)
 	if d.ExplicitType != nil {
-		explicitType = c.parseType(d.ExplicitType, fctx)
+		explicitType = c.parseType(d.ExplicitType, sc.ctx)
 	}
 	for i, assg := range d.Variables {
 		dest, ok := assg.(ast.Destructurable)
@@ -344,9 +403,11 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 				obj.typ = &Constant{}
 				varKind = 2
 			} else {
-				typ := &Variable{VarKind: TopLevelVar}
-				typ.Object = obj
-				obj.typ = typ
+				varObjKind := LocalVar
+				if sc.topLevel {
+					varObjKind = TopLevelVar
+				}
+				_ = NewVariable(obj, varObjKind, nil)
 				varKind = 1
 			}
 			if name.IsDiscard() {
@@ -360,10 +421,10 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 
 				err := objectError(klarerrs.ErrVarConstMixInDecl, obj)
 				err.Label = "This is a " + kindString[varKind]
-				err.Highlights = append(err.Highlights, klarerrs.Highlight{
-					Range:   lastDecl.rang,
-					Message: "This was already declared as a " + kindString[oldVarKind],
-				})
+				err.AddHighlight(
+					"This was already declared as a "+kindString[oldVarKind],
+					lastDecl.rang,
+				)
 				// TODO: hint with diff
 				err.Hint("Declare the variables and constants in separate declarations.")
 				c.fileError(err, fid)
@@ -373,25 +434,13 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 				lastDecl = obj
 			}
 
-			c.declareTopLevelObject(obj, attrs, &DeclarationInfo{
+			obj.info = &DeclarationInfo{
 				node:    d,
-				file:    fctx,
 				rhs:     value,
 				rhsType: rhsType,
-			}, true)
+			}
+			obj.order = sc.nextOrder()
+			c.declareWithInfo(obj, sc.ctx, attrs, true)
 		}
-	}
-}
-
-// isAllowedAsStmt returns whether the given expression can be used as a statement.
-func isAllowedAsStmt(expr ast.Expression) bool {
-	switch expr.(type) {
-	case *ast.WhenExpression, *ast.CallExpression, *ast.PipelineExpression,
-		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression:
-		return true
-	case *ast.BadExpression:
-		panic("typechecking invalid AST")
-	default:
-		return false
 	}
 }

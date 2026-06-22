@@ -41,9 +41,8 @@ func (c *importCtx) ImportPath() imports.ImportPath { return c.importPath }
 func (c *importCtx) DirPath() string                { return c.fileDir }
 func (c *importCtx) SingleFile() bool               { return c.singleFile }
 
-// performFileImports creates a new [Context] for each file
-// and performs imports.
-func (c *Checker) performFileImports(files []string, fileContexts map[string]*Context) {
+// performImports creates a new [Context] for each file and performs imports.
+func (c *Checker) performImports(files []string, fileContexts map[string]*Context) {
 	type imported struct {
 		module *Module
 		err    error
@@ -81,6 +80,7 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 			// Apply the import or report the error
 			if res.err != nil {
 				c.reportImportError(impPathStr, res.err, fctx.File, imp)
+				c.declareErrorImport(imp, fctx)
 				continue
 			}
 			c.applyImportedModule(res.module, imp, fctx)
@@ -156,6 +156,10 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 	}
 }
 
+func (c *Checker) declareErrorImport(stmt *ast.ImportStatement, fctx *Context) {
+	// TODO: declare the namespace with [InvalidType]
+}
+
 func (c *Checker) reportImportError(importPath string, err error,
 	fid FileID, stmt *ast.ImportStatement,
 ) {
@@ -188,8 +192,4 @@ func (c *Checker) reportImportError(importPath string, err error,
 	}
 
 	c.fileError(kerr, fid)
-}
-
-func (c *Checker) lookupQualified(ns, name ast.Identifier, fctx *Context) *Object {
-	return nil
 }

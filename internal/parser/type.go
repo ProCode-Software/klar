@@ -10,7 +10,7 @@ func (p *Parser) ParseType(bp BindingPower) ast.Type {
 	kind := p.CurrKind()
 	left, handled := p.handleTypeNUD(kind)
 	if !handled {
-		p.unknownTokenError()
+		p.nudError()
 		return &ast.BadExpression{Token: kind}
 	}
 	return p.ParseTypeLED(left, bp)
@@ -24,7 +24,7 @@ func (p *Parser) ParseTypeLED(left ast.Type, bp BindingPower) ast.Type {
 			kind, left, TypeBindingPowerMap[p.CurrKind()],
 		)
 		if !handled {
-			p.unknownTokenError()
+			p.unexpectedTokenError()
 			return &ast.BadExpression{Token: kind, Value: left}
 		}
 	}

@@ -164,7 +164,7 @@ func (c *Checker) checkRangeExpr(expr *ast.RangeExpression, e *Expr) {
 	kind := from.Type.Kind()
 	// Check if we can range over the type
 	if !canRangeOver(kind) && kind != InvalidType {
-		err := klarerrs.TypeError(klarerrs.ErrInvalidRangeType, expr.Range, "", TypeToString(from.Type))
+		err := klarerrs.TypeError(klarerrs.ErrInvalidRangeType, expr.Range, "", from.Type.String())
 		err.Label = "Can't range over this type"
 		c.fileError(err, e.Context.File)
 		e.Type = &List{from.Type}
@@ -209,7 +209,7 @@ func (c *Checker) checkGoExpr(expr *ast.GoExpression, e *Expr) {
 func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, e *Expr) {
 	arg := c.checkExpr(expr, newChildExpr(e, 0))
 	errNotTask := func(t Type) {
-		str := TypeToString(t)
+		str := t.String()
 		err := klarerrs.TypeError(klarerrs.ErrTypeMismatch, expr.Range, "Task", str)
 		err.Label = "This has type " + str
 		c.fileError(err, e.Context.File)
@@ -292,7 +292,7 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		if varTypes, err = c.isIterable(success, numVars); err != nil {
 			break // Underlying type isn't iterable
 		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", TypeToString(t))
+		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
 		err.SetParam("kind", "Result")
 		return varTypes, err
 	case KindOptional:
@@ -300,13 +300,26 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		if varTypes, err = c.isIterable(concrete, numVars); err != nil {
 			break // Underlying type isn't iterable
 		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", TypeToString(t))
+		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
 		err.SetParam("kind", "Optional")
 		return varTypes, err
 	case InvalidType:
 		return repeatWithItem(Type(InvalidType), numVars), nil // Don't show an error
 	}
 	// Not iterable
-	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", TypeToString(t))
+	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", t.String())
 	return repeatWithItem(Type(InvalidType), numVars), err
+}
+
+// isAllowedAsStmt returns whether the given expression can be used as a statement.
+func isAllowedAsStmt(expr ast.Expression) bool {
+	switch expr.(type) {
+	case *ast.WhenExpression, *ast.CallExpression, *ast.PipelineExpression,
+		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression:
+		return true
+	case *ast.BadExpression:
+		panic("typechecking invalid AST")
+	default:
+		return false
+	}
 }

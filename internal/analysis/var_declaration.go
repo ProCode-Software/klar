@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -13,8 +14,33 @@ type Variable struct {
 	VarKind VariableKind
 }
 
+// o's type is set to the returned variable.
+func NewVariable(o *Object, kind VariableKind, typ Type) *Variable {
+	vr := &Variable{Object: o, VarKind: kind, Type: typ}
+	o.typ = vr
+	return vr
+}
+
 func (v *Variable) Underlying() Type { return v.Type }
 func (v *Variable) Kind() Kind       { return v.Type.Kind() }
+func (v *Variable) String() string {
+	var kind, name string
+	switch v.VarKind {
+	default:
+		kind = "var"
+	case SelfVar:
+		kind = "self"
+	case FuncParamVar:
+		kind = "param"
+	case StructFieldVar:
+		kind = "field"
+	}
+	if v.Object != nil {
+		name = " " + v.Object.name
+	}
+	return fmt.Sprintf("%s%s: %s", kind, name, v.Type)
+}
+func (*Variable) objKind() {}
 
 type VariableKind uint8
 
@@ -32,28 +58,24 @@ type Constant struct {
 	Value ConstValue // TODO
 }
 
-// o's type is set to the returned variable.
-func NewVariable(o *Object, kind VariableKind, typ Type) *Variable {
-	vr := &Variable{Object: o, VarKind: kind, Type: typ}
-	o.typ = vr
-	return vr
-}
+func (c *Constant) Kind() Kind       { return c.Type.Kind() }
+func (c *Constant) Underlying() Type { return c.Type }
+func (*Constant) objKind()           {}
+func (c *Constant) String() string   { return fmt.Sprintf("%s (%v)", c.Type, c.Value) }
 
-func (c *Constant) Kind() Kind                        { return c.Type.Kind() }
-func (c *Constant) Underlying() Type                  { return c.Type }
-func (c *Constant) String() string                    { return "" }
-func (c *Constant) StringWithName(name string) string { return "name := " + c.String() }
-
-func (c *Checker) checkVarDecl(o *Object, decl *DeclarationInfo) {
+func (c *Checker) checkVarDecl(o *Object) {
+	decl := o.info
 	_ = decl.node.(*ast.VariableDeclaration)
 	vr := o.typ.(*Variable)
 	e := NewExprWithHint(o.context, *decl.rhsType, 0)
 	c.checkExpr(decl.rhs, e) // TODO: be aware of destructures
-	// TODO: Go calls check.initVar, which checks if the expression is untyped nil, sets untyped values to typed types, and calls check.assignment.
+	// TODO: Go calls check.initVar, which checks if the expression is untyped
+	// nil, sets untyped values to typed types, and calls check.assignment.
 	vr.Type = e.Type
 }
 
-func (c *Checker) checkConstDecl(o *Object, decl *DeclarationInfo) {
+func (c *Checker) checkConstDecl(o *Object) {
+	decl := o.info
 	_ = decl.node.(*ast.VariableDeclaration)
 	cnst := o.typ.(*Constant)
 

@@ -6,13 +6,13 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-func (p *Parser) unknownTokenError() {
+func (p *Parser) unexpectedTokenError() {
 	tok := p.AdvanceNonBoundary()
 	if tok.Kind == lexer.Newline {
 		tok = p.Advance()
 	}
 	p.Error(klarerrs.UnexpectedToken(tok))
-	// p.skipUntilBoundary()
+	p.skipUntilBoundary()
 }
 
 func (p *Parser) skipRestOfStatement() (end lexer.Position) {
@@ -41,7 +41,7 @@ func (p *Parser) nudError() {
 		}
 		fallthrough
 	default:
-		p.unknownTokenError()
+		p.unexpectedTokenError()
 		return
 	case lexer.If:
 		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrIfStatement, curr), "Use a 'when' block instead")
@@ -79,18 +79,18 @@ func (p *Parser) countConsecutiveNot() (n int) {
 }
 
 func (p *Parser) skipUntilBoundary() {
-	brackCount := 1
+	var brackCount int
 	for p.HasTokens() {
 		switch p.CurrKind() {
 		case lexer.Comma, lexer.Newline:
-			if brackCount <= 1 {
+			if brackCount <= 0 {
 				return
 			}
 		case lexer.LeftParenthesis, lexer.LeftBracket, lexer.LeftCurlyBrace, lexer.HashLeftCurlyBrace:
 			brackCount++
 		case lexer.RightParenthesis, lexer.RightBracket, lexer.RightCurlyBrace:
 			brackCount--
-			if brackCount <= 0 {
+			if brackCount < 0 {
 				return
 			}
 		}

@@ -13,6 +13,7 @@ type stmtContext struct {
 	returns    *[]returnStmt
 	loopLabels map[string]*loopLabel
 	flags      stmtFlags
+	collector  *stmtCollector
 }
 
 type returnStmt struct {
@@ -33,14 +34,16 @@ const (
 	finalWhenCase
 	unreachable
 	braceless // Body of a braceless 'when' case
+	allowForwardDecl
 )
 
-func newStmtContext(ctx *Context, flags stmtFlags) *stmtContext {
+func newStmtContext(ctx, fctx *Context, flags stmtFlags) *stmtContext {
 	return &stmtContext{
 		ctx:        ctx,
 		flags:      flags,
 		returns:    new([]returnStmt),
 		loopLabels: make(map[string]*loopLabel),
+		collector:  &stmtCollector{ctx: ctx, fctx: fctx},
 	}
 }
 
@@ -52,6 +55,7 @@ func newChildStmtContext(parentSctx *stmtContext,
 		returns:    parentSctx.returns,
 		loopLabels: parentSctx.loopLabels,
 		flags:      parentSctx.flags | flags,
+		collector:  &stmtCollector{ctx: childCtx, fctx: parentSctx.collector.fctx},
 	}
 }
 
@@ -82,17 +86,27 @@ func (sctx *stmtContext) declareLabel(name string, r ranges.Range) (err *klarerr
 }
 
 func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
+	defer func(oldFlags stmtFlags) { sctx.flags = oldFlags }(sctx.flags)
+	sctx.flags |= allowForwardDecl
+
 	// Declare functions and types first
+	var normalStmts []ast.Statement
 	for _, stmt := range stmts {
 		if canForwardDeclareInFunc(stmt) {
-			c.checkStmt(stmt, sctx)
+			c.checkStmt(stmt, sctx) // Declare without checking them
+		} else {
+			normalStmts = append(normalStmts, stmt)
 		}
 	}
-	// Check everything else in the block, including variable declarations
-	for _, stmt := range stmts {
-		if !canForwardDeclareInFunc(stmt) {
-			c.checkStmt(stmt, sctx)
-		}
+	if len(normalStmts) < len(stmts) {
+		// Actually check the declarations. Similar to [Checker.Check]
+		c.checkDirectCycles(sctx.ctx)
+		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
+	}
+
+	// Check everything else in the block, including variable declarations.
+	for _, stmt := range normalStmts {
+		c.checkStmt(stmt, sctx)
 	}
 }
 
@@ -130,9 +144,13 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 		return
 
 	case ast.TypeDeclaration:
+		c.declareType(stmt, sctx.collector, false, nil)
 	case *ast.FunctionDeclaration:
+		c.declareFunc(stmt, sctx.collector, false, nil)
 	case *ast.FuncAliasDeclaration:
+		c.declareFuncAlias(stmt, sctx.collector, false, nil)
 	case *ast.VariableDeclaration:
+		c.declareVars(stmt, sctx.collector, false, nil)
 	case *ast.AssignmentStatement:
 
 	case ast.ModifierDeclaration:
@@ -154,13 +172,19 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	default:
 		panic(fmt.Sprintf("unhandled statement node: %T", stmt))
 	}
+	// If we're checking a single statement, forward declarations aren't
+	// allowed, so we need to typecheck declarations immediately.
+	if canForwardDeclareInFunc(stmt) && (sctx.flags&allowForwardDecl) == 0 {
+		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
+		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
+	}
 }
 
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 	if stmt.Condition != nil {
 		cond := c.checkExpr(stmt.Condition, newExprFromStmtCtx(sctx, 0))
 		if cond.Type.Kind() != BoolType {
-			gotType := TypeToString(cond.Type)
+			gotType := cond.Type.String()
 			err := klarerrs.TypeError(
 				klarerrs.ErrNonBoolWhileCond, stmt.Condition.GetRange(),
 				BoolType.String(), gotType,

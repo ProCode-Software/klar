@@ -14,7 +14,8 @@ import (
 type Module struct {
 	Name, Path  string // Base name, dir/file path
 	Programs    map[string]*ast.Program
-	fileID      map[FileID]string
+	fileID      map[FileID]string // File ID to key in Programs
+	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath
 	Imports     []*Module
 	Target      target.Target    // Target the module was compiled for
@@ -63,6 +64,9 @@ func (m *Module) JoinFilePath(basename string) string {
 // ResolveFile returns the base name of the file represented by id.
 // It panics if the file is not found.
 func (m *Module) ResolveFile(id FileID) string {
+	if id == 0 {
+		return "top-level"
+	}
 	path := m.fileID[id]
 	if path == "" {
 		panic(fmt.Sprintf("file with id %d not found", id))

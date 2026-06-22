@@ -12,6 +12,8 @@ type Struct struct {
 	fmset *FieldMethodSet // Lazy-computed
 }
 
+func (s *Struct) String() string { return "<struct>" }
+
 type FieldMethodSet struct {
 	Fields  map[string]Type
 	Methods map[string]*Function
@@ -27,13 +29,14 @@ type StructField struct {
 
 // checkStructDecl checks a struct declaration and sets o's underlying type
 // to a [*Struct]. o's Type should be [*TypeName].
-func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, fctx *Context) {
+func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	str := &Struct{}
+	fctx := o.FileContext()
 	o.typ.(*TypeName).Type = str
 
 	// TODO: inherited types
 	// We're just checking their kinds for now. Add the fields and methods later.
-	c.checkInheritedTypes(node.InheritedTypes, KindStruct, o.file, fctx)
+	c.checkInheritedTypes(node.InheritedTypes, KindStruct, fctx)
 
 	if len(node.Fields) == 0 {
 		return

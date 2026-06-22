@@ -16,19 +16,24 @@ type Function struct {
 	Arity     Arity
 }
 
+func (*Function) objKind() {}
+
 // Overload represents a single overload or parameter set of a function.
 // TODO: params with defaults
 type Overload struct {
 	*Object
 	Self           *Variable
 	Generics       []*Generic
-	Params         []*Variable
+	Params         []*Variable // Positional params
 	LabelledParams []*LabelledParam
 	labelMap       map[string]*Variable
 	Arity          Arity
 	InnerContext   *Context
+	Return         Type      // Same as [Function.Return] unless this is an initializer
 	NamedReturns   []*Object // Type [*Variable]
 }
+
+func (*Overload) objKind() {}
 
 // LabelledParam represents a labelled function parameter, e.g. `label: string`.
 type LabelledParam struct {
@@ -46,6 +51,13 @@ func (fa *FunctionAlias) Underlying() Type {
 	}
 	return fa.Target.typ
 }
+func (*FunctionAlias) objKind() {}
+func (fa *FunctionAlias) String() string {
+	if fa.Target == nil {
+		return "<function alias -> unknown>"
+	}
+	return fa.Target.String()
+}
 
 type Arity struct {
 	// The minimum and maximum number of parameters the function accepts,
@@ -57,6 +69,13 @@ type Arity struct {
 type Generic struct {
 	*Object
 	Index int // Index within the declaration, starting at 0
+}
+
+func (g *Generic) String() string {
+	if g.Object == nil {
+		return "generic"
+	}
+	return "generic " + g.Object.name
 }
 
 // MethodAdder is implemented by types that can have methods added to them.
@@ -82,8 +101,8 @@ func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
 	for _, ov := range fn.Overloads {
 		var (
-			info = c.moduleDecls[ov.Object]
-			fctx = info.file
+			info = ov.Object.info
+			fctx = o.FileContext()
 			stmt = info.node.(*ast.FunctionDeclaration)
 		)
 		ctx := NewContext(fctx, o.file) // Function body context
@@ -195,12 +214,14 @@ func (c *Checker) checkFuncDecl(o *Object) {
 
 		// 5. Body
 		if !c.Options.IgnoreFuncBodies && (stmt.Body != nil || stmt.Expression != nil) {
-			c.queue(func() { c.checkFuncBody(stmt, fn, ov) }, true)
+			c.queue(func() { c.checkFuncBody(stmt, ov, fn, fctx) }, true)
 		}
 	}
 }
 
-func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, fn *Function, ov *Overload) {
+func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
+	fn *Function, fctx *Context,
+) {
 	// TODO: Extract some fields from [Checker] such as moduleDecls for
 	// use in nested contexts.
 	ctx := ov.InnerContext
@@ -208,7 +229,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, fn *Function, ov 
 		// Function expression
 		return
 	}
-	sctx := newStmtContext(ctx, allowReturn)
+	sctx := newStmtContext(ctx, fctx, allowReturn)
 	c.checkBlock(stmt.Body.Body, sctx)
 }
 
@@ -256,7 +277,7 @@ func (fn *Function) StringWithName(name string) string {
 	if fn.Return != nil {
 		if ret := fn.Return.Kind(); ret != NothingType && ret != InvalidType {
 			b.WriteString(" -> ")
-			b.WriteString(TypeToString(fn.Return))
+			b.WriteString(fn.Return.String())
 		}
 	}
 	return b.String()
@@ -298,7 +319,7 @@ func (o *Overload) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(TypeToString(param.Type))
+		b.WriteString(param.Type.String())
 	}
 	// Labelled params
 	for i, param := range o.LabelledParams {
@@ -307,7 +328,7 @@ func (o *Overload) String() string {
 		}
 		b.WriteString(param.Label)
 		b.WriteString(": ")
-		b.WriteString(TypeToString(param.Type))
+		b.WriteString(param.Type.String())
 	}
 	b.WriteByte(')')
 	return b.String()

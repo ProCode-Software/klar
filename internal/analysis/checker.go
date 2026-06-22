@@ -39,15 +39,13 @@ type Options struct {
 }
 
 type Checker struct {
-	Programs    map[string]*ast.Program // Files in the module that is being checked.
-	Errors      []*klarerrs.Error       // Errors reported while type checking.
-	Info        *Info
-	Options     *Options // Options for type checking.
-	rootContext *Context // Context where top-level objects are defined.
-	module      *Module
-
-	nodeContexts map[ast.Node]*Context
-	moduleDecls  map[*Object]*DeclarationInfo // Declaration info for top-level objects
+	Programs     map[string]*ast.Program // Files in the module that is being checked.
+	Errors       []*klarerrs.Error       // Errors reported while type checking.
+	Info         *Info
+	Options      *Options // Options for type checking.
+	rootContext  *Context // Context where top-level objects are defined.
+	module       *Module
+	nodeContexts map[ast.Node]*Context // Node where each context begins, excluding top-level
 
 	// For tracking cycles
 	objPath      []*Object       // Path of object deps
@@ -91,7 +89,6 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	c.module = mod
 	c.Programs = mod.Programs
 	c.Options = opts
-	c.moduleDecls = make(map[*Object]*DeclarationInfo)
 	c.loadInternalModules()
 }
 
@@ -102,12 +99,10 @@ func (c *Checker) Check() {
 	// Initialize contexts for each file
 	fileContexts := c.initFileContexts(sortedFiles)
 	// Perform imports
-	c.performFileImports(sortedFiles, fileContexts)
+	c.performImports(sortedFiles, fileContexts)
 
 	// Collect top-level objects in each file and put them in the module
 	methods, inits := c.collectTopLevelObjects(sortedFiles, fileContexts)
-	// Sort declarations for reproducible error output
-	sortedObjs := slices.SortedFunc(maps.Keys(c.moduleDecls), sortByOrder)
 
 	// If we're currently bootstrapping, wrap the declared types to allow
 	// special operations on them.
@@ -116,9 +111,9 @@ func (c *Checker) Check() {
 	}
 
 	// Check for direct cycles among those objects
-	c.checkDirectCycles(sortedObjs)
+	c.checkDirectCycles(c.rootContext)
 	// Typecheck those declarations, but not function bodies
-	c.checkTopLevelObjects(sortedObjs, methods, inits)
+	c.checkContextDecls(c.rootContext, methods, inits)
 
 	// Run delayed actions, including checking function bodies
 	c.runDelayed(0)
@@ -129,6 +124,7 @@ func (c *Checker) Check() {
 func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 	fileContexts := make(map[string]*Context, len(sortedFiles))
 	c.module.fileID = make(map[FileID]string, len(sortedFiles))
+	c.module.fileContext = make(map[FileID]*Context, len(sortedFiles))
 	if c.nodeContexts == nil {
 		c.nodeContexts = make(map[ast.Node]*Context, len(sortedFiles))
 	}
@@ -136,6 +132,7 @@ func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 		i := FileID(i) + 1
 		c.module.fileID[i] = name
 		fileContexts[name] = NewContext(c.rootContext, i)
+		c.module.fileContext[i] = fileContexts[name]
 	}
 	return fileContexts
 }
@@ -152,9 +149,7 @@ func (c *Checker) ResetAll() {
 	c.rootContext = nil
 	c.Programs = nil
 	c.Options = nil
-	c.moduleDecls = nil
 	c.nodeContexts = nil
-	c.moduleDecls = nil
 }
 
 func (c *Checker) filePath(name string) string {

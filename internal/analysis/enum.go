@@ -31,9 +31,8 @@ type EnumItem struct {
 	Attributes *Attributes
 }
 
-func (*Enum) Kind() Kind                        { return KindEnum }
-func (*Enum) String() string                    { return "" }
-func (*Enum) StringWithName(name string) string { return name }
+func (*Enum) Kind() Kind       { return KindEnum }
+func (e *Enum) String() string { return fmt.Sprintf("<enum (%d items)>", len(e.Items)) }
 
 func (item *EnumItem) ParamByName(label string) Type {
 	i, ok := item.paramMap[label]
@@ -43,7 +42,8 @@ func (item *EnumItem) ParamByName(label string) Type {
 	return item.Params[i]
 }
 
-func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration, fctx *Context) {
+func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
+	fctx := o.FileContext()
 	e := &Enum{
 		Items:    make([]*EnumItem, 0, len(node.Values)),
 		itemMap:  make(map[string]*EnumItem, len(node.Values)),
@@ -116,7 +116,7 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 			err := typeMismatch(e.ItemType, valType, expr.GetRange())
 			if !firstRange.IsZero() {
 				err.AddHighlight(
-					"First value of the enum has type "+klarerrs.Quote(TypeToString(e.ItemType)),
+					"First value of the enum has type "+klarerrs.Quote(e.ItemType.String()),
 					*firstRange,
 				)
 			}
@@ -177,7 +177,7 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 			}
 			value = NewStringConst(str)
 		default:
-			panic("invalid enum item type: " + TypeToString(e.ItemType))
+			panic("invalid enum item type: " + e.ItemType.String())
 		}
 		ei.Value = value
 		valueMap[value] = ei

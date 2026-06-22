@@ -27,7 +27,8 @@ func (a *TypeAlias) Resolve() Type {
 func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
 func (a *TypeAlias) Underlying() Type { return a.Resolve() }
 
-func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration, fctx *Context) {
+func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
+	fctx := o.FileContext()
 	tn := o.typ.(*TypeName)
 	alias := &TypeAlias{Name: o.name}
 	tn.Type = alias
@@ -47,7 +48,7 @@ func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration, fctx
 }
 
 func (c *Checker) checkFuncAlias(o *Object) {
-	decl := c.moduleDecls[o]
+	decl := o.info
 	targetExpr := decl.node.(*ast.FuncAliasDeclaration).Target
 	// TODO: Lookup the target expression and make sure it resolves to a function
 	var target *Object = nil

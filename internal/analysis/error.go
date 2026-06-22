@@ -77,9 +77,9 @@ func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 
 func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
 	err := klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange)
-	err.Label = "This should have type " + klarerrs.Quote(TypeToString(exp))
-	err.SetParam("expected", TypeToString(exp))
-	err.SetParam("got", TypeToString(got))
+	err.Label = "This should have type " + klarerrs.Quote(exp.String())
+	err.SetParam("expected", exp.String())
+	err.SetParam("got", got.String())
 	return err
 }
 

@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"cmp"
-	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
@@ -35,16 +34,6 @@ func (m *mapObject) ContainsName(name string) bool {
 	}
 	_, ok := (*m)[name]
 	return ok
-}
-
-func TypeToString(t Type) string {
-	if t, ok := t.(fmt.Stringer); ok {
-		return t.String()
-	}
-	if vr, ok := t.(*Variable); ok {
-		return TypeToString(vr.Type)
-	}
-	return fmt.Sprintf("%#v", t)
 }
 
 func quote(s string) string { return klarerrs.Quote(s) }

@@ -15,6 +15,9 @@ instead of `Void`.
 6. Interface `type Reader = {...}` has been changed to `type #Reader {...}`.
 7. `_ :=` was added before the pipe expression at the bottom, all surrounded
 by a function call.
+8. `args: Any` was renamed to `args2: Any?`.
+9. Type `Data` was defined.
+10. Function `main` was called.
 
 Everything else was unchanged! The original was written around April/May
 (most likely May) 2025.
@@ -22,16 +25,19 @@ Everything else was unchanged! The original was written around April/May
 
 import klar.cli
 
+main()
+
 func main() {
     args := cli.args
     for i, arg in args {
         print("Argument {i + 1}: {arg}")
     }
-    args: Any := nil
+    args2: Any? := nil
     isEnabled: Bool := true
     data: Data? := #{
         value: "John"
     }
+    type Data = #{String: String}
 }
 
 type User {
