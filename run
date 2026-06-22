@@ -14,7 +14,7 @@ go generate "$KLAR_DIR"/internal/klarerrs
 # Clear console
 if [[ "$1" = "-keep" ]]; then
     shift
-else
+elif [[ $1 != -build ]]; then
     clear
 fi
 

@@ -8,6 +8,7 @@
 /klar
 /klar*
 !/klar-vscode
+/bin/
 
 # Test binary, built with `go test -c`
 *.test
