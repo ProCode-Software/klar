@@ -48,6 +48,10 @@ for num in numbers {
 }
 ```
 
+## Contributing
+
+For a basic contribution guide for ths repo, see [CONTRIBUTING.md](https://github.com/ProCode-Software/klar/blob/main/CONTRIBUTING.md).
+
 ## License
 
 The Klar project is licensed under two licenses:
