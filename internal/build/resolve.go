@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
@@ -55,7 +54,6 @@ func (c *Compiler) ResolveInput(s string, klarBuildMode int) (i *Input, err erro
 	case s[0] == '@':
 		// If the input refers to a module import path (`@...`), use the manifest for the cwd
 		panic("module import paths are not supported yet")
-	default:
 	}
 	s = c.Abs(s)
 	if info, err := os.Stat(s); err != nil {
@@ -110,6 +108,7 @@ func (c *Compiler) ResolveInput(s string, klarBuildMode int) (i *Input, err erro
 	return i, nil
 }
 
+// May not find a manifest (i.Manifest will be nil)
 func (i *Input) ResolveManifest(c *Compiler) error {
 	dir := i.Path
 	if i.Kind == KindFile {
@@ -195,9 +194,9 @@ func (i *Input) resolveManifest(dir string, c *Compiler) (
 		c.PrintKlonWarnings(warn, pkgFile)
 	}
 	if pkgDir == projDir || !exists(projFile) {
-		// Make sure at least one manifest exists
-		if m == nil {
-			cli.ErrNoManifest(pkgDir)
+		// Packages and modules must have a manifest
+		if m == nil && (i.Kind == KindPackage || i.Kind == KindModule) {
+			return nil, pkgDir, projDir, &InterfaceError{Code: ErrNoManifest, Value: projDir}
 		}
 		return m, pkgDir, projDir, nil
 	}
@@ -245,7 +244,10 @@ func (ld *Loader) ResolveInputModules() (modules []*Module, klarFiles int, err e
 		ld.Info("Resolving module", slog.String("modulePath", ld.Path))
 		klarFiles, err = ld.moduleFromDir(ld.Path, &modules, 0)
 	}
-	if klarFiles == 0 && err == nil {
+	if klarFiles == 0 && ld.Root && err == nil {
+		// This error isn't shown when compiling imported dependencies. If a
+		// dependency provides no Klar files or exports, an error will be
+		// raised during typechecking/importing.
 		err = &InterfaceError{Code: ErrNoKlarFiles, Value: ld.Path}
 	}
 	return

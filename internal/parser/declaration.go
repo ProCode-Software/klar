@@ -27,7 +27,8 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 	name := p.ParseIdentOrDiscard()
 	var inherited []ast.Type
 	switch p.CurrKind() {
-	case lexer.Equal:
+	case lexer.Equal, lexer.ColonEqual:
+		_ = p.isEqual(p.Curr()) // Report an error on ':='
 		if isIntf {
 			p.Error(klarerrs.ExpectedToken(lexer.LeftCurlyBrace, p.Curr()))
 		}
@@ -68,12 +69,11 @@ func (p *Parser) ParseTypeDeclaration() ast.TypeDeclaration {
 		return p.ParseStruct(name, inherited, attrs)
 	case lexer.LessThan:
 		var (
-			lt       = p.Advance().Position
-			generics []ast.Identifier
+			lt       = p.Curr().Position
+			generics = p.tryParseGenericDecl()
+			gt       = p.lastTokEnd()
 			res      ast.TypeDeclaration
 		)
-		parseSeries(p, &generics, p.ParseIdentifier, lexer.GreaterThan, lexer.Comma, false)
-		gt := p.lastTokEnd()
 		if p.CurrKind() == lexer.Colon {
 			inherited = p.parseInheritedTypes()
 		}
@@ -199,7 +199,7 @@ func (p *Parser) tryParseAttributes() (attrs []*ast.Attribute) {
 func (p *Parser) ParseStruct(
 	typeName ast.Identifier, inherited []ast.Type, attrs []*ast.Attribute,
 ) *ast.StructDeclaration {
-	fieldMap := make(map[string]struct{})
+	fieldMap := make(map[string]ranges.Range)
 	str := &ast.StructDeclaration{Identifier: typeName, InheritedTypes: inherited}
 
 	parseSeries(p, &str.Fields, func() *ast.StructField {
@@ -210,15 +210,14 @@ func (p *Parser) ParseStruct(
 		// Keys
 		parseSeries(p, &f.Names, func() ast.Identifier {
 			name := p.ParseMapIdentOrDiscard(0)
-			if _, ok := fieldMap[name.Name]; ok {
+			if r, ok := fieldMap[name.Name]; ok {
 				err := klarerrs.Node(klarerrs.ErrRedeclaredField, name)
 				err.SetParam("kind", "struct")
-				// TODO: original position in error
-				// maybe store index as fieldMap value
+				err.AddDetail("It was originally declared here", p.Options.File, r)
 				p.Error(err)
-				return name
+			} else {
+				fieldMap[name.Name] = name.Range()
 			}
-			fieldMap[name.Name] = struct{}{}
 			return name
 		}, 0, lexer.Comma, false)
 		// Type
@@ -270,7 +269,16 @@ func (p *Parser) ParseInterface(
 			fieldMap[name.Name] = struct{}{}
 			return name
 		}, 0, lexer.Comma, false)
-		// Type
+
+		// Generic params (for method)
+		generics := p.tryParseGenericDecl()
+		if len(generics) > 0 && p.CurrKind() != lexer.LeftParenthesis {
+			p.Error(klarerrs.ExpectedTokenf(
+				"after generic parameters", lexer.LeftParenthesis, p.Curr(),
+			))
+		}
+
+		// Method
 		if p.CurrKind() == lexer.LeftParenthesis {
 			// Parse function: #{ kind() -> String }
 			if len(f.Keys) > 1 {
@@ -278,10 +286,9 @@ func (p *Parser) ParseInterface(
 				p.Error(klarerrs.Slice(klarerrs.ErrIntfMultiKeyMethod, f.Keys))
 			}
 			fn := &ast.MethodType{
-				BaseNode: ast.BaseNode{Range: ranges.Range{
-					Start: p.Advance().Position, // (
-				}},
-				Parameters: p.parseMethodParams(),
+				BaseNode:      ast.BaseNode{ranges.Range{Start: p.Advance().Position}}, // (
+				GenericParams: generics,
+				Parameters:    p.parseMethodParams(),
 			}
 			if p.CurrKind() == lexer.Arrow {
 				p.Advance()
@@ -290,11 +297,14 @@ func (p *Parser) ParseInterface(
 			fn.Range.End = p.lastTokEnd()
 			f.Value = fn
 		} else {
+			// Type
 			p.Expect(lexer.Colon, noAdvance)
 			f.Value = p.ParseType(DefaultTypeBindingPower)
 		}
+
+		// Invalid default value
 		if c := p.Curr(); c.Kind == lexer.Equal || c.Kind == lexer.ColonEqual {
-			p.Error(klarerrs.Token(klarerrs.ErrIntfDefaultValue, c))
+			p.Error(klarerrs.Token(klarerrs.ErrIntfDefaultValue, p.Advance()))
 			p.ParseExpression(DefaultBindingPower) // Just to skip the expression
 		}
 		f.Range.Start = f.Keys[0].Position
@@ -338,16 +348,7 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 	// Generic:
 	//	func get<T, U>(a: T, b: [U]) -> T
 	// Can't be assigned, only inferred
-	if p.CurrKind() == lexer.LessThan {
-		p.Advance()
-		parseSeries(
-			p, &f.GenericParams, p.ParseIdentifier,
-			lexer.GreaterThan, lexer.Comma, false,
-		)
-		if len(f.GenericParams) == 0 {
-			p.Error(klarerrs.Token(klarerrs.ErrEmptyGeneric, p.PeekBehind()))
-		}
-	}
+	f.GenericParams = p.tryParseGenericDecl()
 
 	// Function alias
 	// 	func fn = otherFn
@@ -377,6 +378,32 @@ func (p *Parser) ParseFuncDeclaration() ast.Statement {
 		f.Expression = p.ParseExpression(ExpressionBindingPower)
 	}
 	return f
+}
+
+func (p *Parser) tryParseGenericDecl() (generics []ast.Identifier) {
+	if p.CurrKind() != lexer.LessThan {
+		return
+	}
+	p.Advance()
+	declared := map[string]ranges.Range{}
+	parseSeries(p, &generics, func() ast.Identifier {
+		ident := p.ParseIdentifier()
+		name := ident.Name
+		if r, ok := declared[name]; ok {
+			err := klarerrs.Range(klarerrs.ErrRedeclaredGeneric, ident.Range())
+			err.AddHighlight("It was originally declared here", r)
+			err.Label = klarerrs.Quote(name) + " already exists"
+			err.Name = name
+			p.Error(err)
+		} else {
+			declared[name] = ident.Range()
+		}
+		return ident
+	}, lexer.GreaterThan, lexer.Comma, false)
+	if len(generics) == 0 {
+		p.Error(klarerrs.Token(klarerrs.ErrEmptyGeneric, p.PeekBehind()))
+	}
+	return
 }
 
 func (p *Parser) parseFuncParam() *ast.FunctionParam {
@@ -471,7 +498,7 @@ func (p *Parser) ParseAttribute() *ast.Attribute {
 	d := &ast.Attribute{}
 	p.flags |= isAttribute
 	defer func() { p.flags &^= isAttribute }()
-	d.Decorator = p.ParseIdentifier()
+	d.Name = p.ParseIdentifier()
 	if p.CurrKind() == lexer.LeftParenthesis {
 		call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 		d.Args = call.Args

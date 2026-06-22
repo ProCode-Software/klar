@@ -1,0 +1,271 @@
+package analysis
+
+import (
+	"fmt"
+
+	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
+)
+
+type stmtContext struct {
+	ctx        *Context
+	returns    *[]returnStmt
+	loopLabels map[string]*loopLabel
+	flags      stmtFlags
+}
+
+type returnStmt struct {
+	expr *Expr
+	pos  ranges.Range
+}
+
+type loopLabel struct {
+	pos  ranges.Range
+	used bool
+}
+
+type stmtFlags uint8
+
+const (
+	allowReturn   stmtFlags = 1 << iota // Function body
+	allowNextStop                       // Allow 'next' and 'stop' (for/while/when)
+	finalWhenCase
+	unreachable
+	braceless // Body of a braceless 'when' case
+)
+
+func newStmtContext(ctx *Context, flags stmtFlags) *stmtContext {
+	return &stmtContext{
+		ctx:        ctx,
+		flags:      flags,
+		returns:    new([]returnStmt),
+		loopLabels: make(map[string]*loopLabel),
+	}
+}
+
+func newChildStmtContext(parentSctx *stmtContext,
+	childCtx *Context, flags stmtFlags,
+) *stmtContext {
+	return &stmtContext{
+		ctx:        childCtx,
+		returns:    parentSctx.returns,
+		loopLabels: parentSctx.loopLabels,
+		flags:      parentSctx.flags | flags,
+	}
+}
+
+// Reports an error if the label already exists
+//
+// Redeclared labels in the same function (not just block/context) defeat the entire
+// purpose of labels:
+//
+//	for i in 1...10 :loop {
+//		for j in 'a'...'z' :loop {
+//			stop :loop // Which loop?
+//		}
+//	}
+func (sctx *stmtContext) declareLabel(name string, r ranges.Range) (err *klarerrs.Error) {
+	if other, ok := sctx.loopLabels[name]; ok {
+		err := klarerrs.Range(klarerrs.ErrRedeclaredLabel, r)
+		err.Label = "A label named " + quote(name) + " was already defined"
+		// If this is the top-level context, don't call it a function
+		if sctx.ctx.index > 0 {
+			err.SetParam("isFunc", true)
+			err.Label += " in this function"
+		}
+		err.AddDetail("It was already defined here", "", other.pos)
+		return err
+	}
+	sctx.loopLabels[name] = &loopLabel{pos: r}
+	return nil
+}
+
+func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
+	// Declare functions and types first
+	for _, stmt := range stmts {
+		if canForwardDeclareInFunc(stmt) {
+			c.checkStmt(stmt, sctx)
+		}
+	}
+	// Check everything else in the block, including variable declarations
+	for _, stmt := range stmts {
+		if !canForwardDeclareInFunc(stmt) {
+			c.checkStmt(stmt, sctx)
+		}
+	}
+}
+
+func canForwardDeclareInFunc(stmt ast.Statement) bool {
+	switch stmt.(type) {
+	case *ast.FunctionDeclaration, *ast.FuncAliasDeclaration, ast.TypeDeclaration:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
+	defer c.runDelayed(len(c.delayed))
+
+	fid := sctx.ctx.File
+	switch stmt := stmt.(type) {
+	case *ast.ExpressionStatement:
+		expr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
+		switch {
+		case (sctx.flags & braceless) != 0:
+		// TODO: find a way to return the value type
+		case !isAllowedAsStmt(stmt.Expression):
+			// Unused expression value
+			c.fileError(klarerrs.Node(klarerrs.ErrUnusedValue, stmt), fid)
+		// TODO: exclude InvalidType from these errors?
+		case c.Options.UseAllValues && expr.Type.Kind() != NothingType:
+		// Expression returns something and isn't used
+		case c.Options.CheckAllResults && expr.Type.Kind() == KindResult:
+		// Unchecked result
+		default:
+			return
+		}
+	case *ast.BadExpression:
+		return
+
+	case ast.TypeDeclaration:
+	case *ast.FunctionDeclaration:
+	case *ast.FuncAliasDeclaration:
+	case *ast.VariableDeclaration:
+	case *ast.AssignmentStatement:
+
+	case ast.ModifierDeclaration:
+		// TODO: Could a main.klar file reach a public statement at the top-level?
+		panic("invalid AST: public declaration must be at top-level")
+	case *ast.ForStatement:
+		c.checkForStmt(stmt, sctx)
+	case *ast.WhileStatement:
+		c.checkWhileStmt(stmt, sctx)
+	case *ast.StopStatement:
+		c.checkControlStmt(stmt, stmt.Label, sctx)
+	case *ast.NextStatement:
+		c.checkControlStmt(stmt, stmt.Label, sctx)
+	case *ast.ReturnStatement:
+		expr := c.checkExpr(stmt.Value, newExprFromStmtCtx(sctx, 0))
+		*sctx.returns = append(*sctx.returns, returnStmt{
+			expr: expr, pos: stmt.Value.GetRange(),
+		})
+	default:
+		panic(fmt.Sprintf("unhandled statement node: %T", stmt))
+	}
+}
+
+func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
+	if stmt.Condition != nil {
+		cond := c.checkExpr(stmt.Condition, newExprFromStmtCtx(sctx, 0))
+		if cond.Type.Kind() != BoolType {
+			gotType := TypeToString(cond.Type)
+			err := klarerrs.TypeError(
+				klarerrs.ErrNonBoolWhileCond, stmt.Condition.GetRange(),
+				BoolType.String(), gotType,
+			)
+			err.Label = "This has type " + quote(gotType)
+			c.fileError(err, sctx.ctx.File)
+		}
+	}
+	// Optional loop label
+	if lb := stmt.Label; lb != nil {
+		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
+			c.fileError(err, sctx.ctx.File)
+		}
+	}
+}
+
+func (c *Checker) checkControlStmt(stmt ast.Statement,
+	label *ast.Identifier, sctx *stmtContext,
+) {
+	fid := sctx.ctx.File
+	if (sctx.flags & allowNextStop) == 0 {
+		c.fileError(klarerrs.Node(klarerrs.ErrMisplacedControlStmt, stmt), fid)
+		return
+	}
+	if label != nil {
+		labelDef, ok := sctx.loopLabels[label.Name]
+		if !ok {
+			err := klarerrs.Node(klarerrs.ErrLabelUndefined, label)
+			err.Label = "Label :" + label.Name + " doesn't exist"
+			if sctx.ctx.index > 0 {
+				err.SetParam("isFunc", true)
+				err.Label += " in this function"
+			}
+			c.fileError(err, fid)
+			return
+			// TODO: More specific error if the label is in an outside function
+		}
+		labelDef.used = true
+	}
+}
+
+const MaxLoopVars = 2
+
+// TODO: Factor out this function so it can be used for 'for' expressions.
+func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
+	fid := sctx.ctx.File
+	// For now, we don't actually care how many there actually are. We just need
+	// to know whether there are 2 vs 1. We will report errors when there are more
+	// than 2 when we declare the vars.
+	var numVars int // Can be 0
+	if numPairs := len(stmt.Variables); numPairs > 1 {
+		numVars = numPairs
+	} else if numPairs > 0 {
+		numVars = len(stmt.Variables[0].Keys) + (numPairs - 1)
+	}
+	numVars = min(numVars, MaxLoopVars) // Will always be in range [0, MaxLoopVars]
+
+	iterExpr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
+	varTypes, err := c.isIterable(iterExpr.Type, numVars)
+	if err != nil {
+		err.Range = stmt.Expression.GetRange()
+		c.fileError(err, fid)
+		// The loop variables will still be declared with types [InvalidType]
+	}
+	if iterExpr.Type.Kind() == IntType && numVars > 1 {
+		err := klarerrs.Slice(klarerrs.ErrMultipleIntIterVars, stmt.Variables)
+		err.AddHighlight("The iterator has type Int", stmt.Expression.GetRange())
+		err.Label = "Multiple loop variables aren't allowed"
+		c.fileError(err, fid)
+	}
+	var i int
+	for _, pair := range stmt.Variables {
+		var typ Type = InvalidType
+		// Use the user-provided type annotation, if any.
+		//
+		// TODO: Should we keep allowing users to declare explicit types for
+		// loop variables? They are completely known without them, and an error
+		// is raised if the annotation is incompatible. Annotations will only
+		// be useful for downcasting `for i: Animal in [Cat](...)`
+		if pair.Type != nil {
+			typ = c.parseType(pair.Type, sctx.ctx)
+			// TODO: Check that the annotation is compatible with the actual loop type
+		}
+		for _, key := range pair.Keys {
+			if i >= MaxLoopVars {
+				// Currently in the language, there will never be more than
+				// 2 loop variables. Unless we add custom iterators to the language,
+				// however it's unlikely because lists are enough.
+				c.fileError(klarerrs.Node(klarerrs.ErrOver2LoopVars, key), fid)
+				break
+			}
+			if typ == InvalidType {
+				typ = varTypes[i] // Default type from the loop expression
+			}
+			// TODO: destructure and declare
+			i++
+		}
+	}
+	// Optional loop label
+	if lb := stmt.Label; lb != nil {
+		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
+			c.fileError(err, sctx.ctx.File)
+		}
+	}
+}
+
+func (c *Checker) checkAssignment(e *Expr) {
+}

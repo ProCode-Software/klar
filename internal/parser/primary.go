@@ -93,7 +93,11 @@ func (p *Parser) ParseNumber() ast.Expression {
 }
 
 func (p *Parser) ParseSymbol() *ast.Symbol {
-	return &ast.Symbol{Identifier: p.Advance().Source}
+	tok := p.Advance()
+	sym := &ast.Symbol{Identifier: tok.Source}
+	rangeFromToken(sym, tok)
+	p.ValidateIdentName(sym.Identifier, sym)
+	return sym
 }
 
 func (p *Parser) ParseString() *ast.StringLiteral {

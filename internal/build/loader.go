@@ -17,6 +17,7 @@ type Loader struct {
 	*Compiler
 	*Input
 	Deps *Deps
+	Root bool
 	// If loading modules outside another import, avoid sorting,
 	// and add edges to graph instead
 	graph *graph.Graph[string]
@@ -27,11 +28,17 @@ func NewLoader(c *Compiler, i *Input, deps *Deps) *Loader {
 }
 
 type Loaded struct {
-	cached     []*Module
-	sortedDeps []string // Not all modules may exist
+	// Modules that were loaded from cache and do not need typechecking
+	cached []*Module
+	// Package dependencies sorted by dependency order. Not all modules may exist
+	sortedDeps []string
+	// Dependencies that are part of the Klar standard library and need to
+	// be compiled first by [PackageCompiler.LoadStdlibDeps]
 	stdlibDeps []imports.ImportPath
 }
 
+// Load loads the modules of ld's Input as well as their dependencies in the same
+// package, parsing their files, and returns a [Loaded] struct.
 func (ld *Loader) Load() (*Loaded, error) {
 	loaded := &Loaded{}
 
@@ -74,6 +81,27 @@ func (ld *Loader) Load() (*Loaded, error) {
 	}
 	close(needsTypeCheckCh)
 
+	// If the input is a single file, we're not going to sort the modules.
+	if ld.IsSingleFile() {
+		if len(needsTypeCheckCh) > 0 {
+			mod := <-needsTypeCheckCh
+			// Load the stdlib dependencies of the single file. These are the only
+			// valid dependencies for a single file.
+			// needsTypeCheckCh should have a single module for a single file
+			for dep := range mod.Deps {
+				if dep.IsStdlib() {
+					loaded.stdlibDeps = append(loaded.stdlibDeps, dep)
+				}
+			}
+			// Single-file modules don't have import paths, but we still need a
+			// fake one to add to ld.Deps.
+			fakeImportPath := mod.Name()
+			ld.Deps.Set(mod, fakeImportPath)
+			loaded.sortedDeps = []string{fakeImportPath}
+		}
+		return loaded, nil
+	}
+
 	// 3. Order the modules by dependency order
 	g := graph.New[string]()
 	for mod := range needsTypeCheckCh {
@@ -85,7 +113,8 @@ func (ld *Loader) Load() (*Loaded, error) {
 		for dep := range mod.Deps {
 			// 4. Stdlib imports are added to a separate slice to be loaded,
 			// unless we're currently loading the stdlib itself. But if the stdlib
-			// imports 'klar.js', we want [PackageCompiler.LoadStdlibDeps] to create it.
+			// imports 'klar.js', we want [PackageCompiler.LoadStdlibDeps] to create
+			// it instead of [Loader.loadPackageDeps] loading it as a regular module.
 			if dep.IsStdlib() && (!importPath.IsStdlib() || (len(dep) > 1 && dep[1] == "js")) {
 				loaded.stdlibDeps = append(loaded.stdlibDeps, dep)
 				continue // Stdlib modules are always compiled first
@@ -96,12 +125,12 @@ func (ld *Loader) Load() (*Loaded, error) {
 	// 5. Load the dependency modules that are in the current package but not
 	// inputs before sorting.
 	// Example: If the input is a.b, and a.b depends on a.c, we have to load it.
+	if err := ld.loadPackageDeps(g); err != nil {
+		return nil, err
+	}
 	if ld.graph != nil {
 		// We are currently doing this right now. Just add the edges
 		return nil, nil
-	}
-	if err := ld.loadPackageDeps(g); err != nil {
-		return nil, err
 	}
 
 	if loaded.sortedDeps, err = g.Toposort(); err != nil {
@@ -124,8 +153,8 @@ func (ld *Loader) loadPackageDeps(g *graph.Graph[string]) error {
 			continue
 		}
 		// If 'dependency' is just 'a', base is 'a'
-		base, _, _ := strings.Cut(dependency, ".")
-		if base != inputBase && !module.IsPackageDir(base) {
+		if base, _, _ := strings.Cut(dependency, "."); base != inputBase &&
+			!module.IsPackageDir(base) {
 			// Not in the current package. An error will be reported when imported.
 			continue
 		} /* else if dependency == "klar.js" {
@@ -135,10 +164,11 @@ func (ld *Loader) loadPackageDeps(g *graph.Graph[string]) error {
 			continue
 		} */
 		modulePath := ld.PkgInfo.ModuleDirOf(imports.NewImportPath(dependency))
-		inp := new(*ld.Input)
+		inp := new(*ld.Input) // Shallow copies the input. Added in Go 1.26!
 		inp.Path, inp.Kind = modulePath, KindModule
 
 		moduleLoader := NewLoader(ld.Compiler, inp, ld.Deps)
+		ld.Root = false
 		moduleLoader.graph = g // Don't toposort loaded modules
 		if _, err := moduleLoader.Load(); err != nil {
 			return err

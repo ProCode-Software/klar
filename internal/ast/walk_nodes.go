@@ -5,16 +5,8 @@ func (n *AssertExpression) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Expression})
 }
 
-func (n *AssignableTuple) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Values})
-}
-
 func (n *AssignableTypePair) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Assignable]{1, n.Keys}, walkNode{2, n.Type}, walkNode{3, n.Value})
-}
-
-func (n *AssignableVars) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Assignable]{1, n.Values})
 }
 
 func (n *AssignmentStatement) Walk(v Visitor, c *Cursor) StopCode {
@@ -22,7 +14,7 @@ func (n *AssignmentStatement) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *Attribute) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Decorator}, walkSlice[*CallParam]{2, n.Args})
+	return walkFields(v, n, c, walkNode{1, n.Name}, walkSlice[*CallParam]{2, n.Args})
 }
 
 func (n *AwaitExpression) Walk(v Visitor, c *Cursor) StopCode {
@@ -90,7 +82,7 @@ func (n *ForExpression) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *ForStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Expression}, walkNode{3, n.Body})
+	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Label}, walkNode{3, n.Expression}, walkNode{4, n.Body})
 }
 
 func (n *FuncAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
@@ -182,11 +174,11 @@ func (n *MethodParam) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *MethodType) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.ReturnType}, walkSlice[*MethodParam]{2, n.Parameters})
+	return walkFields(v, n, c, walkNode{1, n.ReturnType}, walkSlice[Identifier]{2, n.GenericParams}, walkSlice[*MethodParam]{3, n.Parameters})
 }
 
 func (n *NextStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c)
+	return walkFields(v, n, c, walkNode{1, n.Label})
 }
 
 func (n *NilLiteral) Walk(v Visitor, c *Cursor) StopCode {
@@ -266,7 +258,7 @@ func (n *SliceExpression) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *StopStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c)
+	return walkFields(v, n, c, walkNode{1, n.Label})
 }
 
 func (n *StringLiteral) Walk(v Visitor, c *Cursor) StopCode {
@@ -329,10 +321,6 @@ func (n *UnionType) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Type]{1, n.Options})
 }
 
-func (n *UpdateStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{0, n.Left})
-}
-
 func (n *VariableDeclaration) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Assignable]{1, n.Variables}, walkSlice[Expression]{2, n.Values}, walkNode{3, n.ExplicitType})
 }
@@ -341,18 +329,14 @@ func (n *VersionLiteral) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c)
 }
 
-func (n *WhenCanCase) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{2, n.Type}, walkSlice[*CallParam]{3, n.Params})
-}
-
 func (n *WhenCase) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{2, n.Guard}, walkNode{4, n.Body})
 }
 
 func (n *WhenExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkSlice[*WhenCase]{2, n.Cases})
+	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkSlice[*WhenCase]{3, n.Cases})
 }
 
 func (n *WhileStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{2, n.Condition}, walkNode{3, n.Body})
+	return walkFields(v, n, c, walkNode{1, n.Condition}, walkNode{2, n.Label}, walkNode{3, n.Body})
 }

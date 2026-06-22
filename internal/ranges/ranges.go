@@ -123,6 +123,13 @@ func Compare(a, b Range) int {
 	)
 }
 
+func ComparePos(a, b Position) int {
+	return cmp.Or(
+		cmp.Compare(a.Line, b.Line),
+		cmp.Compare(a.Col, b.Col),
+	)
+}
+
 // A FileRange represents a range of positions in a file.
 type FileRange struct {
 	Range

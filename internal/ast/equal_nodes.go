@@ -15,20 +15,6 @@ func (a *AssertExpression) Equal(b2 Node) bool {
 	return true
 }
 
-func (a *AssignableTuple) Equal(b2 Node) bool {
-	b, ok := b2.(*AssignableTuple)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if !equalSlice(a.Values, b.Values) {
-		return false
-	}
-	return true
-}
-
 func (a *AssignableTypePair) Equal(b2 Node) bool {
 	b, ok := b2.(*AssignableTypePair)
 	if !ok {
@@ -44,20 +30,6 @@ func (a *AssignableTypePair) Equal(b2 Node) bool {
 		return false
 	}
 	if a.Value != nil && b.Value != nil && !a.Value.Equal(b.Value) {
-		return false
-	}
-	return true
-}
-
-func (a *AssignableVars) Equal(b2 Node) bool {
-	b, ok := b2.(*AssignableVars)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if !equalSlice(a.Values, b.Values) {
 		return false
 	}
 	return true
@@ -91,7 +63,7 @@ func (a *Attribute) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if !a.Decorator.Equal(b.Decorator) {
+	if !a.Name.Equal(b.Name) {
 		return false
 	}
 	if !equalSlice(a.Args, b.Args) {
@@ -393,6 +365,9 @@ func (a *ForStatement) Equal(b2 Node) bool {
 		return a == b
 	}
 	if !equalSlice(a.Variables, b.Variables) {
+		return false
+	}
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	if a.Expression != nil && b.Expression != nil && !a.Expression.Equal(b.Expression) {
@@ -837,6 +812,9 @@ func (a *MethodType) Equal(b2 Node) bool {
 	if a.ReturnType != nil && b.ReturnType != nil && !a.ReturnType.Equal(b.ReturnType) {
 		return false
 	}
+	if !equalSlice(a.GenericParams, b.GenericParams) {
+		return false
+	}
 	if !equalSlice(a.Parameters, b.Parameters) {
 		return false
 	}
@@ -851,7 +829,7 @@ func (a *NextStatement) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.Loop != b.Loop {
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	return true
@@ -1179,7 +1157,7 @@ func (a *StopStatement) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.Loop != b.Loop {
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	return true
@@ -1431,23 +1409,6 @@ func (a *UnionType) Equal(b2 Node) bool {
 	return true
 }
 
-func (a *UpdateStatement) Equal(b2 Node) bool {
-	b, ok := b2.(*UpdateStatement)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if a.Left != nil && b.Left != nil && !a.Left.Equal(b.Left) {
-		return false
-	}
-	if !a.Operator.Equal(b.Operator) {
-		return false
-	}
-	return true
-}
-
 func (a *VariableDeclaration) Equal(b2 Node) bool {
 	b, ok := b2.(*VariableDeclaration)
 	if !ok {
@@ -1477,26 +1438,6 @@ func (a *VersionLiteral) Equal(b2 Node) bool {
 		return a == b
 	}
 	if a.Version != b.Version {
-		return false
-	}
-	return true
-}
-
-func (a *WhenCanCase) Equal(b2 Node) bool {
-	b, ok := b2.(*WhenCanCase)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if !a.Operator.Equal(b.Operator) {
-		return false
-	}
-	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
-		return false
-	}
-	if !equalSlice(a.Params, b.Params) {
 		return false
 	}
 	return true
@@ -1536,6 +1477,9 @@ func (a *WhenExpression) Equal(b2 Node) bool {
 	if !equalSlice(a.Subjects, b.Subjects) {
 		return false
 	}
+	if a.Label != b.Label {
+		return false
+	}
 	if !equalSlice(a.Cases, b.Cases) {
 		return false
 	}
@@ -1550,10 +1494,10 @@ func (a *WhileStatement) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.Infinite != b.Infinite {
+	if a.Condition != nil && b.Condition != nil && !a.Condition.Equal(b.Condition) {
 		return false
 	}
-	if a.Condition != nil && b.Condition != nil && !a.Condition.Equal(b.Condition) {
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	if a.Body != nil && b.Body != nil && !a.Body.Equal(b.Body) {

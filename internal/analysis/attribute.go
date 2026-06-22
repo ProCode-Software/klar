@@ -2,7 +2,9 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/target"
+	"github.com/ProCode-Software/klar/internal/version"
 )
 
 // False if bootstrapping
@@ -11,13 +13,24 @@ var attributesAllowed = true
 // Contains the definitions of attributes
 var attributesModule *Module
 
+// All fields are optional
 type Attributes struct {
 	Deprecated *Deprecation
 	External   []*External
-	Target     target.Target
+	Target     []target.Target
+	Added      *version.Version
+	Name       map[target.Target]string
 }
 
-type Deprecation struct{}
+// All fields are optional
+type Deprecation struct {
+	Reason string
+	Since  *version.Version
+	Use    string // What users should use instead
+	// Specific targets this is deprecated on. If not specified,
+	// the deprecation applies to all targets.
+	On []target.Target
+}
 
 type External struct{}
 
@@ -35,22 +48,36 @@ const (
 	varAttribute         // @name, @deprecated, @external
 )
 
-func (c *Checker) parseAttributes(attrs []*ast.Attribute, kind attrTargetKind) *Attributes {
+func (c *Checker) parseAttributes(attrs []*ast.Attribute,
+	kind attrTargetKind, fid FileID,
+) *Attributes {
 	if len(attrs) == 0 {
 		return nil
 	}
 	a := &Attributes{}
 	for _, stmt := range attrs {
-		c.parseAttribute(a, stmt, kind)
+		c.parseAttribute(a, stmt, kind, fid)
 	}
 	return a
 }
 
 // parseAttribute parses a single attribute into the corresponding field in a.
-func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute, kind attrTargetKind) {
-	switch attr.Decorator.Name {
-	default:
-		// Unknown attribute name
+func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
+	kind attrTargetKind, fid FileID,
+) {
+	if !attributesAllowed {
+		c.fileError(klarerrs.Node(klarerrs.ErrAttributesNotAllowed, attr), fid)
+		return
+	}
+	name := attr.Name.Name
+	def := attributesModule.Context.Lookup(name)
+	if def == nil || !def.public || def.Kind() != KindFunction {
+		// Unknown attribute
+		err := klarerrs.Node(klarerrs.ErrUnknownAttribute, attr.Name)
+		err.Name = name
+		err.Label = "Unknown attribute " + klarerrs.Quote(name)
+		c.fileError(err, fid)
+		return
 	}
 }
 

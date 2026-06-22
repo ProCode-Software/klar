@@ -63,12 +63,6 @@ func (obj *Object) Path() string {
 	return obj.Module().ImportPathString() + "/" + obj.name
 }
 
-// IsTypeDecl reports whether o represents a type declaration, including a type alias.
-func (o *Object) IsTypeDecl() bool {
-	_, ok := o.typ.(*TypeName)
-	return ok
-}
-
 // FileName returns the base name of the file o was declared in.
 func (o *Object) FileName() string { return o.module.ResolveFile(o.file) }
 
@@ -87,6 +81,19 @@ func (o *Object) FilePathRange() ranges.FileRange {
 	return ranges.FileRange{o.rang, o.FilePath()}
 }
 
+// IsTypeName reports whether o represents a type declaration.
+func (o *Object) IsTypeName() bool {
+	if o == nil {
+		return false
+	}
+	_, ok := o.typ.(*TypeName)
+	return ok
+}
+
+// TypeName returns o's Type() as a [*TypeName], or panics if
+// o is not a type name.
+func (o *Object) TypeName() *TypeName { return o.typ.(*TypeName) }
+
 // Type Kinds
 // ============
 
@@ -103,6 +110,7 @@ const (
 	AnyType
 	ErrorType
 	NothingType
+	RegExType
 
 	KindList
 	KindMap
@@ -110,6 +118,8 @@ const (
 	KindFunction
 	KindUnion
 	KindOptional
+	KindTuple
+	KindTask
 
 	KindEnum
 	KindStruct
@@ -120,11 +130,55 @@ const (
 	KindGeneric
 )
 
-// Kind returns the receiver.
-func (k Kind) Kind() Kind { return k }
+// Kind returns the receiver. It panics if the receiver isn't a primitive.
+func (k Kind) Kind() Kind {
+	if !k.IsPrimitive() {
+		panic(fmt.Sprintf("kind %d is not a primitive", k))
+	}
+	return k
+}
 
-// String returns the name of the type k represents if k is a builtin.
-func (k Kind) String() string { return fmt.Sprintf("Kind(%d)", k) } // TODO
+func (k Kind) IsPrimitive() bool {
+	switch k {
+	case InvalidType, IntType, StringType, BoolType, FloatType,
+		AnyType, ErrorType, NothingType, RegExType:
+		return true
+	default:
+		return false
+	}
+}
+
+// String returns the kind of the type as a human-readable string. If k is a
+// primitive, the name of the Klar type is returned.
+func (k Kind) String() string {
+	return [...]string{
+		// Primitives
+		IntType:     "Int",
+		StringType:  "String",
+		BoolType:    "Bool",
+		FloatType:   "Float",
+		AnyType:     "Any",
+		ErrorType:   "Error",
+		NothingType: "Nothing",
+		RegExType:   "RegEx",
+
+		InvalidType:   "invalid type",
+		KindList:      "list",
+		KindMap:       "map",
+		KindResult:    "Result",
+		KindFunction:  "function",
+		KindUnion:     "union",
+		KindOptional:  "optional",
+		KindTuple:     "tuple",
+		KindTask:      "Task",
+		KindEnum:      "enum",
+		KindStruct:    "struct",
+		KindInterface: "interface",
+		KindTag:       "tag",
+		KindNamespace: "module",
+		KindGeneric:   "generic",
+	}[k]
+}
 
 // StringWithName implements [Type] and is equivalent to k.String()
 func (k Kind) StringWithName(string) string { return k.String() }
@@ -144,7 +198,8 @@ type Type interface {
 	// StringWithName(string) string
 }
 
-// The result of a function call that doesn't return (guaranteed crashouts).
+// The result of a function call that doesn't return. Statements
+// following this are unreachable.
 type NoReturn struct{ Type }
 
 func (u *NoReturn) Underlying() Type { return u.Type }
@@ -152,14 +207,20 @@ func (u *NoReturn) Underlying() Type { return u.Type }
 // Underlyer is implemented by types or objects that have an underlying type.
 type Underlyer interface {
 	Type
+	// Returns the direct underlying type of the object.
 	Underlying() Type
 }
 
 func Underlying(t Type) Type {
-	if u, ok := t.(Underlyer); ok {
-		return u.Underlying()
+	for {
+		oldT := t
+		if u, ok := t.(Underlyer); ok {
+			t = u.Underlying()
+		}
+		if t == oldT {
+			return t
+		}
 	}
-	return t
 }
 
 type Namespace struct {

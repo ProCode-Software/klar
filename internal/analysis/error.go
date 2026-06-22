@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -22,7 +24,7 @@ func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 }
 
 func (c *Checker) fileError(err *klarerrs.Error, fid FileID) {
-	file := c.module.JoinFilePath(c.module.fileID[fid])
+	file := c.module.JoinFilePath(c.module.ResolveFile(fid))
 	err.File = file
 	c.error(err)
 }
@@ -43,13 +45,25 @@ func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 }
 
 func kindOf(typ Type) string {
+	// TODO: finish implementing
 	switch typ := typ.(type) {
+	case *Variable:
+		return "variable"
+	case *Constant:
+		return "constant"
+	case *Function, *Overload:
+		return "function"
+	case *TypeName:
+		if typ.Type == nil {
+			return "type"
+		}
+		return typ.Kind().String()
 	case nil:
 		return ""
 	default:
 		_ = typ
 	}
-	return ""
+	return fmt.Sprintf("%T", typ)
 }
 
 func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
@@ -66,5 +80,60 @@ func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
 	err.Label = "This should have type " + klarerrs.Quote(TypeToString(exp))
 	err.SetParam("expected", TypeToString(exp))
 	err.SetParam("got", TypeToString(got))
+	return err
+}
+
+func handlePanic() {
+	r := recover()
+	if _, ok := r.(stopChecker); !ok && r != nil {
+		panic(r)
+	}
+}
+
+// The returned Error's File is already set.
+func cycleError(cycle []*Object) *klarerrs.Error {
+	// Find the object with the earliest position in the file
+	firstInSrcI, firstPos := 0, cycle[0].rang.Start
+	for i, o := range cycle {
+		pos := o.rang.Start
+		if ranges.ComparePos(pos, firstPos) < 0 {
+			firstInSrcI, firstPos = i, pos
+		}
+	}
+	o := cycle[firstInSrcI]
+	// If the object is an alias, mark it as valid to avoid later errors.
+	tn, isTypeDecl := o.typ.(*TypeName)
+	if isTypeDecl {
+		if alias, ok := tn.Type.(*TypeAlias); ok {
+			alias.resolved = InvalidType
+			alias.Type = InvalidType
+		}
+	}
+
+	err := klarerrs.Range(klarerrs.ErrDepCycle, o.rang)
+	err.File = o.FilePath()
+	err.Name = o.name
+	if isTypeDecl {
+		err.SetParam("type", true)
+	}
+	if len(cycle) == 1 {
+		// Self-cycle. Report a better error message
+		err.SetParam("self", true)
+		err.Label = "This type depends on itself"
+		return err
+	}
+	for i := range cycle {
+		nextI := (firstInSrcI + i + 1) % len(cycle)
+		nextObj := cycle[nextI]
+		var lastInCycleMsg string
+		if nextI == 0 {
+			lastInCycleMsg = " in a cycle"
+		}
+		err.AddDetailf(
+			o.FilePath(), o.rang, "%s depends on %s%s",
+			klarerrs.Quote(o.name), klarerrs.Quote(nextObj.name), lastInCycleMsg,
+		)
+		o = nextObj
+	}
 	return err
 }

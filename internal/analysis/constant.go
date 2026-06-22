@@ -7,6 +7,11 @@ type ConstValue interface {
 	Type() Type
 }
 
+type UnknownConst struct{}
+
+func (c UnknownConst) ConstValue() any { return nil }
+func (c UnknownConst) Type() Type      { return InvalidType }
+
 type IntConst struct{ Value int64 }
 
 func (c IntConst) ConstValue() any { return c.Value }

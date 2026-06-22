@@ -32,7 +32,7 @@ func NewModule(
 	klarVersion *version.Version,
 	target target.Target,
 ) *Module {
-	ctx := NewContext(BuiltInContext, -1)
+	ctx := NewContext(BuiltInContext, 0)
 	return &Module{
 		Name:        name,
 		Path:        path,
@@ -60,10 +60,14 @@ func (m *Module) JoinFilePath(basename string) string {
 	}
 }
 
-// ResolveFile returns the base name of the file represented by id,
-// or an empty string if not found.
+// ResolveFile returns the base name of the file represented by id.
+// It panics if the file is not found.
 func (m *Module) ResolveFile(id FileID) string {
-	return m.fileID[id]
+	path := m.fileID[id]
+	if path == "" {
+		panic(fmt.Sprintf("file with id %d not found", id))
+	}
+	return path
 }
 
 // ResolveFilePath returns the full path of the file represented by id,
@@ -77,4 +81,13 @@ func (m *Module) ResolveFilePath(id FileID) string {
 
 func (m *Module) String() string {
 	return fmt.Sprintf("module %s (%s)", m.ImportPathString(), m.Path)
+}
+
+func (m *Module) HasExports() bool {
+	for _, obj := range m.Context.Declarations {
+		if obj.public {
+			return true
+		}
+	}
+	return false
 }

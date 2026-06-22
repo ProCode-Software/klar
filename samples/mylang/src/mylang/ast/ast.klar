@@ -32,7 +32,12 @@ public type StringValue: Value {
 }
 
 // A number.
+@deprecated("Use [IntValue] instead")
 public type IntValue: Value { value: Int }
 
 // Either `true` or `false`.
-public type BoolValue: Value { value: Bool }
+public type BoolValue: Value, Iface { value: Bool }
+
+type #Iface {
+    walk()
+}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,14 +16,13 @@ import (
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
-	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
 type Compiler struct {
-	Cwd       string
+	WorkDir   string
 	Mode      BuildMode
 	Reporter  *reporter.Reporter
 	StartTime time.Time
@@ -36,8 +36,8 @@ type Compiler struct {
 
 func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	return &Compiler{
-		Mode: mode,
-		Cwd:  cwd,
+		Mode:    mode,
+		WorkDir: cwd,
 		Reporter: &reporter.Reporter{
 			MaxLines:     3,
 			Output:       os.Stderr,
@@ -50,8 +50,15 @@ func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	}
 }
 
+var DefaultStdParserOptions = &parser.Options{MaxErrors: MaxErrors + 1}
+
 func (c *Compiler) UseStdParser() {
-	c.Parser = NewStdParser(c.Cwd, &parser.Options{MaxErrors: MaxErrors + 1})
+	c.Parser = NewStdParser(c.WorkDir, DefaultStdParserOptions)
+}
+
+func (c *Compiler) ProgressHidden() bool {
+	_, ok := c.Progress.(HiddenProgress)
+	return ok
 }
 
 type BuildMode int
@@ -90,11 +97,13 @@ func (m *Module) FilePath(base string) string {
 	return filepath.Join(m.Path, base)
 }
 
+// Name returns the module name. If m is a single file, Name returns
+// the file name without the extension.
 func (m *Module) Name() string {
 	if m.IsStdin() {
 		return stdinName
 	}
-	return filepath.Base(m.Path)
+	return strings.TrimSuffix(filepath.Base(m.Path), ".klar")
 }
 
 func (m *Module) Deps(yield func(imports.ImportPath) bool) {
@@ -131,19 +140,11 @@ func (d *Deps) Has(importPath string) bool {
 	return ok
 }
 
-func Cwd() (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", &FilesystemError{"determine", "working directory", err}
-	}
-	return cwd, nil
-}
-
 func (c *Compiler) Abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
-	return filepath.Join(c.Cwd, path)
+	return filepath.Join(c.WorkDir, path)
 }
 
 func (c *Compiler) ResetState() {
@@ -153,55 +154,6 @@ func (c *Compiler) ResetState() {
 func (c *Compiler) ResetErrorsAndWarnings() {
 	c.Errors = c.Errors[:0]
 	c.Warnings = c.Warnings[:0]
-}
-
-// hasErrs is whether errs contains errors that fail compilation. If all
-// errs are warnings, or errs is empty, hasErrs is false.
-func (c *Compiler) sendErrors(errs []*klarerrs.Error) (hasErrs bool) {
-	if len(errs) == 0 {
-		return false
-	}
-	c.collectMu.Lock()
-	defer c.collectMu.Unlock()
-	for _, err := range errs {
-		if err.IsWarning() {
-			c.Warnings = append(c.Warnings, err)
-		} else {
-			c.Errors = append(c.Errors, err)
-			hasErrs = true
-		}
-	}
-	return
-}
-
-// PrintError prints an error to the error printer.
-func (c *Compiler) PrintError(err *klarerrs.Error) (int64, error) {
-	return c.Reporter.Report(err)
-}
-
-func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
-	for _, err := range errs {
-		c.PrintError(err)
-	}
-}
-
-// Parser
-// ==========
-
-// Parser parses files into untyped ASTs.
-type Parser interface {
-	// Parse reads and parses the file at the given path and returns the short
-	// file path, a [ParseResult] object, and a fatal error if one occurs, such
-	// as during reading. If path == "", Parse should read from standard input.
-	// l may be used to log status. Parse may be called concurrently.
-	Parse(path string, l *slog.Logger) (shortPath string, res *ParseResult, err error)
-}
-
-type ParseResult struct {
-	Tokens  []lexer.Token
-	Program *ast.Program
-	Errors  []*klarerrs.Error
-	ModTime time.Time
 }
 
 // Logging

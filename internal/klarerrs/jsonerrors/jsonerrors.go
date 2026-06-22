@@ -11,8 +11,8 @@ import (
 )
 
 // WriteTo writes the build result and error information to w in JSON format.
+// A final newline is not appended to the output.
 func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) error {
-	// TODO: add error params
 	format := struct {
 		ElapsedTime time.Duration `json:"elapsedTime,format:units"`
 		ErrorCount  int           `json:"errorCount"`
@@ -47,22 +47,24 @@ func (es errorSlice) MarshalJSON() ([]byte, error) {
 			Details:    convertDetails(err.Details),
 			Highlights: convertHighlights(err.Highlights),
 			Info:       err.Info,
+			Params:     err.Params,
 		}
 	}
 	return json.Marshal(errs, json.DefaultOptionsV2())
 }
 
 type compileError struct {
-	Type       string        `json:"type"`
-	Code       code          `json:"code"`
-	Message    string        `json:"message"`
-	File       string        `json:"file"`
-	Range      rang          `json:"range"`
-	Label      string        `json:"label,omitempty"`
-	Hints      []hint        `json:"hints,omitempty"`
-	Details    []detail      `json:"details,omitempty"`
-	Highlights []highlight   `json:"highlights,omitempty"`
-	Info       klarerrs.Info `json:"info,omitempty"`
+	Type       string         `json:"type"`
+	Code       code           `json:"code"`
+	Message    string         `json:"message"`
+	File       string         `json:"file"`
+	Range      rang           `json:"range"`
+	Label      string         `json:"label,omitempty"`
+	Hints      []hint         `json:"hints,omitempty"`
+	Details    []detail       `json:"details,omitempty"`
+	Highlights []highlight    `json:"highlights,omitempty"`
+	Info       klarerrs.Info  `json:"info,omitempty"`
+	Params     map[string]any `json:"params,omitempty"`
 }
 
 type pos struct {

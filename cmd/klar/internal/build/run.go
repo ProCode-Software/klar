@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
@@ -22,7 +20,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/util"
-	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
@@ -67,7 +64,7 @@ func Build(r *command.Runner) {
 			c.FailWithError(err)
 		}
 		c.PrintKlonWarnings(warn, configPath)
-		ParseFlags(r, forcedKlarBuild)
+		ParseFlags(r, &build.Input{KlarBuild: forcedKlarBuild})
 		klarBuildMode = 1
 	} else if configFlag.Set {
 		klarBuildMode = 2 // Provided, but empty. Use default config
@@ -90,12 +87,15 @@ func Build(r *command.Runner) {
 			input.KlarBuild = forcedKlarBuild
 		default:
 			// Apply command-line flags
-			ParseFlags(r, input.KlarBuild)
-			if targetFlag := r.Flag("target"); targetFlag.Set {
-				input.Targets = []target.Target{targetFlag.EnumValue().(target.Target)}
-			}
+			ParseFlags(r, input)
 		}
 		pc.Inputs = append(pc.Inputs, input)
+
+		// Hide progress if stdin is an input
+		if input.Kind == build.KindStdin {
+			c.Progress = build.HiddenProgress{}
+			fmt.Print(ansi.ClearLine) // Clear the line created by ResolvingInput
+		}
 	}
 	for i, path := range inputArgs {
 		if path == "" {
@@ -124,12 +124,24 @@ func Build(r *command.Runner) {
 
 	// Print error/success messages
 	// ===========
+
+	// If we're showing the compiler's progress, clear the line before showing errors
+	if !c.ProgressHidden() {
+		fmt.Print(ansi.ClearLine)
+	}
+
 	switch {
-	case err != nil:
-		if jsonOutput {
-			printJSONErrors(res, err)
+	case jsonOutput:
+		isMaxErrors := res != nil && res.IsMaxErrors
+		if err := jsonerrors.WriteTo(os.Stdout, res, err, isMaxErrors); err != nil {
+			cli.Error("Failed to write JSON errors:", err)
+		}
+		fmt.Println()
+		if err != nil || len(res.Errors) > 0 {
 			cli.Exit(1)
 		}
+	case err != nil:
+		// Critical error
 		switch err := err.(type) {
 		case *build.InterfaceError:
 			// For InterfaceErrors: print a prettier error
@@ -141,81 +153,93 @@ func Build(r *command.Runner) {
 			// Errors should be a struct such as InterfaceError or FilesystemError
 			panic(fmt.Sprintf("error %T should be wrapped: %[1]v", err))
 		}
-	case len(res.Errors) > 0:
-		if r.Flag("sound-on-error").Bool() {
+	default:
+		// Successes, errors, and/or warnings
+		if len(res.Errors) > 0 && r.Flag("sound-on-error").Bool() {
 			playErrorSound()
 		}
-		printErrors(res, c, jsonOutput)
-		cli.Exit(1)
-	default:
-		if jsonOutput {
-			printJSONErrors(res, err)
-			break
-		}
-		ansi.Fprintfln(
-			os.Stderr,
-			"%s<**><g>%c</g> Build <g!>succeeded</g!></**> in <c>%s</c>!",
-			ansi.ClearLine, icons.Check, util.FormatDuration(res.Elapsed),
-		)
+		showResult(res, c)
 	}
 }
 
-// printErrors prints the "Build failed" message to standard error with the
-// compile errors from res. isMaxErrors is whether compilation stopped early
-// due to too many errors. Errors are printed using b's errorPrinter.
-func printErrors(res *build.Result, c *build.Compiler, jsonOutput bool) {
-	errs := res.Errors
-	// Format error count
-	var count strings.Builder
-	count.WriteString(strconv.Itoa(len(errs)))
-	// Check to see if there were too many errors
-	if res.IsMaxErrors {
-		count.WriteByte('+')
-	}
-	count.WriteString(" error")
-	if len(errs) != 1 {
-		count.WriteByte('s')
-	}
-	// Print JSON errors if jsonOutput is true
-	if jsonOutput {
-		printJSONErrors(res, nil)
-		return
-	}
-	// Show "build failed" message
-	ansi.Fprintfln(
-		os.Stderr,
-		"%s<**><r>%c</r> Build <r!>failed</r!> with <r!>%s</r!></**> in <c>%s</c>\n",
-		ansi.ClearLine, icons.ThinXLarge, count.String(), util.FormatDuration(res.Elapsed),
+func showResult(res *build.Result, c *build.Compiler) {
+	var (
+		warnCount, errCount = len(res.Warnings), len(res.Errors)
+		icon, format        string
 	)
-	// Report the errors
-	c.PrintAllErrors(errs)
-	if res.IsMaxErrors {
-		cli.Error("There are too many errors")
+	formatIcon := func(icon rune, color byte) string {
+		return fmt.Sprintf("<%c>%c</%[1]c>", color, icon)
 	}
-}
+	formatCount := func(n int, kind string) string {
+		switch {
+		case n == 1:
+			return fmt.Sprintf("%d %s", n, kind)
+		case kind == "error" && res.IsMaxErrors:
+			return fmt.Sprintf("%d+ %ss", build.MaxErrors, kind)
+		}
+		return fmt.Sprintf("%d %ss", n, kind)
+	}
+	switch {
+	case errCount == 0 && warnCount == 0:
+		// Succeeded
+		icon, format = formatIcon(icons.Check, 'g'), "<g!>succeeded</g!>"
+	case errCount == 0 && warnCount > 0:
+		// Succeeded with warnings
+		icon, format = formatIcon(icons.Warning, 'y'),
+			"<y!>succeeded</y!> with <g!>"+formatCount(warnCount, "warning")+"</g!>"
+	case errCount > 0 && warnCount == 0:
+		// Failed
+		icon = formatIcon(icons.ThinXLarge, 'r')
+		format = "<r!>failed</r!> with <r!>" + formatCount(errCount, "error") + "</r!>"
+	case errCount > 0 && warnCount > 0:
+		// Failed with errors and warnings
+		icon = formatIcon(icons.ThinXLarge, 'r')
+		format = "<r!>failed</r!> with <r!>" + formatCount(errCount, "error") +
+			"</r!> and <y!>" + formatCount(warnCount, "warning") + "</y!>"
+	default:
+		panic(fmt.Sprintf("unreachable: %d errors and %d warnings", errCount, warnCount))
+	}
+	dur := util.FormatDuration(res.Elapsed)
+	fmt.Fprintln(os.Stderr, ansi.Colorize(
+		"<**>"+icon+" Build "+format+"</**> in <c>"+dur+"</c>",
+	))
 
-func printJSONErrors(res *build.Result, err error) {
-	isMaxErrors := res != nil && res.IsMaxErrors
-	if err := jsonerrors.WriteTo(os.Stdout, res, err, isMaxErrors); err != nil {
-		cli.Error("Failed to write JSON errors:", err)
+	if errCount > 0 || warnCount > 0 {
+		fmt.Fprintln(os.Stderr)
 	}
-	os.Stdout.WriteString("\n")
+	c.PrintAllErrors(res.Errors)
+	c.PrintAllErrors(res.Warnings)
+	if res.IsMaxErrors {
+		fmt.Fprintln(os.Stderr, ansi.BoldBrightRed(
+			ansi.Underline("\nBuild stopped early due to too many errors"),
+		))
+	}
+	if errCount > 0 {
+		cli.Exit(1)
+	}
 }
 
 // ParseFlags parses flags from r into o.
-func ParseFlags(r *command.Runner, f *klarbuild.File) {
+func ParseFlags(r *command.Runner, i *build.Input) {
 	for _, setting := range klarBuildFlags {
 		flag, ok := r.Flags[setting]
 		if !ok || !flag.Set {
 			continue
 		}
+		if i.KlarBuild == nil && setting != "target" {
+			i.KlarBuild = &klarbuild.File{}
+		}
+		f := i.KlarBuild
 		switch setting {
 		case "watch":
 			f.Watch = flag.Value.(bool)
 		case "output":
 			f.Output = flag.Value.([]string)
 		case "target":
-			f.Target = flag.Value.(target.Target)
+			i.Targets = []target.Target{flag.EnumValue().(target.Target)}
+			if f != nil {
+				f.Target = i.Targets[0]
+			}
 		default:
 			panic("unhandled flag: " + setting)
 		}
@@ -225,15 +249,20 @@ func ParseFlags(r *command.Runner, f *klarbuild.File) {
 		if !ok || !v.Set {
 			continue
 		}
+		if i.KlarBuild == nil {
+			i.KlarBuild = &klarbuild.File{}
+		}
+		f := i.KlarBuild
 		// Check if a JavaScript flag was used when not targeting JavaScript
-		if !f.Target.IsJavaScript() {
+		isJS := func(t target.Target) bool { return t.IsJavaScript() }
+		if !slices.ContainsFunc(i.Targets, isJS) {
 			// Get the first JS flag the user provided
 			firstJSFlag := slices.SortedFunc(maps.Keys(r.Flags), func(a, b string) int {
 				return r.Flags[a].Index - r.Flags[b].Index
 			})[0]
 			cli.Failure(fmt.Sprintf(
-				"Can't use JavaScript flag '%s' with target '%s'",
-				argparse.FormatFlag(firstJSFlag), f.Target,
+				"Can't use JavaScript flag '--%s' with target '%s'",
+				firstJSFlag, f.Target,
 			))
 		}
 		switch setting {

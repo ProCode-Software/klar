@@ -25,6 +25,7 @@ const (
 	ErrImportPathAliased       // You must use the aliased import path when provided
 	ErrImportEmpty             // Module being imported has no files or exports
 	ErrImportPathConflict      // Packages have conflicting base import paths
+	ErrNoPublicExports         // Module has no public exports
 )
 
 func (e *Error) handleModuleError() string {
@@ -61,6 +62,8 @@ func (e *Error) handleModuleError() string {
 	case ErrUnsupportedImportTarget:
 		return "Can't import " + path + " because it doesn't support the " +
 			e.GetParam("currTarget").(target.Target).String() + " target"
+	case ErrNoPublicExports:
+		return "Module " + path + " doesn't provide any public exports"
 	case ErrSelfImport:
 		// Module my.mod directly imports my.mod
 		return "Module " + path + " can't import itself!"

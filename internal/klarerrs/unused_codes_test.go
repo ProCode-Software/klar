@@ -31,8 +31,9 @@ func TestUnusedErrorCodes(t *testing.T) {
 	}
 
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
-		Dir:  root,
+		Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes |
+			packages.NeedTypesInfo | packages.NeedImports,
+		Dir: root,
 	}
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
@@ -74,42 +75,46 @@ func TestUnusedErrorCodes(t *testing.T) {
 	symbolUses := make(map[types.Object]map[types.Object]bool)
 
 	for _, file := range klarerrsPkg.Syntax {
-		filename := klarerrsPkg.Fset.File(file.Pos()).Name()
+		fileName := filepath.Base(klarerrsPkg.Fset.File(file.Pos()).Name())
 		// Skip generated files and formatting logic that just switch on error codes
-		if strings.HasSuffix(filename, "_string.go") ||
-			strings.Contains(filename, "error_message_test.go") ||
-			strings.Contains(filename, "format.go") {
+		if strings.HasSuffix(fileName, "_string.go") ||
+			fileName == "error_message_test.go" || fileName == "format.go" {
 			continue
 		}
 
 		ast.Inspect(file, func(n ast.Node) bool {
-			if fn, ok := n.(*ast.FuncDecl); ok {
-				from := klarerrsPkg.TypesInfo.Defs[fn.Name]
-				if from == nil {
-					return true
-				}
+			fn, ok := n.(*ast.FuncDecl)
+			if !ok {
+				return true
+			}
+			from := klarerrsPkg.TypesInfo.Defs[fn.Name]
+			if from == nil {
+				return true
+			}
 
-				// Skip handle* functions as they are formatting sinks, not "usages"
-				if strings.HasPrefix(fn.Name.Name, "handle") {
-					return false
-				}
-
-				ast.Inspect(fn.Body, func(inner ast.Node) bool {
-					if id, ok := inner.(*ast.Ident); ok {
-						if to := klarerrsPkg.TypesInfo.Uses[id]; to != nil {
-							if to.Pkg() != nil && to.Pkg().Path() == klarerrsPkg.Types.Path() {
-								if symbolUses[from] == nil {
-									symbolUses[from] = make(map[types.Object]bool)
-								}
-								symbolUses[from][to] = true
-							}
-						}
-					}
-					return true
-				})
+			// Skip handle* functions as they are formatting sinks, not "usages"
+			if strings.HasPrefix(fn.Name.Name, "handle") {
 				return false
 			}
-			return true
+
+			ast.Inspect(fn.Body, func(inner ast.Node) bool {
+				id, ok := inner.(*ast.Ident)
+				if !ok {
+					return true
+				}
+				to := klarerrsPkg.TypesInfo.Uses[id]
+				if to == nil {
+					return true
+				}
+				if to.Pkg() != nil && to.Pkg().Path() == klarerrsPkg.Types.Path() {
+					if symbolUses[from] == nil {
+						symbolUses[from] = make(map[types.Object]bool)
+					}
+					symbolUses[from][to] = true
+				}
+				return true
+			})
+			return false
 		})
 	}
 

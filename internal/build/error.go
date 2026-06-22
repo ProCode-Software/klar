@@ -13,6 +13,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/graph"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
@@ -40,23 +41,25 @@ type InterfaceErrorCode int
 const (
 	_ InterfaceErrorCode = iota
 
-	ErrModuleDescriptor // Invalid '@' in input path
-	ErrNotAKlarFile     // Input file is not a klar file
-	ErrTestInput        // Test input provided in non-test mode
-	ErrIsADirectory     // Path is a directory
-	ErrTooManyErrors    // More than 10 errors globally
-	ErrMaxModuleDepth   // No more than 4 submodules
-	ErrNestedKlarFolder // Klar project directory nested in a pkg folder
-	ErrFileInRoot       // File directly in package root
-	ErrFileInPkgDir     // File in 'pkg' directory
-	ErrNoKlarFiles      // No Klar files to compile in input
-	ErrNothingToCompile // No inputs
-	ErrMisplacedTest    // Test file in a non-test directory
-	ErrLexer            // Lexer error
-	ErrInvalidConfig    // Failed to parse configuration
-	ErrKlarVersion      // Compiler version too old to compile a package
-	ErrDepCycle         // Dependency cycle
-	ErrDepNotFound      // Dependency not found or installed
+	ErrModuleDescriptor     // Invalid '@' in input path
+	ErrNotAKlarFile         // Input file is not a klar file
+	ErrTestInput            // Test input provided in non-test mode
+	ErrIsADirectory         // Path is a directory
+	ErrTooManyErrors        // More than 10 errors globally
+	ErrMaxModuleDepth       // No more than 4 submodules
+	ErrNestedKlarFolder     // Klar project directory nested in a pkg folder
+	ErrFileInRoot           // File directly in package root
+	ErrFileInPkgDir         // File in 'pkg' directory
+	ErrNoKlarFiles          // No Klar files to compile in input
+	ErrNothingToCompile     // No inputs
+	ErrMisplacedTest        // Test file in a non-test directory
+	ErrLexer                // Lexer error
+	ErrInvalidConfig        // Failed to parse configuration
+	ErrKlarVersion          // Compiler version too old to compile a package
+	ErrDepCycle             // Dependency cycle
+	ErrDepNotFound          // Dependency not found or installed
+	ErrInternalCompileError // Internal modules failed to compile
+	ErrNoManifest           // No manifest found
 )
 
 type InterfaceError struct {
@@ -135,6 +138,20 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 			msg = "Dependency <c>" + pkg + "</c> isn't installed. "
 		}
 		return msg, "Run <m>glas install</m> to install it."
+	case ErrInternalCompileError:
+		var posInfo string
+		if err, ok := err.Err.(*klarerrs.Error); ok {
+			posInfo = fmt.Sprintf(" (%s:%s)", err.File, err.Range.Start)
+		}
+		return "An internal compile error occurred: ", fmt.Sprintf(
+			"This isn't your fault; please report an issue on GitHub.\n"+
+				"The error is:\n    %v%s",
+			err.Err, posInfo,
+		)
+	case ErrNoManifest:
+		return "Project not found: ", fmt.Sprintf(
+			"Can't find a <y>%s</y> file for <c>%s</c>", module.ManifestFile, err.Value,
+		)
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))
 	}
@@ -177,7 +194,7 @@ func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) erro
 		}
 		c.Reporter.LoadFile(
 			file,
-			util.RelPath(c.Cwd, absPath),
+			util.RelPath(c.WorkDir, absPath),
 			makeKlonTokens(file),
 		)
 	}
@@ -278,4 +295,39 @@ func (c *Compiler) FailWithError(err error) {
 		cli.FailureError(err)
 	}
 	cli.Exit(1)
+}
+
+// hasErrs is whether errs contains errors that fail compilation. If all
+// errs are warnings, or errs is empty, hasErrs is false.
+func (c *Compiler) sendErrors(errs []*klarerrs.Error) (hasErrs, isMax bool) {
+	if len(errs) == 0 {
+		return false, false
+	}
+	c.collectMu.Lock()
+	defer c.collectMu.Unlock()
+	for _, err := range errs {
+		if err.IsWarning() {
+			c.Warnings = append(c.Warnings, err)
+			// TODO: Warnings as errors
+			continue
+		}
+		c.Errors = append(c.Errors, err)
+		hasErrs = true
+		if len(c.Errors) > MaxErrors {
+			c.Errors = c.Errors[:MaxErrors]
+			return true, true
+		}
+	}
+	return
+}
+
+// PrintError prints an error to the error printer.
+func (c *Compiler) PrintError(err *klarerrs.Error) (int64, error) {
+	return c.Reporter.Report(err)
+}
+
+func (c *Compiler) PrintAllErrors(errs []*klarerrs.Error) {
+	for _, err := range errs {
+		c.PrintError(err)
+	}
 }

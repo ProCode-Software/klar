@@ -14,7 +14,7 @@ type DeclarationInfo struct {
 	node       ast.Statement
 	// For variable/const declaration. Not destructured
 	rhs ast.Expression
-	// For variable/const declaration. Set when rhs is checked.
+	// For variable/const declaration. Set when rhs is checked, or the explicity type
 	rhsType *Type
 }
 
@@ -26,32 +26,51 @@ func (c *Checker) declareTopLevelObject(obj *Object,
 	}
 	c.moduleDecls[obj] = info
 	if attrs != nil {
-		info.Attributes = c.parseAttributes(*attrs, attrTargetKindOf(info.node))
+		info.Attributes = c.parseAttributes(*attrs, attrTargetKindOf(info.node), obj.file)
 		*attrs = nil
 	}
 	obj.order = uint32(len(c.moduleDecls))
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
+	/*
+		Red: Type isn't known yet. Not in objPathIndex.
+		White: Type is pending. Is in objPathIndex.
+		Blue: Type is known. Not in objPathIndex.
+
+		Blue can only depend on blue. White/grey can only depend on red or blue. A dependency on white is a (possibly invalid) cycle.
+
+		When marked white, it is pushed onto the object path stack, and its index is recorded in objPathIndex. It's removed from the map and the stack when marked blue.
+	*/
 	if _, ok := c.objPathIndex[o]; ok {
 		switch typ := o.typ.(type) {
-		case *Variable, *Constant:
-			if !c.isValidCycle(o) || typ.(Underlyer).Underlying() == nil {
-				o.typ = InvalidType
+		case *Variable:
+			if !c.isValidCycle(o) || typ.Type == nil {
+				typ.Type = InvalidType
+			}
+		case *Constant:
+			if !c.isValidCycle(o) || typ.Type == nil {
+				typ.Type = InvalidType
 			}
 		case *TypeName:
 			if !c.isValidCycle(o) {
-				o.typ = InvalidType
+				typ.Type = InvalidType
 			}
 		case *Function:
 			c.isValidCycle(o) // TODO: is this needed?
+		case *FunctionAlias:
+		// TODO
 		default:
 			panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 		}
+		if Underlying(o.typ) == nil {
+			panic("underlying type is still nil")
+		}
+		return
 	}
 
-	if ut, ok := o.typ.(Underlyer); ok && ut.Underlying() != nil {
-		return // Blue, already checked (TODO: is this correct?)
+	if Underlying(o.typ) != nil {
+		return // Blue, already checked
 	}
 
 	// White, not checked yet
@@ -70,13 +89,48 @@ func (c *Checker) checkDeclaration(o *Object) {
 		c.checkFuncDecl(o)
 	case *Overload:
 		return // Overloads are part of functions
+	case *FunctionAlias:
+		c.checkFuncAlias(o)
 	default:
 		panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 	}
 }
 
+// An error is reported if isValidCycle returns false.
 func (c *Checker) isValidCycle(o *Object) bool {
-	return true
+	start := c.objPathIndex[o]
+	cycle := c.objPath[start:]
+	// Number of type defs and values (const or var) in the cycle
+	var typeDefCount, valCount int
+	for _, obj := range cycle {
+		switch typ := obj.typ.(type) {
+		case *TypeName:
+			if _, ok := typ.Type.(*TypeAlias); !ok {
+				// Only increase the count for non-aliases
+				typeDefCount++
+			}
+		case *Variable, *Constant:
+			valCount++
+		case *Function:
+		default:
+			panic(fmt.Sprintf("isValidCycle: unhandled declaration type: %T", obj.typ))
+		}
+	}
+	switch {
+	case valCount == len(cycle):
+		// Go: A cycle involving only constants and variables is invalid but we
+		// ignore them here because they are reported via the initialization
+		// cycle check.
+		return true
+	case valCount == 0 && typeDefCount > 0:
+		// A cycle involving only type definitions (and maybe functions) must have
+		// at least 1 type definition to be valid. Alias-only cycles are invalid.
+		return true
+	default:
+		// Invalid cycle
+		c.error(cycleError(cycle))
+		return false
+	}
 }
 
 // collectMethods associates methods with the type with name typeName. The
@@ -95,12 +149,18 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	}
 	self := Underlying(selfObj.typ).(SupportsMethods)
 	for _, meth := range methods {
+		if ov, ok := meth.obj.typ.(*Overload); ok {
+			ov.Self = &Variable{VarKind: SelfVar, Type: selfObj.typ}
+		}
 		// TODO: wrap Overloads in Functions
 		if err := self.AddMethod(meth.obj); err != nil {
 			c.fileError(err, meth.obj.file)
 			return
 		}
-		// TODO: check Function body / alias target
+	}
+	// Typecheck the [*Function] or [*FunctionAlias] objects, not overloads from `methods`
+	for _, obj := range self.GetMethods() {
+		c.checkDeclaration(obj)
 	}
 }
 

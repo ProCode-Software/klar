@@ -4,8 +4,10 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func (pkc *PackageCompiler) TypeCheckModule(
@@ -13,6 +15,10 @@ func (pkc *PackageCompiler) TypeCheckModule(
 ) []*klarerrs.Error {
 	importPath := imports.NewImportPath(importPathStr)
 
+	// Set a default target for the input if there isn't one already
+	if len(pkc.Input.Targets) == 0 {
+		pkc.Input.Targets = []target.Target{0}
+	}
 	// Type checker options from klar.build
 	opts := pkc.getCheckerOptions(m)
 	importer := NewImporter(pkc.Input, importPath, pkc.Deps)
@@ -21,11 +27,9 @@ func (pkc *PackageCompiler) TypeCheckModule(
 
 	// Initialized the typed module
 	mod := analysis.NewModule(
-		m.Name(), m.Path,
-		importPath,
+		m.Name(), m.Path, importPath,
 		m.Programs,
-		opts.KlarVersion,
-		opts.Target,
+		opts.KlarVersion, opts.Target,
 	)
 	if m.SingleFile {
 		mod.Flags |= analysis.SingleFileModule
@@ -47,9 +51,13 @@ func (pkc *PackageCompiler) TypeCheckModule(
 // getCheckerOptions returns an [analysis.Options] object for a module. It
 // contains options from klar.build and the parent package's manifest.
 func (pkc *PackageCompiler) getCheckerOptions(mod *Module) *analysis.Options {
+	var checkerOptions *klarbuild.CheckerOptions
+	if pkc.KlarBuild != nil {
+		checkerOptions = pkc.KlarBuild.Checker
+	}
 	opts := &analysis.Options{
-		CheckerOptions:       pkc.KlarBuild.Checker,
-		Target:               pkc.KlarBuild.Target, // TODO
+		CheckerOptions:       checkerOptions,
+		Target:               pkc.Targets[0], // TODO
 		IsTest:               pkc.Mode == ModeTest,
 		MaxErrors:            MaxErrors,
 		KlarVersion:          nil, // TODO: [version.Specifier].Min()
@@ -82,6 +90,6 @@ func (p *checkerPool) Get(
 
 // Put resets ch and puts it back into the pool.
 func (p *checkerPool) Put(ch *analysis.Checker) {
-	ch.Reset()
+	ch.ResetAll()
 	p.Pool.Put(ch)
 }

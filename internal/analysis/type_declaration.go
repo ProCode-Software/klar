@@ -22,7 +22,12 @@ type TypeName struct {
 }
 
 // String returns the name of the type.
-func (n *TypeName) String() string   { return n.Name }
+func (n *TypeName) String() string {
+	if alias, ok := n.Type.(*TypeAlias); ok {
+		return TypeToString(alias.Type)
+	}
+	return n.Name
+}
 func (n *TypeName) Underlying() Type { return n.Type }
 
 // TagType represents a Klar tag type.
@@ -35,6 +40,7 @@ func (TagType) Kind() Kind { return KindTag }
 // declaration is created inside the [*TypeName].
 func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 	node := decl.node.(ast.TypeDeclaration)
+	_ = o.typ.(*TypeName) // Should be a [*TypeName]
 	switch node := node.(type) {
 	case *ast.StructDeclaration:
 		c.checkStructDecl(o, node, decl.file)
@@ -53,26 +59,39 @@ func (c *Checker) checkCustomTypeDecl(o *Object, decl *DeclarationInfo) {
 
 func (c *Checker) checkTagType(o *Object, decl *DeclarationInfo) {
 	node := decl.node.(*ast.TagDeclaration)
-	o.typ.(*TypeName).Type = &TagType{
+	// TODO: Check that each inherited type was declared within this module
+	o.TypeName().Type = &TagType{
 		Implements: c.checkInheritedTypes(node.InheritedTypes, KindTag, o.file, decl.file),
 	}
 }
 
-// checkInheritedTypes checks the inherited types of a tag declaration and
-// returns a map of the types that are inherited. Errors are reported for
-// undefined and duplicate types.
+// checkInheritedTypes checks the inherited types to ensure they are
+// compatible with the given target declaration kind.
 func (c *Checker) checkInheritedTypes(names []ast.Type, kind Kind,
 	fid FileID, ctx *Context,
 ) (inherited map[Type]struct{}) {
+	if len(names) == 0 {
+		return nil
+	}
 	inherited = make(map[Type]struct{}, len(names))
 	existingMap := make(map[Type]ranges.Range, len(names))
 	for _, tn := range names {
-		typ := c.parseType(tn, ctx)
-		if _, ok := inherited[typ]; ok {
+		var flags Flag
+		// Tags can only inherit from locally-declared tags
+		if kind == KindTag {
+			flags |= LocalOnly
+		}
+		typ := c.parseType(tn, ctx, flags)
+		underlying := Underlying(typ)
+		if typ.Kind() == InvalidType {
+			continue
+		}
+		if _, ok := inherited[underlying]; ok {
 			// Type specified twice
 			err := klarerrs.Range(klarerrs.ErrDuplicateInheritedType, tn.GetRange())
+			err.Name = TypeToString(typ)
 			err.Highlights = append(err.Highlights, klarerrs.Highlight{
-				Range:   existingMap[typ],
+				Range:   existingMap[underlying],
 				Message: "It was already specified here",
 			})
 			c.fileError(err, fid)
@@ -81,8 +100,8 @@ func (c *Checker) checkInheritedTypes(names []ast.Type, kind Kind,
 		if !c.validateInheritedType(tn, typ, kind, fid) {
 			continue
 		}
-		inherited[typ] = struct{}{}
-		existingMap[typ] = tn.GetRange()
+		inherited[underlying] = struct{}{}
+		existingMap[underlying] = tn.GetRange()
 	}
 	return inherited
 }
@@ -90,53 +109,115 @@ func (c *Checker) checkInheritedTypes(names []ast.Type, kind Kind,
 // validateInheritedType checks the inherited type represented by node n
 // and type t for validity as an inherited type for declaration kind declKind.
 func (c *Checker) validateInheritedType(n ast.Type, t Type,
-	expKind Kind, fid FileID,
+	targetKind Kind, fid FileID,
 ) bool {
 	// TODO: Maybe we should allow inheriting from primitive types (not lists)
-	gotKind := t.Kind()
+	typeKind := t.Kind()
 	// Validate the node
 	newError := func(currType, allowedTypes string) {
 		err := klarerrs.Range(klarerrs.ErrInvalidInheritedType, n.GetRange())
-		err.Params = klarerrs.ErrorParams{
-			"kind":         currType,
-			"allowedTypes": allowedTypes,
-		}
+		err.Params = klarerrs.ErrorParams{"kind": currType, "allowedTypes": allowedTypes}
 		err.Label = "Can't inherit from this kind of type"
 		c.fileError(err, fid)
 	}
-	if expKind == gotKind || gotKind == InvalidType {
+	if targetKind == typeKind || typeKind == InvalidType {
 		return true
 	}
 	switch n.(type) {
 	case *ast.TypeAlias, *ast.PrimitiveType, *ast.GenericType:
 	default:
 		// Change the kind so an error is reported below
-		gotKind = InvalidType
+		typeKind = InvalidType
 	}
 	// Validate the actual type
-	switch expKind {
+	switch targetKind {
 	case KindTag:
-		if gotKind != KindTag {
-			newError("A tag", "another tag")
-			return false
-		}
+		// Already checked via targetKind == typeKind, so this is invalid
+		newError("A tag", "another tag")
+		return false
 	case KindStruct:
-		if gotKind != KindInterface && gotKind != KindStruct && gotKind != KindTag {
+		if typeKind != KindInterface && typeKind != KindTag {
 			newError("A struct", "an interface, tag, or another struct")
 			return false
 		}
 	case KindInterface:
-		if gotKind != KindInterface && gotKind != KindStruct {
+		if typeKind != KindStruct {
 			newError("An interface", "a struct or another interface")
 			return false
 		}
 	case KindEnum:
-		if gotKind != KindInterface && gotKind != KindEnum && gotKind != KindTag {
+		if typeKind != KindInterface && typeKind != KindTag {
 			newError("An enum", "an interface, tag, or another enum")
 			return false
 		}
 	default:
-		panic(fmt.Sprintf("invalid target type kind %d", expKind))
+		panic(fmt.Sprintf("invalid target type kind %d", targetKind))
 	}
 	return true
+}
+
+/*
+checkDirectCycles checks for direct cycles within the provided top-level
+objects. Type aliases that directly refer to other type aliases are checked.
+
+The algorithm for this is similar to [Checker.objPathIndex] and the one used
+in Go's type checker:
+
+  - Not found in `pathI`: The type name hasn't been seen before (red)
+  - Found in `pathI` with a value >= 0: Has been seen but is not done (white)
+  - Value < 0: Seen and done (blue)
+*/
+func (c *Checker) checkDirectCycles(objs []*Object) {
+	pathI := make(map[*Object]int)
+	for _, obj := range objs {
+		if !obj.IsTypeName() {
+			continue
+		}
+		var path []*Object
+		for {
+			if start, ok := pathI[obj]; start < 0 {
+				break // Object is blue
+			} else if ok {
+				// Object is white: there is a cycle starting at `path[start]`
+				obj.TypeName().Type = InvalidType
+				c.error(cycleError(path[start:]))
+				break
+			}
+			// Object is red
+			pathI[obj] = len(path)
+			path = append(path, obj)
+
+			// If this object isn't a type alias, we're at the end of the path and done.
+			aliasDecl, ok := c.moduleDecls[obj].node.(*ast.TypeAliasDeclaration)
+			if !ok {
+				break
+			}
+			// TODO: We should also check for cycles in parenthesized types, tuples,
+			// and types with generics.
+			//
+			// Go only checks in aliases because recursive types are allowed in other
+			// wrapper types (such as pointers). `type T *T` is even allowed in Go.
+			// Though in this step, Go doesn't check inside structs.
+			var rhs *ast.TypeAlias
+			rhs, ok = aliasDecl.Type.(*ast.TypeAlias)
+			if !ok {
+				break
+			}
+
+			// Resolve the type the alias refers to. [Object.IsTypeName] handles nil
+			// objects. In that case, if the RHS is undefined, an error will be
+			// reported later. Also, we're not looking up recursively -- types can't be
+			// declared across contexts/scopes. Similar for imported types. In those
+			// cases, we can stop.
+			next := c.rootContext.Lookup(rhs.Identifier)
+			if !next.IsTypeName() {
+				break
+			}
+			obj = next
+		}
+		// Mark all type names in the path blue
+		for _, obj := range path {
+			pathI[obj] = -1
+		}
+	}
 }

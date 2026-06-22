@@ -28,7 +28,7 @@ public func print(
     withFinalNewline addNewline: Bool = false,
 ) -> Result
 
-// Includes [klar.io.Writable]. This is validated by the type checker.
+// Includes [klar.io/Writable]. This is validated by the type checker.
 type Writable = Any | [Int] | [String]
 
 // Prints an error message to the console, or standard error (stderr) for programs
@@ -54,3 +54,24 @@ public func clone<T>(value: T) -> T
 // running your code, the program will crash, displaying the provided message.
 // A `TODO` call can be assigned to any value.
 public func TODO(message: String?) -> Any
+
+/*
+Returns a list where each item is a pair of corresponding elements from
+the provided lists. So, if 2 lists are passed, the first item in the
+resulting list (`result[0]`) will be `(a[0], b[0])`, repeating for
+the rest of the pairs in `a` and `b`.
+
+If the provided lists are of different lengths, the length of the result
+will be of the shorter one.
+```
+numbers := 1...10
+words := ['one', 'two', 'three', 'four']
+for (number, word) in zip(numbers, words) {
+    print(number, word)
+}
+// Prints: 1, 'one'
+// ...
+// Prints: 4, 'four'
+```
+*/
+public func zip<A, B>(a: [A], b: [B]) -> [(A, B)]

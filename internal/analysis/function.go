@@ -27,6 +27,7 @@ type Overload struct {
 	labelMap       map[string]*Variable
 	Arity          Arity
 	InnerContext   *Context
+	NamedReturns   []*Object // Type [*Variable]
 }
 
 // LabelledParam represents a labelled function parameter, e.g. `label: string`.
@@ -39,6 +40,13 @@ type FunctionAlias struct {
 	Target *Object // Should be [Function]
 }
 
+func (fa *FunctionAlias) Underlying() Type {
+	if fa.Target == nil {
+		return nil
+	}
+	return fa.Target.typ
+}
+
 type Arity struct {
 	// The minimum and maximum number of parameters the function accepts,
 	// excluding labelled parametees. MaxParams can be -1 if there is no maximum.
@@ -48,16 +56,18 @@ type Arity struct {
 // Generic represents a generic type parameter.
 type Generic struct {
 	*Object
-	Name string
+	Index int // Index within the declaration, starting at 0
 }
 
 // MethodAdder is implemented by types that can have methods added to them.
 // Per the spec, this is implemented by [*Struct], [*Interface], and [*Enum].
 type SupportsMethods interface {
+	Type
 	// AddMethod adds the method m to the type. If a method or field with the
 	// same name already exists on the type, an error is returned. m should
 	// have type [*Overload] or [*FunctionAlias].
 	AddMethod(m *Object) (err *klarerrs.Error)
+	GetMethods() []*Object // [*Function] or [*FunctionAlias]
 }
 
 type MethodSet struct {
@@ -66,25 +76,29 @@ type MethodSet struct {
 	nonMethodMap *map[string]*Object // For validating name collisions. Nil for enums.
 }
 
+const SelfName = "self"
+
 func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
 	for _, ov := range fn.Overloads {
-		ovInfo := c.moduleDecls[ov.Object]
-		stmt := ovInfo.node.(*ast.FunctionDeclaration)
-		ctx := NewContext(o.context, o.file) // Function body context
+		var (
+			info = c.moduleDecls[ov.Object]
+			fctx = info.file
+			stmt = info.node.(*ast.FunctionDeclaration)
+		)
+		ctx := NewContext(fctx, o.file) // Function body context
+		ov.InnerContext = ctx
 
 		// 1. Self/Receiver
 		if stmt.SelfType != nil {
-			selfName := "self"
 			selfPos := stmt.SelfType.Range()
+			selfName := SelfName
 			if stmt.SelfName != nil {
 				selfName = stmt.SelfName.Name
 				selfPos = stmt.SelfName.Range()
 			}
-			self := &Variable{VarKind: SelfVar}
-			selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, self)
-			self.Object = selfObj
-			ov.Self = self
+			selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, ov.Self)
+			ov.Self.Object = selfObj
 			c.declare(ctx, selfObj)
 		}
 
@@ -96,11 +110,10 @@ func (c *Checker) checkFuncDecl(o *Object) {
 		ov.Params = make([]*Variable, 0, len(stmt.Parameters))
 		ov.Arity = Arity{}
 		for _, param := range stmt.Parameters {
-			typ, variadic := c.parseTypeOrVariadic(param.Type, o.context)
+			typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
 			for _, pn := range param.Names {
-				vr := &Variable{VarKind: FuncParamVar, Type: typ}
-				vrObj := NewObject(pn.Name.Name, ov.Object.file, pn.Name.Range(), c.module, vr)
-				vr.Object = vrObj
+				vrObj := NewObject(pn.Name.Name, ov.Object.file, pn.Name.Range(), c.module, nil)
+				vr := NewVariable(vrObj, FuncParamVar, typ)
 				if variadic {
 					vr.Object.flags |= VariadicParam
 				}
@@ -153,8 +166,24 @@ func (c *Checker) checkFuncDecl(o *Object) {
 			// No explicit return type = Nothing
 			ret = NothingType
 		} else {
-			// TODO: in the context of generics
-			ret = c.parseType(stmt.ReturnType, o.context)
+			// Named returns: -> (a, b: Int)
+			// Declare each key as a variable
+			if tuple, ok := stmt.ReturnType.(*ast.TupleType); ok {
+				retTuple := make(Tuple, 0, len(tuple.Values))
+				for _, pair := range tuple.Values {
+					typ := c.parseType(pair.Value, ctx)
+					for _, key := range pair.Keys {
+						retTuple = append(retTuple, typ)
+						obj := NewObject(key.Name, o.file, key.Range(), o.module, nil)
+						_ = NewVariable(obj, LocalVar, typ)
+						c.declare(ctx, obj)
+						ov.NamedReturns = append(ov.NamedReturns, obj)
+					}
+				}
+				ret = retTuple
+			} else {
+				ret = c.parseType(stmt.ReturnType, ctx)
+			}
 		}
 		if fn.Return != nil && ret != fn.Return {
 			// All overloads must have the same return type
@@ -165,14 +194,22 @@ func (c *Checker) checkFuncDecl(o *Object) {
 		}
 
 		// 5. Body
-		if !c.Options.IgnoreFuncBodies {
-			c.queue(func() { c.checkFuncBody(stmt, fn, ov) }, beforeFinish)
+		if !c.Options.IgnoreFuncBodies && (stmt.Body != nil || stmt.Expression != nil) {
+			c.queue(func() { c.checkFuncBody(stmt, fn, ov) }, true)
 		}
 	}
 }
 
 func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, fn *Function, ov *Overload) {
-	_ = ov.InnerContext
+	// TODO: Extract some fields from [Checker] such as moduleDecls for
+	// use in nested contexts.
+	ctx := ov.InnerContext
+	if stmt.Body == nil {
+		// Function expression
+		return
+	}
+	sctx := newStmtContext(ctx, allowReturn)
+	c.checkBlock(stmt.Body.Body, sctx)
 }
 
 func (c *Checker) parseGenerics(names []ast.Identifier,
@@ -180,13 +217,18 @@ func (c *Checker) parseGenerics(names []ast.Identifier,
 ) []*Generic {
 	generics := make([]*Generic, len(names))
 	for i, param := range names {
-		gen := &Generic{Name: param.Name}
-		genObj := NewObject(param.Name, fid, param.Range(), c.module, gen)
-		gen.Object = genObj
+		genObj := NewObject(param.Name, fid, param.Range(), c.module, &TypeName{Name: param.Name})
+		gen := newGeneric(genObj, i)
 		c.declare(ctx, genObj)
 		generics[i] = gen
 	}
 	return generics
+}
+
+func newGeneric(o *Object, index int) *Generic {
+	gen := &Generic{Object: o, Index: index}
+	o.TypeName().Type = gen
+	return gen
 }
 
 // parseTypeOrVariadic parses [*ast.RestType], returning a [*List]. If t is
@@ -220,6 +262,21 @@ func (fn *Function) StringWithName(name string) string {
 	return b.String()
 }
 
+func (fn *Function) Underlying() Type {
+	// If Return == nil, the function is incomplete
+	if fn.Return == nil {
+		return nil
+	}
+	return fn
+}
+
+func (o *Overload) Underlying() Type {
+	if o.InnerContext == nil {
+		return nil
+	}
+	return o
+}
+
 func (o *Overload) Kind() Kind { return KindFunction }
 
 func (o *Overload) String() string {
@@ -231,7 +288,7 @@ func (o *Overload) String() string {
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString(g.Name)
+			b.WriteString(g.name)
 		}
 		b.WriteByte('>')
 	}
@@ -241,14 +298,16 @@ func (o *Overload) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(param.String())
+		b.WriteString(TypeToString(param.Type))
 	}
 	// Labelled params
 	for i, param := range o.LabelledParams {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(param.String())
+		b.WriteString(param.Label)
+		b.WriteString(": ")
+		b.WriteString(TypeToString(param.Type))
 	}
 	b.WriteByte(')')
 	return b.String()
@@ -316,3 +375,5 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 	}
 	panic("unreachable")
 }
+
+func (m *MethodSet) GetMethods() []*Object { return m.Methods }

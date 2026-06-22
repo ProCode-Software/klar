@@ -1,0 +1,8 @@
+// Implemented by types that can be written to. Implementations may
+// return an error when a write operation fails.
+//
+// Types that implement `Writable` can also be passed to `print(to:)`,
+// allowing for familiar formatting functionality as used in `print()`.
+public type #Writable {
+    write(String) -> Result
+}

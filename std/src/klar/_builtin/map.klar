@@ -1,4 +1,4 @@
-import klar.js.{Object}
+// import klar.js.{Object}
 
 type #K
 type #V

@@ -8,6 +8,10 @@ const (
 	REPLModule            // Module used for the REPL. Allow unused values
 	VariadicParam         // *Variable is a variadic function param
 	ModuleWithErrors      // Module has errors and cannot be imported
+	// [*Expr] refers to a constant or is supposed to be constant
+	ConstExpr
+	// When parsing types, only types declared in this module are allowed
+	LocalOnly
 )
 
 func parseFlags(flags []Flag) (flag Flag) {

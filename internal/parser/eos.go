@@ -112,30 +112,6 @@ outer:
 				continue
 			}
 			brackets = brackets[:lastBrackI] // Remove bracket
-		case lexer.Next, lexer.Stop:
-			// Always add newline following the loop to continue/terminate
-			if i = readComments(i); i >= len(p.Tokens) {
-				break
-			}
-			loop := p.Tokens[i] // Loop kind
-			if loop.Kind == lexer.Newline || loop.Kind == lexer.EOF {
-				i--
-				break
-			}
-			if i+1 < len(p.Tokens) {
-				if p.Tokens[i+1].Kind == lexer.Newline {
-					i++ // i is currently at loop kind. Skip the newline after it
-				}
-				if !ContinuesStatement(p.Tokens[i+1].Kind) {
-					new = append(new, tok /* next, stop */, loop, lexer.Token{
-						Kind:     lexer.Newline,
-						Position: p.Tokens[min(i+1, len(p.Tokens)-1)].Position,
-					})
-					continue
-				}
-			}
-			new = append(new, tok)
-			continue
 		}
 		if kind != lexer.Newline {
 			new = append(new, tok)

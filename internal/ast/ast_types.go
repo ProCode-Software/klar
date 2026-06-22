@@ -2,6 +2,7 @@
 package ast
 
 import (
+	"go/ast"
 	"iter"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -117,7 +118,7 @@ type EnumLiteral struct {
 }
 
 // Operations
-// ==========
+// =======
 
 type BinaryExpression struct {
 	Left, Right Expression
@@ -146,7 +147,7 @@ type AssertExpression struct {
 }
 
 // Accessors & Collections
-// =======================
+// =======
 
 type IndexExpression struct {
 	Object, Property Node
@@ -181,7 +182,7 @@ type RestExpression struct {
 }
 
 // More complex literals
-// =========
+// =======
 
 type CallParam struct {
 	Label     *Identifier
@@ -246,11 +247,12 @@ type MapCastExpression struct {
 }
 
 // Control Expressions
-// ===================
+// =======
 
 type WhenExpression struct {
 	BaseNode
 	Subjects []Expression
+	Label    *ast.Ident
 	Cases    []*WhenCase
 }
 
@@ -260,13 +262,6 @@ type WhenCase struct {
 	Guard   Expression     // <case> if <expr>
 	Braces  bool
 	Body    Node // [*Block], [Statement], or [Expression]. Syntax: -> <expr> | -> {...}
-}
-
-type WhenCanCase struct {
-	BaseNode
-	Operator Operator
-	Type     Type
-	Params   []*CallParam
 }
 
 // In string interpolations for pattern matching in when blocks.
@@ -285,7 +280,7 @@ type LambdaExpression struct {
 }
 
 type PipelineExpression struct {
-	Steps []Node
+	Steps []Node // [Expression] or [*ReturnStatement]
 	BaseNode
 }
 
@@ -341,12 +336,12 @@ type TryExpression struct {
 }
 
 // Statements
-// ==========
+// =======
 
 type Attribute struct {
 	BaseNode
-	Decorator Identifier
-	Args      []*CallParam
+	Name Identifier
+	Args []*CallParam
 }
 
 // An ExpressionStatement is an expression used as a statement.
@@ -369,33 +364,25 @@ type ReturnStatement struct {
 // Used for [ForStatement], [WhileStatement], and [WhenExpression] statements.
 type NextStatement struct {
 	BaseNode
-	Loop lexer.TokenType
+	Label *Identifier
 }
 
 // Breaks a [ForStatement], [WhileStatement], or [WhenExpression].
 // In other languages, this is usually 'break'.
 type StopStatement struct {
 	BaseNode
-	Loop lexer.TokenType
-}
-
-// An UpdateStatement is a decrement or increment statement. These statements end in
-// ++ or --. Unlike other languages such as C, Klar's increment/decrement operators
-// are statements rather than expressions.
-type UpdateStatement struct {
-	Left     Expression
-	Operator Operator
-	BaseNode
+	Label *Identifier
 }
 
 // A ForStatement is a loop that executes Body for each item in a list.
 //
-//	for k, v in <expr>
+//	for k, v in <expr> [:label]
 //	for item in <expr>
 //	for 5 { ...repeat 5 times }
 type ForStatement struct {
 	BaseNode
-	Variables  []*AssignableTypePair
+	Variables  []*AssignableTypePair // Pairs don't have default values
+	Label      *Identifier
 	Expression Expression // When used as while loop or repeat
 	Body       *Block
 }
@@ -406,8 +393,8 @@ type ForStatement struct {
 //	while <expr> - while loop
 type WhileStatement struct {
 	BaseNode
-	Infinite  bool // No condition
 	Condition Expression
+	Label     *Identifier
 	Body      *Block
 }
 
@@ -480,7 +467,7 @@ type FuncAliasDeclaration struct {
 }
 
 // Type Declarations
-// =================
+// =======
 
 type TypeDeclaration interface {
 	Statement
@@ -600,12 +587,6 @@ type ParenType struct {
 	Type  Type
 }
 
-// Used for lambda parameters
-type AssignableTuple struct {
-	BaseNode
-	Values []*AssignableTypePair
-}
-
 type FunctionType struct {
 	BaseNode
 	Parameters *TupleType
@@ -628,10 +609,12 @@ type UnionType struct {
 	Options []Type
 }
 
+// Can only be present in [*InterfaceItem]
 type MethodType struct {
 	BaseNode
-	ReturnType Type
-	Parameters []*MethodParam
+	ReturnType    Type
+	GenericParams []Identifier
+	Parameters    []*MethodParam
 }
 
 type MethodParam struct {
@@ -641,7 +624,7 @@ type MethodParam struct {
 }
 
 // Assignments & Destructuring
-// ===========================
+// =======
 
 type Assignable interface {
 	Node
@@ -656,7 +639,10 @@ type Destructurable interface {
 }
 
 // Values that can be used in VariableDeclaration implement Destructure.
-// (a, b) | [a, b] | #{ a, b } | a
+//
+// Deprecated: Not used
+//
+//	(a, b) | [a, b] | #{ a, b } | a
 type Destructure interface {
 	Node
 	Expression
@@ -665,6 +651,7 @@ type Destructure interface {
 }
 
 // Destructures a list or tuple
+//
 // Deprecated: Not used
 //
 //	(a, b) := x
@@ -676,6 +663,7 @@ type ListDestructure struct {
 }
 
 // Destructures a struct or map
+//
 // Deprecated: Not used
 //
 //	#{ name, age } := person
@@ -686,6 +674,7 @@ type ObjectDestructure struct {
 }
 
 // Entry for [ObjectDestructure]
+//
 // Deprecated: Not used
 //
 //	#{ in.(name, age) }
@@ -701,14 +690,8 @@ type ObjectDestructureEntry struct {
 	Default Expression
 }
 
-// For parsing variable declarations and assignments
-type AssignableVars struct {
-	BaseNode
-	Values []Assignable
-}
-
 // Pairs & Helpers
-// ===============
+// ========
 
 type TypePair struct {
 	Keys  []Identifier

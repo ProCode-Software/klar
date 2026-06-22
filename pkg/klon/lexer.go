@@ -200,7 +200,7 @@ func (rd *reader) readQuotedString(quote rune, wrap bool,
 		}
 	}
 	if wrap {
-		b.WriteRune('>')
+		b.WriteByte('>')
 	}
 	b.WriteRune(quote)
 	var escape bool
@@ -377,7 +377,7 @@ loop:
 func (rd *reader) readClass(start lexer.Position, bufPos int) Token {
 	var b strings.Builder
 	var invalid bool
-	b.WriteString("@")
+	b.WriteByte('@')
 loop:
 	for {
 		r, size, err := rd.currRune()

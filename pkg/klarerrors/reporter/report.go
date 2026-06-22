@@ -83,7 +83,7 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	// 4. Details
 	for _, det := range e.ErrorDetails() {
 		r.newline()
-		r.printDetail(det, e.FilePath() == det.File)
+		r.printDetail(det, e.FilePath())
 	}
 
 	// 5. Extended message
@@ -163,7 +163,7 @@ func (r *Reporter) printHeader(file string, rang ranges.Range,
 }
 
 // printDetail prints a detail message and the corresponding code snippet.
-func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
+func (r *Reporter) printDetail(det klarerrs.Detail, errFile string) {
 	const detailMargin = 2
 	// Title
 	r.appendSpace(detailMargin)
@@ -173,8 +173,11 @@ func (r *Reporter) printDetail(det klarerrs.Detail, sameFile bool) {
 	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
 	digitWidth := digitLen(endLine)
 
+	if det.File == "" {
+		det.File = errFile // Maybe we should mutate the error
+	}
 	// Only print a header if the file is different from the main error
-	if !sameFile {
+	if errFile != det.File {
 		r.printHeader(
 			det.File, ranges.Range{},
 			detailMargin, digitWidth, r.ColorPalette.DetailBox,

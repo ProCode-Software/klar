@@ -64,7 +64,9 @@ if [ -z "$files" ]; then
 fi
 
 if [ "$list_flag" = true ]; then
-    xargs -I {} wc -l {} <<< "$files" | sort -nr | head -n "$list_limit"
+    digit_len=${#list_limit}
+    xargs -I {} wc -l {} <<< "$files" | sort -nr | head -n "$list_limit" |
+        awk '{printf "%'"$digit_len"'d. %s\n", NR, $0}'
 else
     # shellcheck disable=SC2086
     xargs cat <<< "$files" | grep -v '^\s*//' | grep -cv '^\s*$'

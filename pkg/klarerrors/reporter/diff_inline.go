@@ -157,20 +157,14 @@ func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token
 // printDiffUnderlines adds the +/- underlines for each line.
 func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line uint32) {
 	// First check if any token on this line is a diff token
-	var hasChanges bool
-	for _, tok := range tokens {
-		if tok.Position.Line <= line && tok.End().Line >= line {
-			if tok.Kind == addedToken || tok.Kind == deletedToken {
-				hasChanges = true
-				break
-			}
-		}
-	}
-	if !hasChanges {
+	if !slices.ContainsFunc(tokens, func(tok lexer.Token) bool {
+		return tok.Position.Line <= line && tok.End().Line >= line &&
+			(tok.Kind == addedToken || tok.Kind == deletedToken)
+	}) {
 		return
 	}
 
-	// Line number prefix (similar to printEmptyLineNumber)
+	// Line number prefix
 	r.appendSpace(hintMargin + s.digitWidth + 1)
 	r.appendf(r.ColorPalette.Box, "%c ", r.CharacterSet.HighlightLine)
 
@@ -191,7 +185,6 @@ func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line 
 				lastCol = tok.Position.Col
 			}
 		}
-
 		// Calculate length on this line
 		partLen := r.tokenLenOnLine(tok, line)
 		switch tok.Kind {
@@ -217,11 +210,16 @@ func (r *Reporter) tokenLenOnLine(tok lexer.Token, line uint32) uint32 {
 	if rang.IsSingleLine() {
 		return uint32(utf8.RuneCountInString(tok.Source))
 	}
-	// For multiline tokens, find the relevant line
-	lines := strings.Split(tok.Source, "\n")
-	idx := int(line - tok.Position.Line)
-	if idx < 0 || idx >= len(lines) {
+	// Multi-line token
+	if line < tok.Position.Line {
 		return 0
 	}
-	return uint32(utf8.RuneCountInString(lines[idx]))
+	currLine := tok.Position.Line
+	for srcLine := range strings.SplitSeq(tok.Source, "\n") {
+		if currLine == line {
+			return uint32(utf8.RuneCountInString(srcLine))
+		}
+		currLine++
+	}
+	return 0 // Token ends before `line`
 }

@@ -2,6 +2,7 @@ package build
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -14,6 +15,8 @@ import (
 
 // Compilation stops after exceeding this number of errors.
 const MaxErrors = 10
+
+var errMaxErrors = errors.New("max errors reached")
 
 func (c *Compiler) parseFile(m *Module, file string,
 	reporterMu, moduleMu *sync.Mutex,
@@ -30,16 +33,26 @@ func (c *Compiler) parseFile(m *Module, file string,
 		return err
 	}
 	moduleMu.Lock()
-	if hasErrors := c.sendErrors(res.Errors); hasErrors {
+	hasErrors, maxErrors := c.sendErrors(res.Errors)
+	if hasErrors {
 		m.Failed = true
 		c.Error("File has syntax errors", slog.String("file", path))
 	}
 	m.Programs[file] = res.Program
 	m.ModTimes[file] = res.ModTime
+	moduleMu.Unlock()
+
+	// Load tokens into error reporter
 	reporterMu.Lock()
+	if m.IsStdin() {
+		path = stdinName
+	}
 	c.Reporter.LoadFile(path, shortPath, res.Tokens)
 	reporterMu.Unlock()
-	moduleMu.Unlock()
+
+	if maxErrors {
+		return errMaxErrors
+	}
 	return nil
 }
 

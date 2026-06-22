@@ -19,7 +19,15 @@ type ModuleErrorInfo struct {
 }
 
 func (ModuleErrorInfo) info() {}
-
 func (e *Error) ModuleErrorInfo() ModuleErrorInfo {
 	return e.Info.(ModuleErrorInfo)
+}
+
+type TypeErrorInfo struct {
+	ExpectedType, GotType string
+}
+
+func (TypeErrorInfo) info() {}
+func (e *Error) TypeErrorInfo() TypeErrorInfo {
+	return e.Info.(TypeErrorInfo)
 }

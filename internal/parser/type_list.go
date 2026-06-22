@@ -207,7 +207,8 @@ func (p *Parser) ParseTupleType() ast.Type {
 
 // parseAssignableTypePairs parses a series of assignable expressions, optionally
 // followed by an optional type and/or a default value. Types are optional for
-// keys, but the format must be consistent.
+// keys, but the format must be consistent. Default values are only allowed if
+// isForLoop is false.
 func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 	first ast.Assignable, isForLoop bool,
 ) {

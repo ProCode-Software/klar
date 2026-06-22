@@ -9,6 +9,12 @@ type Struct struct {
 	fieldMap     map[string]*Object // Contains fields and methods
 	Initializers []*Object          // Type is [*Overload]
 	MethodSet
+	fmset *FieldMethodSet // Lazy-computed
+}
+
+type FieldMethodSet struct {
+	Fields  map[string]Type
+	Methods map[string]*Function
 }
 
 var _ SupportsMethods = (*Struct)(nil)
@@ -21,10 +27,14 @@ type StructField struct {
 
 // checkStructDecl checks a struct declaration and sets o's underlying type
 // to a [*Struct]. o's Type should be [*TypeName].
-func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *Context) {
+func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, fctx *Context) {
 	str := &Struct{}
 	o.typ.(*TypeName).Type = str
+
 	// TODO: inherited types
+	// We're just checking their kinds for now. Add the fields and methods later.
+	c.checkInheritedTypes(node.InheritedTypes, KindStruct, o.file, fctx)
+
 	if len(node.Fields) == 0 {
 		return
 	}
@@ -32,8 +42,8 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *C
 	str.Fields = make([]*Object, 0, len(node.Fields))
 	for _, field := range node.Fields {
 		var (
-			typ   = c.parseType(field.Type, ctx)
-			attrs = c.parseAttributes(field.Attributes, structFieldAttribute)
+			typ   = c.parseType(field.Type, fctx)
+			attrs = c.parseAttributes(field.Attributes, structFieldAttribute, o.file)
 		)
 		for _, id := range field.Names {
 			f := &StructField{
@@ -49,12 +59,13 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *C
 			}
 			str.fieldMap[id.Name] = obj
 			c.queue(func() {
+				// TODO: look into this again
 				// The type may not be initialized by the time we initialize this struct
 				if Underlying(typ) != nil {
 					f.Optional = typ.Kind() == KindOptional || field.Value != nil
 				}
 				// TODO: default values
-			}, afterTypes)
+			}, false)
 		}
 	}
 }
@@ -64,6 +75,4 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration, ctx *C
 func (c *Checker) makeDefaultInitializers(o *Object) {
 }
 
-func (s *Struct) Kind() Kind                        { return KindStruct }
-func (s *Struct) String() string                    { return "" }
-func (s *Struct) StringWithName(name string) string { return name }
+func (s *Struct) Kind() Kind { return KindStruct }

@@ -150,7 +150,7 @@ func (l *Lexer) readStrInterp() StringEscape {
 		braceCt = 1
 		b       strings.Builder
 	)
-	b.WriteRune('{')
+	b.WriteByte('{')
 loop:
 	for {
 		// TODO: rewrite this part. this sucks

@@ -50,6 +50,14 @@ public func Int.expandedForm() -> [Int] {}
 // String -> Int
 // =====
 
+// TODO: Move to 'klar.number' module
+type Radix {
+    .binary = 2
+    .octal = 8
+    .decimal = 10
+    .hexadecimal = 16
+}
+
 public func Int(from: String, base base: Int | Radix = 10) -> Result
 
 // Parses an integer from a string in Klar numeric literal format. See the
@@ -97,3 +105,6 @@ String(1234567, localeFormat: 'de') // "1.234.567"
 ```
 */
 public func String(num: Int, localeFormat localeFormat: Locale)
+
+// TODO: Move to other module (named `klar.i18n`?)
+type Locale = String

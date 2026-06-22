@@ -49,7 +49,8 @@ const (
 // Prefix returns the prefix of the error code.
 func (e *Error) Prefix() Code {
 	prefix := e.Code / 100
-	if prefix == SyntaxErrorPrefix+1 {
+	// Convert 200 to 100
+	if prefix == (SyntaxErrorPrefix/100)+1 {
 		return SyntaxErrorPrefix
 	}
 	return prefix * 100
@@ -100,8 +101,14 @@ func (e *Error) AddHighlight(msg string, r ranges.Range) *Error {
 	return e
 }
 
-func (e *Error) AddDetail(msg string, file string, r ranges.Range) *Error {
+func (e *Error) AddDetail(msg, file string, r ranges.Range) *Error {
 	d := Detail{File: file, Range: r, Message: msg}
+	e.Details = append(e.Details, d)
+	return e
+}
+
+func (e *Error) AddDetailf(file string, r ranges.Range, format string, v ...any) *Error {
+	d := Detail{File: file, Range: r, Message: fmt.Sprintf(format, v...)}
 	e.Details = append(e.Details, d)
 	return e
 }

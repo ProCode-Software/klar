@@ -176,6 +176,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	} else {
 		f.Variables, f.Expression = p.parseForVariables()
 	}
+	f.Label = p.tryParseLoopLabel()
 	f.Body = p.ParseBlock()
 	return f
 }
@@ -199,13 +200,20 @@ func (p *Parser) parseForVariables() (
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 	p.Advance() // while
 	w := &ast.WhileStatement{}
-	if p.CurrKind() == lexer.LeftCurlyBrace {
-		w.Infinite = true
-	} else {
+	if curr := p.CurrKind(); curr != lexer.LeftCurlyBrace && curr != lexer.Colon {
 		w.Condition = p.ParseExpression(ExpressionBindingPower)
-	}
+	} // Otherwise, it's an infinite loop
+	w.Label = p.tryParseLoopLabel()
 	w.Body = p.ParseBlock()
 	return w
+}
+
+func (p *Parser) tryParseLoopLabel() *ast.Identifier {
+	if p.CurrKind() != lexer.Colon {
+		return nil
+	}
+	p.Advance()
+	return new(p.ParseIdentifier())
 }
 
 func (p *Parser) ParseBlock() *ast.Block {
@@ -221,26 +229,12 @@ func (p *Parser) ParseBlock() *ast.Block {
 	}
 }
 
-func (p *Parser) ParseControlStatement() ast.Statement {
-	stmtKind := p.Advance().Kind // next, stop
-	var loopKind lexer.TokenType
-	switch p.CurrKind() {
-	case lexer.Newline, lexer.Comma:
-	case lexer.When, lexer.For, lexer.While:
-		loopKind = p.Advance().Kind
-	default:
-		p.Error(
-			klarerrs.Token(klarerrs.ErrInvalidLoop, p.Advance()).
-				SetParam("stmt", stmtKind),
-		)
-	}
-	switch stmtKind {
-	case lexer.Next:
-		return &ast.NextStatement{Loop: loopKind}
-	case lexer.Stop:
-		return &ast.StopStatement{Loop: loopKind}
-	default:
-		// Unreachable
-		panic("invalid control statement: " + stmtKind.String())
-	}
+func (p *Parser) ParseStopStatement() *ast.StopStatement {
+	p.Advance() // stop
+	return &ast.StopStatement{Label: p.tryParseLoopLabel()}
+}
+
+func (p *Parser) ParseNextStatement() *ast.NextStatement {
+	p.Advance() // next
+	return &ast.NextStatement{Label: p.tryParseLoopLabel()}
 }

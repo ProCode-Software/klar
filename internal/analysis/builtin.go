@@ -3,6 +3,7 @@ package analysis
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/module/imports"
 )
@@ -21,7 +22,7 @@ import (
 // Bootstrapped and typechecked Klar module.
 var builtinModule *Module
 
-var BuiltInContext = &Context{File: -2}
+var BuiltInContext = &Context{File: -1}
 
 // Types that always stay the same and don't depend on other types.
 //
@@ -39,17 +40,97 @@ var primitives = []struct {
 	{"Nothing", NothingType},
 }
 
+// Composite types
+var compositeTypes = []struct {
+	declaredName string // Name as declared in the builtin module
+	kind         Kind
+	asKind       func(*Context) Type // The type that actually has the kind
+}{
+	{"List", KindList, func(ctx *Context) Type {
+		return &List{ctx.Lookup("T")}
+	}},
+	{"Map", KindMap, func(ctx *Context) Type {
+		return &Map{ctx.Lookup("K"), ctx.Lookup("V")}
+	}},
+	{"Result", KindResult, func(ctx *Context) Type {
+		return &Result{ctx.Lookup("T"), ErrorType}
+	}},
+	{"Task", KindTask, func(ctx *Context) Type {
+		return &Task{ctx.Lookup("T")}
+	}},
+	{"Optional", KindOptional, func(ctx *Context) Type {
+		return &Optional{ctx.Lookup("T")}
+	}},
+	{"Error", ErrorType, func(*Context) Type { return ErrorType }},
+}
+
 // Builtin functions
 var BuiltinFuncs = []string{"print", "crashout", "clone", "TODO"}
+
+type Tuple []Type
+
+func (t Tuple) Kind() Kind { return KindTuple }
+func (t Tuple) String() string {
+	if len(t) == 0 {
+		return "()"
+	}
+	var b strings.Builder
+	b.WriteByte('(')
+	for i, elem := range t {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(TypeToString(elem))
+	}
+	b.WriteByte(')')
+	return b.String()
+}
 
 type List struct{ Elem Type }
 
 func (l *List) Kind() Kind     { return KindList }
 func (l *List) String() string { return "[" + TypeToString(l.Elem) + "]" }
 
+type Map struct{ Key, Value Type }
+
+func (*Map) Kind() Kind { return KindMap }
+func (m *Map) String() string {
+	return fmt.Sprintf("#{%s: %s}", TypeToString(m.Key), TypeToString(m.Value))
+}
+
+type Optional struct{ Elem Type }
+
+func (*Optional) Kind() Kind       { return KindOptional }
+func (o *Optional) String() string { return TypeToString(o.Elem) + "?" }
+
+// TODO: Should Optional have an Underlying() type?
+
+type Result struct{ Success, Error Type }
+
+var ResultNothing = &Result{Success: NothingType, Error: ErrorType}
+
+func (*Result) Kind() Kind { return KindResult }
+func (r *Result) String() string {
+	// Shorthands
+	switch {
+	case r.Success == NothingType && r.Error == ErrorType:
+		return "Result"
+	case r.Error == ErrorType:
+		return "Result<" + TypeToString(r.Success) + ">"
+	}
+	return fmt.Sprintf("Result<%s, %s>", TypeToString(r.Success), TypeToString(r.Error))
+}
+
+type Task struct{ Result Type }
+
+func (*Task) Kind() Kind { return KindTask }
+func (t *Task) String() string {
+	return "Task<" + TypeToString(t.Result) + ">"
+}
+
 func (c *Checker) loadInternalModules() {
-	if builtinModule != nil && attributesModule != nil &&
-		builtinModule.Target == c.module.Target {
+	if builtinModule != nil && attributesModule != nil {
+		attributesAllowed = true
 		return // Already loaded
 	}
 	var (
@@ -61,8 +142,8 @@ func (c *Checker) loadInternalModules() {
 	)
 	// As a temporary limitation, the builtin module can't reference attributes.
 	// The attributes module needs the builtin types.
+	attributesAllowed = !isBootstrap
 	if isBootstrap {
-		attributesAllowed = false
 		if slices.Equal(currImpPath, builtinImportPath) {
 			builtinModule = c.module
 		} else if slices.Equal(currImpPath, attributesImportPath) {

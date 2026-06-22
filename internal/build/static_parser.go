@@ -6,16 +6,19 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/parser"
 )
 
 // StaticParser is a [Parser] implementation that parses only a set of files.
 // A reader, tokens, or an [ast.Program] may be provided for each file.
 type StaticParser struct {
-	Files map[string]*StaticParserFile
+	Files    map[string]*StaticParserFile
+	Fallback *StdParser
 }
 
 type StaticParserFile struct {
@@ -26,8 +29,11 @@ type StaticParserFile struct {
 }
 
 // NewStaticParser creates a new [StaticParser] that parses one file.
-func NewStaticParser(path string, f *StaticParserFile) *StaticParser {
-	return &StaticParser{map[string]*StaticParserFile{path: f}}
+func NewStaticParser(cwd, path string, f *StaticParserFile) *StaticParser {
+	return &StaticParser{
+		Files:    map[string]*StaticParserFile{path: f},
+		Fallback: NewStdParser(cwd, DefaultStdParserOptions),
+	}
 }
 
 func (p *StaticParser) LoadFile(path string, f *StaticParserFile) {
@@ -37,6 +43,8 @@ func (p *StaticParser) LoadFile(path string, f *StaticParserFile) {
 	p.Files[path] = f
 }
 
+func (p *StaticParser) SetFallbackCwd(cwd string) { p.Fallback.cwd = cwd }
+
 // Parse implements [Parser]. It returns [os.ErrNotExist] if path
 // is not found in the StaticParser's file map.
 func (p *StaticParser) Parse(path string, l *slog.Logger) (
@@ -44,6 +52,10 @@ func (p *StaticParser) Parse(path string, l *slog.Logger) (
 ) {
 	f, ok := p.Files[path]
 	if !ok {
+		// Fallback to [StdParser] for parsing modules in the standard library
+		if _, err := filepath.Rel(module.SystemDirs.Std, path); err == nil {
+			return p.Fallback.Parse(path, l)
+		}
 		return path, nil, fmt.Errorf("load file %s: %w", path, os.ErrNotExist)
 	}
 	if f.ShortPath == "" {

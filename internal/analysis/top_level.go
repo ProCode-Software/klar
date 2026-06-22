@@ -2,8 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -69,9 +67,16 @@ func (c *Checker) collectTopLevelObjects(
 						inits = make(map[string][]*Object)
 					}
 					inits[name] = append(inits[name], ov)
-				} else if par == nil {
+				} else if par == nil { // Object with same name isn't a function
 					attrs = nil
 					continue // There was an error (already reported)
+				} else { // Function
+					parFn := par.typ.(*Function)
+					parFn.Overloads = append(parFn.Overloads, ov.typ.(*Overload))
+					// If at least 1 overload is public, the entire function is public
+					if public {
+						par.public = true
+					}
 				}
 				// Initializers and methods are also declared into c.moduleDecls
 				// as top-level objects.
@@ -82,7 +87,7 @@ func (c *Checker) collectTopLevelObjects(
 				c.declareTopLevelObject(ov, &attrs, &DeclarationInfo{
 					file:       fctx,
 					node:       stmt,
-					Attributes: c.parseAttributes(attrs, funcAttribute),
+					Attributes: c.parseAttributes(attrs, funcAttribute, fid),
 				}, false)
 				continue
 			case *ast.FuncAliasDeclaration:
@@ -115,7 +120,7 @@ func (c *Checker) collectTopLevelObjects(
 				var hadInit bool
 				if maybeFnObj := c.rootContext.Lookup(name); maybeFnObj != nil {
 					if _, hadInit = maybeFnObj.typ.(*Function); hadInit {
-						// This type was declared earlier than the initializer.
+						// The initializer was declared earlier than this type.
 						// Change the object in the context to this type. The
 						// initializer will still be available in c.moduleDecls.
 						c.rootContext.Declarations[name] = obj
@@ -172,6 +177,8 @@ func (c *Checker) collectTopLevelObjects(
 				err.Label += "s"
 			}
 			c.fileError(err, fid)
+			_=1+1
+			attrs = nil
 		}
 	}
 	// Ensure no top-level objects were shadowed by imports
@@ -208,16 +215,15 @@ func (c *Checker) collectTopLevelObjects(
 // checkTopLevelObjects typechecks all top-level objects, but not function bodies.
 // TODO: take a context
 func (c *Checker) checkTopLevelObjects(
-	methods map[string][]methodInfo, inits map[string][]*Object,
+	sortedObjs []*Object, methods map[string][]methodInfo, inits map[string][]*Object,
 ) {
 	var (
-		objs        = slices.SortedFunc(maps.Keys(c.moduleDecls), sortByOrder)
 		typeAliases []*Object // [*TypeName]
 		nonTypes    []*Object // Variable/function declaration
 		funcAliases []*Object // [*FunctionAlias]
 	)
 	// 1. Check new type declarations (not aliases)
-	for _, obj := range objs {
+	for _, obj := range sortedObjs {
 		switch obj.typ.(type) {
 		case *TypeName:
 			if _, ok := c.moduleDecls[obj].node.(*ast.TypeAliasDeclaration); ok {
@@ -237,13 +243,11 @@ func (c *Checker) checkTopLevelObjects(
 	}
 	// 3. Non-types (no methods)
 	for _, obj := range nonTypes {
-		if _, ok := obj.typ.(*FunctionAlias); !ok {
-			c.checkDeclaration(obj)
-		}
+		c.checkDeclaration(obj)
 	}
 	// 4. Function aliases (no methods)
-	for _, info := range funcAliases {
-		c.resolveFuncAlias(info)
+	for _, obj := range funcAliases {
+		c.checkDeclaration(obj)
 	}
 	// 5. Methods and initializers: Associate methods/initializers with receiver types
 	for typeName, methods := range methods {
@@ -318,7 +322,7 @@ func (c *Checker) createVarPlaceholders(d *ast.VariableDeclaration,
 			value = d.Values[i]
 		}
 		// Pointer value will be set when `value` is first inferred
-		rhsType := new(Type(nil))
+		rhsType := new(Type)
 		if explicitType != nil {
 			*rhsType = explicitType
 		}

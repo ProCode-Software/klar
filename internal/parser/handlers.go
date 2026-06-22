@@ -203,8 +203,10 @@ func (p *Parser) handleStatement(kind lexer.TokenType) (res ast.Statement, handl
 		res = p.ParseForStatement()
 	case lexer.While:
 		res = p.ParseWhileStatement()
-	case lexer.Next, lexer.Stop:
-		res = p.ParseControlStatement()
+	case lexer.Next:
+		res = p.ParseNextStatement()
+	case lexer.Stop:
+		res = p.ParseStopStatement()
 	}
 	res.SetPos(startPos, p.lastTokEnd())
 	return res, true

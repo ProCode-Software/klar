@@ -71,6 +71,10 @@ func (c *Checker) performFileImports(files []string, fileContexts map[string]*Co
 			if !ok {
 				res = &imported{}
 				res.module, res.err = c.importModule(imp.Module, ictx)
+				// Ensure the module has any public exports, otherwise report an error
+				if res.err == nil && !res.module.HasExports() {
+					res.err = klarerrs.ImportError(klarerrs.ErrNoPublicExports, imp.Module, nil)
+				}
 				importCache[impPathStr] = res
 			}
 
@@ -108,9 +112,7 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &Namespace{
 		Context: mod.Context,
 	})
-	if existing := fctx.Declare(nsObj); existing != nil {
-		c.fileError(redeclaredError(nsObj, existing, true), fctx.File)
-	}
+	c.declare(fctx, nsObj)
 
 	// Declare unqualified imports
 	for _, name := range stmt.UnqualifiedImports {
@@ -118,10 +120,9 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 		obj := mod.Context.Lookup(target)
 		if obj == nil || !obj.public {
 			// Not found in the module or private
-			err := klarerrs.NewReferenceError(
+			err := klarerrs.ReferenceError(
 				klarerrs.ErrExportUndefined, name.Name.Range(), target,
-			).
-				SetParam("module", mod.ImportPath.String())
+			).SetParam("module", mod.ImportPath.String())
 			err.Label = fmt.Sprintf(
 				"%s doesn't export %s",
 				klarerrs.Quote(mod.ImportPath.String()), klarerrs.Quote(target),
@@ -136,15 +137,22 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 			c.fileError(err, fctx.File)
 			continue
 		}
-		// Use user-declared unqualified import alias
+		// Clone the object so
+		// - We can modify its declared range, so when an error is reported for
+		// 	its name being redeclared, it shows the range of the import rather
+		// 	than the definition outside the current module.
+		// - We can use the user-declared unqualified import alias
+		obj = new(*obj)
+		obj.rang = name.Name.Range()
+		obj.file = fctx.File
+		obj.module = c.module
+		// TODO: Should we change obj's order, and context?
 		if !name.Label.IsZero() {
-			obj = new(*obj)
 			obj.name = name.Label.Name
 		}
 		// Declare the unqualified import
-		if existing := fctx.Declare(obj); existing != nil {
-			c.fileError(redeclaredError(obj, existing, true), fctx.File)
-		}
+		// TODO: Use a custom redeclared error to show "X was already imported"
+		c.declare(fctx, obj)
 	}
 }
 
@@ -167,6 +175,10 @@ func (c *Checker) reportImportError(importPath string, err error,
 	importPathBase, _, _ := strings.Cut(importPath, ".")
 	quotedImportPath := klarerrs.Quote(importPath)
 	switch {
+	case kerr.Code == klarerrs.ErrNoPublicExports:
+		kerr.Label = quotedImportPath + " doesn't provide anything to import"
+	case kerr.Code != klarerrs.ErrModuleNotFound:
+		// Keep the provided label or use no label
 	case slices.Contains(imports.StdlibImports, importPathBase):
 		kerr.Label = quotedImportPath + " isn't in the standard library"
 	case importPathBase == c.module.ImportPath[0]:
@@ -176,4 +188,8 @@ func (c *Checker) reportImportError(importPath string, err error,
 	}
 
 	c.fileError(kerr, fid)
+}
+
+func (c *Checker) lookupQualified(ns, name ast.Identifier, fctx *Context) *Object {
+	return nil
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/ProCode-Software/klar/cmd/klar/internal/klarcmd"
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -43,7 +42,9 @@ func main() {
 			)
 			cli.Exit(2)
 		}
-		run.RunInput(strings.NewReader(args[2]), "string")
+		if _, err := run.RunString(args[2], "string"); err != nil {
+			cli.FailureError(err)
+		}
 	case "--help", "-h":
 		ShowHelp(os.Stdout, true)
 	case "-v", "--version":

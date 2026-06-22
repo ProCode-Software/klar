@@ -7,6 +7,7 @@ import (
 const (
 	_ Code = TypeErrorPrefix + iota
 
+	ErrTypeMismatch           // Type mismatch
 	ErrAliasSelfType          // Method self type can't be a type alias
 	ErrUnsupportedSelfType    // Self type doesn't support methods
 	ErrUnsupportedInitType    // Initializer target doesn't support initializers
@@ -14,8 +15,28 @@ const (
 	ErrAliasAndMethodSameName // Method and alias have the same name
 	ErrEnumSameValue          // Enum value must be unique
 	ErrCantInferStringEnum    // Can't infer string enum value
+	ErrAttributesNotAllowed   // Attributes are not allowed in this context (bootstrap)
+	ErrUnknownAttribute       // Unknown attribute
+	ErrGenericTypeAlias       // Type alias cannot be a generic type
+	ErrDepCycle               // Circular type reference
+	ErrNotAType               // Variable or function used in type context
+	ErrInvalidRestType        // Rest type used outside of function parameter
+	ErrNonBoolWhileCond       // Condition in 'while' statement must be type Bool
+	ErrUnwrapRequired         // Optional/Result type must be unwrapped before use
+	ErrNotIterable            // Type isn't iterable (can be used in a 'for' loop)
+	ErrOver2LoopVars          // Can't declare more than 2 loop variables in a 'for' loop
+	ErrMultipleIntIterVars    // Only 1 variable allowed when iterating over Int
+	ErrTypeAsValue            // Type used as a value
+	ErrUnknownStructShorthand // Can't determine type of struct from shorthand (`.(...)`)
+	ErrUnknownEnumShorthand   // Can't determine type of enum from shorthand (`.key`)
+	ErrInvalidRangeType       // Can't range over this type
+	ErrStepWithStringRange    // Step isn't allowed with String range
+	ErrNonConstStringRange    // Range bounds must be constants when ranging over String
+	ErrOpenStringRange        // '..<' not allowed with range over String
+	ErrNonLetterStringRange   // Bounds of range over String must be a letter or digit
+	ErrMultiCharStringRange   // Bounds of range over String must be a single character
 
-	// Old errors
+	// Old errors. For reference only.
 
 	ErrUntypedNil       // nil requires contextual type
 	ErrUntypedEmptyList // Can't infer type from empty list
@@ -23,11 +44,9 @@ const (
 
 	ErrUncheckedOptional // Required to check if optional is nil
 	ErrUncheckedResult   // Required to check Result for error
-	ErrInvalidRestType   // Rest type used where it is not supposed to
 	ErrInvalidRestExpr   // Rest expression used where it is not supposed to
 	ErrVariadicLast      // Variadic param must be last
 
-	ErrTypeCycle         // Circular type reference
 	ErrNoGenerics        // Only builtin types are generic
 	ErrWrongTypeParamLen // Wrong number of generic params
 	ErrInvalidEnumValue  // Enum value must be literal string or number
@@ -38,7 +57,6 @@ const (
 	ErrOverloadExists         // Overload already defined
 
 	ErrAssignToConst   // Attempted reassignment to constant reference
-	ErrTypeMismatch    // Type mismatch
 	ErrWrongAssignType // Wrong type for assignment
 
 	ErrNonBoolLogical     // Operands in logical expression must be boolean
@@ -50,6 +68,8 @@ const (
 )
 
 func (e *Error) handleTypeError() string {
+	name := Quote(e.Name)
+	info, _ := e.Info.(TypeErrorInfo)
 	switch e.Code {
 	default:
 		e.noMessage()
@@ -75,6 +95,62 @@ func (e *Error) handleTypeError() string {
 			"Enum item %s has the same value as %s",
 			Quote(key), Quote(otherKey),
 		)
+	case ErrUnknownAttribute:
+		return "I don't recognize the " + name + " attribute"
+	case ErrAttributesNotAllowed:
+		return "This module can't use attributes when being bootstrapped"
+	case ErrGenericTypeAlias:
+		return "The right-hand side of a type alias declaration can't be a generic"
+	case ErrDepCycle:
+		isTypeDecl := e.BoolParam("type")
+		isSelf := e.BoolParam("self")
+		if isSelf {
+			return name + " is declared in terms of itself"
+		}
+		msg := name + " depends on itself in a cycle"
+		if isTypeDecl {
+			msg = "Type " + msg
+		}
+		return msg
+	case ErrNotAType:
+		actual := e.StringParam("kind")
+		return name + " is " + WithA(actual) + ", not a type"
+	case ErrInvalidRestType:
+		return "'...' can only be used as a function parameter"
+	case ErrNonBoolWhileCond:
+		return "The condition in a 'while' statement has to be of type Bool"
+	case ErrUnwrapRequired:
+		kind := e.StringParam("kind")
+		if kind == "" {
+			kind = "Value"
+		} else {
+			kind += " value"
+		}
+		msg := kind + " of type " + Quote(info.GotType) + " must be unwrapped"
+		if before := e.StringParam("before"); before != "" {
+			msg += " " + before
+		}
+		return msg
+	case ErrOver2LoopVars:
+		return "Up to 2 variables can be declared in a 'for' loop"
+	case ErrMultipleIntIterVars:
+		return "Only 1 loop variable is allowed when iterating over an Int"
+	case ErrNotIterable:
+		if info.GotType == "Float" {
+			e.Hint("Convert the value to an Int to iterate over it.")
+			return "Can't iterate over a Float"
+		}
+		e.Hint("Iterable types include lists, Strings, Ints, and maps.")
+		return "Can't iterate over type " + Quote(info.GotType)
+	case ErrInvalidRangeType:
+		e.Hint("You can range over String, Int, and Float")
+		return "Can't range over type " + Quote(info.GotType)
+	case ErrStepWithStringRange:
+		return "A step can't be specified when ranging over type String"
+	case ErrNonConstStringRange:
+		return "The bounds of a range over String must be constants"
+	case ErrOpenStringRange:
+		return "'..<' can't be used when ranging over type String"
 
 		// OLD ERRORS
 		// =======

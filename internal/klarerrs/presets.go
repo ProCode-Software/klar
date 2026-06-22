@@ -87,10 +87,18 @@ func ImportError(code Code, p imports.ImportPath, err error) *Error {
 	}
 }
 
-func NewReferenceError(code Code, r ranges.Range, name string) *Error {
+func ReferenceError(code Code, r ranges.Range, name string) *Error {
 	return &Error{
 		Code:  code,
 		Range: r,
 		Name:  name,
+	}
+}
+
+func TypeError(code Code, r ranges.Range, expectedType, gotType string) *Error {
+	return &Error{
+		Code:  code,
+		Range: r,
+		Info:  TypeErrorInfo{ExpectedType: expectedType, GotType: gotType},
 	}
 }

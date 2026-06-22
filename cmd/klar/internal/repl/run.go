@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path/filepath"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/module"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/run"
 	"github.com/ergochat/readline"
@@ -66,14 +68,18 @@ func Run(*command.Runner) {
 	if err != nil {
 		cli.InternalError(err)
 	}
+	defer s.Close()
 	for !s.done {
 		s.Prompt()
 	}
 }
 
 func HistoryFile() (string, error) {
-	// TODO: history file
-	return "", nil
+	if err := module.LoadSystemDirs(); err != nil {
+		return "", err
+	}
+	hist := filepath.Join(module.SystemDirs.Cache, "replHistory.txt")
+	return hist, nil
 }
 
 func (s *Session) Prompt() {
@@ -96,7 +102,7 @@ func (s *Session) Prompt() {
 		s.Finish()
 		return
 	default:
-		cli.Error("Failed to read input: ", err)
+		cli.Error("Failed to read input:", err)
 	}
 	s.interrupted = false
 	if s.multiline {
@@ -107,11 +113,7 @@ func (s *Session) Prompt() {
 	}
 	tokens := tokenize(strings.NewReader(input), int64(len(input)/10))
 	if len(tokens) > 1 && tokens[0].Kind == lexer.Identifier {
-		valid, exit := s.handleCommand(tokens[0].Source, tokens[1:len(tokens)-1])
-		if exit {
-			s.Finish()
-		}
-		if valid {
+		if valid := s.handleCommand(tokens[0].Source, tokens[1:len(tokens)-1]); valid {
 			return
 		}
 	}
@@ -138,6 +140,7 @@ func (s *Session) runTokens(t []lexer.Token) {
 	res, err := run.RunTokens(t, "repl")
 	// TODO: get access to typechecked module in order to add Repl flag
 	if err != nil {
+		s.Error("Failed to evaluate", err)
 		return
 	}
 	for _, mod := range res.Modules {
@@ -149,22 +152,27 @@ func (s *Session) runTokens(t []lexer.Token) {
 }
 
 func (s *Session) handleShortcut(r rune) (rune, bool) {
+	const letterOffset = 'a' - 1
 	switch r {
-	case 7: // Ctrl+G
+	case 'g' - letterOffset: // Ctrl+G
 		s.handleCommand("multiline", nil)
 		s.Prompt()
 		return 0, false
-	case 19: // Ctrl+S
+	case 's' - letterOffset: // Ctrl+S
 		s.handleCommand("save", nil)
+		return 0, false
+	case 'd' - letterOffset: // Ctrl+D
+		s.handleCommand("exit", nil)
 		return 0, false
 	}
 	return r, true
 }
 
-func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit bool) {
+func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid bool) {
 	switch cmd {
 	case "exit":
-		return true, true
+		s.Exit()
+		return true
 	case "help":
 		s.PrintHelp()
 	case "load":
@@ -180,9 +188,15 @@ func (s *Session) handleCommand(cmd string, args []lexer.Token) (valid, exit boo
 			s.sendMultiline()
 		}
 	default:
-		return false, false
+		return false
 	}
-	return true, false
+	return true
+}
+
+func (s *Session) Exit() {
+	s.Finish()
+	s.Close()
+	cli.Exit(0)
 }
 
 func isIncompleteToken(tok lexer.TokenType) bool {

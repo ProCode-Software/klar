@@ -49,34 +49,43 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 
 	// Load the bootstrapped modules that are needed for typechecking
 	if err := pc.CompileBootstrapped(); err != nil {
-		return nil, err
+		ierr, ok := err.(*InterfaceError)
+		if !ok || ierr.Code != ErrInternalCompileError {
+			ierr = &InterfaceError{Code: ErrInternalCompileError, Err: err}
+		}
+		return nil, ierr
+	}
+
+	res := &Result{}
+	defer func() {
+		res.AllModules = pc.Deps
+		res.Errors = pc.Errors
+		res.Warnings = pc.Warnings
+		res.Elapsed = time.Since(pc.StartTime)
+	}()
+	handleMaxErrors := func(err error) error {
+		if err == errMaxErrors {
+			res.IsMaxErrors = true
+			return nil
+		}
+		return err
 	}
 
 	// Dependencies are compiled first
-	depModules, err := pc.CompileDeps()
-	if err != nil {
+	var err error
+	if res.DepModules, err = pc.CompileDeps(); handleMaxErrors(err) != nil {
 		return nil, err
 	}
-
 	// Don't display errors and warnings from dependencies. When an input imports
 	// a dependency with errors, they will have their own error. And for
 	// dependency warnings, we don't need them at all.
 	pc.ResetErrorsAndWarnings()
 
 	// Then, the inputs from the command line
-	inputModules, err := pc.CompileInputs()
-	if err != nil {
+	if res.Modules, err = pc.CompileInputs(); handleMaxErrors(err) != nil {
 		return nil, err
 	}
-
-	return &Result{
-		AllModules: pc.Deps,
-		DepModules: depModules,
-		Modules:    inputModules,
-		Errors:     pc.Errors,
-		Warnings:   pc.Warnings,
-		Elapsed:    time.Since(pc.StartTime),
-	}, nil
+	return res, nil
 }
 
 func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
@@ -132,6 +141,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 
 func (pc *ProjectCompiler) CompileInput(i *Input, root bool) (modules []*Module, err error) {
 	pkc := NewPackageCompiler(pc.Compiler, i)
+	pkc.Root = root
 	if pc.Deps[i] == nil {
 		pc.Deps[i] = new(make(Deps))
 	}
@@ -155,7 +165,7 @@ func (pc *ProjectCompiler) DownloadDeps() error {
 	pc.Progress.DownloadingDeps()
 	for _, input := range pc.Inputs {
 		if input.IsSingleFile() {
-			continue
+			continue // Single-file inputs don't (can't) have dependencies
 		}
 		// TODO: glas install
 
@@ -187,11 +197,19 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 	if err != nil {
 		return err
 	}
+	// Set the targets for the builtin compiler
+	for _, projInp := range pc.Inputs {
+		inp.Targets = append(inp.Targets, projInp.Targets...)
+	}
 	compiler := NewPackageCompiler(pc.Compiler, inp)
 	compiler.Deps = new(make(Deps))
+	compiler.Root = false
 	compiler.EnforceTargetSupport = false
-	if _, err := compiler.Compile(); err != nil {
+	if _, err := compiler.Compile(); err != nil && err != errMaxErrors {
 		return err
+	}
+	if len(compiler.Errors) > 0 {
+		return &InterfaceError{Code: ErrInternalCompileError, Err: compiler.Errors[0]}
 	}
 	return nil
 }

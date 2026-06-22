@@ -26,6 +26,8 @@ func (a Operator) Equal(b Operator) bool { return a.Kind == b.Kind }
 // Len returns the length of o.
 func (o Operator) Len() uint32 { return uint32(len(o.Kind.String())) }
 
+func (o Operator) Range() ranges.Range { return ranges.Range{o.Position, o.End()} }
+
 // An Identifier represents a name in the source code.
 type Identifier struct {
 	Name     string

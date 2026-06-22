@@ -50,7 +50,7 @@ func isNumber(char: String) = char in '0'...'9'
 func isLetter(char: String) = char in 'A'...'Z' or 'a'...'z'
 
 func Lexer.readToken() -> Token {
-    while self.hasTokens() {
+    while self.hasTokens() :loop {
         char := self.read()
         when char {
             '-' -> return .dash
@@ -60,7 +60,7 @@ func Lexer.readToken() -> Token {
             '0'...'9' -> return self.readNumber()
             '#' -> return self.readComment()
             'a'...'z' | 'A'...'Z' -> return self.readIdentifier()
-            ' ' -> next while
+            ' ' -> next :loop
             _ -> return .illegal(char)
         }
     }
@@ -68,13 +68,13 @@ func Lexer.readToken() -> Token {
 
 func Lexer.readIdentifier() -> Token {
     self.append(self.prev)
-    while self.hasTokens() {
+    while self.hasTokens() :loop {
         char := self.read()
         when isLetter(char) {
             true -> self.append(char)
             false -> {
                 self.backup()
-                stop while
+                stop :loop
             }
         }
     }

@@ -8,6 +8,9 @@ import (
 
 func (p *Parser) unknownTokenError() {
 	tok := p.AdvanceNonBoundary()
+	if tok.Kind == lexer.Newline {
+		tok = p.Advance()
+	}
 	p.Error(klarerrs.UnexpectedToken(tok))
 	// p.skipUntilBoundary()
 }

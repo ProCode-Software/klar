@@ -33,7 +33,7 @@ public func deprecated(
     reason: String?,
     since _: Version?,
     use _: Any?, // What users should use instead
-    target _: ...Target, // Platforms this is deprecated on
+    on _: ...Target, // Platforms this is deprecated on
 ) {}
 
 // Mark this as externally implemented in another language. You must make

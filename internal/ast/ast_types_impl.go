@@ -54,9 +54,6 @@ func (MapCastExpression) expr()    {}
 func (ObjectPipeline) expr()       {}
 func (ForExpression) expr()        {}
 func (StructDotInit) expr()        {}
-func (AssignableVars) expr()       {}
-func (AssignableTuple) expr()      {}
-func (WhenCanCase) expr()          {}
 func (GoExpression) expr()         {}
 func (AwaitExpression) expr()      {}
 func (RelationalExpression) expr() {}
@@ -67,7 +64,6 @@ func (StringTypeMatch) expr()      {}
 // Statements
 func (BadExpression) stmt()        {}
 func (VariableDeclaration) stmt()  {}
-func (UpdateStatement) stmt()      {}
 func (ForStatement) stmt()         {}
 func (AssignmentStatement) stmt()  {}
 func (ExpressionStatement) stmt()  {}
@@ -118,7 +114,6 @@ func (d TagDeclaration) Name() string       { return d.Identifier.Name }
 func (Symbol) assignable()            {}
 func (IndexExpression) assignable()   {}
 func (SliceExpression) assignable()   {}
-func (AssignableVars) assignable()    {}
 func (BadExpression) assignable()     {}
 func (Discard) assignable()           {}
 func (RestExpression) assignable()    {}

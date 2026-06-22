@@ -18,6 +18,7 @@ type PackageCompiler struct {
 	// import paths (keys).
 	importErrs map[string]error
 
+	Root                 bool
 	EnforceTargetSupport bool
 	// TODO: should we add codegen options
 }
@@ -26,6 +27,7 @@ func NewPackageCompiler(c *Compiler, i *Input) *PackageCompiler {
 	return &PackageCompiler{
 		Compiler: c,
 		Input:    i,
+		Root:     true,
 	}
 }
 
@@ -39,6 +41,7 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 
 	// Load modules from cache or parse their files
 	ld := NewLoader(pkc.Compiler, pkc.Input, pkc.Deps)
+	ld.Root = pkc.Root
 	loaded, err := ld.Load()
 	if err != nil {
 		return nil, err
@@ -49,10 +52,8 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 	}
 
 	// Typecheck
-	modules = pkc.TypeCheckModules(loaded)
-
+	return pkc.TypeCheckModules(loaded)
 	// TODO: Codegen?
-	return
 }
 
 func CheckCompilerCompatibility(spec version.Specifier) error {
@@ -71,7 +72,7 @@ func (pkc *PackageCompiler) LoadStdlibDeps(stdDeps []imports.ImportPath) error {
 		if _, ok := pkc.Deps.TryGet(importPath.String()); ok {
 			continue // Module already compiled
 		}
-		if importPath[1] == "js" {
+		if len(importPath) > 1 && importPath[1] == "js" {
 			// 'klar.js' is a project-specific virtual module. It's based on the
 			// package's targets and the input's klar.build JS options.
 			pkc.setImportError(importPath.String(), errors.New(
@@ -86,6 +87,7 @@ func (pkc *PackageCompiler) LoadStdlibDeps(stdDeps []imports.ImportPath) error {
 			return nil
 		}
 		compiler := NewPackageCompiler(pkc.Compiler, inp)
+		compiler.Root = false
 		compiler.Deps = pkc.Deps
 		compiler.EnforceTargetSupport = false
 		if _, err := compiler.Compile(); err != nil {
@@ -102,7 +104,9 @@ func (pkc *PackageCompiler) setImportError(path string, err error) {
 	pkc.importErrs[path] = err
 }
 
-func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (succeededModules []*Module) {
+func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (
+	succeededModules []*Module, err error,
+) {
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	skippedModules := make(map[*Module]struct{})
 typeCheckModules:
@@ -133,13 +137,16 @@ typeCheckModules:
 		// Now we can actually typecheck
 		pkc.Progress.CheckingModule(mod.Path, i+1, len(loaded.sortedDeps))
 		errs := pkc.TypeCheckModule(mod, importPathStr)
-		if hasErrs := pkc.sendErrors(errs); hasErrs {
+		if hasErrs, isMax := pkc.sendErrors(errs); hasErrs {
 			// Module has type errors
 			mod.Failed = true
 			skippedModules[mod] = struct{}{}
+			if isMax {
+				return succeededModules, errMaxErrors
+			}
 			continue
 		}
 		succeededModules = append(succeededModules, mod)
 	}
-	return succeededModules
+	return succeededModules, nil
 }

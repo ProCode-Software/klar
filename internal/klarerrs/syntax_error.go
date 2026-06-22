@@ -48,6 +48,7 @@ const (
 	ErrUnderscoreValue         // Use of _ as a value
 	ErrEmptyRegexInterpolation // Empty regex interpolation
 	ErrInvalidDecimalPoint     // Decimal point can only be used in decimal (base 10) format
+	ErrIdentMustHaveLetter     // Identifiers must have at least 1 letter
 
 	// Assignment =====
 
@@ -110,6 +111,7 @@ const (
 	ErrInvalidGenericType      // Only enums can be generic (for now)
 	ErrInvalidArrow            // -> can only be used with enum
 	ErrRedeclaredField         // Struct or interface field redeclared
+	ErrRedeclaredGeneric       // Generic parameter redeclared
 
 	// When =====
 
@@ -140,6 +142,8 @@ const (
 	ErrVariadicNotLast        // Variadic parameter must be the last param (if unlabelled)
 	ErrDuplicateInheritedType // Inherited type specified twice
 	ErrNoDeclAfterAttr        // Attribute must be followed by a declaration
+	ErrMisplacedControlStmt   // Can't use 'stop'/'next' statement outside of 'when'/'for'/'while' loop
+	ErrRedeclaredLabel        // Label redeclared in the same function
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -271,6 +275,8 @@ func (e *Error) handleSyntaxError() string {
 		return "Missing variables or expression in 'for' loop"
 	case ErrEmptyGeneric:
 		return "At least 1 type is required inside '<...>'"
+	case ErrRedeclaredGeneric:
+		return "Generic " + Quote(e.Name) + " was already declared"
 	case ErrInvalidPublic:
 		return "Expected a declaration after 'public' modifier"
 	case ErrTrailingSeparator:
@@ -317,6 +323,8 @@ func (e *Error) handleSyntaxError() string {
 		return "Self-executing functions aren't allowed in Klar"
 	case ErrParenFuncTypeParams:
 		return "Parentheses are required around function parameter types"
+	case ErrIdentMustHaveLetter:
+		return "An identifier must contain at least 1 letter"
 	case ErrInvalidObjectPipeStep:
 		return "A object pipeline step must be an assignment or method call"
 	case ErrInvalidGenericType:
@@ -489,5 +497,11 @@ func (e *Error) handleSyntaxError() string {
 		return "Type " + Quote(name) + " was already inherited"
 	case ErrNoDeclAfterAttr:
 		return "Attributes must be followed by a declaration"
+	case ErrMisplacedControlStmt:
+		kind := "next"
+		if _, ok := e.Node.(*ast.StopStatement); ok {
+			kind = "stop"
+		}
+		return "A " + Quote(kind) + " statement can only be used within a 'for', 'when', or 'while' loop"
 	}
 }

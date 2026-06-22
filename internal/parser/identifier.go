@@ -2,6 +2,7 @@ package parser
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -34,26 +35,51 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 	return false
 }
 
-func newIdentifier(t lexer.Token) ast.Identifier {
-	return ast.Identifier{Name: t.Source, Position: t.Position, Len: t.Len()}
+func (p *Parser) newIdentifier(t lexer.Token) ast.Identifier {
+	ident := ast.Identifier{Name: t.Source, Position: t.Position, Len: t.Len()}
+	p.ValidateIdentName(ident.Name, ident)
+	return ident
+}
+
+// ValidateIdentName reports an error if i's Name does not contain any letters.
+// Examples of invalid identifiers: '_123', '__'
+func (p *Parser) ValidateIdentName(s string, node ast.Node) {
+	if s == "_" {
+		return // No error
+	}
+	withoutUnderscore := strings.Trim(s, "_")
+	var label string
+	if withoutUnderscore == "" {
+		// Allow discards. '___' is not allowed.
+		label = "This name has only underscores"
+	} else if strings.TrimFunc(withoutUnderscore, lexer.IsDigit) == "" {
+		// '_123'
+		label = "Identifiers should contain at least 1 letter"
+	} else {
+		return
+	}
+	err := klarerrs.Node(klarerrs.ErrIdentMustHaveLetter, node)
+	err.Name = s
+	err.Label = label
+	p.Error(err)
 }
 
 func (p *Parser) ParseIdentifier() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
 	p.validateIdentifier(tok)
-	return newIdentifier(tok)
+	return p.newIdentifier(tok)
 }
 
 func (p *Parser) ParseStrictIdentifier() ast.Identifier {
 	tok := p.Expect(lexer.Identifier)
-	return newIdentifier(tok)
+	return p.newIdentifier(tok)
 }
 
 // [*Parser.ParseIdentifier] but will not validate. Expected use case if for already
 // validated identifiers. [lexer.Underscore] is allowed (because any token is allowed)
 func (p *Parser) ParseValidIdent() ast.Identifier {
 	tok := p.AdvanceNonBoundary()
-	return newIdentifier(tok)
+	return p.newIdentifier(tok)
 }
 
 func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
@@ -61,7 +87,7 @@ func (p *Parser) ParseIdentOrDiscard() ast.Identifier {
 	if tok.Kind != lexer.Underscore {
 		p.validateIdentifier(tok)
 	}
-	return newIdentifier(tok)
+	return p.newIdentifier(tok)
 }
 
 // opt1: includingNumber, opt2: isLabel (for a better error)
@@ -81,7 +107,7 @@ func (p *Parser) ParseMapIdentifier(opts parseFlags) ast.Identifier {
 		!slices.Contains(ast.ReservedIdent, tok.Kind):
 		p.Error(klarerrs.ExpectedToken(lexer.Identifier, tok))
 	}
-	return newIdentifier(tok)
+	return p.newIdentifier(tok)
 }
 
 func (p *Parser) ParseMapIdentOrDiscard(opts parseFlags) ast.Identifier {

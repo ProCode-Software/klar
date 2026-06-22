@@ -97,7 +97,7 @@ loop:
 			c.Body = res.Expression
 		// Allow some kinds of statements outside of braces
 		case *ast.AssignmentStatement, *ast.ReturnStatement,
-			*ast.NextStatement, *ast.UpdateStatement, *ast.StopStatement:
+			*ast.NextStatement, *ast.StopStatement:
 			c.Body = res
 		default:
 			// Expected expression error

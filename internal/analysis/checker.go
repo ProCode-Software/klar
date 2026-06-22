@@ -4,6 +4,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
@@ -45,7 +46,6 @@ type Checker struct {
 	rootContext *Context // Context where top-level objects are defined.
 	module      *Module
 
-	importMap    map[string]*Module
 	nodeContexts map[ast.Node]*Context
 	moduleDecls  map[*Object]*DeclarationInfo // Declaration info for top-level objects
 
@@ -56,6 +56,10 @@ type Checker struct {
 	delayed []action
 }
 
+// FileID is the numerical identifier for a [*ast.Program].
+//   - FileID <= -1: Builtin context
+//   - FileID == 0: Module context
+//   - FileID >= 1: File context.
 type FileID int
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
@@ -66,9 +70,22 @@ func NewChecker(mod *Module, opts *Options) *Checker {
 	return c
 }
 
+var DefaultCheckerOptions = &klarbuild.CheckerOptions{
+	ValidateExhaustiveness: klarbuild.NoExhaustiveness,
+	AllowAssertions:        klarbuild.AllowAssertions,
+	CheckedListIndexing:    true,
+	CoerceNumbers:          false,
+	ValidateExternals:      false,
+	CheckAllResults:        false,
+	UseAllValues:           false,
+}
+
 func (c *Checker) Init(mod *Module, opts *Options) {
 	if opts == nil {
 		opts = &Options{}
+	}
+	if opts.CheckerOptions == nil {
+		opts.CheckerOptions = DefaultCheckerOptions
 	}
 	c.rootContext = mod.Context
 	c.module = mod
@@ -79,35 +96,57 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 }
 
 func (c *Checker) Check() {
+	defer handlePanic()
+
 	sortedFiles := slices.Sorted(maps.Keys(c.Programs))
 	// Initialize contexts for each file
-	fileContexts := c.initFileContexts()
+	fileContexts := c.initFileContexts(sortedFiles)
 	// Perform imports
 	c.performFileImports(sortedFiles, fileContexts)
+
 	// Collect top-level objects in each file and put them in the module
 	methods, inits := c.collectTopLevelObjects(sortedFiles, fileContexts)
-	c.checkTopLevelObjects(methods, inits)
+	// Sort declarations for reproducible error output
+	sortedObjs := slices.SortedFunc(maps.Keys(c.moduleDecls), sortByOrder)
+
+	// If we're currently bootstrapping, wrap the declared types to allow
+	// special operations on them.
+	if c.module.Flags.Has(BootstrapModule) {
+		c.wrapCompositeBootstrapTypes()
+	}
+
+	// Check for direct cycles among those objects
+	c.checkDirectCycles(sortedObjs)
+	// Typecheck those declarations, but not function bodies
+	c.checkTopLevelObjects(sortedObjs, methods, inits)
+
+	// Run delayed actions, including checking function bodies
+	c.runDelayed(0)
+
+	c.ResetState() // Free memory
 }
 
-func (c *Checker) initFileContexts() map[string]*Context {
-	fileContexts := make(map[string]*Context, len(c.Programs))
-	c.module.fileID = make(map[FileID]string, len(c.Programs))
+func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
+	fileContexts := make(map[string]*Context, len(sortedFiles))
+	c.module.fileID = make(map[FileID]string, len(sortedFiles))
 	if c.nodeContexts == nil {
-		c.nodeContexts = make(map[ast.Node]*Context, len(c.Programs))
+		c.nodeContexts = make(map[ast.Node]*Context, len(sortedFiles))
 	}
-	// TODO: should we sort the programs beforehand
-	var i FileID
-	for name := range c.Programs {
+	for i, name := range sortedFiles {
+		i := FileID(i) + 1
 		c.module.fileID[i] = name
 		fileContexts[name] = NewContext(c.rootContext, i)
-		i++
 	}
 	return fileContexts
 }
 
 func (c *Checker) CheckedModule() *Module { return c.module }
 
-func (c *Checker) Reset() {
+// Keeps the created type information
+func (c *Checker) ResetState() {
+}
+
+func (c *Checker) ResetAll() {
 	c.module = nil
 	c.Errors = nil
 	c.rootContext = nil
@@ -140,18 +179,29 @@ func (c *Checker) popPath() {
 	c.objPath = c.objPath[:i]
 }
 
-func (c *Checker) queue(f func(), order actionOrder) {
-	c.delayed = append(c.delayed, action{order, f})
+func (c *Checker) queue(f func(), runInParallel bool) {
+	c.delayed = append(c.delayed, action{f, runInParallel})
 }
 
-type actionOrder int
-
-const (
-	beforeFinish actionOrder = iota
-	afterTypes
-)
-
 type action struct {
-	order actionOrder
-	f     func()
+	f        func()
+	parallel bool
+}
+
+// runDelayed runs the delayed actions pushed after from.
+func (c *Checker) runDelayed(from int) {
+	var wg sync.WaitGroup
+	// Don't use a 'range' loop because delayed functions could push to the stack
+	for i := from; i < len(c.delayed); i++ {
+		a := c.delayed[i]
+		if a.parallel {
+			// TODO: they could append, so be careful about races
+			// wg.Go(a.f)
+			a.f()
+		} else {
+			a.f()
+		}
+	}
+	wg.Wait()
+	c.delayed = c.delayed[:from]
 }

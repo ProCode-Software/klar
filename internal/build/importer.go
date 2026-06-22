@@ -34,8 +34,17 @@ func NewImporter(
 func (i *Importer) Import(p imports.ImportPath, ctx analysis.ImportContext) (
 	*analysis.Module, error,
 ) {
-	mod, ok := i.Deps.TryGet(p.String())
+	importPathStr := p.String()
+	mod, ok := i.Deps.TryGet(importPathStr)
 	switch {
+	case i.importErrs != nil && i.importErrs[importPathStr] != nil:
+		// It was passed to the Importer to return an error when the module with
+		// this path was imported.
+		err := i.importErrs[importPathStr]
+		if _, ok := err.(*klarerrs.Error); !ok {
+			err = klarerrs.ImportError(klarerrs.ErrImporterError, p, err)
+		}
+		return nil, err
 	case !ok:
 		// TODO: offer name hints
 		return nil, klarerrs.ImportError(klarerrs.ErrModuleNotFound, p, nil)
@@ -50,16 +59,9 @@ func (i *Importer) Import(p imports.ImportPath, ctx analysis.ImportContext) (
 	case mod.Checked == nil:
 		// Possible toposort bug. This shouldn't happen
 		panic(fmt.Sprintf(
-			"typed AST of module being imported (%#q) is nil (possible toposort bug)", mod.Path,
+			"typed AST of module being imported (%#q) is nil (possible toposort bug)",
+			mod.Path,
 		))
-	case i.importErrs != nil && i.importErrs[p.String()] != nil:
-		// It was passed to the Importer to return an error when the module with
-		// this path was imported.
-		err := i.importErrs[p.String()]
-		if _, ok := err.(*klarerrs.Error); !ok {
-			err = klarerrs.ImportError(klarerrs.ErrImporterError, p, err)
-		}
-		return nil, err
 	}
 	return mod.Checked, nil
 }

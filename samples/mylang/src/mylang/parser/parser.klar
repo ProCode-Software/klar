@@ -3,7 +3,7 @@ import mylang.ast.{
     BoolValue, Command, Comment, Flag, Program, StringValue, Value,
 }
 
-type Parser {
+public type Parser {
     tokens: [Token]
     index: Int = 0
     comments: [Comment] = []
@@ -20,12 +20,12 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
     program := Program(commands: [], comments: parser.comments)
     errors: [SyntaxError] := []
     
-    while parser.hasTokens() {
+    while parser.hasTokens() :loop {
         cmd := parser.parseCommand()
         when cmd {
             SyntaxError -> {
                 errors.append(cmd)
-                next while
+                next :loop
             }
         }
         when parser.current() {
@@ -33,7 +33,7 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
             .eof -> {},
             _ -> {
                 errors.append(.expected("a newline", parser.current()))
-                next while
+                next :loop
             }
         }
         program.commands += [cmd]
@@ -53,9 +53,9 @@ func Parser.parseCommand() -> Result<Command, SyntaxError> {
 
     args: [Value] := []
     flags: [Flag] := []
-    while self.hasTokens() {
+    while self.hasTokens() :loop {
         when self.current() {
-            .newline | .eof -> stop while,
+            .newline | .eof -> stop :loop,
             .dash -> {
                 // Flag
                 self.advance() // -
@@ -98,13 +98,13 @@ func Parser.parseValue() -> Result<Value, SyntaxError> {
     }
 }
 
-type SyntaxError {
+public type SyntaxError {
     .expected(kind: string, got: Token)
     .flagNameMustBeIdent(Token)
     .invalidNumber(number: string)
 }
 
-func Error(err: SyntaxError) {
+public func Error(err: SyntaxError) {
     self.message = when err {
         .expected(kind, got) -> "Expected {kind}, but found {got}",
         .flagNameMustBeIdent -> "A flag name must be an identifier",

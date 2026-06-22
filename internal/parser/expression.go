@@ -426,8 +426,7 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 
 func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.PipelineExpression {
 	returnIndex := -1
-	steps := make([]ast.Node, 1, 2)
-	steps[0] = left // First step
+	steps := []ast.Node{left} // First step
 
 	for p.CurrKind() == lexer.Pipeline {
 		p.Advance()
@@ -436,7 +435,8 @@ func (p *Parser) ParsePipeline(left ast.Expression, bp BindingPower) *ast.Pipeli
 		// only be used in expression statements
 		if p.CurrKind() == lexer.Return {
 			returnIndex = len(steps)
-			steps = append(steps, p.ParseStatement(0))
+			steps = append(steps, p.ParseStatement(noEOS))
+			continue
 		}
 		steps = append(steps, p.ParseExpression(bp))
 	}

@@ -58,7 +58,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration, fctx *Cont
 	for _, entry := range node.Values {
 		ei := &EnumItem{
 			Name:       entry.Identifier.Name,
-			Attributes: c.parseAttributes(entry.Attributes, enumVariantAttribute),
+			Attributes: c.parseAttributes(entry.Attributes, enumVariantAttribute, o.file),
 		}
 		e.Items = append(e.Items, ei)
 		e.itemMap[ei.Name] = ei
