@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // Function represents a function type, either a declared function or a lambda.
@@ -22,7 +23,7 @@ func (*Function) objKind() {}
 // TODO: params with defaults
 type Overload struct {
 	*Object
-	Self           *Variable
+	Self           *Variable // Variable's type is [*TypeName]
 	Generics       []*Generic
 	Params         []*Variable // Positional params
 	LabelledParams []*LabelledParam
@@ -100,125 +101,143 @@ const SelfName = "self"
 func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
 	for _, ov := range fn.Overloads {
-		var (
-			info = ov.Object.info
-			fctx = o.FileContext()
-			stmt = info.node.(*ast.FunctionDeclaration)
-		)
-		ctx := NewContext(fctx, o.file) // Function body context
-		ov.InnerContext = ctx
+		c.checkOverload(ov, fn)
+	}
+}
 
-		// 1. Self/Receiver
-		if stmt.SelfType != nil {
-			selfPos := stmt.SelfType.Range()
-			selfName := SelfName
-			if stmt.SelfName != nil {
-				selfName = stmt.SelfName.Name
-				selfPos = stmt.SelfName.Range()
-			}
-			selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, ov.Self)
-			ov.Self.Object = selfObj
-			c.declare(ctx, selfObj)
+// fn can be nil if the overload is an initializer
+func (c *Checker) checkOverload(ov *Overload, fn *Function) {
+	if ov.info.funcKind != initFunc && fn == nil {
+		panic("function is nil for non-initializer overload")
+	}
+	var (
+		info   = ov.Object.info
+		fctx   = ov.Object.FileContext()
+		stmt   = info.node.(*ast.FunctionDeclaration)
+		isInit = ov.info.funcKind == initFunc
+	)
+	ctx := NewContext(fctx, ov.Object.file) // Function body context
+	ov.InnerContext = ctx
+
+	// 1. Self/Receiver
+	if stmt.SelfType != nil || info.receiver != nil {
+		var selfPos ranges.Range
+		selfName := SelfName
+		if stmt.SelfName != nil {
+			selfName = stmt.SelfName.Name
+			selfPos = stmt.SelfName.Range()
+		} else if stmt.SelfType != nil {
+			selfPos = stmt.SelfType.Range()
 		}
+		selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, nil)
+		vr := NewVariable(selfObj, SelfVar, info.receiver.TypeName())
+		ov.Self = vr
+		c.declare(ctx, selfObj)
+	}
 
-		// 2. Generics
-		ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.file, ctx)
+	// 2. Generics
+	ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.file, ctx)
 
-		// 3. Params
-		var restParam *Variable // Unlabelled
-		ov.Params = make([]*Variable, 0, len(stmt.Parameters))
-		ov.Arity = Arity{}
-		for _, param := range stmt.Parameters {
-			typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
-			for _, pn := range param.Names {
-				vrObj := NewObject(pn.Name.Name, ov.Object.file, pn.Name.Range(), c.module, nil)
-				vr := NewVariable(vrObj, FuncParamVar, typ)
+	// 3. Params
+	var restParam *Variable // Unlabelled
+	ov.Params = make([]*Variable, 0, len(stmt.Parameters))
+	ov.Arity = Arity{}
+	for _, param := range stmt.Parameters {
+		typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
+		for _, pn := range param.Names {
+			vrObj := NewObject(pn.Name.Name, ov.Object.file, pn.Name.Range(), c.module, nil)
+			vr := NewVariable(vrObj, FuncParamVar, typ)
+			if variadic {
+				vr.Object.flags |= VariadicParam
+			}
+
+			if pn.Label.IsZero() {
+				// Normal param
+				ov.Params = append(ov.Params, vr)
+
+				// Adjust arity: Arity only counts unlabelled params
 				if variadic {
-					vr.Object.flags |= VariadicParam
-				}
-
-				if pn.Label.IsZero() {
-					// Normal param
-					ov.Params = append(ov.Params, vr)
-
-					// Adjust arity: Arity only counts unlabelled params
-					if variadic {
-						// If there is a variadic parameter, there is no max number of params
-						ov.Arity.MaxParams = -1
-						fn.Arity.MaxParams = -1
-						if restParam != nil {
-							// Variadic exists
-						}
-						restParam = vr
-					} else {
-						optional := false // TODO: check if typ is optional
-						if !optional {
-							ov.Arity.MinParams++
-						}
-						ov.Arity.MaxParams++
+					// If there is a variadic parameter, there is no max number of params
+					ov.Arity.MaxParams = -1
+					fn.Arity.MaxParams = -1
+					if restParam != nil {
+						// Variadic exists
 					}
+					restParam = vr
 				} else {
-					// Labelled param
-					lp := &LabelledParam{pn.Label.Name, vr}
-					ov.LabelledParams = append(ov.LabelledParams, lp)
-					if ov.labelMap == nil {
-						ov.labelMap = make(map[string]*Variable)
+					optional := false // TODO: check if typ is optional
+					if !optional {
+						ov.Arity.MinParams++
 					}
-					ov.labelMap[pn.Label.Name] = vr
+					ov.Arity.MaxParams++
 				}
-				c.declare(ctx, vrObj)
-				_ = param.Default // TODO
+			} else {
+				// Labelled param
+				lp := &LabelledParam{pn.Label.Name, vr}
+				ov.LabelledParams = append(ov.LabelledParams, lp)
+				if ov.labelMap == nil {
+					ov.labelMap = make(map[string]*Variable)
+				}
+				ov.labelMap[pn.Label.Name] = vr
 			}
+			c.declare(ctx, vrObj)
+			_ = param.Default // TODO
 		}
-		// Set the arity bounds for the whole function
+	}
+	// Set the arity bounds for the whole function
+	if !isInit {
 		fn.Arity.MinParams = min(fn.Arity.MinParams, ov.Arity.MinParams)
 		if ov.Arity.MaxParams != -1 && fn.Arity.MaxParams != -1 {
 			fn.Arity.MaxParams = max(fn.Arity.MaxParams, ov.Arity.MaxParams)
 		}
-		// Verify that the variadic param is the last unlabelled param
-		if restParam != nil && ov.Params[len(ov.Params)-1] != restParam {
-		}
+	}
+	// Verify that the variadic param is the last unlabelled param
+	if restParam != nil && ov.Params[len(ov.Params)-1] != restParam {
+	}
 
-		// 4. Return type
-		var ret Type
-		if stmt.ReturnType == nil {
-			// No explicit return type = Nothing
-			ret = NothingType
-		} else {
-			// Named returns: -> (a, b: Int)
-			// Declare each key as a variable
-			if tuple, ok := stmt.ReturnType.(*ast.TupleType); ok {
-				retTuple := make(Tuple, 0, len(tuple.Values))
-				for _, pair := range tuple.Values {
-					typ := c.parseType(pair.Value, ctx)
-					for _, key := range pair.Keys {
-						retTuple = append(retTuple, typ)
-						obj := NewObject(key.Name, o.file, key.Range(), o.module, nil)
-						_ = NewVariable(obj, LocalVar, typ)
-						c.declare(ctx, obj)
-						ov.NamedReturns = append(ov.NamedReturns, obj)
-					}
+	// 4. Return type
+	var ret Type
+	if stmt.ReturnType == nil {
+		// No explicit return type = Nothing
+		ret = NothingType
+	} else {
+		// Named returns: -> (a, b: Int)
+		// Declare each key as a variable
+		if tuple, ok := stmt.ReturnType.(*ast.TupleType); ok {
+			retTuple := make(Tuple, 0, len(tuple.Values))
+			for _, pair := range tuple.Values {
+				typ := c.parseType(pair.Value, ctx)
+				for _, key := range pair.Keys {
+					retTuple = append(retTuple, typ)
+					obj := NewObject(
+						key.Name,
+						ov.Object.file, key.Range(), ov.Object.module, nil,
+					)
+					_ = NewVariable(obj, LocalVar, typ)
+					c.declare(ctx, obj)
+					ov.NamedReturns = append(ov.NamedReturns, obj)
 				}
-				ret = retTuple
-			} else {
-				ret = c.parseType(stmt.ReturnType, ctx)
 			}
-		}
-		if fn.Return != nil && ret != fn.Return {
-			// All overloads must have the same return type
-			// TODO: use a compatibility check instead of !=
-			// TODO: hint for Nothing != ()
+			ret = retTuple
 		} else {
-			fn.Return = ret
+			ret = c.parseType(stmt.ReturnType, ctx)
 		}
+	}
+	if !isInit && fn.Return != nil && ret != fn.Return {
+		// All overloads must have the same return type
+		// TODO: use a compatibility check instead of !=
+		// TODO: hint for Nothing != ()
+	} else if !isInit {
+		fn.Return = ret
+	}
 
-		// 5. Body
-		if !c.Options.IgnoreFuncBodies && (stmt.Body != nil || stmt.Expression != nil) {
-			c.queue(func() { c.checkFuncBody(stmt, ov, fn, fctx) }, true)
-		}
+	// 5. Body
+	if !c.Options.IgnoreFuncBodies && (stmt.Body != nil || stmt.Expression != nil) {
+		c.queue(func() { c.checkFuncBody(stmt, ov, fn, fctx) }, true)
 	}
 }
 
+// fn could be nil if the overload is an initializer
 func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	fn *Function, fctx *Context,
 ) {
@@ -229,7 +248,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 		// Function expression
 		return
 	}
-	sctx := newStmtContext(ctx, fctx, allowReturn)
+	sctx := newStmtContext(ctx, ov.file, allowReturn)
 	c.checkBlock(stmt.Body.Body, sctx)
 }
 

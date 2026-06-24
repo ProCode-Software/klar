@@ -2,7 +2,9 @@ package build
 
 import (
 	"cmp"
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -209,6 +211,12 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 		return err
 	}
 	if len(compiler.Errors) > 0 {
+		if pc.Compiler.Logger.Enabled(context.TODO(), slog.LevelError) {
+			pc.Compiler.Logger.Error("Modules being bootstrapped failed to compile")
+			pc.Compiler.Logger.Error("========== BEGIN COMPILER ERRORS ==========")
+			pc.PrintAllErrors(compiler.Errors)
+			pc.Compiler.Logger.Error("========== END COMPILER ERRORS ==========")
+		}
 		return &InterfaceError{Code: ErrInternalCompileError, Err: compiler.Errors[0]}
 	}
 	return nil

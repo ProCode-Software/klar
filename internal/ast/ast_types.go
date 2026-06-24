@@ -3,7 +3,6 @@ package ast
 
 import (
 	"go/ast"
-	"iter"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -127,7 +126,7 @@ type BinaryExpression struct {
 }
 
 type UnaryExpression struct {
-	Operator Operator
+	Operator Operator // [lexer.Minus] only
 	Right    Expression
 	BaseNode
 }
@@ -150,8 +149,8 @@ type AssertExpression struct {
 // =======
 
 type IndexExpression struct {
-	Object, Property Node
-	Computed         bool // If square bracket [
+	Object, Property Expression // Property is [*Symbol] if !Computed
+	Computed         bool       // If square bracket '['
 	BaseNode
 }
 
@@ -425,6 +424,12 @@ type VariableDeclaration struct {
 	ExplicitType Type
 }
 
+// Reports whether the variable declaration has a single RHS expression
+// with multiple variables on the LHS.
+func (vd *VariableDeclaration) IsSingleRHS() bool {
+	return len(vd.Values) == 1 && len(vd.Variables) > 1
+}
+
 type AssignmentStatement struct {
 	BaseNode
 	Assignee []Assignable
@@ -630,12 +635,15 @@ type Assignable interface {
 	Node
 	Expression
 	assignable()
+	// If an item implements [Destructurable], a [*Symbol] is yielded,
+	// otherwise the [Assignable] expression is returned. Items that aren't
+	// assignable yield a nil [Assignable] and a non-nil [BadExpression].
+	Every(func(Assignable, *BadExpression) bool) bool
 }
 
 type Destructurable interface {
 	Assignable
-	// Items that aren't assignable yield a non-nil BadExpression
-	Names() iter.Seq2[Identifier, *BadExpression]
+	destruct()
 }
 
 // Values that can be used in VariableDeclaration implement Destructure.

@@ -65,7 +65,7 @@ var compositeTypes = []struct {
 }
 
 // Builtin functions
-var BuiltinFuncs = []string{"print", "crashout", "clone", "TODO"}
+var BuiltinFuncs = []string{"print", "crashout", "clone", "zip", "TODO"}
 
 type Tuple []Type
 

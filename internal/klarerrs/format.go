@@ -90,3 +90,29 @@ func (c Code) Format() string {
 	first := unicode.ToLower(rune(str[0]))
 	return string(first) + str[1:]
 }
+
+// FormatCount returns the given count followed by the pluralized version
+// of the given word. If n == 0, "no" is used in place of the number.
+func FormatCount(n int, word string) string {
+	if n == 0 {
+		return "no " + word + "s"
+	} else if n == 1 {
+		return "1 " + word
+	}
+	return fmt.Sprintf("%d %ss", n, word)
+}
+
+// FormatThis returns "this" if n is 1, or "these" otherwise.
+func FormatThis(n int) string {
+	if n == 1 {
+		return "this"
+	}
+	return "these"
+}
+
+func FormatThisWord(n int, word string) string {
+	if n == 1 {
+		return "this " + word
+	}
+	return "these " + word + "s"
+}

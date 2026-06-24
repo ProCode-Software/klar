@@ -196,7 +196,7 @@ public func Map.changeKey(from, to newKey: K) {
 
 // Deletes all keys from the map.
 public func Map.clear() {
-    for k, _ in keys {
+    for k in self {
         self[k] = none
     }
 }

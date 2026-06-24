@@ -9,12 +9,28 @@ import (
 )
 
 type DeclarationInfo struct {
-	node       ast.Statement
-	// For variable/const declaration. Not destructured
-	rhs ast.Expression
-	// For variable/const declaration. Set when rhs is checked, or the explicity type
-	rhsType *Type
+	node     ast.Statement
+	varInfo  *varInfo // For var/const declaration.
+	funcKind funcKind // For function declaration.
+	receiver *Object  // For method or initializer. Should be [*TypeName]
 }
+
+type varInfo struct {
+	lhs     ast.Destructurable // Where the variable was defined. Undestructured
+	rhs     ast.Expression     // Undestructured RHS expression
+	expType Type               // If the decl has an explicit type. Use as [*Expr.hint]
+	// Set when rhs is checked, or the explicit type is known. Pointer is
+	// never nil, but the *Expr can be.
+	rhsExpr **Expr
+}
+
+type funcKind uint8
+
+const (
+	normalFunc funcKind = iota
+	methodFunc
+	initFunc
+)
 
 // declareWithInfo declares an object into the given context with the
 // given attributes and [DeclarationInfo]. If declareToCtx == false,
@@ -62,11 +78,10 @@ func (c *Checker) checkDeclaration(o *Object) {
 			if !c.isValidCycle(o) {
 				typ.Type = InvalidType
 			}
-		case *Function:
+		case *Function, *Overload:
 			c.isValidCycle(o) // TODO: is this needed?
 		case *FunctionAlias:
 		// TODO
-		case *Overload:
 		default:
 			panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
 		}
@@ -155,9 +170,8 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	}
 	self := Underlying(selfObj.typ).(SupportsMethods)
 	for _, meth := range methods {
-		if ov, ok := meth.obj.typ.(*Overload); ok {
-			ov.Self = &Variable{VarKind: SelfVar, Type: selfObj.typ}
-		}
+		meth.obj.info.funcKind = methodFunc
+		meth.obj.info.receiver = selfObj
 		if err := self.AddMethod(meth.obj); err != nil {
 			c.fileError(err, meth.obj.file)
 			return
@@ -203,7 +217,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 		}
 		return
 	}
-	switch self := selfObj.typ.(*TypeName).Type.(type) {
+	switch self := selfObj.TypeName().Type.(type) {
 	case *Struct:
 		self.Initializers = inits
 	case *Enum:
@@ -226,7 +240,11 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 		}
 		return
 	}
-	// TODO: check Function body
+	for _, obj := range inits {
+		obj.info.funcKind = initFunc
+		obj.info.receiver = selfObj
+		c.checkOverload(obj.typ.(*Overload), nil)
+	}
 }
 
 func (c *Checker) validateReceiver(name string, self *Object,

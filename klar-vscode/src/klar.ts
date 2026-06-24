@@ -207,7 +207,7 @@ const repository: Repository = {
     builtinFunctions: {
         patterns: [
             match(
-                /\b(print|crashout|clone|TODO)\b/,
+                /\b(print|crashout|clone|zip|TODO)\b/,
                 'support.function.builtin.klar'
             ),
             match(/\b\p{Lu}[_\p{L}\w]*\b/u, 'entity.name.type.init.klar'),

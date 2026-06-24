@@ -6,7 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Expr struct {
@@ -61,10 +60,12 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	switch expr := expr.(type) {
 	case *ast.BinaryExpression:
 	case *ast.UnaryExpression:
+		c.checkUnaryExpr(expr, t)
 	case *ast.NilLiteral:
 	// TODO: Use [ConstValue]s
 	case *ast.StringLiteral:
 		t.Type = StringType
+		// TODO: Check interpolations
 	case *ast.IntegerLiteral:
 	case *ast.FloatLiteral:
 		t.Type = FloatType
@@ -76,19 +77,22 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.TupleLiteral:
 	case *ast.ListLiteral:
 	case *ast.IndexExpression:
+		c.checkIndexExpr(expr, t)
 	case *ast.CallExpression:
 	case *ast.EnumLiteral:
 	case *ast.WhenExpression:
-	case *ast.TupleType:
 	case *ast.LambdaExpression:
 	case *ast.RangeExpression:
+		c.checkRangeExpr(expr, t)
 	case *ast.RestExpression:
-	// TODO: Check for rest expressions where they are allowed, so we can report an error if they are reached here.
+	// TODO: Check for rest expressions where they are allowed, so we can
+	// report an error if they are reached here.
 	// They are allowed in:
 	// - Calls
 	// - Tuples
 	// - Lists
 	// - Maps
+	// - List slices
 	case *ast.PipelineExpression:
 	case *ast.BadExpression:
 		t.Type = InvalidType
@@ -97,6 +101,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkExpr(expr.Expression, t)
 	case *ast.RegexLiteral:
 		t.Type = RegExType
+		// TODO: Check interpolations
 	case *ast.VersionLiteral:
 		// These are only parsed within attributes.
 		// TODO: Find a way to read these when applying attributes
@@ -159,19 +164,20 @@ func canRangeOver(k Kind) bool {
 	}
 }
 
-func (c *Checker) checkRangeExpr(expr *ast.RangeExpression, e *Expr) {
-	from := c.checkExpr(expr.From, newChildExpr(e, 0))
+func (c *Checker) checkRangeExpr(expr *ast.RangeExpression, t *Expr) {
+	from := c.checkExpr(expr.From, newChildExpr(t, 0))
 	kind := from.Type.Kind()
 	// Check if we can range over the type
 	if !canRangeOver(kind) && kind != InvalidType {
 		err := klarerrs.TypeError(klarerrs.ErrInvalidRangeType, expr.Range, "", from.Type.String())
 		err.Label = "Can't range over this type"
-		c.fileError(err, e.Context.File)
-		e.Type = &List{from.Type}
+		c.fileError(err, t.Context.File)
+		t.Type = &List{from.Type}
 		return
 	}
-	to := c.checkExpr(expr.To, newChildExprWithHint(e, from.Type, 0))
-	step := c.checkExpr(expr.Step, newChildExprWithHint(e, from.Type, 0))
+	// TODO: unify (`3...5.0` should have type Float, not Int)
+	to := c.checkExpr(expr.To, newChildExprWithHint(t, from.Type, 0))
+	step := c.checkExpr(expr.Step, newChildExprWithHint(t, from.Type, 0))
 	_, _ = to, step
 
 	// If we range over a string:
@@ -183,43 +189,43 @@ func (c *Checker) checkRangeExpr(expr *ast.RangeExpression, e *Expr) {
 	case expr.Step != nil:
 		err := klarerrs.Range(klarerrs.ErrStepWithStringRange, expr.Operator.Range())
 		err.Label = "Remove the step"
-		c.fileError(err, e.Context.File)
+		c.fileError(err, t.Context.File)
 	case expr.Operator.Kind == lexer.DotDotLessThan:
 		err := klarerrs.Range(klarerrs.ErrOpenStringRange, expr.Operator.Range())
 		err.Label = "Change this to '...'"
 		// TODO: Hint on what end character to use instead of '..<'
-		c.fileError(err, e.Context.File)
+		c.fileError(err, t.Context.File)
 	case false:
 		// TODO: Check constants for from and to
 	}
 
 	// TODO: Constant analysis for range exprs (e.g. '10...1...2')
-	e.Type = &List{from.Type}
+	t.Type = &List{from.Type}
 }
 
-func (c *Checker) checkGoExpr(expr *ast.GoExpression, e *Expr) {
+func (c *Checker) checkGoExpr(expr *ast.GoExpression, t *Expr) {
 	// The parser already checks that the expression is a call
 	// TODO: Manually check the LHS of the call, then check
 	// the function with the RHS. The parser allows `go Struct()`. Ensure
 	// `Struct` is a function.
-	arg := c.checkExpr(expr, newChildExpr(e, 0))
-	e.Type = &Task{arg.Type}
+	arg := c.checkExpr(expr, newChildExpr(t, 0))
+	t.Type = &Task{arg.Type}
 }
 
-func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, e *Expr) {
-	arg := c.checkExpr(expr, newChildExpr(e, 0))
-	errNotTask := func(t Type) {
-		str := t.String()
+func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, t *Expr) {
+	arg := c.checkExpr(expr, newChildExpr(t, 0))
+	errNotTask := func(typ Type) {
+		str := typ.String()
 		err := klarerrs.TypeError(klarerrs.ErrTypeMismatch, expr.Range, "Task", str)
 		err.Label = "This has type " + str
-		c.fileError(err, e.Context.File)
+		c.fileError(err, t.Context.File)
 	}
-	switch t := arg.Type; t.Kind() {
+	switch typ := arg.Type; typ.Kind() {
 	case KindTask:
-		e.Type = Underlying(t).(*Task).Result
+		t.Type = Underlying(typ).(*Task).Result
 	case KindTuple:
 		// If `a: Task<A>` and `b: Task<B>`, `await (a, b)` is `(A, B)`
-		tupleArg := Underlying(t).(Tuple)
+		tupleArg := Underlying(typ).(Tuple)
 		tupleRes := make(Tuple, len(tupleArg))
 		for i, elem := range tupleArg {
 			// TODO:
@@ -231,95 +237,74 @@ func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, e *Expr) {
 			}
 			tupleRes[i] = taskItem.Result
 		}
-		e.Type = tupleRes
+		t.Type = tupleRes
 	case KindList:
 		// If `taskList: [Task<T>]`, `await taskList` is `[T]`
-		elem := Underlying(t).(*List).Elem
+		elem := Underlying(typ).(*List).Elem
 		taskElem, ok := elem.(*Task)
 		if !ok {
 			errNotTask(elem) // Not a Task
-			e.Type = &List{InvalidType}
+			t.Type = &List{InvalidType}
 			break
 		}
-		e.Type = &List{taskElem.Result}
+		t.Type = &List{taskElem.Result}
 	default:
-		e.Type = InvalidType
-		errNotTask(t)
+		t.Type = InvalidType
+		errNotTask(typ)
 	}
 }
 
-func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerrs.Error) {
-	if numVars > 2 {
-		panic(fmt.Sprintf("isIterable(_, numVars): expected numVars <= 2, got %d", numVars))
+func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
+	lhs := c.checkExpr(expr.Object, newChildExpr(t, 0))
+	// Types that can be indexed implement [Indexer]
+	indexer, ok := Underlying(lhs.Type).(Indexer)
+	if !ok {
+		// Can't index the LHS type
+		err := klarerrs.Node(klarerrs.ErrInvalidTypeIndex, expr.Object)
+		err.Info = klarerrs.TypeErrorInfo{GotType: lhs.Type.String()}
+		err.Label = "Type " + klarerrs.Quote(lhs.Type.String()) + " can't be indexed"
+		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
+		return
 	}
-	if numVars == 0 {
-		// Still check if the type is iterable
-		switch t.Kind() {
-		case KindList, KindMap, StringType, IntType:
-			return []Type{}, nil
-		}
-		// Fallthrough
-	}
-	switch t.Kind() {
-	case KindList:
-		t := Underlying(t).(*List)
-		if numVars == 2 {
-			return []Type{IntType, t.Elem}, nil
-		}
-		return []Type{t.Elem}, nil
-	case KindMap:
-		t := Underlying(t).(*Map)
-		if numVars == 2 {
-			return []Type{t.Key, t.Value}, nil
-		}
-		return []Type{t.Key}, nil
-	case StringType:
-		if numVars == 2 {
-			return []Type{IntType, StringType}, nil
-		}
-		return []Type{StringType}, nil
-	case IntType:
-		if numVars == 2 {
-			return []Type{IntType, InvalidType}, nil // Up to 1 loop variable is allowed
-		}
-		return []Type{IntType}, nil
-	// TODO: Allow unions
-	// If `a: String | [Any]` and `for i, v in a`, `(i, v)` is `(Int, String | Any)`
 
-	// Not iterable, but if their underlying types are iterable, show a hint about unwrapping
-	case KindResult:
-		success := Underlying(t).(*Result).Success
-		if varTypes, err = c.isIterable(success, numVars); err != nil {
-			break // Underlying type isn't iterable
-		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
-		err.SetParam("kind", "Result")
-		return varTypes, err
-	case KindOptional:
-		concrete := Underlying(t).(*Optional).Elem
-		if varTypes, err = c.isIterable(concrete, numVars); err != nil {
-			break // Underlying type isn't iterable
-		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
-		err.SetParam("kind", "Optional")
-		return varTypes, err
-	case InvalidType:
-		return repeatWithItem(Type(InvalidType), numVars), nil // Don't show an error
+	var err *klarerrs.Error
+	if expr.Computed {
+		rhs := c.checkExpr(expr.Property, newChildExpr(t, 0))
+		// TODO: handle unions (union of #{Int: Andy} and [Any]
+		// supports computed indexing)
+		t.Type, err = indexer.Index(rhs.Type)
+	} else {
+		// Dot-index
+		field := expr.Property.(*ast.Symbol).Identifier
+		t.Type, err = indexer.IndexDot(field)
 	}
-	// Not iterable
-	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", t.String())
-	return repeatWithItem(Type(InvalidType), numVars), err
+	// Error while indexing, such as:
+	// - Using a computed index for a field
+	// - Type doesn't support computed indexing (e.g. struct)
+	// - Indexing using an unknown field
+	// - Index out of range for list constants
+	if err != nil {
+		err.Node = expr.Property
+		expr.Range = expr.Property.GetRange()
+		t.Type = InvalidType
+		c.fileError(err, t.Context.File)
+	}
 }
 
-// isAllowedAsStmt returns whether the given expression can be used as a statement.
-func isAllowedAsStmt(expr ast.Expression) bool {
-	switch expr.(type) {
-	case *ast.WhenExpression, *ast.CallExpression, *ast.PipelineExpression,
-		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression:
-		return true
-	case *ast.BadExpression:
-		panic("typechecking invalid AST")
-	default:
-		return false
+func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
+	if expr.Operator.Kind != lexer.Minus {
+		panic(fmt.Sprintf("unhandled unary operator: %q", expr.Operator))
+	}
+	rhs := c.checkExpr(expr.Right, newChildExpr(t, 0))
+	t.Type = rhs.Type
+	// RHS must be an Int or Float
+	if kind := rhs.Type.Kind(); kind != IntType && kind != FloatType {
+		got := rhs.Type.String()
+		err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr)
+		err.Label = "This has type " + quote(got)
+		err.Info = klarerrs.TypeErrorInfo{GotType: got}
+		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
 	}
 }

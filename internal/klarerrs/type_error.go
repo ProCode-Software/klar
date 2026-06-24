@@ -35,6 +35,10 @@ const (
 	ErrOpenStringRange        // '..<' not allowed with range over String
 	ErrNonLetterStringRange   // Bounds of range over String must be a letter or digit
 	ErrMultiCharStringRange   // Bounds of range over String must be a single character
+	ErrMismatchTupleDestruct  // Number of destructured tuple items on left > right
+	ErrTupleRestDestruct      // A rest in a tuple destructure must give the target at least 2 items
+	ErrInvalidTypeIndex       // Can't index this type
+	ErrNegateNonNumeric       // Negate '-' operator only supported on Int and Float
 
 	// Old errors. For reference only.
 
@@ -137,7 +141,7 @@ func (e *Error) handleTypeError() string {
 		return "Only 1 loop variable is allowed when iterating over an Int"
 	case ErrNotIterable:
 		if info.GotType == "Float" {
-			e.Hint("Convert the value to an Int to iterate over it.")
+			e.Hint("Define a range or convert the value to an Int to iterate over it.")
 			return "Can't iterate over a Float"
 		}
 		e.Hint("Iterable types include lists, Strings, Ints, and maps.")
@@ -151,6 +155,16 @@ func (e *Error) handleTypeError() string {
 		return "The bounds of a range over String must be constants"
 	case ErrOpenStringRange:
 		return "'..<' can't be used when ranging over type String"
+	case ErrMismatchTupleDestruct:
+		return "The tuple on the right-hand side doesn't have enough values to assign to " +
+			FormatThisWord(e.IntParam("remaining"), "destructured variable")
+	case ErrTupleRestDestruct:
+		name := "the target" /* Quote(e.Name) */
+		return "A rest in a tuple destructure must give " + name + " at least 2 items"
+	case ErrNegateNonNumeric:
+		return "The expression after '-' must be a number"
+	case ErrInvalidTypeIndex:
+		return "Can't index type " + Quote(info.GotType)
 
 		// OLD ERRORS
 		// =======

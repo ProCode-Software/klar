@@ -2,49 +2,90 @@ package ast
 
 import "iter"
 
-type DestructureIter = iter.Seq2[Identifier, *BadExpression]
+type AssignableIter = func(Assignable, *BadExpression) bool
 
-func identOrError(e Expression) DestructureIter {
-	if dest, ok := e.(Destructurable); ok {
-		return dest.Names()
-	}
-	return func(yield func(Identifier, *BadExpression) bool) {
-		yield(Identifier{}, &BadExpression{Value: e})
-	}
+var _ = [...]Destructurable{
+	&Symbol{}, &Discard{}, &ListLiteral{}, &TupleLiteral{},
 }
 
-func (s *Symbol) Names() DestructureIter {
-	return func(yield func(Identifier, *BadExpression) bool) {
-		yield(s.ToIdentifier(), nil)
-	}
+var _ = [...]Assignable{
+	&Symbol{}, &Discard{}, &ListLiteral{}, &TupleLiteral{}, &SliceExpression{},
+	&IndexExpression{}, &RestExpression{}, &MapLiteral{}, &BadExpression{},
 }
 
-func (s *Discard) Names() DestructureIter {
-	return func(yield func(Identifier, *BadExpression) bool) {
-		yield(Identifier{Name: "_", Position: s.Range.Start, Len: 1}, nil)
-	}
+// Destructurable
+// =========
+
+func (s *Symbol) Every(pred AssignableIter) bool {
+	return pred(s, nil)
 }
 
-func (l *ListLiteral) Names() DestructureIter {
-	return func(yield func(Identifier, *BadExpression) bool) {
-		for _, item := range l.Items {
-			for ident, err := range identOrError(item) {
-				if !yield(ident, err) {
-					return
-				}
-			}
+func (d *Discard) Every(pred AssignableIter) bool {
+	return pred(&Symbol{d.BaseNode, "_"}, nil)
+}
+
+func (l *ListLiteral) Every(pred AssignableIter) bool {
+	for _, item := range l.Items {
+		if !validateAssignable(item, pred) {
+			return false
 		}
 	}
+	return true
 }
 
-func (l *TupleLiteral) Names() DestructureIter {
-	return func(yield func(Identifier, *BadExpression) bool) {
-		for _, item := range l.Values {
-			for ident, err := range identOrError(item) {
-				if !yield(ident, err) {
-					return
-				}
-			}
+func (l *TupleLiteral) Every(pred AssignableIter) bool {
+	for _, item := range l.Values {
+		if !validateAssignable(item, pred) {
+			return false
 		}
+	}
+	return true
+}
+
+func validateAssignable(node Expression, pred AssignableIter) bool {
+	if dest, ok := node.(Assignable); ok {
+		return dest.Every(pred)
+	}
+	return pred(nil, &BadExpression{
+		BaseNode: BaseNode{Range: node.GetRange()},
+		Value:    node,
+	})
+}
+
+// TODO: Map as [Destructurable]
+func (m *MapLiteral) Every(pred AssignableIter) bool {
+	panic("map destructuring not implemented yet")
+}
+
+// [Assignable] but not [Destructurable]
+// ==========
+
+func (s *SliceExpression) Every(pred AssignableIter) bool { return pred(s, nil) }
+func (s *IndexExpression) Every(pred AssignableIter) bool { return pred(s, nil) }
+func (s *RestExpression) Every(pred AssignableIter) bool {
+	return validateAssignable(s.Expression, pred)
+}
+
+// Error reported at parse-time
+func (b *BadExpression) Every(pred AssignableIter) bool { return true }
+
+func DestructureNames(node Assignable) iter.Seq2[*Symbol, *BadExpression] {
+	return func(yield func(*Symbol, *BadExpression) bool) {
+		if node == nil {
+			return
+		}
+		node.Every(func(node Assignable, bad *BadExpression) bool {
+			if bad != nil {
+				return yield(nil, bad)
+			}
+			sym, ok := node.(*Symbol)
+			if !ok {
+				return yield(nil, &BadExpression{
+					BaseNode: BaseNode{node.GetRange()},
+					Value:    node,
+				})
+			}
+			return yield(sym, bad)
+		})
 	}
 }

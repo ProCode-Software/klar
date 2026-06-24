@@ -24,21 +24,24 @@ func NewVariable(o *Object, kind VariableKind, typ Type) *Variable {
 func (v *Variable) Underlying() Type { return v.Type }
 func (v *Variable) Kind() Kind       { return v.Type.Kind() }
 func (v *Variable) String() string {
-	var kind, name string
-	switch v.VarKind {
-	default:
-		kind = "var"
-	case SelfVar:
-		kind = "self"
-	case FuncParamVar:
-		kind = "param"
-	case StructFieldVar:
-		kind = "field"
-	}
-	if v.Object != nil {
-		name = " " + v.Object.name
-	}
-	return fmt.Sprintf("%s%s: %s", kind, name, v.Type)
+	return v.Type.String()
+	/*
+		var kind, name string
+		switch v.VarKind {
+		default:
+			kind = "var"
+		case SelfVar:
+			kind = "self"
+		case FuncParamVar:
+			kind = "param"
+		case StructFieldVar:
+			kind = "field"
+		}
+		if v.Object != nil && v.VarKind != SelfVar {
+			name = " " + v.Object.name
+		}
+		return fmt.Sprintf("%s%s: %s", kind, name, v.Type)
+	*/
 }
 func (*Variable) objKind() {}
 
@@ -64,24 +67,54 @@ func (*Constant) objKind()           {}
 func (c *Constant) String() string   { return fmt.Sprintf("%s (%v)", c.Type, c.Value) }
 
 func (c *Checker) checkVarDecl(o *Object) {
-	decl := o.info
-	_ = decl.node.(*ast.VariableDeclaration)
-	vr := o.typ.(*Variable)
-	e := NewExprWithHint(o.context, *decl.rhsType, 0)
-	c.checkExpr(decl.rhs, e) // TODO: be aware of destructures
+	var (
+		vr    = o.typ.(*Variable)
+		vinfo = o.info.varInfo
+		val   = vinfo.rhs
+		e     *Expr
+	)
+	vr.Type = InvalidType
+	// Use the cached expression or check the RHS
+	if *vinfo.rhsExpr != nil {
+		e = *vinfo.rhsExpr
+	} else {
+		e = c.checkExpr(val, NewExprWithHint(o.context, vinfo.expType, 0))
+		*vinfo.rhsExpr = e
+	}
 	// TODO: Go calls check.initVar, which checks if the expression is untyped
 	// nil, sets untyped values to typed types, and calls check.assignment.
-	vr.Type = e.Type
+
+	// Destructure the RHS
+	for dest, typ := range c.followDestructure(vinfo.lhs, e, val.GetRange(), true) {
+		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
+		// the types of other variables using the same rhsExpr.
+		if sym := dest.(*ast.Symbol); sym.Identifier == o.name {
+			vr.Type = typ
+			break
+		}
+	}
+	if vr.Type == nil {
+		panic(o.name + " not yielded by followDestructure or it yielded a nil Type")
+		// vr.Type = InvalidType
+	}
 }
 
 func (c *Checker) checkConstDecl(o *Object) {
-	decl := o.info
-	_ = decl.node.(*ast.VariableDeclaration)
-	cnst := o.typ.(*Constant)
+	var (
+		cnst  = o.typ.(*Constant)
+		vinfo = o.info.varInfo
+		val   = vinfo.rhs
+		e     *Expr
+	)
+	// Use the cached expression or check the RHS
+	if *vinfo.rhsExpr != nil {
+		e = *vinfo.rhsExpr
+	} else {
+		e = c.checkExpr(val, NewExprWithHint(o.context, vinfo.expType, ConstExpr))
+		*vinfo.rhsExpr = e
+	}
 
-	// Check expression
-	e := NewExprWithHint(o.context, *decl.rhsType, ConstExpr)
-	c.checkExpr(decl.rhs, e) // TODO: be aware of destructures
+	// TODO: destructure
 	cnst.Value = e.ConstValue()
 	if cnst.Value == nil {
 		cnst.Value = UnknownConst{} // Ensure this is never nil if checking fails

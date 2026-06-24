@@ -13,10 +13,10 @@ var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
 
 // Custom prints an error to [os.Stderr] with a custom title
 func Custom(errorType string, msg string, detail ...any) {
-	str := ansi.BoldBrightRed(errorType) + ansi.BoldDim(":")
-	v := []any{str}
+	title := ansi.BoldBrightRed(errorType) + ansi.BoldDim(":")
+	v := []any{title}
 	if msg != "" {
-		v = []any{str, ansi.Bold(msg)}
+		v = []any{title, ansi.Bold(msg)}
 	}
 	fmt.Fprintln(os.Stderr, append(v, detail...)...)
 }

@@ -41,6 +41,11 @@ func makeCode(colors []string) string {
 	return b.String()
 }
 
+const (
+	EscapeTag   = '\xff'
+	UnescapeTag = '\xfe'
+)
+
 // Colorize parses the string for color tags and returns
 // the string with ANSI color codes. It supports nested tags and escaping.
 //
@@ -64,10 +69,12 @@ func Colorize(s string) string {
 			b.WriteString(makeCode(l.codes))
 		}
 	}
+	var disable bool
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		// Handle escaping
-		if c == '\\' {
+		switch c {
+		case '\\':
+			// Escape
 			if i+1 < len(s) {
 				next := s[i+1]
 				if next == '<' || next == '>' || next == '\\' {
@@ -78,8 +85,23 @@ func Colorize(s string) string {
 			}
 			b.WriteByte(c)
 			continue
+		case EscapeTag:
+			disable = true
+			continue // Don't write
+		case UnescapeTag:
+			disable = false
+			continue // Don't write
+		case '<':
+			if i+1 < len(s) && s[i+1] == ' ' {
+				// If '<' is followed by a space, treat as literal
+				b.WriteByte(c)
+				continue
+			}
+		default:
+			b.WriteByte(c)
+			continue
 		}
-		if c != '<' {
+		if disable {
 			b.WriteByte(c)
 			continue
 		}
@@ -156,6 +178,10 @@ func Colorize(s string) string {
 		i = end
 	}
 	return b.String()
+}
+
+func EscapeFromColorize(s string) string {
+	return string(EscapeTag) + s + string(UnescapeTag)
 }
 
 // Decolorize strips tags from v, returning an uncolorized string without tags.

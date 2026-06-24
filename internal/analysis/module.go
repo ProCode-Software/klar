@@ -14,7 +14,7 @@ import (
 type Module struct {
 	Name, Path  string // Base name, dir/file path
 	Programs    map[string]*ast.Program
-	fileID      map[FileID]string // File ID to key in Programs
+	fileID      map[FileID]string   // File ID to key in Programs
 	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath
 	Imports     []*Module

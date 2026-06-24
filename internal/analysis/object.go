@@ -3,6 +3,7 @@ package analysis
 import (
 	"fmt"
 
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -245,3 +246,14 @@ func (*Namespace) Kind() Kind        { return KindNamespace }
 func (*Namespace) Underlying() Type  { return nil }
 func (*Namespace) objKind()          {}
 func (ns *Namespace) String() string { return "<module>" }
+
+type Indexer interface {
+	// Most types support IndexDot
+	IndexDot(index string) (Type, *klarerrs.Error)
+	// The following types support Index (won't return an error):
+	// - [Map]
+	// - [List]
+	// - [StringType]
+	// Calling Index on any other type will return an error.
+	Index(index Type) (Type, *klarerrs.Error)
+}

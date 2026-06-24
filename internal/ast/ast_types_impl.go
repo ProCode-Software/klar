@@ -39,7 +39,6 @@ func (CallExpression) expr()       {}
 func (EnumLiteral) expr()          {}
 func (Discard) expr()              {}
 func (WhenExpression) expr()       {}
-func (TupleType) expr()            {}
 func (LambdaExpression) expr()     {}
 func (RangeExpression) expr()      {}
 func (RestExpression) expr()       {}
@@ -110,26 +109,23 @@ func (d EnumDeclaration) Name() string      { return d.Identifier.Name }
 func (d InterfaceDeclaration) Name() string { return d.Identifier.Name }
 func (d TagDeclaration) Name() string       { return d.Identifier.Name }
 
-// Can be used on left side of = or in a destructure
-func (Symbol) assignable()            {}
-func (IndexExpression) assignable()   {}
-func (SliceExpression) assignable()   {}
-func (BadExpression) assignable()     {}
-func (Discard) assignable()           {}
-func (RestExpression) assignable()    {}
-func (ListDestructure) assignable()   {}
-func (ObjectDestructure) assignable() {}
-func (ListLiteral) assignable()       {}
-func (TupleLiteral) assignable()      {}
-func (MapLiteral) assignable()        {}
+// [Assignable]: Can be used on left side of '='
+func (Symbol) assignable()          {}
+func (IndexExpression) assignable() {}
+func (SliceExpression) assignable() {}
+func (BadExpression) assignable()   {}
+func (Discard) assignable()         {}
+func (RestExpression) assignable()  {}
+func (ListLiteral) assignable()     {}
+func (TupleLiteral) assignable()    {}
+func (MapLiteral) assignable()      {}
 
-// Destructuring
-func (ListDestructure) destruct()   {}
-func (ObjectDestructure) destruct() {}
-func (BadExpression) destruct()     {}
-func (Symbol) destruct()            {}
-func (Discard) destruct()           {}
-func (RestExpression) destruct()    {}
+// [Destructurable]
+func (BadExpression) destruct() {}
+func (Symbol) destruct()        {}
+func (Discard) destruct()       {}
+func (TupleLiteral) destruct()  {}
+func (ListLiteral) destruct()   {}
 
 // Modifiers
 func (PublicDeclaration) modif() {}

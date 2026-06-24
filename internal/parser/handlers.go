@@ -160,11 +160,10 @@ func (p *Parser) validateAssignable(node ast.Node) ast.Assignable {
 	if ok {
 		return n
 	}
-	p.Error(&klarerrs.Error{
-		Code:  klarerrs.ErrInvalidAssignment,
-		Range: node.GetRange(),
-		Node:  node,
-	})
+	p.ErrorLabelled(
+		klarerrs.Node(klarerrs.ErrInvalidAssignment, node),
+		"Can't assign to this expression",
+	)
 	return &ast.BadExpression{Value: node}
 }
 

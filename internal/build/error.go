@@ -63,10 +63,11 @@ const (
 )
 
 type InterfaceError struct {
-	Code   InterfaceErrorCode
-	Value  string
-	Err    error
-	Detail any
+	Code    InterfaceErrorCode
+	Value   string
+	Err     error
+	Detail  any
+	noColor bool // Don't use color for the detail
 }
 
 func (err *InterfaceError) Error() string {
@@ -139,6 +140,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		}
 		return msg, "Run <m>glas install</m> to install it."
 	case ErrInternalCompileError:
+		err.noColor = true
 		var posInfo string
 		if err, ok := err.Err.(*klarerrs.Error); ok {
 			posInfo = fmt.Sprintf(" (%s:%s)", err.File, err.Range.Start)
@@ -159,6 +161,10 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 
 func PrintInterfaceError(err *InterfaceError) {
 	main, detail := err.PrettyError()
+	if err.noColor {
+		cli.Error(strings.TrimSuffix(main, " "), detail)
+		return
+	}
 	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
 }
 

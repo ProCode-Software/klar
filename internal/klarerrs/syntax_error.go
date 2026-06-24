@@ -366,7 +366,7 @@ func (e *Error) handleSyntaxError() string {
 	case ErrMultipleKeysInMapRest:
 		return "A spread must be its own key"
 	case ErrNonNameDeclaration:
-		return "Only names and destructure patterns are allowed on the left-hand side of a variable declaration"
+		return "Expression to the left of ':=' must be a name"
 	case ErrMixTypeTupleLabels:
 		return "Can't mix 'label: type' and 'type' syntax in tuple or parameters"
 	case ErrNonNameFuncAlias:

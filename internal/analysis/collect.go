@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -30,7 +31,7 @@ func (c *Checker) collectTopLevelObjects(
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _ = fctx.getAttribute(firstStmtIndex).(int)
 		)
-		collector.fctx = fctx
+		collector.fid = fid
 		for _, stmt := range program.Body[firstStmt:] {
 			var public bool
 			if ps, ok := stmt.(*ast.PublicDeclaration); ok {
@@ -134,7 +135,7 @@ func (c *Checker) collectTopLevelObjects(
 			c.fileError(err, imported.file)
 		}
 	}
-	return methods, inits
+	return collector.methods, collector.inits
 }
 
 // checkContextDecls typechecks all declarations in the
@@ -185,7 +186,7 @@ func (c *Checker) checkContextDecls(
 
 type stmtCollector struct {
 	ctx       *Context // Where the objects will be declared to
-	fctx      *Context // File context for looking up imports
+	fid       FileID
 	inits     map[string][]*Object
 	methods   map[string][]methodInfo
 	topLevel  bool
@@ -219,7 +220,7 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	public bool, attrs *[]*ast.Attribute,
 ) {
 	name := stmt.Identifier.Name
-	ov := NewObject(name, sc.fctx.File, stmt.GetRange(), c.module, &Overload{})
+	ov := NewObject(name, sc.fid, stmt.GetRange(), c.module, &Overload{})
 	ov.typ.(*Overload).Object = ov
 	ov.public = public
 
@@ -246,9 +247,7 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	case par == nil:
 		// Object with same name isn't a function. An error was already reported
 		attrs = nil
-		return
 	}
-	// Initializers and methods also have their info recorded into the context.
 	// No kind is declared into the context. For overloads, their parent has
 	// already been declared.
 	ov.info = &DeclarationInfo{node: stmt}
@@ -271,7 +270,7 @@ func (c *Checker) declareFuncAlias(stmt *ast.FuncAliasDeclaration, sc *stmtColle
 	// Will be resolved later
 	obj := NewObject(
 		stmt.Identifier.Name,
-		sc.fctx.File, stmt.Range, c.module, &FunctionAlias{},
+		sc.fid, stmt.Range, c.module, &FunctionAlias{},
 	)
 	obj.public = public
 	if stmt.Struct != nil {
@@ -290,15 +289,14 @@ func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
 	public bool, attrs *[]*ast.Attribute,
 ) {
 	name := stmt.Name()
-	obj := NewObject(name, sc.fctx.File, stmt.GetRange(), c.module, &TypeName{nil, name})
+	obj := NewObject(name, sc.fid, stmt.GetRange(), c.module, &TypeName{nil, name})
 
 	var hadInit bool
 	if maybeFnObj := sc.ctx.Lookup(name); maybeFnObj != nil {
 		var fn *Function
 		if fn, hadInit = maybeFnObj.typ.(*Function); hadInit {
 			// The initializer was declared earlier than this type.
-			// Change the object in the context to this type. The
-			// initializer will still be available in ctx.declInfo.
+			// Change the object in the context to this type.
 			sc.ctx.Declarations[name] = obj
 			// Move the existing initializers to sc.inits
 			for _, ov := range fn.Overloads {
@@ -323,11 +321,10 @@ func (c *Checker) getOverloadParent(
 	name string, node ast.Statement, sc *stmtCollector,
 ) (par *Object, isInit bool) {
 	// par is the function we're adding overloads to
-	fid := sc.fctx.File
 	par = sc.ctx.Lookup(name)
 	if par == nil {
 		// If this is the first overload, declare a new parent function
-		par = NewObject(name, fid, node.GetRange(), c.module, &Function{})
+		par = NewObject(name, sc.fid, node.GetRange(), c.module, &Function{})
 		// The parent's node and range are the first overload
 		par.info = &DeclarationInfo{node: node}
 		par.order = sc.nextOrder()
@@ -341,7 +338,7 @@ func (c *Checker) getOverloadParent(
 		}
 		// If the parent isn't a function, it's redeclared
 		err := redeclaredError(&Object{rang: node.GetRange()}, par, false)
-		c.fileError(err, fid)
+		c.fileError(err, sc.fid)
 		return nil, false
 	}
 	return par, false
@@ -356,50 +353,54 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 		lastDecl     *Object
 		varKind      int // 1 = var, 2 = const
 		explicitType Type
-		fid          = sc.fctx.File
+		singleExpr   **Expr
 	)
 	if d.ExplicitType != nil {
 		explicitType = c.parseType(d.ExplicitType, sc.ctx)
+	}
+	// If the RHS is a single value, store it so we can infer the
+	// expression once.
+	if d.IsSingleRHS() {
+		if len(d.Values) != 1 {
+			panic(fmt.Sprintf(
+				"invalid AST: expected 1 or %d values, but got %d",
+				len(d.Variables), len(d.Values),
+			))
+		}
+		singleExpr = new(*Expr)
 	}
 	for i, assg := range d.Variables {
 		dest, ok := assg.(ast.Destructurable)
 		if !ok {
 			// Not a destructure
-			c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, dest), fid)
+			c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, dest), sc.fid)
 		}
 		// Undestructured value
 		var value ast.Expression
-		if len(d.Values) < len(d.Variables) {
-			if len(d.Values) != 1 {
-				panic(fmt.Sprintf(
-					"expected 1 or %d values, but got %d",
-					len(d.Variables), len(d.Values),
-				))
-			}
+		if d.IsSingleRHS() {
 			value = d.Values[0]
 		} else {
 			value = d.Values[i]
 		}
-		// Pointer value will be set when `value` is first inferred
-		rhsType := new(Type)
-		if explicitType != nil {
-			*rhsType = explicitType
-		}
+		// Pointer value will be set when `value` is first inferred. Other
+		// variables that depend on the same type (or value) will reuse
+		// the cached type/Expr.
+		rhsExpr := cmp.Or(singleExpr, new(*Expr))
 
 		// Find every variable name in the destructure pattern
-		for name, err := range dest.Names() {
+		for name, err := range ast.DestructureNames(dest) {
 			if err != nil {
 				// Expression is not a variable
-				c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, err), fid)
+				c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, err), sc.fid)
 				continue
 			}
-			obj := NewObject(name.Name, fid, name.Range(), c.module, nil)
+			obj := NewObject(name.Identifier, sc.fid, name.Range, c.module, nil)
 			obj.public = public
 
 			// Check whether the variable is a const. Vars and consts can't
 			// be mixed in the same declaration.
 			oldVarKind := varKind
-			if IsConst(name.Name) {
+			if IsConst(name.Identifier) {
 				obj.typ = &Constant{}
 				varKind = 2
 			} else {
@@ -410,7 +411,7 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				_ = NewVariable(obj, varObjKind, nil)
 				varKind = 1
 			}
-			if name.IsDiscard() {
+			if name.Identifier == "_" {
 				// If the name is a discard, don't set whether the decl is
 				// for consts or vars.
 				varKind = oldVarKind
@@ -427,18 +428,19 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				)
 				// TODO: hint with diff
 				err.Hint("Declare the variables and constants in separate declarations.")
-				c.fileError(err, fid)
+				c.fileError(err, sc.fid)
 				varKind = oldVarKind
 			}
-			if !name.IsDiscard() {
+			if name.Identifier != "_" {
 				lastDecl = obj
 			}
 
-			obj.info = &DeclarationInfo{
-				node:    d,
+			obj.info = &DeclarationInfo{node: d, varInfo: &varInfo{
+				lhs:     dest,
 				rhs:     value,
-				rhsType: rhsType,
-			}
+				rhsExpr: rhsExpr,
+				expType: explicitType,
+			}}
 			obj.order = sc.nextOrder()
 			c.declareWithInfo(obj, sc.ctx, attrs, true)
 		}

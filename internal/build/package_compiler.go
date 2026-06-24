@@ -130,6 +130,7 @@ typeCheckModules:
 				pkc.Info(
 					"Skipping typecheck of module due to errors in dependencies",
 					slog.String("module", mod.Path),
+					slog.String("dependency", importPath.String()),
 				)
 				continue typeCheckModules
 			}

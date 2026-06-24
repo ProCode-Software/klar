@@ -37,13 +37,13 @@ const (
 	allowForwardDecl
 )
 
-func newStmtContext(ctx, fctx *Context, flags stmtFlags) *stmtContext {
+func newStmtContext(ctx *Context, fid FileID, flags stmtFlags) *stmtContext {
 	return &stmtContext{
 		ctx:        ctx,
 		flags:      flags,
 		returns:    new([]returnStmt),
 		loopLabels: make(map[string]*loopLabel),
-		collector:  &stmtCollector{ctx: ctx, fctx: fctx},
+		collector:  &stmtCollector{ctx: ctx, fid: fid},
 	}
 }
 
@@ -55,7 +55,7 @@ func newChildStmtContext(parentSctx *stmtContext,
 		returns:    parentSctx.returns,
 		loopLabels: parentSctx.loopLabels,
 		flags:      parentSctx.flags | flags,
-		collector:  &stmtCollector{ctx: childCtx, fctx: parentSctx.collector.fctx},
+		collector:  &stmtCollector{ctx: childCtx, fid: childCtx.File},
 	}
 }
 
@@ -288,6 +288,82 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
 			c.fileError(err, sctx.ctx.File)
 		}
+	}
+}
+
+func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerrs.Error) {
+	if numVars > 2 {
+		panic(fmt.Sprintf("isIterable(_, numVars): expected numVars <= 2, got %d", numVars))
+	}
+	if numVars == 0 {
+		// Still check if the type is iterable
+		switch t.Kind() {
+		case KindList, KindMap, StringType, IntType:
+			return []Type{}, nil
+		}
+		// Fallthrough
+	}
+	switch t.Kind() {
+	case KindList:
+		t := Underlying(t).(*List)
+		if numVars == 2 {
+			return []Type{IntType, t.Elem}, nil
+		}
+		return []Type{t.Elem}, nil
+	case KindMap:
+		t := Underlying(t).(*Map)
+		if numVars == 2 {
+			return []Type{t.Key, t.Value}, nil
+		}
+		return []Type{t.Key}, nil
+	case StringType:
+		if numVars == 2 {
+			return []Type{IntType, StringType}, nil
+		}
+		return []Type{StringType}, nil
+	case IntType:
+		if numVars == 2 {
+			return []Type{IntType, InvalidType}, nil // Up to 1 loop variable is allowed
+		}
+		return []Type{IntType}, nil
+	// TODO: Allow unions
+	// If `a: String | [Any]` and `for i, v in a`, `(i, v)` is `(Int, String | Any)`
+
+	// Not iterable, but if their underlying types are iterable, show a hint about unwrapping
+	case KindResult:
+		success := Underlying(t).(*Result).Success
+		if varTypes, err = c.isIterable(success, numVars); err != nil {
+			break // Underlying type isn't iterable
+		}
+		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
+		err.SetParam("kind", "Result")
+		return varTypes, err
+	case KindOptional:
+		concrete := Underlying(t).(*Optional).Elem
+		if varTypes, err = c.isIterable(concrete, numVars); err != nil {
+			break // Underlying type isn't iterable
+		}
+		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
+		err.SetParam("kind", "Optional")
+		return varTypes, err
+	case InvalidType:
+		return repeatWithItem(Type(InvalidType), numVars), nil // Don't show an error
+	}
+	// Not iterable
+	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", t.String())
+	return repeatWithItem(Type(InvalidType), numVars), err
+}
+
+// isAllowedAsStmt returns whether the given expression can be used as a statement.
+func isAllowedAsStmt(expr ast.Expression) bool {
+	switch expr.(type) {
+	case *ast.WhenExpression, *ast.CallExpression, *ast.PipelineExpression,
+		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression:
+		return true
+	case *ast.BadExpression:
+		panic("typechecking invalid AST")
+	default:
+		return false
 	}
 }
 
