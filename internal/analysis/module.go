@@ -67,8 +67,8 @@ func (m *Module) ResolveFile(id FileID) string {
 	if id == 0 {
 		return "top-level"
 	}
-	path := m.fileID[id]
-	if path == "" {
+	path, ok := m.fileID[id]
+	if !ok {
 		panic(fmt.Sprintf("file with id %d not found", id))
 	}
 	return path

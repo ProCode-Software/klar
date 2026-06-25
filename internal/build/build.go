@@ -56,7 +56,9 @@ type Parser interface {
 	// file path, a [ParseResult] object, and a fatal error if one occurs, such
 	// as during reading. If path == "", Parse should read from standard input.
 	// l may be used to log status. Parse may be called concurrently.
-	Parse(path string, l *slog.Logger) (shortPath string, res *ParseResult, err error)
+	Parse(path string, l *slog.Logger, stdin bool) (
+		shortPath string, res *ParseResult, err error,
+	)
 }
 
 type ParseResult struct {

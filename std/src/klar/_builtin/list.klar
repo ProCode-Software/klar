@@ -52,3 +52,7 @@ public func List.randomize()
 public func List.randomized() -> [T]
 
 public func List.join(with separator: String = ',') -> String
+
+public func List.clear() {
+    self = self[...0]
+}

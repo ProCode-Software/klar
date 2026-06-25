@@ -112,6 +112,13 @@ type ObjectKind interface {
 	Underlying() Type
 }
 
+type InvalidTypeObject struct{}
+
+func (o *InvalidTypeObject) Kind() Kind       { return InvalidType }
+func (o *InvalidTypeObject) String() string   { return o.Kind().String() }
+func (o *InvalidTypeObject) Underlying() Type { return o.Kind() }
+func (o *InvalidTypeObject) objKind()         {}
+
 // Type Kinds
 // ============
 
@@ -198,6 +205,32 @@ func (k Kind) String() string {
 	}[k]
 }
 
+func (k Kind) IndexDot(i string) (Type, *klarerrs.Error) {
+	if !k.IsPrimitive() {
+		panic("cannot Index non-primitive type")
+	}
+	return indexBuiltin(k.String(), i)
+}
+
+func (k Kind) Index(i Type) (Type, *klarerrs.Error) {
+	if !k.IsPrimitive() {
+		panic("cannot Index non-primitive type")
+	}
+	if k != StringType {
+		return noComputedIndex{}.Index(i)
+	}
+
+	// String is the only primitive that allows computed indexing
+	if i.Kind() != IntType {
+		return nil, indexTypeMismatchError(
+			klarerrs.ErrNonNumericIndex,
+			StringType, i, "Can't index String using type "+i.String(),
+		)
+	}
+	// TODO: constant analysis (negative index, out of range index)
+	return StringType, nil
+}
+
 // Types
 // ==========
 
@@ -238,22 +271,22 @@ func Underlying(t Type) Type {
 	}
 }
 
-type Namespace struct {
-	Context *Context
-}
-
-func (*Namespace) Kind() Kind        { return KindNamespace }
-func (*Namespace) Underlying() Type  { return nil }
-func (*Namespace) objKind()          {}
-func (ns *Namespace) String() string { return "<module>" }
-
+// Types that can be indexed (via `obj.index` or `obj[index]`) implement Indexer.
+// If Index or IndexDot return (nil, nil), the type can't be indexed.
 type Indexer interface {
 	// Most types support IndexDot
 	IndexDot(index string) (Type, *klarerrs.Error)
 	// The following types support Index (won't return an error):
-	// - [Map]
-	// - [List]
-	// - [StringType]
+	// 	- [Map] when index is type [Map.Key]
+	// 	- [List] when index is [IntType]
+	// 	- [StringType] when index is [IntType]
+	//  - [Tuple] when index is a constant [IntType]
 	// Calling Index on any other type will return an error.
 	Index(index Type) (Type, *klarerrs.Error)
+}
+
+type noComputedIndex struct{}
+
+func (noComputedIndex) Index(index Type) (Type, *klarerrs.Error) {
+	return nil, indexError(klarerrs.ErrInvalidComputedIndex, index, "")
 }

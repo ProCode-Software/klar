@@ -31,9 +31,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 	case lexer.Nil:
 		res = p.ParseNil()
 	// Prefix/Unary
-	case lexer.Not:
-		fallthrough
-	case lexer.Minus:
+	case lexer.Not, lexer.Minus:
 		res = p.ParseUnaryExpression()
 	// Group or tuple
 	case lexer.LeftParenthesis:

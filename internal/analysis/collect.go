@@ -20,8 +20,12 @@ type methodInfo struct {
 func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
 ) (methods map[string][]methodInfo, inits map[string][]*Object) {
-	collector := &stmtCollector{topLevel: true, ctx: c.rootContext}
-	var attrs []*ast.Attribute
+	var (
+		collector     = &stmtCollector{topLevel: true, ctx: c.rootContext}
+		attrs         []*ast.Attribute
+		topLevelFctx  *Context
+		topLevelStmts []ast.Statement
+	)
 	for _, fileName := range files {
 		var (
 			program = c.Programs[fileName]
@@ -29,7 +33,8 @@ func (c *Checker) collectTopLevelObjects(
 			fid     = fctx.File
 			// First statement after imports. Any import after this is misplaced.
 			// An import will never be at program.Body[firstStmt].
-			firstStmt, _ = fctx.getAttribute(firstStmtIndex).(int)
+			firstStmt, _  = fctx.getAttribute(firstStmtIndex).(int)
+			allowTopLevel = fileName == "main.klar" || c.module.Flags.Has(SingleFileModule)
 		)
 		collector.fid = fid
 		for _, stmt := range program.Body[firstStmt:] {
@@ -67,29 +72,31 @@ func (c *Checker) collectTopLevelObjects(
 				c.declareVars(stmt, collector, public, &attrs)
 				continue
 
-			// Top-level statements
-			// ========
+				// Top-level statements
+				// ========
 			case *ast.BadExpression:
 				// Shouldn't be here. Invalid ASTs should't be typechecked.
 				panic("typechecking invalid AST")
 			case *ast.ExpressionStatement:
-				if c.module.Flags.Has(REPLModule) {
-					break // Allow unused values in REPL
-				}
-				if !isAllowedAsStmt(stmt.Expression) {
+				// Allow unused values in REPL. Also, don't report an error here if top-level
+				// statements are allowed. An error will be reported later while checking
+				// top-level statements.
+				if !allowTopLevel && !c.module.Flags.Has(REPLModule) &&
+					!isAllowedAsStmt(stmt.Expression) {
 					c.fileError(klarerrs.Node(klarerrs.ErrUnusedValue, stmt), fid)
-					continue
+					// Still have to check it
 				}
 			}
 			if len(attrs) > 0 {
 				// If we're here, the attributes weren't applied to a declaration.
 				// TODO: Do we need to report an error here?
-				println("Attributes weren't applied")
-				attrs = attrs[:0]
+				panic("Attributes weren't applied")
+				// attrs = attrs[:0]
 			}
 			// Top-level statement: only allowed in main.klar or single-file modules
-			if fileName == "main.klar" || c.module.Flags.Has(SingleFileModule) {
-				c.module.TopLevel = append(c.module.TopLevel, stmt)
+			if allowTopLevel {
+				topLevelStmts = append(topLevelStmts, stmt)
+				topLevelFctx = fctx
 			} else {
 				c.fileError(klarerrs.Node(klarerrs.ErrTopLevel, stmt), fid)
 			}
@@ -134,6 +141,9 @@ func (c *Checker) collectTopLevelObjects(
 			})
 			c.fileError(err, imported.file)
 		}
+	}
+	if len(topLevelStmts) > 0 {
+		c.queue(func() { c.checkTopLevelStmts(topLevelStmts, topLevelFctx) }, true)
 	}
 	return collector.methods, collector.inits
 }
@@ -445,4 +455,9 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 			c.declareWithInfo(obj, sc.ctx, attrs, true)
 		}
 	}
+}
+
+func (c *Checker) checkTopLevelStmts(stmts []ast.Statement, fctx *Context) {
+	sctx := newStmtContext(fctx, fctx.File, 0)
+	c.checkBlock(stmts, sctx)
 }

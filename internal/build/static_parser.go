@@ -47,14 +47,17 @@ func (p *StaticParser) SetFallbackCwd(cwd string) { p.Fallback.cwd = cwd }
 
 // Parse implements [Parser]. It returns [os.ErrNotExist] if path
 // is not found in the StaticParser's file map.
-func (p *StaticParser) Parse(path string, l *slog.Logger) (
+func (p *StaticParser) Parse(path string, l *slog.Logger, stdin bool) (
 	shortPath string, res *ParseResult, err error,
 ) {
+	if stdin {
+		return p.Fallback.Parse(path, l, true)
+	}
 	f, ok := p.Files[path]
 	if !ok {
 		// Fallback to [StdParser] for parsing modules in the standard library
 		if _, err := filepath.Rel(module.SystemDirs.Std, path); err == nil {
-			return p.Fallback.Parse(path, l)
+			return p.Fallback.Parse(path, l, false)
 		}
 		return path, nil, fmt.Errorf("load file %s: %w", path, os.ErrNotExist)
 	}

@@ -115,7 +115,7 @@ func (c *Checker) Check() {
 	// Typecheck those declarations, but not function bodies
 	c.checkContextDecls(c.rootContext, methods, inits)
 
-	// Run delayed actions, including checking function bodies
+	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)
 
 	c.ResetState() // Free memory

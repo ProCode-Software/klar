@@ -173,6 +173,9 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 		meth.obj.info.funcKind = methodFunc
 		meth.obj.info.receiver = selfObj
 		if err := self.AddMethod(meth.obj); err != nil {
+			if err.Code == klarerrs.ErrFieldAndMethodSameName {
+				err.SetParam("type", typeName)
+			}
 			c.fileError(err, meth.obj.file)
 			return
 		}

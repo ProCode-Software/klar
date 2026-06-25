@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 type Struct struct {
@@ -10,16 +11,18 @@ type Struct struct {
 	Initializers []*Object          // Type is [*Overload]
 	MethodSet
 	fmset *FieldMethodSet // Lazy-computed
+	noComputedIndex
 }
 
+var _ SupportsMethods = &Struct{}
+
 func (s *Struct) String() string { return "<struct>" }
+func (s *Struct) Kind() Kind     { return KindStruct }
 
 type FieldMethodSet struct {
 	Fields  map[string]Type
 	Methods map[string]*Function
 }
-
-var _ SupportsMethods = (*Struct)(nil)
 
 type StructField struct {
 	*Variable
@@ -31,6 +34,7 @@ type StructField struct {
 // to a [*Struct]. o's Type should be [*TypeName].
 func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	str := &Struct{}
+	str.nonMethodMap = &str.fieldMap
 	fctx := o.FileContext()
 	o.typ.(*TypeName).Type = str
 
@@ -73,9 +77,20 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	}
 }
 
+func (s *Struct) IndexDot(f string) (Type, *klarerrs.Error) {
+	// TODO: use fmset to also add inherited fields/methods
+	obj, ok := s.fieldMap[f]
+	if !ok {
+		return nil, &klarerrs.Error{
+			Code:  klarerrs.ErrFieldNotFound,
+			Label: "Field " + quote(f) + " doesn't exist",
+			Name:  f,
+		}
+	}
+	return obj.typ, nil
+}
+
 // makeDefaultInitializers creates the default initializers for the
 // underlying struct type in o.
 func (c *Checker) makeDefaultInitializers(o *Object) {
 }
-
-func (s *Struct) Kind() Kind { return KindStruct }

@@ -364,23 +364,7 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 	var funcAndAliasConflict bool
 	existing, ok := m.methodMap[obj.name]
 	if !ok {
-		// New method
-		//
-		// Check if a method shares the same name as something else (such as a field
-		// for structs)
-		if m.nonMethodMap != nil && *m.nonMethodMap != nil {
-			if _, ok := (*m.nonMethodMap)[obj.name]; ok {
-				return nil
-			}
-		}
-		if ov, ok := obj.typ.(*Overload); ok {
-			obj = NewObject(obj.name, obj.file, obj.rang, obj.module, &Function{
-				Overloads: []*Overload{ov},
-			})
-		}
-		m.methodMap[obj.name] = obj
-		m.Methods = append(m.Methods, obj)
-		return nil
+		return m.defineNewMethod(obj) // New method
 	}
 
 	switch old := existing.typ.(type) {
@@ -406,6 +390,7 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 	// Report the error
 	if funcAndAliasConflict {
 		err := klarerrs.Range(klarerrs.ErrAliasAndMethodSameName, obj.rang)
+		err.Name = obj.name
 		err.AddDetail(
 			"Other definition of "+klarerrs.Quote(obj.name),
 			existing.FilePath(), existing.rang,
@@ -414,6 +399,41 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 		return err
 	}
 	panic("unreachable")
+}
+
+func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
+	// Wrap the possible overload in a Function
+	if ov, ok := obj.typ.(*Overload); ok {
+		obj = NewObject(obj.name, obj.file, obj.rang, obj.module, &Function{
+			Overloads: []*Overload{ov},
+		})
+	}
+	m.methodMap[obj.name] = obj
+	m.Methods = append(m.Methods, obj)
+	
+	if m.nonMethodMap == nil {
+		return nil
+	}
+	// Check if a method shares the same name as something else (such as a field
+	// for structs)
+	if *m.nonMethodMap != nil {
+		if existing, ok := (*m.nonMethodMap)[obj.name]; ok {
+			err := klarerrs.Range(klarerrs.ErrFieldAndMethodSameName, obj.rang)
+			err.Label = "There is also a field named " + quote(obj.name)
+			err.Name = obj.name
+			err.AddDetail(
+				"The conflicting field was defined here",
+				existing.FilePath(), existing.rang,
+			)
+			return err
+		}
+	} else {
+		*m.nonMethodMap = make(map[string]*Object)
+	}
+	// Add the method to the map of both fields and methods. Structs that
+	// embed [MethodSet] will use this map for indexing.
+	(*m.nonMethodMap)[obj.name] = obj
+	return nil
 }
 
 func (m *MethodSet) GetMethods() []*Object { return m.Methods }

@@ -13,6 +13,7 @@ const (
 	ErrUnsupportedInitType    // Initializer target doesn't support initializers
 	ErrInvalidInheritedType   // Invalid inherited type in declaration
 	ErrAliasAndMethodSameName // Method and alias have the same name
+	ErrFieldAndMethodSameName // Field and method have the same name
 	ErrEnumSameValue          // Enum value must be unique
 	ErrCantInferStringEnum    // Can't infer string enum value
 	ErrAttributesNotAllowed   // Attributes are not allowed in this context (bootstrap)
@@ -37,38 +38,41 @@ const (
 	ErrMultiCharStringRange   // Bounds of range over String must be a single character
 	ErrMismatchTupleDestruct  // Number of destructured tuple items on left > right
 	ErrTupleRestDestruct      // A rest in a tuple destructure must give the target at least 2 items
-	ErrInvalidTypeIndex       // Can't index this type
+	ErrInvalidIndexType       // Can't index this type
 	ErrNegateNonNumeric       // Negate '-' operator only supported on Int and Float
+	ErrNonNumericIndex        // Index for list/String/tuple must be Int
+	ErrInvalidMapIndex        // Map must be indexed with its key type
+	ErrFieldNotFound          // Field not found
+	ErrInvalidComputedIndex   // Computed index not supported for this type
+	ErrDotIndexRequired       // Dot index required to index this type instead of computed String index
+	ErrNonBoolLogicalOperand  // Operand to '||', '&&', and '!' operator must be Bool
+	ErrInvalidArithType       // Operand for arithmetic operation must be numeric
+	ErrIntTimesString         // Should be String * Int, in that exact order
+	ErrInvalidStringMult      // String must be multiplied by Int
 
 	// Old errors. For reference only.
 
-	ErrUntypedNil       // nil requires contextual type
-	ErrUntypedEmptyList // Can't infer type from empty list
-	ErrUntypedEnum      // Shorthand enum syntax without enum type
-
-	ErrUncheckedOptional // Required to check if optional is nil
-	ErrUncheckedResult   // Required to check Result for error
-	ErrInvalidRestExpr   // Rest expression used where it is not supposed to
-	ErrVariadicLast      // Variadic param must be last
-
-	ErrNoGenerics        // Only builtin types are generic
-	ErrWrongTypeParamLen // Wrong number of generic params
-	ErrInvalidEnumValue  // Enum value must be literal string or number
-
+	ErrUntypedNil             // nil requires contextual type
+	ErrUntypedEmptyList       // Can't infer type from empty list
+	ErrUntypedEnum            // Shorthand enum syntax without enum type
+	ErrUncheckedOptional      // Required to check if optional is nil
+	ErrUncheckedResult        // Required to check Result for error
+	ErrInvalidRestExpr        // Rest expression used where it is not supposed to
+	ErrVariadicLast           // Variadic param must be last
+	ErrNoGenerics             // Only builtin types are generic
+	ErrWrongTypeParamLen      // Wrong number of generic params
+	ErrInvalidEnumValue       // Enum value must be literal string or number
 	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
 	ErrConflictingInherit     // Name collision in struct inheritance
 	ErrNonStructReceiver      // Defining method on non-struct type
 	ErrOverloadExists         // Overload already defined
-
-	ErrAssignToConst   // Attempted reassignment to constant reference
-	ErrWrongAssignType // Wrong type for assignment
-
-	ErrNonBoolLogical     // Operands in logical expression must be boolean
-	ErrMismatchedOperands // Operands don't match
-	ErrMismatchedDistrib  // Distributive operands must be the same type
-	ErrUncomparableTypes  // Uncomparable types in relational expression
-	ErrIntTimesString     // Wrong side for string multiplication
-	ErrInvalidOperation   // Operands are same type, but arithmetic not allowed on type
+	ErrAssignToConst          // Attempted reassignment to constant reference
+	ErrWrongAssignType        // Wrong type for assignment
+	ErrNonBoolLogical         // Operands in logical expression must be boolean
+	ErrMismatchedOperands     // Operands don't match
+	ErrMismatchedDistrib      // Distributive operands must be the same type
+	ErrUncomparableTypes      // Uncomparable types in relational expression
+	ErrInvalidOperation       // Operands are same type, but arithmetic not allowed on type
 )
 
 func (e *Error) handleTypeError() string {
@@ -92,6 +96,8 @@ func (e *Error) handleTypeError() string {
 		allowed := e.StringParam("allowedTypes")
 		kind := e.StringParam("kind")
 		return kind + " can only inherit " + allowed
+	case ErrAliasAndMethodSameName:
+		return "Method alias " + Quote(name) + " has the same name as another method"
 	case ErrEnumSameValue:
 		key := e.StringParam("key")
 		otherKey := e.StringParam("otherKey")
@@ -139,6 +145,8 @@ func (e *Error) handleTypeError() string {
 		return "Up to 2 variables can be declared in a 'for' loop"
 	case ErrMultipleIntIterVars:
 		return "Only 1 loop variable is allowed when iterating over an Int"
+	case ErrTypeAsValue:
+		return "Can't use type " + Quote(e.Name) + " as a value"
 	case ErrNotIterable:
 		if info.GotType == "Float" {
 			e.Hint("Define a range or convert the value to an Int to iterate over it.")
@@ -163,8 +171,30 @@ func (e *Error) handleTypeError() string {
 		return "A rest in a tuple destructure must give " + name + " at least 2 items"
 	case ErrNegateNonNumeric:
 		return "The expression after '-' must be a number"
-	case ErrInvalidTypeIndex:
+	case ErrInvalidIndexType:
 		return "Can't index type " + Quote(info.GotType)
+	case ErrNonNumericIndex:
+		return "Type " + Quote(info.ExpectedType) + " must be indexed with Int"
+	case ErrInvalidMapIndex:
+		return "Map with type " + Quote(e.Name) +
+			" must be indexed with the same type as its keys, which is " +
+			Quote(info.ExpectedType)
+	case ErrFieldNotFound:
+		return "Can't find a field or method named " + Quote(e.Name) +
+			" on type " + Quote(e.StringParam("type"))
+	case ErrInvalidComputedIndex:
+		return "Can't use type " + Quote(info.GotType) + " to index type " + Quote(e.Name)
+	case ErrDotIndexRequired:
+		return "Type " + Quote(e.Name) + "'s fields must be accessed via a dot-index"
+	case ErrInvalidArithType:
+		return "The " + Quote(e.Name) + " operator is only supported with numeric operands"
+	case ErrNonBoolLogicalOperand:
+		return "Logical operator " + Quote(e.Name) + " requires Bool or optional operands"
+	case ErrInvalidStringMult:
+		return "Type String can only be multiplied by Int"
+	case ErrFieldAndMethodSameName:
+		return "Method " + Quote(e.Name) + " has the same name as a field on type " +
+			Quote(e.StringParam("type"))
 
 		// OLD ERRORS
 		// =======

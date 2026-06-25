@@ -1,5 +1,9 @@
 package analysis
 
+import (
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+)
+
 // bootstrapType is a type that is used to bootstrap the typechecker.
 // It wraps a type and a kind, so the typechecker allows operations
 // for the provided kind on the wrapped type.
@@ -17,7 +21,10 @@ func (bt *bootstrapType) Kind() Kind       { return bt.kind }
 func (bt *bootstrapType) Underlying() Type { return bt.withKind }
 func (bt *bootstrapType) String() string   { return bt.kind.String() }
 
-var _ SupportsMethods = &bootstrapType{}
+var _ interface {
+	SupportsMethods
+	Indexer
+} = &bootstrapType{}
 
 func (c *Checker) wrapCompositeBootstrapTypes() {
 	for _, ct := range compositeTypes {
@@ -35,4 +42,26 @@ func (c *Checker) wrapCompositeBootstrapTypes() {
 			}
 		}, false)
 	}
+}
+
+func (bt *bootstrapType) Index(i Type) (Type, *klarerrs.Error) {
+	if indexer, ok := Underlying(bt.withKind).(Indexer); ok {
+		return indexer.Index(i)
+	}
+	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
+		return indexer.Index(i)
+	}
+	return nil, nil
+}
+
+func (bt *bootstrapType) IndexDot(i string) (Type, *klarerrs.Error) {
+	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
+		return indexer.IndexDot(i)
+	}
+	return nil, nil
+}
+
+func (bt *bootstrapType) CanIndex() bool {
+	_, ok := Underlying(bt.asDeclared).(Indexer)
+	return ok
 }

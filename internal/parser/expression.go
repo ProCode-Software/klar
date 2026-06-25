@@ -22,7 +22,7 @@ func (p *Parser) ParseBinaryExpression(left ast.Expression, bp BindingPower) *as
 	}
 }
 
-// Currently, '-' is the only unary operator.
+// Currently, '-' and '!' are the only unary operators.
 func (p *Parser) ParseUnaryExpression() *ast.UnaryExpression {
 	op := p.Advance()
 	right := p.ParseExpression(UnaryBindingPower)

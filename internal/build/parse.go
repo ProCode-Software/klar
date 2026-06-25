@@ -28,7 +28,7 @@ func (c *Compiler) parseFile(m *Module, file string,
 
 	path := m.FilePath(file)
 	c.Debug("Parsing file", slog.String("file", path))
-	shortPath, res, err := c.Parser.Parse(path, c.Logger)
+	shortPath, res, err := c.Parser.Parse(path, c.Logger, m.Stdin)
 	if err != nil {
 		return err
 	}
@@ -44,9 +44,6 @@ func (c *Compiler) parseFile(m *Module, file string,
 
 	// Load tokens into error reporter
 	reporterMu.Lock()
-	if m.IsStdin() {
-		path = stdinName
-	}
 	c.Reporter.LoadFile(path, shortPath, res.Tokens)
 	reporterMu.Unlock()
 
@@ -76,7 +73,7 @@ func (p *StdParser) Reset() {
 
 const stdinName = "standardInput"
 
-func (p *StdParser) Parse(filePath string, l *slog.Logger) (
+func (p *StdParser) Parse(filePath string, l *slog.Logger, stdin bool) (
 	shortPath string, res *ParseResult, err error,
 ) {
 	// Open file
@@ -84,10 +81,10 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger) (
 	var f *os.File
 	var sizeEst int64
 	res = &ParseResult{}
-	if filePath == "" {
+	if stdin {
 		// Read from standard input
 		f = os.Stdin
-		filePath, shortPath = stdinName, stdinName
+		shortPath = filePath
 		l.Info("Reading file from stdin")
 	} else {
 		f, err = os.Open(filePath)

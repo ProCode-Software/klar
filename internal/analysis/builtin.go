@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 )
 
@@ -53,7 +54,7 @@ var compositeTypes = []struct {
 		return &Map{ctx.Lookup("K"), ctx.Lookup("V")}
 	}},
 	{"Result", KindResult, func(ctx *Context) Type {
-		return &Result{ctx.Lookup("T"), ErrorType}
+		return &Result{ctx.Lookup("T"), ErrorType} // TODO: Change to ctx.Lookup("E")
 	}},
 	{"Task", KindTask, func(ctx *Context) Type {
 		return &Task{ctx.Lookup("T")}
@@ -91,11 +92,53 @@ type List struct{ Elem Type }
 func (l *List) Kind() Kind     { return KindList }
 func (l *List) String() string { return "[" + l.Elem.String() + "]" }
 
+func (l *List) IndexDot(f string) (Type, *klarerrs.Error) { return indexBuiltin("List", f) }
+func (l *List) Index(i Type) (Type, *klarerrs.Error) {
+	if i.Kind() != IntType {
+		return nil, indexTypeMismatchError(
+			klarerrs.ErrNonNumericIndex,
+			KindList, i, "Can't index a list using type "+i.String(),
+		)
+	}
+	// TODO: constant analysis (negative index, out of range index)
+	return l.Elem, nil
+}
+
 type Map struct{ Key, Value Type }
 
 func (*Map) Kind() Kind { return KindMap }
 func (m *Map) String() string {
 	return fmt.Sprintf("#{%s: %s}", m.Key.String(), m.Value.String())
+}
+
+func (m *Map) Index(i Type) (Type, *klarerrs.Error) {
+	if Compatible(i, m.Key) {
+		return m.Value, nil
+	}
+	err := indexTypeMismatchError(
+		klarerrs.ErrInvalidMapIndex, m.Key, i, "Map index must have type "+m.Key.String(),
+	)
+	err.Name = m.String()
+	return nil, err
+}
+
+func (m *Map) IndexDot(i string) (Type, *klarerrs.Error) {
+	typ, builtinErr := indexBuiltin("Map", i)
+	if builtinErr == nil {
+		return typ, nil
+	}
+	// For maps, `m.key` is the same as `m['key']`. Builtin fields have
+	// precedence over map keys, so this only runs for unknown fields.
+	//
+	// TODO: Should we disallow this from the language? A user can misspell
+	// a builtin field (such as `lenth`) and if the Map's key type is String,
+	// it will silently succeed. Or warn if the field is similar to a builtin?
+	if m.Key.Kind() == StringType {
+		return m.Value, nil
+	}
+	// If it isn't a String key, always look for a field on the Map
+	// builtin, so return the error from that
+	return nil, builtinErr
 }
 
 type Optional struct{ Elem Type }
@@ -127,6 +170,8 @@ func (*Task) Kind() Kind { return KindTask }
 func (t *Task) String() string {
 	return "Task<" + t.Result.String() + ">"
 }
+
+func (t *Task) IndexDot(f string) (Type, *klarerrs.Error) { return indexBuiltin("Task", f) }
 
 // Loading
 // ==========
@@ -161,6 +206,7 @@ func (c *Checker) loadInternalModules() {
 
 func declareBuiltinTypes() {
 	for _, p := range primitives {
+		// TODO: Do we have to change them back from [*bootstrapType]?
 		BuiltInContext.Declare(&Object{
 			name:    p.name,
 			context: BuiltInContext,

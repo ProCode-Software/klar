@@ -72,21 +72,14 @@ const (
 )
 
 type Module struct {
+	Assets     []string
 	Path       string                  // Directory path, or file if single-file
 	Programs   map[string]*ast.Program // Keys are file basenames (with extensions)
 	ModTimes   map[string]time.Time    // Same basenames as Programs
 	Checked    *analysis.Module        // Typechecked module
 	SingleFile bool
-	Assets     []string
+	Stdin      bool
 	Failed     bool // Has errors
-}
-
-func (m *Module) IsStdin() bool {
-	if !m.SingleFile || m.Programs == nil {
-		return false
-	}
-	_, ok := m.Programs[""]
-	return ok
 }
 
 // Includes the file extension
@@ -100,7 +93,7 @@ func (m *Module) FilePath(base string) string {
 // Name returns the module name. If m is a single file, Name returns
 // the file name without the extension.
 func (m *Module) Name() string {
-	if m.IsStdin() {
+	if m.Stdin {
 		return stdinName
 	}
 	return strings.TrimSuffix(filepath.Base(m.Path), ".klar")

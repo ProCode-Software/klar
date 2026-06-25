@@ -2,8 +2,6 @@
 package ast
 
 import (
-	"go/ast"
-
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -60,7 +58,7 @@ type (
 	// String fragments. Implement [StringFragment].
 	EscapeFragment        struct{ Value StringEscape }
 	TextFragment          = lexer.TextFragment
-	InterpolationFragment struct{ Expression Node }
+	InterpolationFragment struct{ Expression Expression }
 
 	// A StringEscape is an escape sequence inside a [StringLiteral].
 	StringEscape interface{ stringEsc() }
@@ -126,7 +124,7 @@ type BinaryExpression struct {
 }
 
 type UnaryExpression struct {
-	Operator Operator // [lexer.Minus] only
+	Operator Operator // [lexer.Minus] or [lexer.Not]
 	Right    Expression
 	BaseNode
 }
@@ -163,7 +161,7 @@ type IndexExpression struct {
 //	array[...high]
 //	array[...] // copy
 type SliceExpression struct {
-	Object   Node
+	Object   Expression
 	From, To Expression
 	Operator Operator
 	BaseNode
@@ -192,7 +190,7 @@ type CallParam struct {
 
 // A function call
 type CallExpression struct {
-	Callee Node
+	Callee Expression
 	Args   []*CallParam
 	BaseNode
 }
@@ -251,7 +249,7 @@ type MapCastExpression struct {
 type WhenExpression struct {
 	BaseNode
 	Subjects []Expression
-	Label    *ast.Ident
+	Label    *Identifier
 	Cases    []*WhenCase
 }
 

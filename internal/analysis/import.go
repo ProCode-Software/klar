@@ -8,6 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/target"
 )
 
@@ -109,31 +110,16 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 	}
 
 	// Declare the namespace
-	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &Namespace{
-		Context: mod.Context,
-	})
+	nsType := &Namespace{ImportPath: mod.ImportPathString(), Context: mod.Context}
+	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, nsType)
 	c.declare(fctx, nsObj)
 
 	// Declare unqualified imports
 	for _, name := range stmt.UnqualifiedImports {
 		target := name.Name.Name
-		obj := mod.Context.Lookup(target)
-		if obj == nil || !obj.public {
-			// Not found in the module or private
-			err := klarerrs.ReferenceError(
-				klarerrs.ErrExportUndefined, name.Name.Range(), target,
-			).SetParam("module", mod.ImportPath.String())
-			err.Label = fmt.Sprintf(
-				"%s doesn't export %s",
-				klarerrs.Quote(mod.ImportPath.String()), klarerrs.Quote(target),
-			)
-			if obj != nil {
-				err.Code = klarerrs.ErrNotExported
-				err.AddDetail(
-					klarerrs.Quote(target)+" was declared here, and it isn't public",
-					obj.FilePath(), obj.Range(),
-				)
-			}
+		obj, err := nsType.lookupExport(target)
+		if err != nil {
+			err.Range = name.Name.Range()
 			c.fileError(err, fctx.File)
 			continue
 		}
@@ -157,7 +143,16 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 }
 
 func (c *Checker) declareErrorImport(stmt *ast.ImportStatement, fctx *Context) {
-	// TODO: declare the namespace with [InvalidType]
+	if stmt.Alias != nil && stmt.Alias.IsDiscard() {
+		return // Don't do anything
+	}
+	ns := imports.ImportPath.Namespace(stmt.Module)
+	if stmt.Alias != nil {
+		ns = stmt.Alias.Name
+	}
+	// Declare the namespace
+	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &InvalidTypeObject{})
+	c.declare(fctx, nsObj)
 }
 
 func (c *Checker) reportImportError(importPath string, err error,
@@ -192,4 +187,46 @@ func (c *Checker) reportImportError(importPath string, err error,
 	}
 
 	c.fileError(kerr, fid)
+}
+
+type Namespace struct {
+	ImportPath string
+	Context    *Context
+	noComputedIndex
+}
+
+func (*Namespace) Kind() Kind          { return KindNamespace }
+func (ns *Namespace) Underlying() Type { return ns }
+func (*Namespace) objKind()            {}
+func (ns *Namespace) String() string   { return "<module>" }
+
+func (ns *Namespace) lookupExport(target string) (*Object, *klarerrs.Error) {
+	obj := ns.Context.Lookup(target)
+	if obj == nil || !obj.public {
+		// Not found in the module or private
+		err := klarerrs.ReferenceError(
+			klarerrs.ErrExportUndefined, ranges.Range{}, target,
+		).SetParam("module", ns.ImportPath)
+		err.Label = fmt.Sprintf(
+			"%s doesn't export %s",
+			klarerrs.Quote(ns.ImportPath), klarerrs.Quote(target),
+		)
+		if obj != nil {
+			err.Code = klarerrs.ErrNotExported
+			err.AddDetail(
+				klarerrs.Quote(target)+" was declared here, and it isn't public",
+				obj.FilePath(), obj.Range(),
+			)
+		}
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (ns *Namespace) IndexDot(field string) (Type, *klarerrs.Error) {
+	obj, err := ns.lookupExport(field)
+	if err != nil {
+		return nil, err
+	}
+	return obj.typ, nil
 }

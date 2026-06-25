@@ -183,8 +183,8 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 	if stmt.Condition != nil {
 		cond := c.checkExpr(stmt.Condition, newExprFromStmtCtx(sctx, 0))
-		if cond.Type.Kind() != BoolType {
-			gotType := cond.Type.String()
+		if typ := cond.Type; typ.Kind() != BoolType && typ.Kind() != InvalidType {
+			gotType := typ.String()
 			err := klarerrs.TypeError(
 				klarerrs.ErrNonBoolWhileCond, stmt.Condition.GetRange(),
 				BoolType.String(), gotType,

@@ -27,7 +27,7 @@ func (p *Parser) validateIdentifier(tok lexer.Token) bool {
 	switch {
 	case tok.Kind == lexer.Underscore:
 		p.Error(klarerrs.Token(klarerrs.ErrUnderscoreValue, tok))
-	case slices.Contains(ast.ReservedIdent, tok.Kind):
+	case slices.Contains(lexer.ReservedIdent, tok.Kind):
 		p.Error(klarerrs.Token(klarerrs.ErrReservedKeyword, tok))
 	default:
 		p.Error(klarerrs.ExpectedToken(lexer.Identifier, tok))
@@ -104,7 +104,7 @@ func (p *Parser) ParseMapIdentifier(opts parseFlags) ast.Identifier {
 		}
 		fallthrough
 	case !slices.Contains(ast.Modifiers, tok.Kind) &&
-		!slices.Contains(ast.ReservedIdent, tok.Kind):
+		!slices.Contains(lexer.ReservedIdent, tok.Kind):
 		p.Error(klarerrs.ExpectedToken(lexer.Identifier, tok))
 	}
 	return p.newIdentifier(tok)

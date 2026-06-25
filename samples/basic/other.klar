@@ -38,6 +38,6 @@ server.handle(path: '/get', with: func r, w {
 print("Starting the server...")
 server.start(port: 8080)
 
-for i in object {
+for i in [Person("John", age: 32), Person("Jane", age: 31)] {
     print(i)
 }

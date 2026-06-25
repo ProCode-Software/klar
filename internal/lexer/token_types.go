@@ -182,3 +182,8 @@ var KeywordMap = map[string]TokenType{
 	"false": Boolean,
 	"nil":   Nil,
 }
+
+// ReservedIdent is the set of keywords that cannot be used as variable names.
+var ReservedIdent = []TokenType{
+	And, Await, Boolean, Stop, For, Func, Go, In, Next, Nil, Or, Return, Type, When, While,
+}

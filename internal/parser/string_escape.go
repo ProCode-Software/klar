@@ -76,7 +76,7 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 	return frags
 }
 
-func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Node) {
+func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Expression) {
 	content = append(content, lexer.Token{
 		Kind:     lexer.EOF,
 		Position: content[len(content)-1].End(),

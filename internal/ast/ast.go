@@ -35,13 +35,6 @@ type Type interface {
 	_type()
 }
 
-// ReservedIdent is the set of keywords that cannot be used as variable names.
-var ReservedIdent = []lexer.TokenType{
-	lexer.And, lexer.Await, lexer.Boolean, lexer.Stop, lexer.For, lexer.Func,
-	lexer.Go, lexer.In, lexer.Next, lexer.Nil, lexer.Or,
-	lexer.Return, lexer.Type, lexer.When, lexer.While,
-}
-
 // Keywords that are used before declarations.
 var Modifiers = []lexer.TokenType{lexer.Public}
 

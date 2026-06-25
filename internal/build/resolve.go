@@ -234,11 +234,11 @@ func (ld *Loader) ResolveInputModules() (modules []*Module, klarFiles int, err e
 		}}, 1, nil
 	case KindStdin:
 		ld.Info("Resolved file from stdin")
-		// Empty paths are stdin
 		return []*Module{{
-			Path:       "",
-			Programs:   map[string]*ast.Program{"": nil},
+			Path:       stdinName,
+			Programs:   map[string]*ast.Program{stdinName: nil},
 			SingleFile: true,
+			Stdin:      true,
 		}}, 1, nil
 	case KindModule:
 		ld.Info("Resolving module", slog.String("modulePath", ld.Path))

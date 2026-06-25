@@ -59,6 +59,9 @@ func (e *Expr) ConstValue() ConstValue {
 func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	switch expr := expr.(type) {
 	case *ast.BinaryExpression:
+		c.checkBinaryExpr(expr, t)
+	case *ast.RelationalExpression:
+
 	case *ast.UnaryExpression:
 		c.checkUnaryExpr(expr, t)
 	case *ast.NilLiteral:
@@ -79,6 +82,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.IndexExpression:
 		c.checkIndexExpr(expr, t)
 	case *ast.CallExpression:
+		c.checkCallExpr(expr, t)
 	case *ast.EnumLiteral:
 	case *ast.WhenExpression:
 	case *ast.LambdaExpression:
@@ -114,6 +118,8 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkGoExpr(expr, t)
 	case *ast.AwaitExpression:
 		c.checkAwaitExpr(expr, t)
+	case *ast.AssertExpression:
+	case *ast.TryExpression:
 	default:
 		panic(fmt.Sprintf("unhandled expression node type: %T", expr))
 	}
@@ -144,7 +150,9 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 			SetParam("kind", kindOf(obj.typ))
 		err.Label = quote(name) + " is a type, not a value"
 		err.Name = name
-		err.AddDetail(quote(name)+" was declared here", obj.FilePath(), obj.rang)
+		if obj.context != BuiltInContext {
+			err.AddDetail(quote(name)+" was declared here", obj.FilePath(), obj.rang)
+		}
 		c.fileError(err, fid)
 		return
 	}
@@ -256,15 +264,23 @@ func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, t *Expr) {
 
 func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 	lhs := c.checkExpr(expr.Object, newChildExpr(t, 0))
+	if lhs.Type.Kind() == InvalidType {
+		t.Type = InvalidType
+		return
+	}
 	// Types that can be indexed implement [Indexer]
 	indexer, ok := Underlying(lhs.Type).(Indexer)
-	if !ok {
-		// Can't index the LHS type
-		err := klarerrs.Node(klarerrs.ErrInvalidTypeIndex, expr.Object)
+	cantIndexErr := func() {
+		err := klarerrs.Node(klarerrs.ErrInvalidIndexType, expr.Object)
 		err.Info = klarerrs.TypeErrorInfo{GotType: lhs.Type.String()}
-		err.Label = "Type " + klarerrs.Quote(lhs.Type.String()) + " can't be indexed"
+		err.Label = "Can't index " + klarerrs.WithA(lhs.Type.Kind().String())
+		// err.Label = "Type " + klarerrs.Quote(lhs.Type.String()) + " can't be indexed"
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
+	}
+	if !ok {
+		// Can't index the LHS type
+		cantIndexErr()
 		return
 	}
 
@@ -274,37 +290,141 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 		// TODO: handle unions (union of #{Int: Andy} and [Any]
 		// supports computed indexing)
 		t.Type, err = indexer.Index(rhs.Type)
+
+		// Add LHS type information to error. And if the user uses a String
+		// computed index, suggest using a dot index instead. (TODO: diff)
+		if err != nil && err.Code == klarerrs.ErrInvalidComputedIndex {
+			err.Name = lhs.Type.String()
+			if rhs.Type.Kind() == StringType {
+				err.Code = klarerrs.ErrDotIndexRequired
+				err.Label = "Type " + quote(lhs.Type.String()) + " must be indexed via a dot index"
+			} else {
+				err.Label = "Can't index type " + quote(lhs.Type.String()) +
+					" using type " + quote(rhs.Type.String())
+			}
+		}
 	} else {
 		// Dot-index
 		field := expr.Property.(*ast.Symbol).Identifier
 		t.Type, err = indexer.IndexDot(field)
 	}
+	if t.Type == nil && err == nil {
+		// Still can't index type
+		cantIndexErr()
+		return
+	}
 	// Error while indexing, such as:
 	// - Using a computed index for a field
+	//   - TODO: Handle that here by calling IndexDot with the string if Index fails
 	// - Type doesn't support computed indexing (e.g. struct)
 	// - Indexing using an unknown field
 	// - Index out of range for list constants
+	// - Non-constant tuple index
 	if err != nil {
+		if err.Code == klarerrs.ErrFieldNotFound {
+			err.SetParam("type", lhs.Type.String())
+		}
 		err.Node = expr.Property
-		expr.Range = expr.Property.GetRange()
-		t.Type = InvalidType
+		err.Range = expr.Property.GetRange()
 		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
 	}
 }
 
 func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
-	if expr.Operator.Kind != lexer.Minus {
-		panic(fmt.Sprintf("unhandled unary operator: %q", expr.Operator))
-	}
 	rhs := c.checkExpr(expr.Right, newChildExpr(t, 0))
 	t.Type = rhs.Type
-	// RHS must be an Int or Float
-	if kind := rhs.Type.Kind(); kind != IntType && kind != FloatType {
-		got := rhs.Type.String()
-		err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr)
-		err.Label = "This has type " + quote(got)
-		err.Info = klarerrs.TypeErrorInfo{GotType: got}
-		c.fileError(err, t.Context.File)
-		t.Type = InvalidType
+	rhsKind := rhs.Type.Kind()
+	switch expr.Operator.Kind {
+	case lexer.Minus:
+		// RHS must be an Int or Float
+		if rhsKind != IntType && rhsKind != FloatType {
+			got := rhs.Type.String()
+			err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr)
+			err.Label = "This has type " + quote(got)
+			err.Info = klarerrs.TypeErrorInfo{GotType: got}
+			c.fileError(err, t.Context.File)
+			t.Type = InvalidType
+		}
+	case lexer.Not:
+	// RHS must be Bool or optional
+	default:
+		panic(fmt.Sprintf("unhandled unary operator: %q", expr.Operator))
 	}
+}
+
+func (c *Checker) checkBinaryExpr(expr *ast.BinaryExpression, t *Expr) {
+	lhs := c.checkExpr(expr.Left, newChildExpr(t, 0))
+	lhsKind := lhs.Type.Kind()
+	// TODO: handle unions
+	switch expr.Operator.Kind {
+	case lexer.AndAnd, lexer.OrOr:
+		// Bool
+		if !Compatible(lhs.Type, BoolType) {
+			err := typeMismatch(BoolType, lhs.Type, expr.Left.GetRange())
+			err.Code = klarerrs.ErrNonBoolLogical
+			err.Name = expr.Operator.String()
+			err.Label = "This has type " + quote(lhs.Type.String())
+			c.fileError(err, t.Context.File)
+			t.Type = InvalidType
+			return
+		}
+		_ = c.checkExpr(expr.Right, newChildExprWithHint(t, BoolType, 0))
+		t.Type = BoolType
+	case lexer.Plus:
+	// Int, Float, String, List, Map
+	case lexer.Asterisk:
+		// Int, Float, String * Int
+		rhs := c.checkExpr(expr.Right, newChildExpr(t, 0))
+		rhsKind := rhs.Type.Kind()
+		if lhsKind == StringType {
+			if !Compatible(rhs.Type, IntType) {
+				err := typeMismatch(IntType, rhs.Type, expr.Right.GetRange())
+				err.Code = klarerrs.ErrInvalidStringMult
+				err.Label = "Expected an Int, but this is " + quote(rhs.Type.String())
+				err.AddHighlight(
+					"This has type "+quote(lhs.Type.String()), // String
+					expr.Left.GetRange(),
+				)
+				c.fileError(err, t.Context.File)
+				t.Type = InvalidType
+				return
+			}
+			t.Type = StringType
+			break
+		} else if lhsKind == IntType && rhsKind == StringType {
+			// Wrong order. String * Int, not Int * String
+			err := klarerrs.Node(klarerrs.ErrIntTimesString, expr)
+			err.Label = "Switch these operands"
+			c.fileError(err, t.Context.File)
+			t.Type = StringType
+			break
+		}
+		fallthrough
+	case lexer.Minus, lexer.Slash, lexer.Percent, lexer.Caret:
+		// Int, Float
+		rhs := c.checkExpr(expr.Right, newChildExprWithHint(t, lhs.Type, 0))
+		t.Type = rhs.Type
+		if rhsKind := rhs.Type.Kind(); rhsKind != IntType && rhsKind != FloatType {
+			err := klarerrs.Node(klarerrs.ErrInvalidArithType, expr)
+			err.Name = expr.Operator.String()
+			err.Label = "These have type " + quote(t.Type.String())
+			c.fileError(err, t.Context.File)
+			t.Type = InvalidType
+		}
+	case lexer.And, lexer.Or:
+		// Distributive: any type, but both sides must be the same
+		rhs := c.checkExpr(expr.Right, newChildExprWithHint(t, lhs.Type, 0))
+		t.Type = rhs.Type
+	case lexer.In, lexer.NotIn:
+		// T in [T], K in #{K: V}
+	default:
+		panic(fmt.Sprintf("unhandled binary operator: %q", expr.Operator))
+	}
+}
+
+func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
+	lhs := c.checkExpr(expr.Callee, newChildExpr(t, 0))
+	t.Type = lhs.Type
+	_ = lhs
 }

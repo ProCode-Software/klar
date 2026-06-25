@@ -143,7 +143,7 @@ public func Map.without(keys keys: ...K) -> #{K: V} = clone(self) |. delete(keys
 // Returns a new map without the keys that have the same value as those in the provided map.
 public func Map.without(valuesFrom map: #{K: V}) -> #{K: V} {
     result: #{K: V} := clone(self)
-    for k, v in map.keys {
+    for k, v in map {
         when self[k] {
             v -> result[k] = none
         }
