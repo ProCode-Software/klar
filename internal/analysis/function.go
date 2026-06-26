@@ -410,7 +410,7 @@ func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
 	}
 	m.methodMap[obj.name] = obj
 	m.Methods = append(m.Methods, obj)
-	
+
 	if m.nonMethodMap == nil {
 		return nil
 	}

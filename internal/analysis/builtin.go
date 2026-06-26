@@ -48,19 +48,19 @@ var compositeTypes = []struct {
 	asKind       func(*Context) Type // The type that actually has the kind
 }{
 	{"List", KindList, func(ctx *Context) Type {
-		return &List{ctx.Lookup("T")}
+		return &List{ctx.Lookup("T").typ}
 	}},
 	{"Map", KindMap, func(ctx *Context) Type {
-		return &Map{ctx.Lookup("K"), ctx.Lookup("V")}
+		return &Map{ctx.Lookup("K").typ, ctx.Lookup("V").typ}
 	}},
 	{"Result", KindResult, func(ctx *Context) Type {
-		return &Result{ctx.Lookup("T"), ErrorType} // TODO: Change to ctx.Lookup("E")
+		return &Result{ctx.Lookup("T").typ, ErrorType} // TODO: Change to ctx.Lookup("E")
 	}},
 	{"Task", KindTask, func(ctx *Context) Type {
-		return &Task{ctx.Lookup("T")}
+		return &Task{ctx.Lookup("T").typ}
 	}},
 	{"Optional", KindOptional, func(ctx *Context) Type {
-		return &Optional{ctx.Lookup("T")}
+		return &Optional{ctx.Lookup("T").typ}
 	}},
 	{"Error", ErrorType, func(*Context) Type { return ErrorType }},
 }
@@ -116,7 +116,7 @@ func (m *Map) Index(i Type) (Type, *klarerrs.Error) {
 		return m.Value, nil
 	}
 	err := indexTypeMismatchError(
-		klarerrs.ErrInvalidMapIndex, m.Key, i, "Map index must have type "+m.Key.String(),
+		klarerrs.ErrInvalidMapIndex, m.Key, i, "This has type "+quote(i.String()),
 	)
 	err.Name = m.String()
 	return nil, err

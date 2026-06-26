@@ -49,7 +49,9 @@ func newExprFromStmtCtx(sctx *stmtContext, flags Flag) *Expr {
 type ExprKind int
 
 const (
-	_ ExprKind = iota
+	typeInit ExprKind = 1 << iota
+	callLHS
+	constExpr
 )
 
 func (e *Expr) ConstValue() ConstValue {
@@ -123,10 +125,11 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	default:
 		panic(fmt.Sprintf("unhandled expression node type: %T", expr))
 	}
-	if t.Type != nil {
-		return t
+	if t.Type == nil {
+		t.Type = InvalidType
 	}
-	t.Type = InvalidType
+	// Record the expression node and its *Expr
+	c.Info.Expressions[expr] = t
 	return t
 }
 
@@ -140,12 +143,23 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 	if obj == nil {
 		c.fileError(klarerrs.Undefined(name, s.Range), fid)
 		return
-	} else if obj.IsTypeName() {
-		// Only allowed if t.hint is a function (making the expression an initializer)
-		// 	parseInt: func(String) -> Result<Int> := Int
-		if t.hint != nil && t.hint.Kind() == KindFunction {
-			// Find the overload of the initializer this is referring to
-		}
+	}
+	// If the target value hasn't been completed yet, typecheck it
+	if Underlying(obj.typ) == nil {
+		c.checkDeclaration(obj)
+	}
+	t.Type = obj.typ
+	switch {
+	case !obj.IsTypeName():
+	case (t.Kind & callLHS) != 0:
+		t.Kind |= typeInit
+	case t.hint != nil && t.hint.Kind() == KindFunction:
+	// Allowed if t.hint is a function (making the expression an initializer)
+	// 	parseInt: func(String) -> Result<Int> := Int
+	//
+	// Find the overload of the initializer this is referring to
+	default:
+		// Type used as expression
 		err := klarerrs.Range(klarerrs.ErrTypeAsValue, s.Range).
 			SetParam("kind", kindOf(obj.typ))
 		err.Label = quote(name) + " is a type, not a value"
@@ -154,13 +168,8 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 			err.AddDetail(quote(name)+" was declared here", obj.FilePath(), obj.rang)
 		}
 		c.fileError(err, fid)
-		return
+		t.Type = InvalidType
 	}
-	// If the target value hasn't been completed yet, typecheck it
-	if Underlying(obj.typ) == nil {
-		c.checkDeclaration(obj)
-	}
-	t.Type = obj.typ
 }
 
 func canRangeOver(k Kind) bool {
@@ -418,13 +427,42 @@ func (c *Checker) checkBinaryExpr(expr *ast.BinaryExpression, t *Expr) {
 		t.Type = rhs.Type
 	case lexer.In, lexer.NotIn:
 		// T in [T], K in #{K: V}
+		rhs := c.checkExpr(expr.Right, newChildExpr(t, 0))
+		rhsKind := rhs.Type.Kind()
+		switch rhsKind {
+		case KindMap:
+			mp := Underlying(rhs.Type).(*Map)
+			if !Compatible(lhs.Type, mp.Key) {
+				err := typeMismatch(mp.Key, lhs.Type, expr.Left.GetRange())
+				err.AddHighlight(
+					"This map has type "+quote(mp.String()),
+					expr.Right.GetRange(),
+				)
+				c.fileError(err, t.Context.File)
+			}
+		case KindList:
+			list := Underlying(rhs.Type).(*List)
+			if !Compatible(lhs.Type, list.Elem) {
+				err := typeMismatch(list.Elem, lhs.Type, expr.Left.GetRange())
+				err.AddHighlight(
+					"This list has type "+quote(list.String()),
+					expr.Right.GetRange(),
+				)
+				c.fileError(err, t.Context.File)
+			}
+		default:
+			err := klarerrs.Node(klarerrs.ErrInvalidInOperand, expr.Right)
+			err.Label = "This has type " + quote(rhs.Type.String())
+		}
+		t.Type = BoolType
 	default:
 		panic(fmt.Sprintf("unhandled binary operator: %q", expr.Operator))
 	}
 }
 
 func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
-	lhs := c.checkExpr(expr.Callee, newChildExpr(t, 0))
+	lhs := newChildExpr(t, 0)
+	lhs.Kind = callLHS
+	c.checkExpr(expr.Callee, lhs)
 	t.Type = lhs.Type
-	_ = lhs
 }

@@ -190,7 +190,7 @@ public func Map.setIfExists(key: K, to value: V) {
 
 // Removes a key in the map, moving its value to a new key.
 public func Map.changeKey(from, to newKey: K) {
-    self[to] = self[from]
+    self[newKey] = self[from]
     self[from] = none
 }
 

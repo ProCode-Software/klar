@@ -152,7 +152,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case *ast.VariableDeclaration:
 		c.declareVars(stmt, sctx.collector, false, nil)
 	case *ast.AssignmentStatement:
-
+		c.checkAssignStmt(stmt, sctx)
 	case ast.ModifierDeclaration:
 		// TODO: Could a main.klar file reach a public statement at the top-level?
 		panic("invalid AST: public declaration must be at top-level")
@@ -368,4 +368,39 @@ func isAllowedAsStmt(expr ast.Expression) bool {
 }
 
 func (c *Checker) checkAssignment(e *Expr) {
+}
+
+func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtContext) {
+	var singleRHS *Expr
+	var singleRHSRange ranges.Range
+	if stmt.IsSingleRHS() {
+		singleRHS = c.checkExpr(stmt.Assignee[0], newExprFromStmtCtx(sctx, 0))
+		singleRHSRange = stmt.Assignee[0].GetRange()
+	}
+	for i, dest := range stmt.Assignee {
+		rhs := singleRHS
+		rhsRange := singleRHSRange
+		if singleRHS == nil {
+			rhs = c.checkExpr(stmt.Assignee[i], newExprFromStmtCtx(sctx, 0))
+			rhsRange = stmt.Assignee[i].GetRange()
+		}
+		for dest, typ := range c.followDestructure(dest, rhs, rhsRange, false) {
+			lhs := c.checkExpr(dest, newExprFromStmtCtx(sctx, 0))
+			switch lhs.Type.(type) {
+			case *Constant:
+			// Can't assign to a const
+			case *Function, *Overload, *FunctionAlias:
+				// Functions are readonly
+			}
+			if !Compatible(typ, lhs.Type) {
+				err := typeMismatch(lhs.Type, typ, rhsRange)
+				err.AddHighlight(
+					"This has type "+quote(lhs.Type.String()),
+					dest.GetRange(),
+				)
+				c.fileError(err, sctx.ctx.File)
+				continue
+			}
+		}
+	}
 }

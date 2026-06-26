@@ -73,6 +73,7 @@ const (
 	ErrMismatchedDistrib      // Distributive operands must be the same type
 	ErrUncomparableTypes      // Uncomparable types in relational expression
 	ErrInvalidOperation       // Operands are same type, but arithmetic not allowed on type
+	ErrInvalidInOperand       // Right-hand side of 'in' operator must be a list or map
 )
 
 func (e *Error) handleTypeError() string {

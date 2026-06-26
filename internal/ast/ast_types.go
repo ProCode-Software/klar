@@ -435,6 +435,10 @@ type AssignmentStatement struct {
 	Values   []Expression // Either 1 item or len(Variables)
 }
 
+func (as *AssignmentStatement) IsSingleRHS() bool {
+	return len(as.Values) == 1 && len(as.Assignee) > 1
+}
+
 // A FunctionDeclaration is a basic Klar function or method declaration.
 //
 //	func run()

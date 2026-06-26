@@ -85,6 +85,9 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	if opts.CheckerOptions == nil {
 		opts.CheckerOptions = DefaultCheckerOptions
 	}
+	c.Info = &Info{
+		Expressions: make(map[ast.Expression]*Expr),
+	}
 	c.rootContext = mod.Context
 	c.module = mod
 	c.Programs = mod.Programs
