@@ -44,14 +44,16 @@ func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 	switch {
 	case tok.Kind != lexer.Identifier:
 		break // Use default color
-	case isPrimitive(tok.Source), // Builtin type: Int
+	case tok.Source == "TODO":
+		color = r.ColorPalette.BuiltinFunc
+	case
+		isPrimitive(tok.Source),                             // Builtin type: Int
+		unicode.IsUpper(firstChar(tok.Source)),              // Type name
 		prev == lexer.Arrow && next == lexer.LeftCurlyBrace, // Return type: -> Type {
-		prev == lexer.Type,     // Type declaration: type Type
-		next == lexer.Stroke,   // Union: Type1 | Type2
-		next == lexer.Question, // Optional: Type?
-		// Initializer: Capitalized identifier followed by '('
-		next == lexer.LeftParenthesis && unicode.IsUpper(firstChar(tok.Source)):
+		prev == lexer.Type:                                  // Type declaration: type Type
 		color = r.ColorPalette.Type
+	case tok.Source == analysis.SelfName:
+		color = r.ColorPalette.GetTokenColor(lexer.When) // Keyword color
 	case next == lexer.LeftParenthesis:
 		// Function call: x(...
 		if slices.Contains(builtinFuncs, tok.Source) &&

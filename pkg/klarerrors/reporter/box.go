@@ -1,6 +1,8 @@
 package reporter
 
 import (
+	"slices"
+
 	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
@@ -62,9 +64,11 @@ func (r *Reporter) printBox(
 	firstTokOnLine := file.getTokenIndexForLine(startLine)
 	for line := startLine; line <= endLine; line++ {
 		groups := groupHighlights(highlights, line)
-		if len(groups.newSingleLine) == 0 && len(groups.newMultiline) == 0 {
+		if groups.canCollapse(line) {
 			// No new highlights on this line: check if we can collapse lines
-			if n := r.tryCollapseLines(s, line, endLine, &firstTokOnLine, groups.existing); n > 0 {
+			if n := r.tryCollapseLines(
+				s, line, endLine, &firstTokOnLine, groups.existing,
+			); n > 0 {
 				line += n
 				firstTokOnLine = file.getTokenIndexForLine(line + 1)
 				continue
@@ -76,7 +80,6 @@ func (r *Reporter) printBox(
 		// Print a line of code
 		lastCol := r.printSourceLine(s, line, &firstTokOnLine, groups.existing)
 		r.newline()
-		// TODO: change these params
 		r.printHighlights(s, line, lastCol, groups)
 	}
 }
@@ -110,9 +113,7 @@ func (r *Reporter) tryCollapseLines(s *state, line,
 ) (n uint32) {
 	// Find the next line with highlights starting or ending.
 	for line := line + 1; line <= endLine; line++ {
-		groups := groupHighlights(s.highlights, line)
-		if len(groups.newSingleLine) > 0 || len(groups.newMultiline) > 0 ||
-			r.highlightsEndOnLine(line, groups.existing) {
+		if groups := groupHighlights(s.highlights, line); !groups.canCollapse(line) {
 			break
 		}
 		n++
@@ -130,14 +131,13 @@ func (r *Reporter) tryCollapseLines(s *state, line,
 	return n
 }
 
-// highlightsEndOnLine reports whether any highlight ends on the given line.
-func (r *Reporter) highlightsEndOnLine(line uint32, highlights []klarerrs.Highlight) bool {
-	for _, hl := range highlights {
-		if hl.Range.End.Line == line {
-			return true
-		}
-	}
-	return false
+// canCollapse reports whether the current line can be collapsed. If
+// no highlight starts or ends on the current line, the line can be collapsed.
+func (g *groupedHighlights) canCollapse(currLine uint32) bool {
+	return len(g.newSingleLine) == 0 && len(g.newMultiline) == 0 &&
+		!slices.ContainsFunc(g.existing, func(hl klarerrs.Highlight) bool {
+			return hl.Range.End.Line == currLine
+		})
 }
 
 func (r *Reporter) printLineNumber(s *state, line uint32) {
