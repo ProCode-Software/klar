@@ -8,9 +8,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
-// printUnderlines prints the underlines for the single-line highlights, as well
-// as the label for overflowing highlights and the rightmost highlight. pipeLen
-// is the number of spaces to add in order to account for the pipes of the multiline highlights.
+// printUnderlines prints the underlines for the single-line highlights, as well as
+// the label for overflowing highlights and the rightmost highlight. pipeLen is the
+// number of spaces to add in order to account for the pipes of the multiline highlights.
 func (r *Reporter) printUnderlines(s *state, pipeLen int,
 	highlights []klarerrs.Highlight, printLineStart func(rem []klarerrs.Highlight),
 ) (remHls []klarerrs.Highlight) {
@@ -161,7 +161,7 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []klarerrs.H
 		}
 		// Underline the contents of the first line
 		r.appendf(color, "%s", char.RepeatRune(
-			r.CharacterSet.HighlightMulti, max(0, int(lastCol-pos.Col-1)-ulShift),
+			r.CharacterSet.HighlightMulti, max(1, int(lastCol-pos.Col)-ulShift),
 		))
 		r.newline()
 	}
@@ -179,12 +179,16 @@ func (r *Reporter) printLabel(label, color string,
 	}
 	labelLen := utf8.RuneCountInString(label)
 	// If the label doesn't fit within the terminal's width, print it on the next line
-	if ulWidth > 0 && Width > 0 && offset+labelLen > Width {
+	if ulWidth > 0 && Width > 0 && offset+labelLen+ulWidth > Width {
 		r.newline()
 		printLineStart() // Print pipes
 		// Center the label
 		ulCenter := offset + ulWidth/2
 		textCenter := max(ulCenter-(labelLen/2), 0)
+		// If the label doesn't fit within the terminal at all, start at the left
+		if textCenter+labelLen > Width {
+			textCenter = 0
+		}
 		r.appendSpace(textCenter)
 	}
 	r.appendSpace(1)

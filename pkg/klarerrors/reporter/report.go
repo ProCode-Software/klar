@@ -15,25 +15,6 @@ import (
 // width if it is a [*os.File].
 var Width int
 
-// Error is an interface that represents an error to report.
-type Error interface {
-	Title() string     // The title of the error, such as "Error".
-	Message() string   // The error message.
-	ErrorCode() string // The error code, displayed after the message.
-	IsWarning() bool   // Whether the error is a warning.
-
-	FilePath() string       // The full path of the file where the error occurred.
-	Location() ranges.Range // The start and end positions of the error in the file.
-	MainHighlight() string  // The text to display after the main underline.
-
-	// Additional file ranges to display after the error.
-	ErrorDetails() []klarerrs.Detail
-	// Additional underline locations in the file.
-	ErrorHighlights() []klarerrs.Highlight
-	// Hints to display after the error. A hint may display a diff.
-	ErrorHints() []klarerrs.Hint
-}
-
 // Report prints the given error.
 func (r *Reporter) Report(e Error) (n int64, err error) {
 	r.init()
@@ -43,10 +24,14 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	msgHighlight := klarerrs.Highlight{e.Location(), e.MainHighlight()}
 	highlights := append([]klarerrs.Highlight{msgHighlight}, e.ErrorHighlights()...)
 	sortHighlights(highlights)
-	startLine, endLine := r.getBoxRanges(
-		highlights[0].Range,
-		highlights[len(highlights)-1].Range,
-	)
+	// The start of the earliest range, and the end of the latest range
+	var minLine, maxLine uint32
+	for _, hl := range highlights {
+		currStart, currEnd := hl.Range.Start.Line, hl.Range.End.Line
+		minLine, maxLine = min(minLine, currStart), max(maxLine, currEnd)
+	}
+	// The ranges that will actually be rendered
+	startLine, endLine := r.getBoxRanges(minLine, maxLine)
 
 	// Highlight color
 	hlc := r.ColorPalette.ErrorColor
@@ -99,16 +84,15 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	return r.buf.WriteTo(r.Output)
 }
 
-func (r *Reporter) getBoxRanges(r1, r2 ranges.Range) (startLine, endLine uint32) {
-	startLine = uint32(max(1, int(r1.Start.Line)-r.MaxLines+1))
-	endLine = r2.End.Line
+func (r *Reporter) getBoxRanges(start, end uint32) (startLine, endLine uint32) {
+	startLine = uint32(max(1, int(start)-r.MaxLines+1))
 	// If the ranges are far apart, render less lines before the first
 	// range to stay closer to MaxLines.
-	if 1 < startLine && startLine < r1.Start.Line &&
+	if 1 < startLine && startLine < start &&
 		endLine-startLine > uint32(r.MaxLines) {
 		startLine += 1
 	}
-	return
+	return startLine, end
 }
 
 // printMessage prints the error message and error code.
@@ -170,7 +154,7 @@ func (r *Reporter) printDetail(det klarerrs.Detail, errFile string) {
 	r.appendf(r.ColorPalette.DetailColor, "%c %s:", r.CharacterSet.DetailIcon, det.Message)
 	r.blankLine()
 
-	startLine, endLine := r.getBoxRanges(det.Range, det.Range)
+	startLine, endLine := r.getBoxRanges(det.Range.Start.Line, det.Range.End.Line)
 	digitWidth := digitLen(endLine)
 
 	if det.File == "" {

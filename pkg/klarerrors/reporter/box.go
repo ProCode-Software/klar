@@ -201,7 +201,6 @@ func (r *Reporter) printHighlights(s *state, line, lastCol uint32,
 	}
 
 	// 1. Single-line highlights
-	// ==========
 	singleLine := groups.newSingleLine
 	pipeLen := len(groups.existing) * 2
 	// Print the underlines
@@ -222,10 +221,8 @@ func (r *Reporter) printHighlights(s *state, line, lastCol uint32,
 	r.printArrows(s, singleLine, printLineStart, pipeLen, false)
 
 	// 2. Ending multiline highlights
-	// ===================
 	r.printEndingMultilineLabels(s, groups.existing, line)
 
 	// 3. New multiline highlights
-	// ===================
 	r.printNewMultilineUnderlines(s, groups.newMultiline, lastCol, printLineStart)
 }

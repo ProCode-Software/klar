@@ -80,7 +80,6 @@ func isPrimitive(name string) bool {
 	return ok
 }
 
-// TODO: builtins should be defined somewhere else
 var builtinFuncs = analysis.BuiltinFuncs
 
 // colorizeString colorizes a string token. It only prints the contents

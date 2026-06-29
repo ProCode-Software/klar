@@ -9,8 +9,29 @@ import (
 	"io"
 	"os"
 
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
+
+// Error is an interface that represents an error to report.
+type Error interface {
+	Title() string     // The title of the error, such as "Error".
+	Message() string   // The error message.
+	ErrorCode() string // The error code, displayed after the message.
+	IsWarning() bool   // Whether the error is a warning.
+
+	FilePath() string       // The full path of the file where the error occurred.
+	Location() ranges.Range // The start and end positions of the error in the file.
+	MainHighlight() string  // The text to display after the main underline.
+
+	// Additional file ranges to display after the error.
+	ErrorDetails() []klarerrs.Detail
+	// Additional underline locations in the file.
+	ErrorHighlights() []klarerrs.Highlight
+	// Hints to display after the error. A hint may display a diff.
+	ErrorHints() []klarerrs.Hint
+}
 
 // A Reporter prints compile errors with colored file context and highlights.
 type Reporter struct {

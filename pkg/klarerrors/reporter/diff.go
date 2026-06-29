@@ -53,13 +53,17 @@ func (r *Reporter) printDiff(diff *klarerrs.Diff) {
 		}
 		dl := lines[lineNum]
 		if dl.deletedLine != nil || dl.addedLine != nil {
+			// Whole-line addition or removal. Removals, then additions
+			// are printed in that order.
 			if dl.deletedLine != nil {
-				lastLine = r.printFullRemove(state, dl)
+				lastLine = r.printFullLineRemove(state, dl)
 			}
 			if dl.addedLine != nil {
-				lastLine = r.printFullAdd(state, dl)
+				lastLine = r.printFullLineAdd(state, dl)
 			}
 		} else {
+			// Inline diffs are where diff ranges, both additions and deletions, are
+			// displayed alongside the original source.
 			lastLine = r.printInline(state, dl)
 		}
 	}
@@ -94,8 +98,8 @@ func (r *Reporter) groupDiffLines(diff *klarerrs.Diff) (
 	return
 }
 
-// printFullRemove prints a block of source code representing a full-line deletion.
-func (r *Reporter) printFullRemove(s *diffState, dl *diffLine) (lastLine uint32) {
+// printFullLineRemove prints a block of source code representing a full-line deletion.
+func (r *Reporter) printFullLineRemove(s *diffState, dl *diffLine) (lastLine uint32) {
 	edit := *dl.deletedLine
 	// Get intersecting tokens
 	firstTokI, maxTokI := -1, -1
@@ -125,9 +129,9 @@ func (r *Reporter) printFullRemove(s *diffState, dl *diffLine) (lastLine uint32)
 	return dl.line
 }
 
-// printFullAdd prints a block of source code or strings representing a
+// printFullLineAdd prints a block of source code or strings representing a
 // full-line addition.
-func (r *Reporter) printFullAdd(s *diffState, dl *diffLine) (lastLine uint32) {
+func (r *Reporter) printFullLineAdd(s *diffState, dl *diffLine) (lastLine uint32) {
 	hlColor := r.ColorPalette.DiffAdd + r.ColorPalette.DiffAddBackground
 	switch edit := (*dl.addedLine).(type) {
 	case klarerrs.AddedString:
@@ -193,7 +197,7 @@ func (r *Reporter) printDiffLineNumber(s *diffState, line uint32, add, fullLine 
 func (r *Reporter) printSkippedDiffLineNumber(s *diffState) {
 	r.appendSpace(hintMargin)
 	r.appendf(
-		r.ColorPalette.Box, "%*c %c %[3]c%[3]c%[3]c\n",
+		r.ColorPalette.Box, "%*c %c %[4]c%[4]c%[4]c\n",
 		s.digitWidth, r.CharacterSet.SkipLine,
 		r.CharacterSet.SkipLineL,
 		r.CharacterSet.CollapsedEllipsis,

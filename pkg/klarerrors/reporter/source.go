@@ -44,7 +44,7 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 			} else if pad < 0 {
 				// Error with input tokens
 				panic(fmt.Sprintf(
-					"invalid token offsets: A(%s), B(%s)",
+					"negative offset between tokens: A(%s), B(%s)",
 					s.tokens[i-1], tok,
 				))
 			}
@@ -63,19 +63,31 @@ func (r *Reporter) printSourceLine(s *state, line uint32, firstTokOnLine *int,
 // It returns the length of the printed part in runes.
 func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) uint32 {
 	tok := tokens[i]
+	switch {
+	case tok.Kind == lexer.String: // Any string. Handles multiline tokens
+		return r.colorizeString(tok, line)
+	case tok.End().Line == tok.Position.Line: // Normal single-line token
+		r.colorize(tokens, i)
+		return tok.Len()
+	default:
+		// Multiline token
+		src, n := extractLine(tok, line)
+		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
+		return n
+	}
+}
+
+func extractLine(tok lexer.Token, line uint32) (string, uint32) {
 	rang := ranges.FromToken(tok)
 	errNoNewline := func() {
 		panic(fmt.Sprintf(
-			"impossible: newline not found in %s token_: %q",
+			"impossible: %s token is not single line and newline not found: %q",
 			tok.Kind, tok.Source,
 		))
 	}
 	switch {
-	case tok.Kind == lexer.String: // Any string
-		return r.colorizeString(tok, line)
-	case rang.IsSingleLine(): // Normal token
-		r.colorize(tokens, i)
-		return tok.Len()
+	case rang.IsSingleLine():
+		return tok.Source, tok.Len()
 	case rang.Start.Line == line:
 		// Fast path for taking the FIRST line
 		nl := strings.IndexByte(tok.Source, '\n')
@@ -85,28 +97,22 @@ func (r *Reporter) printLineFromToken(tokens []lexer.Token, i int, line uint32) 
 		// We can just use GetTokenColor because the token is guaranteed
 		// to not be an identifier, which is single-line.
 		src := tok.Source[:nl]
-		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
-		return uint32(utf8.RuneCountInString(src))
+		return src, uint32(utf8.RuneCountInString(src))
 	case rang.End.Line == line:
-		var src string
 		// Fast path for taking the LAST line of a token
 		nl := strings.LastIndexByte(tok.Source, '\n') // Last newline
 		// Things that should't happen
 		if nl < 0 {
 			errNoNewline()
-		} else if nl < len(tok.Source)-1 {
-			// If a newline was the last character, src will be empty
-			src = tok.Source[nl+1:]
 		}
-		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
-		return uint32(utf8.RuneCountInString(src))
+		src := tok.Source[nl+1:] // Empty if newline was last character
+		return src, uint32(utf8.RuneCountInString(src))
 	default:
 		// Slow path
 		lines := strings.Split(tok.Source, "\n")
 		src := lines[line-tok.Position.Line]
-		r.appendString(src, r.ColorPalette.GetTokenColor(tok.Kind))
 		// Line length for normal tokens includes the newline
 		// TODO: is this actually the case?
-		return uint32(utf8.RuneCountInString(src)) + 1
+		return src, uint32(utf8.RuneCountInString(src)) + 1
 	}
 }

@@ -11,20 +11,19 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// printInline prints a line with inline diff highlights.
-// It displays both the "before" state (with deletions marked) and the "after"
-// state (with additions inserted), using printDiffUnderlines to highlight the changes.
+// printInline prints a line with inline diff underlines. Inline diffs are where diff
+// ranges, both additions and deletions, are displayed alongside the original source.
 func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
 	// Sort by column position, then deletions first
 	slices.SortFunc(dl.ranges, sortDiffEdits)
 	var (
 		orig         = r.getOriginalTokens(s, dl.line)
-		merged, last = r.buildMergedTokens(dl.line, orig, dl.ranges)
-		first        int
+		merged, last = r.makeMergedTokens(dl.line, orig, dl.ranges)
+		firstOnLine  int // Index of the first token on the current line
 	)
 	// Print the merged line(s) with both additions and removals highlighted
 	for line := dl.line; line <= last; line++ {
-		r.printDiffLine(s, line, merged, &first, false)
+		r.printDiffLine(s, line, merged, &firstOnLine, false)
 	}
 
 	for s.lastReadTok < len(s.tokens) &&
@@ -50,106 +49,114 @@ func sortDiffEdits(a, b klarerrs.DiffEdit) int {
 }
 
 // getOriginalTokens returns the tokens from the original source that intersect with line.
-func (r *Reporter) getOriginalTokens(s *diffState, line uint32) (orig []lexer.Token) {
+func (r *Reporter) getOriginalTokens(s *diffState, line uint32) []lexer.Token {
 	for i := s.lastReadTok; i < len(s.tokens); i++ {
 		tok := s.tokens[i]
 		if tok.Position.Line > line {
-			break
+			return s.tokens[s.lastReadTok:i]
 		}
 		if tok.End().Line < line {
 			s.lastReadTok = i + 1
 			continue
 		}
-		orig = append(orig, tok)
+	}
+	return s.tokens[s.lastReadTok:]
+}
+
+// makeMergedTokens merges the original tokens on the current line with the diff
+// edits to create a unified line that displays both additions and deletions.
+// The end line of the last token that begins on this line (may not be the same
+// as line) is returned.
+func (r *Reporter) makeMergedTokens(
+	line uint32, orig []lexer.Token, edits []klarerrs.DiffEdit,
+) (merged []lexer.Token, lastLine uint32) {
+	var (
+		currEdit int
+		lastCol  uint32 = 1
+		vpos            = lexer.Position{line, 1} // New position after additions
+	)
+	merged = make([]lexer.Token, 0, len(orig)+len(edits))
+	addToken := func(tok lexer.Token) {
+		// TODO: Test this for multiline tokens
+		_, n := extractLine(tok, line)
+		// If the tokens starts after what we currently have, use the token's position
+		if tok.Position.Col > vpos.Col {
+			vpos = tok.Position
+			lastCol = tok.Position.Col
+		}
+		tok.Position = vpos
+		vpos.Col += n
+		vpos.Line += tok.End().Line - vpos.Line
+		merged = append(merged, tok)
+	}
+	addAddition := func(e klarerrs.DiffEdit) {
+		switch e := e.(type) {
+		case klarerrs.AddedString:
+			addToken(addedStringToToken(e))
+		case klarerrs.AddedTokens:
+			for _, tok := range e.Tokens {
+				tok.Kind = addedToken
+				addToken(tok)
+			}
+		}
+		currEdit++
+	}
+
+	for _, tok := range orig {
+		// Insert additions starting at or before the current column
+		for currEdit < len(edits) && edits[currEdit].Start().Col <= tok.Position.Col {
+			addAddition(edits[currEdit])
+		}
+
+		// Check if this token was deleted
+		isDeleted := slices.ContainsFunc(edits, func(edit klarerrs.DiffEdit) bool {
+			del, ok := edit.(klarerrs.DeletedRange)
+			return ok && del.Range.TokenIntersects(tok)
+		})
+		if isDeleted {
+			tok.Kind = deletedToken
+		}
+		// Add the offset from the last actual token
+		if lastCol < tok.Position.Col {
+			vpos.Col += tok.Position.Col - lastCol
+		}
+		// Add the original token
+		addToken(tok)
+		lastCol = tok.Position.Col + tok.Len()
+	}
+	// There may be more additions after the last source token
+	//
+	//  func count(first, last: Int) = last - first + 1
+	//                                              +++
+	for currEdit < len(edits) {
+		addAddition(edits[currEdit])
+	}
+
+	lastLine = line
+	if len(merged) > 0 {
+		// TODO: Should this be the end position of the token?
+		// And is this needed, or lastLine always == line?
+		lastLine = merged[len(merged)-1].Position.Line
 	}
 	return
 }
 
-// buildMergedTokens creates a set of virtual tokens representing the merged "before" and "after"
-// states of the line, adjusting positions and handling multi-line additions.
-func (r *Reporter) buildMergedTokens(line uint32, orig []lexer.Token, edits []klarerrs.DiffEdit) (
-	merged []lexer.Token, lastLine uint32,
-) {
-	var (
-		editI              int
-		currentOriginalCol uint32 = 1
-		virtualPos                = lexer.Position{Line: line, Col: 1}
-	)
-	addToken := func(tok lexer.Token) {
-		tok.Position = virtualPos
-		merged = append(merged, tok)
-		if strings.Contains(tok.Source, "\n") {
-			parts := strings.Split(tok.Source, "\n")
-			virtualPos.Line += uint32(len(parts) - 1)
-			virtualPos.Col = uint32(utf8.RuneCountInString(parts[len(parts)-1])) + 1
-		} else {
-			virtualPos.Col += uint32(utf8.RuneCountInString(tok.Source))
-		}
+func addedStringToToken(e klarerrs.AddedString) lexer.Token {
+	return lexer.Token{
+		Kind:       addedToken,
+		Source:     e.String,
+		Position:   e.Position,
+		Attributes: map[string]any{"length": uint32(utf8.RuneCountInString(e.String))},
 	}
-	for _, tok := range orig {
-		// Insert additions that start at or before this token's column
-		for editI < len(edits) && edits[editI].Start().Col <= tok.Position.Col {
-			edit := edits[editI]
-			if edit.Operation() {
-				switch e := edit.(type) {
-				case klarerrs.AddedString:
-					addToken(lexer.Token{Kind: addedToken, Source: e.String})
-				case klarerrs.AddedTokens:
-					for _, t := range e.Tokens {
-						t.Kind = addedToken
-						addToken(t)
-					}
-				}
-			}
-			editI++
-		}
-		// Check if this token was deleted
-		isDeleted := false
-		for _, edit := range edits {
-			if dr, ok := edit.(klarerrs.DeletedRange); ok && dr.Range.TokenIntersects(tok) {
-				isDeleted = true
-				break
-			}
-		}
-		if isDeleted {
-			tok.Kind = deletedToken
-			addToken(tok)
-		} else {
-			if tok.Position.Col > currentOriginalCol {
-				virtualPos.Col += (tok.Position.Col - currentOriginalCol)
-			}
-			addToken(tok)
-		}
-		currentOriginalCol = tok.Position.Col + uint32(utf8.RuneCountInString(tok.Source))
-	}
-	// Append remaining additions at the end of the line
-	for editI < len(edits) {
-		edit := edits[editI]
-		if edit.Operation() {
-			switch e := edit.(type) {
-			case klarerrs.AddedString:
-				addToken(lexer.Token{Kind: addedToken, Source: e.String})
-			case klarerrs.AddedTokens:
-				for _, t := range e.Tokens {
-					t.Kind = addedToken
-					addToken(t)
-				}
-			}
-		}
-		editI++
-	}
-	var maxLine uint32 = line
-	for _, t := range merged {
-		maxLine = max(maxLine, t.Position.Line)
-	}
-	return merged, maxLine
 }
 
 // printDiffLine prints a single line of a diff with its syntax-highlighted tokens
 // and diff underscores.
-func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token, first *int, added bool) {
-	r.printDiffLineNumber(s, line, added, false)
-	r.printSourceLine(&state{tokens: tokens}, line, first, nil)
+func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token,
+	firstTokOnLine *int, op bool,
+) {
+	r.printDiffLineNumber(s, line, op, false)
+	r.printSourceLine(&state{tokens: tokens}, line, firstTokOnLine, nil)
 	r.newline()
 	r.printDiffUnderlines(s, tokens, line)
 }
@@ -158,7 +165,7 @@ func (r *Reporter) printDiffLine(s *diffState, line uint32, tokens []lexer.Token
 func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line uint32) {
 	// First check if any token on this line is a diff token
 	if !slices.ContainsFunc(tokens, func(tok lexer.Token) bool {
-		return tok.Position.Line <= line && tok.End().Line >= line &&
+		return ranges.FromToken(tok).LineIn(line) &&
 			(tok.Kind == addedToken || tok.Kind == deletedToken)
 	}) {
 		return
