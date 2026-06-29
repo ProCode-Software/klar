@@ -1,6 +1,6 @@
 The Klar project is licensed under two licenses:
 
-* Compiler (internal/, pkg/, cmd/): GNU General Public License v3.0
+* Compiler (internal/, cmd/): GNU General Public License v3.0
 * Standard library, tools and other files in the repository: Apache License 2.0
 
 A copy of each license is available in the root of the repository.
