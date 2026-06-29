@@ -53,29 +53,44 @@ When filing a crash report issue, please include:
     - The Klar project you're building. If those intentionally contain errors, explain them.
 - The platform you're running Klar on (operating system, architecture)
 
+We also allow reporting bugs that you haven't experienced, but are still possible (based on the source code) under certain circumstances and steps. If you file these, make sure you look at the compiler's source code, and provide steps that could likely produce the bug.
+
 ## Pull Requests
 
-**Make sure there's already an issue filed before starting a PR!**. We're prioritizing more important things to fix over nice-to-haves. PRs aren't an excuse to skip the issue/discussion reporting process.
+**Make sure there's already an issue filed before starting a PR!**. PRs aren't an excuse to skip the issue/discussion commenting process.
 
-Typos are the only type of PRs that don't need an issue filed first. If there's a typo in a Markdown file or documentation in the repo, you're welcome to fix it and send it to us. As another exception, when reporting typos, include as many changes as possible! For other types of categories, we want one feature per PR.
+Types of PRs that can be submitted without a reference issue are:
 
-## Discussions vs. Issues
+- [PRs that fix typos](#fixing-typos)
+- [Documentation updates](#contributing-to-documentation)
+- PRs that implement TODOs (found such as in the code)
 
-| Post in Discussions           | Create an issue                            |
-| ----------------------------- | ------------------------------------------ |
-| Feature requests              | Specification/implementation discrepancies |
-| Language proposals            | Potential bugs                             |
-| Comments on RFCs              | Bug reports                                |
-| New RFC proposals             |                                            |
-| Comments on existing features |                                            |
+Also, for repo organization purposes, you should include only **one feature per PR**.
+
+## Fixing Typos
+
+If there's a typo in a Markdown file or documentation in the repo, you're welcome to fix it and send it to us. As another exception, when reporting typos, include as many changes as possible!
+
+## Discussions vs. Issues vs. PRs
+
+| Post in Discussions           | Create an issue                            | Start a PR               |
+| ----------------------------- | ------------------------------------------ | ------------------------ |
+| Feature requests              | Specification/implementation discrepancies | Items on the roadmap     |
+| Language proposals            | Potential bugs                             | Typo/grammar corrections |
+| Comments on RFCs              | Bug reports                                | Updates to docs          |
+| New RFC proposals             |                                            | Implementing TODOs       |
+| Comments on existing features |                                            |                          |
 
 ## Using AI
 
-You may use AI to write code and tests. However, **you may not use AI to write issues, or PRs in this project.** We want human interactions. We can quickly spot AI-generated PRs and issues, and they will be closed in that same speed.
+You may use AI to write code and tests. However, **you may not use AI to write issues, or PRs in this project.** We want interactions and collaboration between humans in the Klar project. Low-effort or AI-generated PRs and issues will be closed quickly.
 
 ### Writing Code with AI
 
 If you choose to write code with AI, make sure it follows the same style as the rest of the project's code. The author should be responsible for checking; don't put it on us. We're more likely to close issues with poor code style if they contain more AI-generated content.
+
+> [!TIP]
+> Use the [AGENTS.md](./AGENTS.md) and this contributing guide (CONTRIBUING.md) as steering guides for LLMs
 
 Some common signs of LLM-generated code that violate our code style (for Go code):
 
@@ -109,7 +124,7 @@ TODO: Add examples of each
 
 In recent months (as of 2026), in various open-source projects, maintainers have seen an influx in AI-generated security reports, with pressure to quickly patch them.
 
-We're welcome to security reports discovered by AI (with the human-written report requirement), but we ask that **if you can use AI to find a bug, you should also use it to suggest a fix.** You should not fully rely on maintainers to fix them.
+We're welcome to security reports discovered by AI (with the human-written report requirement), but we ask that **if you can use AI to find a bug, you should also use it to suggest (and implement) a fix.** You should not fully rely on maintainers to fix them.
 
 Be aware that many open-source contributors work on this project in their freetimes, and pressure to fix vulnerabilities take time and can lead to burnout. We would also like to prioritize and reward vulnerabilities filed by humans that took their time to investigate.
 
@@ -144,6 +159,21 @@ make gen # Use this over `go generate`
 
 # Run Go tests
 go test ./...
+
+# Format Go files
+./scripts/format.sh
+```
+
+#### Before Submitting Code
+
+We have more information about what to do before submitting changes, but as a TL;DR, run the following:
+
+```sh
+make gen # Create generated files
+./scripts/format.sh # Format
+go test ./... # Run tests
+./scripts/lint.sh # Lint
+./scripts/spellcheck.sh # Spellcheck strings and comments
 ```
 
 #### Common Packages/Directories
@@ -154,7 +184,7 @@ Below are some packages you're likely to work on when working on the compiler. S
 
 - [`cmd/klar`](./cmd/klar), [`cmd/glas`](./cmd/glas) - Entry points for the Klar and Glas CLIs
     - [`cmd/klar/internal/klarcmd`](./cmd/klar/internal/klarcmd), [`cmd/glas/internal/glascmd`]() - Contain the list of CLI commands
-    - `cmd/{klar,glas}/internal/[command]` - Entry points for individual commands, such as `klar build` in [`cmd/klar/internal/klarcmd/build`](./cmd/klar/internal/klarcmd/build). Each package also contains descriptions for each command, and flags for the commands.
+    - `cmd/{klar,glas}/internal/[command]` - Entry points for individual commands, such as `klar build` located in [`cmd/klar/internal/klarcmd/build`](./cmd/klar/internal/klarcmd/build). Each package also contains descriptions for each command, and flags for the commands.
 - [`internal/lexer`](./internal/lexer) - Implementation of the Klar lexer, which reads tokens from a file stream.
 - [`internal/parser`](./internal/parser) - The Klar parser, which converts a list of tokens to an abstract syntax tree (AST), validating the language's syntax and reporting syntax errors.
 - [`internal/analysis`](./internal/analysis) - The Klar type checker, which creates type information from the ASTs of a module. Correct usage of syntax and types are checked, and errors are reported.
@@ -170,9 +200,14 @@ Below are some packages you're likely to work on when working on the compiler. S
 
 #### Generated Code
 
-Some code in the Klar compiler is generated. For now, these generated files aren't gitignored, but we could change that in the future.
+Some code in the Klar compiler is generated. Generated Go files have a comment at the top stating _DO NOT EDIT_. Do not gitignore generated files.
 
-Generated Go files have a comment at the top stating _DO NOT EDIT_
+Regenerating files is required after making changes to the following:
+
+- The `internal/ast` package
+- Error codes in `internal/klarerrs`
+
+To generate these files, run `make gen`.
 
 #### Linting
 
@@ -180,7 +215,9 @@ Lint your Go code by running the `./scripts/lint.sh` script. Also, ensure commen
 
 ### Standard Library (Klar)
 
-To use your modified standard library after making changes, set the `$KLAR_STD` environment variable to the path of the `std` folder. If you run the Klar CLI using the `./run` script at the root, `$KLAR_STD` is automatically set to the `std` folder located in the Klar repo.
+It is recommended to compile the standard library using a custom-built Klar compiler, as what will happen in our release pipeline. See the [compiler development guide]() on information about building the Klar compiler.
+
+To use your modified standard library after making changes, **set the `$KLAR_STD` environment variable to the path of the `std` folder.** If you run the Klar CLI using the `./run` script at the root, `$KLAR_STD` is automatically set to the `std` folder located in the Klar repo. If you forget to do this, the globally-installed standard library will be used instead of your modified one!
 
 ### JavaScript Code
 
@@ -220,3 +257,19 @@ In the Klar codebase, we want the source code to be **understandable and maintai
 - **JavaScript, TypeScript, JSON**: [oxfmt](https://oxc.rs/) via `bun oxfmt`
 
 Ensure you format your code before submitting your PR. Never file a PR just to format unformatted files.
+
+## Contributing to Documentation
+
+> For fixing typos and grammar, see the [Fixing Typos](#fixing-typos) section.
+
+Some documentation files that can be updated include:
+
+- AGENTS.md
+- Files in `docs/`
+- README.md files in the root and throughout the tree
+- CONTRIBUTING.md
+
+When submitting your changes, you're allowed to:
+
+- Update multiple files with information about the same topic
+- Update a single file with information about multiple topics
