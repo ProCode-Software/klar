@@ -50,7 +50,7 @@ func (c *Checker) performImports(files []string, fileContexts map[string]*Contex
 	}
 	importCache := make(map[string]*imported)
 	ictx := &importCtx{
-		target:     c.module.Target,
+		target:     c.module.Targets[0], // TODO
 		importPath: c.module.ImportPath,
 		fileDir:    c.module.Path,
 		singleFile: c.module.Flags.Has(SingleFileModule),

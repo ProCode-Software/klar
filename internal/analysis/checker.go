@@ -21,7 +21,7 @@ type Options struct {
 	// This is needed for resolving platform-specific implementations
 	// and modules.
 	// TODO: Support multiple targets
-	Target target.Target
+	Targets []target.Target
 	// The minimum version of Klar required to compile the program.
 	KlarVersion *version.Version
 	// If Error != nil, it is called when an error is reported.
@@ -88,6 +88,7 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	c.Info = &Info{
 		Expressions: make(map[ast.Expression]*Expr),
 	}
+	mod.Info = c.Info
 	c.rootContext = mod.Context
 	c.module = mod
 	c.Programs = mod.Programs
@@ -108,7 +109,7 @@ func (c *Checker) Check() {
 	methods, inits := c.collectTopLevelObjects(sortedFiles, fileContexts)
 
 	// If we're currently bootstrapping, wrap the declared types to allow
-	// special operations on them.
+	// special operations on them. This must be queued before function bodies.
 	if c.module.Flags.Has(BootstrapModule) {
 		c.wrapCompositeBootstrapTypes()
 	}

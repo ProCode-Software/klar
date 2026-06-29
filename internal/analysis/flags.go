@@ -12,6 +12,8 @@ const (
 	ConstExpr
 	// When parsing types, only types declared in this module are allowed
 	LocalOnly
+	// Passed to [Checker.parseType] to avoid errors for a generic without params
+	genericLHS
 )
 
 func parseFlags(flags []Flag) (flag Flag) {

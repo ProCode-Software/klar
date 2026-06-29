@@ -16,7 +16,7 @@ public type Token {
 // Returns the string representation of the token. [Token.eof] is
 // represented as an empty string.
 public func String(token: Token) = when token {
-    .number(num) -> String(num),
+    .number(num) -> num,
     .comment(text) -> "#{text}",
     .identifier(ident) -> ident,
     .illegal(char) -> char,

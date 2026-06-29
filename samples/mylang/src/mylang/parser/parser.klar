@@ -1,6 +1,6 @@
 import mylang.lexer.{Token}
 import mylang.ast.{
-    BoolValue, Command, Comment, Flag, Program, StringValue, Value,
+    BoolValue, Command, Comment, Flag, IntValue, Program, StringValue, Value,
 }
 
 public type Parser {
@@ -24,7 +24,7 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
         cmd := parser.parseCommand()
         when cmd {
             SyntaxError -> {
-                errors.append(cmd)
+                errors += [cmd]
                 next :loop
             }
         }
@@ -32,14 +32,14 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
             .newline -> parser.advance(),
             .eof -> {},
             _ -> {
-                errors.append(.expected("a newline", parser.current()))
+                errors += [.expected("a newline", parser.current())]
                 next :loop
             }
         }
         program.commands += [cmd]
     }
     when errors.length {
-        > 0 -> return parser.errors
+        > 0 -> return errors
         _ -> return program
     }
 }
@@ -104,6 +104,7 @@ public type SyntaxError {
     .invalidNumber(number: string)
 }
 
+/*
 public func Error(err: SyntaxError) {
     self.message = when err {
         .expected(kind, got) -> "Expected {kind}, but found {got}",
@@ -111,3 +112,4 @@ public func Error(err: SyntaxError) {
         .invalidNumber(number) -> "'{number}' isn't a valid number",
     }
 }
+*/

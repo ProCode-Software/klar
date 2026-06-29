@@ -2,6 +2,8 @@ package analysis
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -66,6 +68,10 @@ type Arity struct {
 	MinParams, MaxParams int
 }
 
+func (a Arity) InRange(n int) bool {
+	return a.MinParams <= n && (a.MaxParams == -1 || n <= a.MaxParams)
+}
+
 // Generic represents a generic type parameter.
 type Generic struct {
 	*Object
@@ -101,21 +107,27 @@ const SelfName = "self"
 func (c *Checker) checkFuncDecl(o *Object) {
 	fn := o.typ.(*Function)
 	for _, ov := range fn.Overloads {
-		c.checkOverload(ov, fn)
+		c.checkOverload(ov, o)
 	}
+	// Ensure no overloads are ambiguous
+	fn.Overloads = c.checkOverloadAmbiguity(fn.Overloads)
 }
 
 // fn can be nil if the overload is an initializer
-func (c *Checker) checkOverload(ov *Overload, fn *Function) {
-	if ov.info.funcKind != initFunc && fn == nil {
-		panic("function is nil for non-initializer overload")
-	}
+func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	var (
 		info   = ov.Object.info
-		fctx   = ov.Object.FileContext()
+		fctx   = ov.Object.LookupContext()
 		stmt   = info.node.(*ast.FunctionDeclaration)
-		isInit = ov.info.funcKind == initFunc
+		isInit = info.funcKind == initFunc
+		fn     *Function
 	)
+	if fnObj == nil && !isInit {
+		panic("function is nil for non-initializer overload")
+	}
+	if fnObj != nil {
+		fn = fnObj.typ.(*Function)
+	}
 	ctx := NewContext(fctx, ov.Object.file) // Function body context
 	ov.InnerContext = ctx
 
@@ -123,15 +135,16 @@ func (c *Checker) checkOverload(ov *Overload, fn *Function) {
 	if stmt.SelfType != nil || info.receiver != nil {
 		var selfPos ranges.Range
 		selfName := SelfName
-		if stmt.SelfName != nil {
-			selfName = stmt.SelfName.Name
-			selfPos = stmt.SelfName.Range()
-		} else if stmt.SelfType != nil {
+		switch {
+		case stmt.SelfName != nil: // Method with explicit self alias
+			selfName, selfPos = stmt.SelfName.Name, stmt.SelfName.Range()
+		case stmt.SelfType != nil: // Method
 			selfPos = stmt.SelfType.Range()
+		case isInit: // Initializer
+			selfPos = stmt.Identifier.Range()
 		}
 		selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, nil)
-		vr := NewVariable(selfObj, SelfVar, info.receiver.TypeName())
-		ov.Self = vr
+		ov.Self = NewVariable(selfObj, SelfVar, info.receiver.TypeName())
 		c.declare(ctx, selfObj)
 	}
 
@@ -150,38 +163,69 @@ func (c *Checker) checkOverload(ov *Overload, fn *Function) {
 			if variadic {
 				vr.Object.flags |= VariadicParam
 			}
-
-			if pn.Label.IsZero() {
-				// Normal param
-				ov.Params = append(ov.Params, vr)
-
-				// Adjust arity: Arity only counts unlabelled params
-				if variadic {
-					// If there is a variadic parameter, there is no max number of params
-					ov.Arity.MaxParams = -1
-					fn.Arity.MaxParams = -1
-					if restParam != nil {
-						// Variadic exists
-					}
-					restParam = vr
-				} else {
-					optional := false // TODO: check if typ is optional
-					if !optional {
-						ov.Arity.MinParams++
-					}
-					ov.Arity.MaxParams++
-				}
-			} else {
+			c.declare(ctx, vrObj)
+			switch {
+			case !pn.Label.IsZero():
 				// Labelled param
 				lp := &LabelledParam{pn.Label.Name, vr}
 				ov.LabelledParams = append(ov.LabelledParams, lp)
 				if ov.labelMap == nil {
 					ov.labelMap = make(map[string]*Variable)
 				}
+				// TODO: Check for name conflicts
 				ov.labelMap[pn.Label.Name] = vr
+			case variadic:
+				// Unlabelled variadic param
+				ov.Params = append(ov.Params, vr)
+
+				// If there is a variadic parameter, there is no max number of params
+				ov.Arity.MaxParams = -1
+				if !isInit {
+					fn.Arity.MaxParams = -1
+				}
+				// Ensure there is only 1 variadic param in the overload
+				if restParam != nil {
+					// Variadic exists
+					err := objectError(klarerrs.ErrMultipleVariadicParam, vrObj)
+					err.Label = "A variadic parameter was already defined"
+					err.AddHighlight(
+						"The first variadic parameter was defined here",
+						restParam.Object.rang,
+					)
+					c.fileError(err, ov.file)
+					break
+				}
+				restParam = vr
+			default:
+				// Normal param
+				ov.Params = append(ov.Params, vr)
+				// Adjust arity: Arity only counts unlabelled params
+				optional := typ.Kind() == KindOptional // TODO: this doesn't handle unions
+				if !optional {
+					ov.Arity.MinParams++
+				}
+				ov.Arity.MaxParams++
 			}
-			c.declare(ctx, vrObj)
-			_ = param.Default // TODO
+
+			// Check default value
+			if param.Default != nil {
+				// A variadic parameter can't have a default value
+				// 	func _(items: ...Int = [1, 2, 3])
+				if variadic {
+					err := klarerrs.Node(klarerrs.ErrVariadicDefault, param.Default)
+					err.Label = "Remove this default value"
+					err.AddHighlight(
+						"This parameter is defined as variadic",
+						param.Type.GetRange(),
+					)
+					c.fileError(err, ov.file)
+					continue
+				}
+				// TODO: Should it be delayed?
+				// TODO: Should a default value be allowed with a generic param?
+				t := NewExprWithHint(ctx, typ, constExpr)
+				c.checkExpr(param.Default, t)
+			}
 		}
 	}
 	// Set the arity bounds for the whole function
@@ -193,63 +237,217 @@ func (c *Checker) checkOverload(ov *Overload, fn *Function) {
 	}
 	// Verify that the variadic param is the last unlabelled param
 	if restParam != nil && ov.Params[len(ov.Params)-1] != restParam {
+		err := objectError(klarerrs.ErrVariadicNotLast, restParam.Object)
+		err.Label = "This should be the last unlabelled parameter"
+		// Highlight the params after this
+		after := ov.Params[slices.Index(ov.Params, restParam)+1:]
+		r := ranges.Range{after[0].Object.rang.Start, after[len(after)-1].Object.rang.End}
+		err.AddHighlight("It should go after these", r)
+		c.fileError(err, restParam.Object.file)
 	}
 
-	// 4. Return type
-	var ret Type
-	if stmt.ReturnType == nil {
-		// No explicit return type = Nothing
-		ret = NothingType
-	} else {
+	// 4. Body expression, which may be used to infer return type
+	var bodyExpr *Expr
+	if !c.Options.IgnoreFuncBodies && stmt.Expression != nil {
+		bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx, 0))
+	}
+
+	// 5. Return type
+	var retRange ranges.Range
+	switch rt := stmt.ReturnType.(type) {
+	default:
+		ov.Return = c.parseType(stmt.ReturnType, ctx)
+		retRange = stmt.ReturnType.GetRange()
+	case nil:
+		switch {
+		case bodyExpr != nil:
+			// Inferred from body expression
+			ov.Return, retRange = bodyExpr.Type, stmt.Expression.GetRange()
+		case isInit:
+			// `func Int()` implicitly returns Int
+			ov.Return, retRange = info.receiver.TypeName(), stmt.Identifier.Range()
+		default:
+			ov.Return, retRange = NothingType, stmt.Range
+		}
+	case *ast.TupleType:
 		// Named returns: -> (a, b: Int)
-		// Declare each key as a variable
-		if tuple, ok := stmt.ReturnType.(*ast.TupleType); ok {
-			retTuple := make(Tuple, 0, len(tuple.Values))
-			for _, pair := range tuple.Values {
-				typ := c.parseType(pair.Value, ctx)
-				for _, key := range pair.Keys {
-					retTuple = append(retTuple, typ)
-					obj := NewObject(
-						key.Name,
-						ov.Object.file, key.Range(), ov.Object.module, nil,
-					)
-					_ = NewVariable(obj, LocalVar, typ)
-					c.declare(ctx, obj)
-					ov.NamedReturns = append(ov.NamedReturns, obj)
+		// Declare each key as a variable. If any are present, an explicit 'return'
+		// statement is optional within the body (unlike Go).
+		//
+		// Discard keys don't count as named, so if the return type is a tuple
+		// with all discard keys, there are no named returns, and an explicit
+		// 'return' statement is required.
+		retTuple := make(Tuple, 0, len(rt.Values))
+		for _, pair := range rt.Values {
+			typ := c.parseType(pair.Value, ctx)
+			for _, key := range pair.Keys {
+				retTuple = append(retTuple, typ)
+				if key.IsZero() || key.IsDiscard() {
+					continue
+				}
+				vr := NewObject(
+					key.Name,
+					ov.Object.file, key.Range(), ov.Object.module, nil,
+				)
+				_ = NewVariable(vr, LocalVar, typ)
+				c.declare(ctx, vr)
+				ov.NamedReturns = append(ov.NamedReturns, vr)
+			}
+			if len(pair.Keys) == 0 {
+				// Otherwise the type won't be appended if there are no keys
+				retTuple = append(retTuple, typ)
+			}
+		}
+		ov.Return, retRange = retTuple, rt.Range
+	case *ast.ParenType:
+		// Similar to tuple, but has only 1 item
+		ov.Return, retRange = c.parseType(rt.Type, ctx), rt.Range
+		if rt.Label.IsZero() || rt.Label.IsDiscard() {
+			return
+		}
+		vr := NewObject(
+			rt.Label.Name,
+			ov.Object.file, rt.Label.Range(), ov.Object.module, nil,
+		)
+		_ = NewVariable(vr, LocalVar, ov.Return)
+		c.declare(ctx, vr)
+		ov.NamedReturns = append(ov.NamedReturns, vr)
+	}
+
+	// Ensure the return type is the same across all overloads. This
+	// isn't checked for initializers, where an initializer for T can
+	// return T, Result<T>, or T?.
+	//
+	//   func Int(float: Float) -> Int
+	//   func Int(str: String) -> Result<Int>
+	//
+	// Equality of return types are strict, so this will fail:
+	// 	type #Tag
+	// 	type Impl: Tag
+	// 	func x() -> Tag
+	//  func x() -> Impl
+	switch {
+	case isInit:
+		// Change return type of `Result` (exact syntax) or `Result?` to
+		// `Result<T>` from `Result<Nothing>`. We're intentionally
+		// checking for equality by reference.
+		var changeFromResultNothing func(*Type)
+		changeFromResultNothing = func(typ *Type) {
+			switch ret := ov.Return.(type) {
+			case *Optional:
+				changeFromResultNothing(&ret.Elem)
+			case *Result:
+				if *typ == ResultNothing {
+					ov.Return = info.receiver.typ
 				}
 			}
-			ret = retTuple
-		} else {
-			ret = c.parseType(stmt.ReturnType, ctx)
 		}
-	}
-	if !isInit && fn.Return != nil && ret != fn.Return {
-		// All overloads must have the same return type
-		// TODO: use a compatibility check instead of !=
-		// TODO: hint for Nothing != ()
-	} else if !isInit {
-		fn.Return = ret
+		if info.receiver.name != "List" {
+			// Don't change the return type of List initializers
+			//	func List(...) -> [Result] should return [Result<Nothing>]
+			changeFromResultNothing(&ov.Return)
+		}
+
+		switch {
+		// An initializer named 'List' must return a list (or a list as an optional/result)
+		case info.receiver.name == "List":
+			if ConcreteTypeOf(ov.Return).Kind() != KindList {
+				err := klarerrs.Range(klarerrs.ErrInvalidListInitReturn, retRange)
+				c.fileError(err, ov.file)
+				ov.Return = &List{InvalidType}
+			}
+
+		// Check that the overload's concrete type is the one it initializes
+		case !TypesEqual(ConcreteTypeOf(ov.Return), info.receiver.typ):
+			err := klarerrs.Range(klarerrs.ErrInvalidInitReturn, retRange)
+			err.Name = ov.name
+			// Show a hint for `func T() -> [T]`
+			if asList := (&List{info.receiver.typ}); TypesEqual(ov.Return, asList) {
+				err.Label = "An initializer can't return a list of " +
+					quote(asList.String())
+			}
+			err.AddHighlight("This type is being initialized", stmt.Identifier.Range())
+			c.fileError(err, ov.file)
+			ov.Return = info.receiver.typ
+		}
+	case fn.Return == nil:
+		fn.Return = ov.Return
+	case !TypesEqual(ov.Return, fn.Return):
+		err := typeMismatch(fn.Return, ov.Return, retRange)
+		err.Code = klarerrs.ErrOverloadReturnMismatch
+		err.Name = fnObj.name
+		err.Label = "This should return " + quoteAka(fn.Return)
+		err.AddDetail(
+			"The return type was defined with the first overload here",
+			fnObj.FilePath(), fnObj.rang,
+		)
+		c.fileError(err, ov.file)
+	default: // Correct return types
 	}
 
-	// 5. Body
-	if !c.Options.IgnoreFuncBodies && (stmt.Body != nil || stmt.Expression != nil) {
-		c.queue(func() { c.checkFuncBody(stmt, ov, fn, fctx) }, true)
+	// 6. Body
+	if !c.Options.IgnoreFuncBodies && stmt.Body != nil {
+		c.queue(func() { c.checkFuncBody(stmt, ov, fn, retRange, fctx) }, true)
+	} else if bodyExpr != nil {
+		// This is queued because a function body's returns are also queued.
+		// TODO: This is for consistency, but is this needed?
+		c.queue(func() {
+			if !Compatible(bodyExpr.Type, ov.Return) &&
+				bodyExpr.Type.Kind() != InvalidType && bodyExpr.mode&todoExpr == 0 {
+				err := returnTypeMismatch(
+					bodyExpr.Type, ov.Return,
+					stmt.Expression.GetRange(), retRange,
+				)
+				c.fileError(err, ov.file)
+			}
+		}, true)
 	}
 }
 
 // fn could be nil if the overload is an initializer
 func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
-	fn *Function, fctx *Context,
+	fn *Function, retRange ranges.Range, fctx *Context,
 ) {
-	// TODO: Extract some fields from [Checker] such as moduleDecls for
-	// use in nested contexts.
-	ctx := ov.InnerContext
-	if stmt.Body == nil {
-		// Function expression
+	sctx := newStmtContext(ov.InnerContext, ov.file, allowReturn)
+	c.checkBlock(stmt.Body.Body, sctx)
+
+	// Ensure return statements are present. They aren't needed if:
+	// - The return type is Nothing
+	// - The function declares named returns
+	// - The function crashouts or has a TODO, or
+	// - The function is an initializer (TODO: warn about a missing return
+	// if 'self' isn't mutated)
+	if len(*sctx.returns) == 0 && ov.Return.Kind() != NothingType &&
+		len(ov.NamedReturns) == 0 && sctx.flags&unreachable == 0 &&
+		ov.info.funcKind != initFunc {
+		err := klarerrs.Position(klarerrs.ErrMissingReturn, stmt.Body.Range.End)
+		err.Label = "No 'return' statements in the body"
+		err.Name = ov.Return.String()
+		err.AddHighlight(
+			"This function is supposed to return "+quote(ov.Return.String()),
+			retRange,
+		)
+		c.fileError(err, ov.file)
 		return
 	}
-	sctx := newStmtContext(ctx, ov.file, allowReturn)
-	c.checkBlock(stmt.Body.Body, sctx)
+
+	// Check that all returned values are compatible with the expected type
+	for _, ret := range *sctx.returns {
+		if !Compatible(ret.expr.Type, ov.Return) && ret.expr.Type.Kind() != InvalidType {
+			err := returnTypeMismatch(ret.expr.Type, ov.Return, ret.pos, retRange)
+			c.fileError(err, ov.file)
+		}
+	}
+}
+
+func returnTypeMismatch(got, exp Type, gotRange, expRange ranges.Range) *klarerrs.Error {
+	err := typeMismatch(exp, got, gotRange)
+	err.Label = "The returned value has type " + quote(got.String())
+	err.AddHighlight(
+		"The function is supposed to return "+quote(exp.String()),
+		expRange,
+	)
+	return err
 }
 
 func (c *Checker) parseGenerics(names []ast.Identifier,
@@ -292,12 +490,6 @@ func (fn *Function) StringWithName(name string) string {
 	}
 	if len(fn.Overloads) == 1 {
 		b.WriteString(fn.Overloads[0].String())
-	}
-	if fn.Return != nil {
-		if ret := fn.Return.Kind(); ret != NothingType && ret != InvalidType {
-			b.WriteString(" -> ")
-			b.WriteString(fn.Return.String())
-		}
 	}
 	return b.String()
 }
@@ -350,6 +542,10 @@ func (o *Overload) String() string {
 		b.WriteString(param.Type.String())
 	}
 	b.WriteByte(')')
+	if o.Return != nil && o.Return.Kind() != NothingType && o.Return.Kind() != InvalidType {
+		b.WriteString(" -> ")
+		b.WriteString(o.Return.String())
+	}
 	return b.String()
 }
 
@@ -437,3 +633,87 @@ func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
 }
 
 func (m *MethodSet) GetMethods() []*Object { return m.Methods }
+
+// checkOverloadAmbiguity checks the given overloads for duplicates and ambiguous
+// options (as described in the [Function Overloads] section in the Klar
+// Type System). If there are errors, the first of each conflicting overload
+// pair is retained in the result.
+//
+// [Function Overloads]:
+func (c *Checker) checkOverloadAmbiguity(overloads []*Overload) []*Overload {
+	if len(overloads) == 1 {
+		return overloads // Nothing to check
+	}
+	// Sort by arity so we can make pairs using i+1 and i-1
+	byArity := slices.Clone(overloads)
+	slices.SortStableFunc(byArity, sortByArity)
+
+	var overloadsWithErrors map[*Overload]struct{}
+	addError := func(ov *Overload) {
+		if overloadsWithErrors == nil {
+			overloadsWithErrors = make(map[*Overload]struct{})
+		}
+		overloadsWithErrors[ov] = struct{}{}
+	}
+	// First, check for redeclared overloads
+	for i, ov := range byArity {
+		var other *Overload
+		if i == len(byArity)-1 {
+			ov, other = byArity[i-1], ov
+		} else {
+			other = byArity[i+1]
+		}
+		// TODO: This has to be looped in a quadratic fashion
+		// Otherwise, a setup in this order wouldn't report an error:
+		//
+		// 	func isNumber(char: String) = char in '0'...'9'
+		//  func isNumber(char: Int) = char in '0'...'9'
+		//  func isNumber(char: String) = char in '0'...'9'
+		if ok := c.checkRedeclaredOverload(ov, other); !ok {
+			// The 2nd redeclaration is the one with the error
+			err := klarerrs.Range(klarerrs.ErrRedeclaredOverload, other.rang)
+			err.Name = ov.String()
+			err.Label = "An overload with these same parameters already exists"
+			err.AddDetail("It was already declared here", ov.FilePath(), ov.rang)
+			c.fileError(err, other.file)
+			addError(other)
+		}
+	}
+
+	if len(overloadsWithErrors) == 0 {
+		return overloads // No errors
+	}
+	// Retain only the overloads without errors
+	deduped := make([]*Overload, 0, len(overloads)-len(overloadsWithErrors))
+	for _, ov := range overloads {
+		if _, ok := overloadsWithErrors[ov]; !ok {
+			deduped = append(deduped, ov)
+		}
+	}
+	return deduped
+}
+
+func sortByArity(a, b *Overload) int {
+	if byMin := a.Arity.MinParams - b.Arity.MinParams; byMin != 0 {
+		return byMin
+	}
+	// -1 is considered greater
+	if a.Arity.MaxParams == -1 || b.Arity.MaxParams == -1 {
+		return b.Arity.MaxParams - a.Arity.MaxParams
+	}
+	return a.Arity.MaxParams - b.Arity.MaxParams
+}
+
+func (c *Checker) checkRedeclaredOverload(a, b *Overload) (ok bool) {
+	typesEqual := func(a, b *Variable) bool { return a.Type == b.Type }
+	equal := slices.EqualFunc(a.Params, b.Params, typesEqual) &&
+		maps.EqualFunc(a.labelMap, b.labelMap, typesEqual)
+	return !equal
+}
+
+// TODO: return sorted overloads by ranking
+func (c *Checker) resolveOverload(overloads []*Overload,
+	params []Type, labelledParams map[string]Type,
+) (*Overload, *klarerrs.Error) {
+	return overloads[0], nil
+}

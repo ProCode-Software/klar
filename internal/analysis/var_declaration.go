@@ -78,7 +78,7 @@ func (c *Checker) checkVarDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExprWithHint(o.context, vinfo.expType, 0))
+		e = c.checkExpr(val, NewExprWithHint(o.LookupContext(), vinfo.expType, infer))
 		*vinfo.rhsExpr = e
 	}
 	// TODO: Go calls check.initVar, which checks if the expression is untyped
@@ -110,7 +110,8 @@ func (c *Checker) checkConstDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExprWithHint(o.context, vinfo.expType, ConstExpr))
+		e := NewExprWithHint(o.LookupContext(), vinfo.expType, constExpr|infer)
+		c.checkExpr(val, e)
 		*vinfo.rhsExpr = e
 	}
 

@@ -3,6 +3,8 @@ package analysis
 import (
 	"cmp"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -186,11 +188,11 @@ func (c *Checker) checkContextDecls(
 		c.checkDeclaration(obj)
 	}
 	// 5. Methods and initializers: Associate methods/initializers with receiver types
-	for typeName, methods := range methods {
-		c.collectMethods(ctx, typeName, methods)
+	for _, typeName := range slices.Sorted(maps.Keys(methods)) {
+		c.collectMethods(ctx, typeName, methods[typeName])
 	}
-	for typeName, inits := range inits {
-		c.collectInitializers(ctx, typeName, inits)
+	for _, typeName := range slices.Sorted(maps.Keys(inits)) {
+		c.collectInitializers(ctx, typeName, inits[typeName])
 	}
 }
 
@@ -255,8 +257,8 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 			par.public = true
 		}
 	case par == nil:
-		// Object with same name isn't a function. An error was already reported
-		attrs = nil
+		// This is a method, or the object with same name isn't a function.
+		// For the latter case, an error was already reported
 	}
 	// No kind is declared into the context. For overloads, their parent has
 	// already been declared.
@@ -331,6 +333,7 @@ func (c *Checker) getOverloadParent(
 	name string, node ast.Statement, sc *stmtCollector,
 ) (par *Object, isInit bool) {
 	// par is the function we're adding overloads to
+	// TODO: Implement adding module-scoped initializers for builtins
 	par = sc.ctx.Lookup(name)
 	if par == nil {
 		// If this is the first overload, declare a new parent function

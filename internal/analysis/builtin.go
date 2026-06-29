@@ -79,7 +79,7 @@ func (t Tuple) String() string {
 	b.WriteByte('(')
 	for i, elem := range t {
 		if i > 0 {
-			b.WriteByte(',')
+			b.WriteString(", ")
 		}
 		b.WriteString(elem.String())
 	}
@@ -92,7 +92,15 @@ type List struct{ Elem Type }
 func (l *List) Kind() Kind     { return KindList }
 func (l *List) String() string { return "[" + l.Elem.String() + "]" }
 
-func (l *List) IndexDot(f string) (Type, *klarerrs.Error) { return indexBuiltin("List", f) }
+func (l *List) IndexDot(f string) (Type, *klarerrs.Error) {
+	t, err := indexBuiltin("List", f)
+	// Add a hint to use `list += [item]` instead of `list.append(item)`
+	if f == "append" && err != nil {
+		err.Hint("Use += to append to a list.")
+	}
+	return t, err
+}
+
 func (l *List) Index(i Type) (Type, *klarerrs.Error) {
 	if i.Kind() != IntType {
 		return nil, indexTypeMismatchError(
@@ -113,7 +121,7 @@ func (m *Map) String() string {
 
 func (m *Map) Index(i Type) (Type, *klarerrs.Error) {
 	if Compatible(i, m.Key) {
-		return m.Value, nil
+		return &Optional{m.Value}, nil
 	}
 	err := indexTypeMismatchError(
 		klarerrs.ErrInvalidMapIndex, m.Key, i, "This has type "+quote(i.String()),
@@ -134,7 +142,7 @@ func (m *Map) IndexDot(i string) (Type, *klarerrs.Error) {
 	// a builtin field (such as `lenth`) and if the Map's key type is String,
 	// it will silently succeed. Or warn if the field is similar to a builtin?
 	if m.Key.Kind() == StringType {
-		return m.Value, nil
+		return &Optional{m.Value}, nil
 	}
 	// If it isn't a String key, always look for a field on the Map
 	// builtin, so return the error from that
@@ -145,8 +153,6 @@ type Optional struct{ Elem Type }
 
 func (*Optional) Kind() Kind       { return KindOptional }
 func (o *Optional) String() string { return o.Elem.String() + "?" }
-
-// TODO: Should Optional have an Underlying() type?
 
 type Result struct{ Success, Error Type }
 
@@ -177,41 +183,35 @@ func (t *Task) IndexDot(f string) (Type, *klarerrs.Error) { return indexBuiltin(
 // ==========
 
 func (c *Checker) loadInternalModules() {
-	if builtinModule != nil && attributesModule != nil {
-		attributesAllowed = true
-		return // Already loaded
-	}
 	var (
 		builtinImportPath    = imports.ImportPath{"klar", "_builtin"}
 		attributesImportPath = imports.ImportPath{"klar", "_builtin", "attributes"}
 		currImpPath          = c.module.ImportPath
-		// True if the internal module is currently being typechecked
-		isBootstrap = c.module.Flags.Has(BootstrapModule)
 	)
-	// As a temporary limitation, the builtin module can't reference attributes.
-	// The attributes module needs the builtin types.
-	attributesAllowed = !isBootstrap
-	if isBootstrap {
-		if slices.Equal(currImpPath, builtinImportPath) {
-			builtinModule = c.module
-		} else if slices.Equal(currImpPath, attributesImportPath) {
-			attributesModule = c.module
-		}
-	}
-	if !isBootstrap || slices.Equal(currImpPath, attributesImportPath) {
+	switch {
+	// BootstrapModule is set if the module containing builtins or
+	// attributes is currently being typechecked
+	case !c.module.Flags.Has(BootstrapModule) && !builtinsLoaded:
+		// Not bootstrapping. These only need to be declared once per
+		// compile session.
 		declareBuiltinTypes()
 		declareBuiltinFunctions()
+		builtinsLoaded = true
+	case slices.Equal(currImpPath, builtinImportPath):
+		builtinModule = c.module
+	case slices.Equal(currImpPath, attributesImportPath):
+		attributesModule = c.module
 	}
 }
 
+var builtinsLoaded bool
+
 func declareBuiltinTypes() {
 	for _, p := range primitives {
-		// TODO: Do we have to change them back from [*bootstrapType]?
 		BuiltInContext.Declare(&Object{
-			name:    p.name,
-			context: BuiltInContext,
-			typ:     &TypeName{Type: p.typ},
-			file:    -2,
+			name: p.name,
+			typ:  &TypeName{Type: p.typ},
+			file: BuiltInContext.File,
 		})
 	}
 }

@@ -65,7 +65,8 @@ public func Map(fromPairs pairs: [(K, V)]) {
 //
 // The length of the result is equal to the length of the map. Items are in
 // a random order; to return pairs in a deterministic order, use [Map.sorted] instead.
-public func Map.pairs() -> [(K, V)] = Object.entries(self)
+@external(.js, file: 'jsObject.js', export: 'entries')
+public func Map.pairs() -> [(K, V)] /* = Object.entries(self) */
 
 public func Map.sorted(
     with sortFunc: (func(a, b: K) -> collections.SortOrder)?,
@@ -101,10 +102,12 @@ public func Map.isDisjoint(from map: #{K: V}) -> Bool {
 
 // Returns all of the keys in the map. As maps don't contain duplicate keys, the
 // result will have no duplicate items.
-public func Map.keys() -> [K] = Object.keys(self)
+@external(.js, file: 'jsObject.js', export: 'keys')
+public func Map.keys() -> [K] /* = Object.keys(self) */
 
 // Returns all of the values in the map. The returned list may contain duplicates.
-public func Map.values() -> [V] = Object.values(self)
+@external(.js, file: 'jsObject.js', export: 'values')
+public func Map.values() -> [V] /* = Object.values(self) */
 
 // Returns all of the keys in the map that are set to `value`.
 public func Map.keys(withValue value: V) -> [K] {
@@ -118,7 +121,7 @@ public func Map.keys(withValue value: V) -> [K] {
 // Returns the value for the given key, setting the key to `default` if it doesn't exist.
 public func Map.getOrSet(key: K, default default: V) -> V {
     when key in self {
-        true -> return self[key]
+        true -> return self[key]!!
         false -> {
             self[key] = default
             return default
@@ -142,7 +145,7 @@ public func Map.without(keys keys: ...K) -> #{K: V} = clone(self) |. delete(keys
 
 // Returns a new map without the keys that have the same value as those in the provided map.
 public func Map.without(valuesFrom map: #{K: V}) -> #{K: V} {
-    result: #{K: V} := clone(self)
+    result := clone(self)
     for k, v in map {
         when self[k] {
             v -> result[k] = none
@@ -215,12 +218,6 @@ public func Map.randomItem() -> (K, V) {
     when self.length {
         0 -> crashout("Map is empty")
     }
-    i := 0
-    randomI := random.int(from: 0, to: self.length - 1)
-    for k, v in self {
-        when i {
-            randomI -> return (k, v)
-        }
-        i += 1
-    }
+    key := Map.keys().randomItem()
+    return (key, self[key]!!)
 }

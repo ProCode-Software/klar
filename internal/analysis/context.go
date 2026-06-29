@@ -16,6 +16,7 @@ type Context struct {
 	index        int
 	Declarations map[string]*Object
 	sortedDecls  []*Object // By object order. Lazily sorted; never reference directly.
+	discardDecls []*Object // Declarations with '_' name and can't be put in Declarations
 	Parent       *Context
 	Children     []*Context
 	Flags        Flag
@@ -143,4 +144,8 @@ func (ctx *Context) String() string {
 	}
 	fmt.Fprintf(&b, "}")
 	return b.String()
+}
+
+func (ctx *Context) IsEmpty() bool {
+	return ctx == nil || len(ctx.Declarations) == 0
 }

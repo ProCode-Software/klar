@@ -62,7 +62,7 @@ func (c *Checker) checkTypeDecl(o *Object) {
 func (c *Checker) checkTagType(o *Object, node *ast.TagDeclaration) {
 	// TODO: Check that each inherited type was declared within this module
 	o.TypeName().Type = &TagType{
-		Implements: c.checkInheritedTypes(node.InheritedTypes, KindTag, o.FileContext()),
+		Implements: c.checkInheritedTypes(node.InheritedTypes, KindTag, o.LookupContext()),
 	}
 }
 

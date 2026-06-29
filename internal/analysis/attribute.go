@@ -7,9 +7,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
-// False if bootstrapping
-var attributesAllowed = true
-
 // Contains the definitions of attributes
 var attributesModule *Module
 
@@ -65,9 +62,9 @@ func (c *Checker) parseAttributes(attrs []*ast.Attribute,
 func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
 	kind attrTargetKind, fid FileID,
 ) {
-	if !attributesAllowed {
-		c.fileError(klarerrs.Node(klarerrs.ErrAttributesNotAllowed, attr), fid)
-		return
+	// TODO: Should this be a limitation?
+	if attributesModule == c.module {
+		panic("klar._builtin.attributes module can't reference attributes")
 	}
 	name := attr.Name.Name
 	def := attributesModule.Context.Lookup(name)

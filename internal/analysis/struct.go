@@ -35,7 +35,7 @@ type StructField struct {
 func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	str := &Struct{}
 	str.nonMethodMap = &str.fieldMap
-	fctx := o.FileContext()
+	fctx := o.LookupContext()
 	o.typ.(*TypeName).Type = str
 
 	// TODO: inherited types

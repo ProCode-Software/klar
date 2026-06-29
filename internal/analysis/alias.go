@@ -28,7 +28,7 @@ func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
 func (a *TypeAlias) Underlying() Type { return a.Resolve() }
 
 func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
-	fctx := o.FileContext()
+	fctx := o.LookupContext()
 	tn := o.typ.(*TypeName)
 	alias := &TypeAlias{Name: o.name}
 	tn.Type = alias

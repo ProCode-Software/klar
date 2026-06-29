@@ -10,6 +10,10 @@ type Diff struct {
 	Edits []DiffEdit
 }
 
+func NewDiff(file string, edits ...DiffEdit) *Diff {
+	return &Diff{File: file, Edits: edits}
+}
+
 type DiffEdit interface {
 	Operation() bool
 	FullLine() bool

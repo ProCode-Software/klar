@@ -18,11 +18,11 @@ type Module struct {
 	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath
 	Imports     []*Module
-	Target      target.Target    // Target the module was compiled for
+	Targets     []target.Target  // Targets the module was compiled for
 	KlarVersion *version.Version // Minimum required Klar version
 	Context     *Context         // Root non-builtin context
 	Flags       Flag
-	TopLevel    []ast.Statement
+	Info        *Info
 }
 
 // NewModule returns a new Module. The module is not complete.
@@ -31,7 +31,7 @@ func NewModule(
 	importPath imports.ImportPath,
 	programs map[string]*ast.Program,
 	klarVersion *version.Version,
-	target target.Target,
+	targets []target.Target,
 ) *Module {
 	ctx := NewContext(BuiltInContext, 0)
 	return &Module{
@@ -39,7 +39,7 @@ func NewModule(
 		Path:        path,
 		ImportPath:  importPath,
 		Programs:    programs,
-		Target:      target,
+		Targets:     targets,
 		KlarVersion: klarVersion,
 		Context:     ctx,
 	}

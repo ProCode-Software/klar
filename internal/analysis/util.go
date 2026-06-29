@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"cmp"
+	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
@@ -80,4 +81,36 @@ func indexTypeMismatchError(code klarerrs.Code, exp, got Type, label string) *kl
 		Info:  klarerrs.TypeErrorInfo{ExpectedType: exp.String(), GotType: got.String()},
 	}
 	return err
+}
+
+func quoteAka(t Type) string {
+	ts := t.String()
+	if und := Underlying(t).String(); und != ts {
+		return fmt.Sprintf("%s (aka %s)", quote(ts), quote(und))
+	}
+	return quote(ts)
+}
+
+func isTODO(t Type) bool {
+	if t.Kind() != KindFunction {
+		return false
+	}
+	builtinTODO := BuiltInContext.Lookup("TODO")
+	if builtinTODO != nil {
+		return t == builtinTODO.typ
+	}
+	// If currently bootstrapping
+	return t == builtinModule.Context.Lookup("TODO").typ
+}
+
+func isCloneBuiltin(t Type) bool {
+	if t.Kind() != KindFunction {
+		return false
+	}
+	builtinClone := BuiltInContext.Lookup("clone")
+	if builtinClone != nil {
+		return t == builtinClone.typ
+	}
+	// If currently bootstrapping
+	return t == builtinModule.Context.Lookup("clone").typ
 }

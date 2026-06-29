@@ -20,7 +20,7 @@ func CheckProgram(prog *ast.Program, opts CheckOptions) []*klarerrs.Error {
 	mod := analysis.NewModule(
 		opts.File, opts.Path, nil,
 		map[string]*ast.Program{opts.File: prog},
-		opts.KlarVersion, opts.Target,
+		opts.KlarVersion, []target.Target{opts.Target},
 	)
 	c := analysis.NewChecker(mod, opts.Options)
 	c.Check()

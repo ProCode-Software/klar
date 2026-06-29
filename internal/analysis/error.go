@@ -24,8 +24,7 @@ func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 }
 
 func (c *Checker) fileError(err *klarerrs.Error, fid FileID) {
-	file := c.module.JoinFilePath(c.module.ResolveFile(fid))
-	err.File = file
+	err.File = c.module.ResolveFilePath(fid)
 	c.error(err)
 }
 
@@ -77,8 +76,8 @@ func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 
 func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
 	err := klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange)
-	err.Label = "This should have type " + klarerrs.Quote(exp.String())
-	err.Info = &klarerrs.TypeErrorInfo{
+	err.Label = "This has type " + klarerrs.Quote(got.String())
+	err.Info = klarerrs.TypeErrorInfo{
 		ExpectedType: exp.String(),
 		GotType:      got.String(),
 	}

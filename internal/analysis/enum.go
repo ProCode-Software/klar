@@ -19,6 +19,8 @@ type Enum struct {
 	Generics     []*Generic
 	Methods      []*Object // Type [*Function]
 	Initializers []*Object // Type [*Overload]
+	MethodSet
+	noComputedIndex
 }
 
 // Can be used as a value.
@@ -43,7 +45,7 @@ func (item *EnumItem) ParamByName(label string) Type {
 }
 
 func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
-	fctx := o.FileContext()
+	fctx := o.LookupContext()
 	e := &Enum{
 		Items:    make([]*EnumItem, 0, len(node.Values)),
 		itemMap:  make(map[string]*EnumItem, len(node.Values)),

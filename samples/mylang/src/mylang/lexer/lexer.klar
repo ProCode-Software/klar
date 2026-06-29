@@ -38,10 +38,9 @@ func Lexer.hasTokens() = self.index < self.input.length
 // Reads all of [self.input] into a list of tokens. 
 func Lexer.tokenize() -> [Token] {
     while self.hasTokens() {
-        self.tokens.append(self.readToken())
+        self.tokens += [self.readToken()]
     }
-    self.tokens.append(.eof)
-    return self.tokens
+    return self.tokens + [.eof]
 }
 
 // Whether `char` is an ASCII digit
@@ -64,6 +63,8 @@ func Lexer.readToken() -> Token {
             _ -> return .illegal(char)
         }
     }
+    crashout("unreachable")
+    return .(2)
 }
 
 func Lexer.readIdentifier() -> Token {

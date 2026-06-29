@@ -7,7 +7,11 @@ import (
 const (
 	_ Code = TypeErrorPrefix + iota
 
-	ErrTypeMismatch           // Type mismatch
+	ErrTypeMismatch   // Type mismatch
+	ErrUnwrapRequired // Optional/Result type must be unwrapped before use
+
+	// Declaration ====
+
 	ErrAliasSelfType          // Method self type can't be a type alias
 	ErrUnsupportedSelfType    // Self type doesn't support methods
 	ErrUnsupportedInitType    // Initializer target doesn't support initializers
@@ -16,64 +20,65 @@ const (
 	ErrFieldAndMethodSameName // Field and method have the same name
 	ErrEnumSameValue          // Enum value must be unique
 	ErrCantInferStringEnum    // Can't infer string enum value
-	ErrAttributesNotAllowed   // Attributes are not allowed in this context (bootstrap)
 	ErrUnknownAttribute       // Unknown attribute
 	ErrGenericTypeAlias       // Type alias cannot be a generic type
 	ErrDepCycle               // Circular type reference
-	ErrNotAType               // Variable or function used in type context
-	ErrInvalidRestType        // Rest type used outside of function parameter
-	ErrNonBoolWhileCond       // Condition in 'while' statement must be type Bool
-	ErrUnwrapRequired         // Optional/Result type must be unwrapped before use
-	ErrNotIterable            // Type isn't iterable (can be used in a 'for' loop)
-	ErrOver2LoopVars          // Can't declare more than 2 loop variables in a 'for' loop
-	ErrMultipleIntIterVars    // Only 1 variable allowed when iterating over Int
-	ErrTypeAsValue            // Type used as a value
-	ErrUnknownStructShorthand // Can't determine type of struct from shorthand (`.(...)`)
-	ErrUnknownEnumShorthand   // Can't determine type of enum from shorthand (`.key`)
-	ErrInvalidRangeType       // Can't range over this type
-	ErrStepWithStringRange    // Step isn't allowed with String range
-	ErrNonConstStringRange    // Range bounds must be constants when ranging over String
-	ErrOpenStringRange        // '..<' not allowed with range over String
-	ErrNonLetterStringRange   // Bounds of range over String must be a letter or digit
-	ErrMultiCharStringRange   // Bounds of range over String must be a single character
 	ErrMismatchTupleDestruct  // Number of destructured tuple items on left > right
 	ErrTupleRestDestruct      // A rest in a tuple destructure must give the target at least 2 items
-	ErrInvalidIndexType       // Can't index this type
-	ErrNegateNonNumeric       // Negate '-' operator only supported on Int and Float
-	ErrNonNumericIndex        // Index for list/String/tuple must be Int
-	ErrInvalidMapIndex        // Map must be indexed with its key type
-	ErrFieldNotFound          // Field not found
-	ErrInvalidComputedIndex   // Computed index not supported for this type
-	ErrDotIndexRequired       // Dot index required to index this type instead of computed String index
-	ErrNonBoolLogicalOperand  // Operand to '||', '&&', and '!' operator must be Bool
-	ErrInvalidArithType       // Operand for arithmetic operation must be numeric
-	ErrIntTimesString         // Should be String * Int, in that exact order
-	ErrInvalidStringMult      // String must be multiplied by Int
+	ErrOverloadReturnMismatch // Overloads must return the same type
+	ErrInvalidInitReturn      // Initializer for T must return T | T? | Result<T>
+	ErrInvalidListInitReturn  // Initializer for List must return a list (List | List? | Result<List>)
+	ErrMissingReturn          // Function doesn't return Nothing but contains no return statements
 
-	// Old errors. For reference only.
+	// Type expression ====
 
-	ErrUntypedNil             // nil requires contextual type
-	ErrUntypedEmptyList       // Can't infer type from empty list
-	ErrUntypedEnum            // Shorthand enum syntax without enum type
-	ErrUncheckedOptional      // Required to check if optional is nil
-	ErrUncheckedResult        // Required to check Result for error
-	ErrInvalidRestExpr        // Rest expression used where it is not supposed to
-	ErrVariadicLast           // Variadic param must be last
-	ErrNoGenerics             // Only builtin types are generic
-	ErrWrongTypeParamLen      // Wrong number of generic params
-	ErrInvalidEnumValue       // Enum value must be literal string or number
-	ErrInheritNonStructOrIntf // In type declaration, can only inherit from struct or interface
-	ErrConflictingInherit     // Name collision in struct inheritance
-	ErrNonStructReceiver      // Defining method on non-struct type
-	ErrOverloadExists         // Overload already defined
-	ErrAssignToConst          // Attempted reassignment to constant reference
-	ErrWrongAssignType        // Wrong type for assignment
-	ErrNonBoolLogical         // Operands in logical expression must be boolean
-	ErrMismatchedOperands     // Operands don't match
-	ErrMismatchedDistrib      // Distributive operands must be the same type
-	ErrUncomparableTypes      // Uncomparable types in relational expression
-	ErrInvalidOperation       // Operands are same type, but arithmetic not allowed on type
-	ErrInvalidInOperand       // Right-hand side of 'in' operator must be a list or map
+	ErrNotAType        // Variable or function used in type context
+	ErrTypeAsValue     // Type used as a value
+	ErrInvalidRestType // Rest type used outside of function parameter
+
+	// Statement ====
+
+	ErrNotIterable         // Type isn't iterable (can be used in a 'for' loop)
+	ErrNonBoolWhileCond    // Condition in 'while' statement must be type Bool
+	ErrOver2LoopVars       // Can't declare more than 2 loop variables in a 'for' loop
+	ErrMultipleIntIterVars // Only 1 variable allowed when iterating over Int
+	ErrAssignToConst       // Attempted reassignment to constant reference
+
+	// Literal ====
+
+	ErrUnknownStructShorthand // Can't determine type of struct from shorthand (`.(...)`)
+	ErrUnknownEnumShorthand   // Can't determine type of enum from shorthand (`.key`)
+
+	// Expression ====
+
+	ErrInvalidRangeType      // Can't range over this type
+	ErrStepWithStringRange   // Step isn't allowed with String range
+	ErrNonConstStringRange   // Range bounds must be constants when ranging over String
+	ErrOpenStringRange       // '..<' not allowed with range over String
+	ErrNonLetterStringRange  // Bounds of range over String must be a letter or digit
+	ErrMultiCharStringRange  // Bounds of range over String must be a single character
+	ErrInvalidIndexType      // Can't index this type
+	ErrNonNumericIndex       // Index for list/String/tuple must be Int
+	ErrInvalidMapIndex       // Map must be indexed with its key type
+	ErrFieldNotFound         // Field not found
+	ErrInvalidComputedIndex  // Computed index not supported for this type
+	ErrDotIndexRequired      // Dot index required to index this type instead of computed String index
+	ErrNegateNonNumeric      // Negate '-' operator only supported on Int and Float
+	ErrNonBoolLogicalOperand // Operand to '||', '&&', and '!' operator must be Bool
+	ErrInvalidArithType      // Operand for arithmetic operation must be numeric
+	ErrIntTimesString        // Should be String * Int, in that exact order
+	ErrInvalidStringMult     // String must be multiplied by Int
+	ErrNonBoolLogical        // Operands in logical expression must be boolean
+	ErrInvalidInOperand      // Right-hand side of 'in' operator must be a list or map
+	ErrUntypedEmptyList      // Can't infer type of empty list
+	ErrUntypedNil            // 'nil' requires a type (explicit type at assignment)
+	ErrNothingAsValue        // Function returning Nothing can't be used as a value
+	ErrNonResultInTry        // Expression after 'try' must be a Result
+	ErrInvalidAssertType     // Type being asserted must be a result or optional
+	ErrNotAFunction          // Can't call a non-function or initializer
+	ErrGenericParamsRequired // Reference to generic type requires params
+	ErrNonGenericType        // Generics passed to type that doesn't accept any
+	ErrInvalidGenericCount   // Too few/many generic parameters passed
 )
 
 func (e *Error) handleTypeError() string {
@@ -84,6 +89,9 @@ func (e *Error) handleTypeError() string {
 		e.noMessage()
 		return ""
 
+	case ErrTypeMismatch:
+		return "Type mismatch: expected type " + Quote(info.ExpectedType) +
+			", but this has type " + Quote(info.GotType)
 	case ErrAliasSelfType:
 		if e.BoolParam("initializer") {
 			return "The target of an initializer can't be a type alias"
@@ -108,8 +116,6 @@ func (e *Error) handleTypeError() string {
 		)
 	case ErrUnknownAttribute:
 		return "I don't recognize the " + name + " attribute"
-	case ErrAttributesNotAllowed:
-		return "This module can't use attributes when being bootstrapped"
 	case ErrGenericTypeAlias:
 		return "The right-hand side of a type alias declaration can't be a generic"
 	case ErrDepCycle:
@@ -196,83 +202,29 @@ func (e *Error) handleTypeError() string {
 	case ErrFieldAndMethodSameName:
 		return "Method " + Quote(e.Name) + " has the same name as a field on type " +
 			Quote(e.StringParam("type"))
-
-		// OLD ERRORS
-		// =======
-		/*
-			case ErrTypeMismatch:
-				return fmt.Sprintf(
-					"TypeError: This is supposed to be a %T, not %T",
-					expType, gotType,
-				)
-			case ErrInvalidEnumValue:
-				return "TypeError: Enum values can only be 'String', 'Int', or 'Float'"
-			case ErrTypeCycle:
-				types := e.Params["types"].([2]string)
-				switch {
-				// Infinite size struct or interface:
-				// 	type A { value: A }
-				case e.Params["mode"] == 1:
-					return fmt.Sprintf(
-						"TypeError: Invalid recursive type in %s",
-						Quote(types[0]),
-					)
-				// Defined in terms of itself: type A = A
-				case e.BoolParam("isSelf"):
-					return fmt.Sprintf(
-						"TypeError: Type %s references itself",
-						Quote(types[0]),
-					)
-				}
-				// Other cycle
-				return fmt.Sprintf(
-					"TypeError: Type cycle: %s and %s recursively reference each other",
-					Quote(types[0]), Quote(types[1]),
-				)
-			case ErrConflictingInherit:
-				if meth, _ := e.Params["method"].(*types.Function); meth != nil {
-					return fmt.Sprintf(
-						"TypeError: Method %s inherited from _ conflicts with already inherited method from _",
-						Quote(meth.StringNamed(name)),
-					)
-				}
-				return fmt.Sprintf(
-					"TypeError: Field %s inherited from _ conflicts with already inherited field from _",
-					Quote(name),
-				)
-			case ErrVariadicLast:
-				return "TypeError: Variadic parameter must be the last parameter"
-			case ErrInvalidRestType:
-				return "TypeError: Rest type isn't allowed here"
-			case ErrNoGenerics:
-				return fmt.Sprintf("TypeError: Type '%s' is not generic", e.Params["type"])
-			case ErrWrongTypeParamLen:
-				return fmt.Sprintf(
-					"TypeError: Expected between %d and %d type parameters, but got %d",
-					e.IntParam("min"), e.IntParam("max"), e.IntParam("got"),
-				)
-			case ErrNonStructReceiver:
-				return fmt.Sprintf(
-					"TypeError: Can't define method on %s: Type %[1]s is %s and is not a struct",
-					Quote(e.Name),
-					QuoteType(gotType),
-				)
-			case ErrOverloadExists:
-				return fmt.Sprintf(
-					"TypeError: Overload %s was already defined at %s",
-					Quote(name), e.Params["origPos"].(ranges.Range).Start,
-				)
-			case ErrMismatchedDistrib:
-				return fmt.Sprintf(
-					"TypeError: Operands in distributive expression must be the same type: found mismatched %s and %s",
-					QuoteType(expType), QuoteType(gotType),
-				)
-			case ErrUncomparableTypes:
-				return fmt.Sprintf(
-					"TypeError: Can't compare type %s with %s operator",
-					QuoteType(gotType),
-					FormatTokenType(e.TokenTypeParam("operator")),
-				)
-		*/
+	case ErrOverloadReturnMismatch:
+		return "Overloads of " + Quote(e.Name) + " must return the same type, " +
+			Quote(info.ExpectedType) + ", but this one returns " + Quote(info.GotType)
+	case ErrInvalidInitReturn:
+		return fmt.Sprintf(
+			"An initializer for '%s' must return '%[1]s', 'Result<%[1]s>', or '%[1]s?'",
+			e.Name,
+		)
+	case ErrInvalidListInitReturn:
+		return "An initializer for 'List' must return a list, possibly as an optional or result"
+	case ErrMissingReturn:
+		return "This function is supposed to return " + Quote(e.Name) + ", but the body contains no 'return' statements"
+	case ErrUntypedEmptyList:
+		return "I can't determine the item type of this empty list"
+	case ErrUntypedNil:
+		return "'nil' requires an explicit type at assignment"
+	case ErrNothingAsValue:
+		return "This function returns Nothing and can't be used as a value"
+	case ErrNonResultInTry:
+		return "The expression after 'try' must be a Result"
+	case ErrInvalidAssertType:
+		return "The expression before '!!' must be a Result or optional"
+	case ErrNotAFunction:
+		return "Type " + Quote(e.Name) + " isn't a function and can't be called"
 	}
 }

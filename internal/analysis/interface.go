@@ -17,7 +17,7 @@ func (*Interface) Kind() Kind     { return KindInterface }
 func (*Interface) String() string { return "<interface>" }
 
 func (c *Checker) checkInterfaceDecl(o *Object, decl *ast.InterfaceDeclaration) {
-	fctx := o.FileContext()
+	fctx := o.LookupContext()
 	intf := &Interface{
 		Inherited:       c.checkInheritedTypes(decl.InheritedTypes, KindInterface, fctx),
 		order:           make([]string, 0, len(decl.Items)),

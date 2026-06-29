@@ -43,6 +43,17 @@ func (obj *Object) Order() int { return int(obj.order) }
 // imported objects (that the object could depend on) are declared.
 func (obj *Object) FileContext() *Context { return obj.module.fileContext[obj.file] }
 
+// LookupContext returns the context in which imported objects (that the object
+// could depend on) are declared. This is the object's file context, unless
+// the object is declared in a nested scope (such as a function).
+func (obj *Object) LookupContext() *Context {
+	fctx := obj.FileContext()
+	if obj.context.File <= 0 {
+		return fctx
+	}
+	return obj.context
+}
+
 // Range returns the position of the object in the source code
 func (obj *Object) Range() ranges.Range { return obj.rang }
 
@@ -264,12 +275,33 @@ func Underlying(t Type) Type {
 		oldT := t
 		if u, ok := t.(Underlyer); ok {
 			t = u.Underlying()
+		} else {
+			return t
 		}
-		if t == oldT {
+		// Tuples can't be compared, but if we reach this, there
+		// is no underlying type.
+		if _, ok := t.(Tuple); ok || t == oldT {
 			return t
 		}
 	}
 }
+
+type Untyped Kind
+
+func (u Untyped) String() string {
+	switch u {
+	case Untyped(KindOptional):
+		return "nil"
+	case Untyped(KindList):
+		return "[]"
+	case Untyped(IntType):
+		return "Int"
+	default:
+		panic(fmt.Sprintf("invalid untyped type: %s", Kind(u)))
+	}
+}
+
+func (u Untyped) Kind() Kind { return Kind(u) }
 
 // Types that can be indexed (via `obj.index` or `obj[index]`) implement Indexer.
 // If Index or IndexDot return (nil, nil), the type can't be indexed.

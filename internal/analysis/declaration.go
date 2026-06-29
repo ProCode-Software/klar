@@ -49,11 +49,11 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 		obj.attrs = c.parseAttributes(*attrs, attrTargetKindOf(obj.info.node), obj.file)
 		*attrs = (*attrs)[:0]
 	}
-	if obj.name == "_" {
+	/* if obj.name == "_" {
 		// Since the object won't be added to the context, it won't be checked.
 		// For discarded idents, it's guranteed there are no dependencies
 		c.checkDeclaration(obj)
-	}
+	} */
 	// obj.order = uint32(len(ctx.declInfo))
 }
 
@@ -72,19 +72,19 @@ func (c *Checker) checkDeclaration(o *Object) {
 	if _, ok := c.objPathIndex[o]; ok {
 		switch typ := o.typ.(type) {
 		case *Variable:
-			if !c.isValidCycle(o) || typ.Type == nil {
+			if !c.checkCycle(o) || typ.Type == nil {
 				typ.Type = InvalidType
 			}
 		case *Constant:
-			if !c.isValidCycle(o) || typ.Type == nil {
+			if !c.checkCycle(o) || typ.Type == nil {
 				typ.Type = InvalidType
 			}
 		case *TypeName:
-			if !c.isValidCycle(o) {
+			if !c.checkCycle(o) {
 				typ.Type = InvalidType
 			}
 		case *Function, *Overload:
-			c.isValidCycle(o) // TODO: is this needed?
+			c.checkCycle(o) // TODO: is this needed?
 		case *FunctionAlias:
 		// TODO
 		default:
@@ -122,8 +122,9 @@ func (c *Checker) checkDeclaration(o *Object) {
 	}
 }
 
-// An error is reported if isValidCycle returns false.
-func (c *Checker) isValidCycle(o *Object) bool {
+// checkCycle checks if a cycle involving the given object is valid.
+// An error is reported if checkCycle returns false.
+func (c *Checker) checkCycle(o *Object) bool {
 	start := c.objPathIndex[o]
 	cycle := c.objPath[start:]
 	// Number of type defs and values (const or var) in the cycle
@@ -199,6 +200,9 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 	identRange := func(obj *Object) ranges.Range {
 		return obj.info.node.(*ast.FunctionDeclaration).Identifier.Range()
 	}
+	// TODO: typeName was already looked up in [Checker.getOverloadParent].
+	// Don't repeat this process again, and move error reporting
+	// for initializers in other scopes to that function.
 	selfObj := ctx.Lookup(typeName)
 	if selfObj == nil {
 		selfObj = ctx.LookupRecursive(typeName)

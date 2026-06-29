@@ -112,6 +112,7 @@ const (
 	ErrInvalidArrow            // -> can only be used with enum
 	ErrRedeclaredField         // Struct or interface field redeclared
 	ErrRedeclaredGeneric       // Generic parameter redeclared
+	ErrNonNameInGeneric        // Left-hand side of generic type isn't a name
 
 	// When =====
 
@@ -138,12 +139,14 @@ const (
 	ErrReturnOutsideFunc      // Return statement not allowed outside of function
 	ErrImportShadow           // Import shadows top-level object
 	ErrVarConstMixInDecl      // Var and const declared in the same declaration
-	ErrMultipleVariadic       // Variadic parameter already declared
+	ErrMultipleVariadicParam  // More than 1 unlabelled variadic parameter defined
 	ErrVariadicNotLast        // Variadic parameter must be the last param (if unlabelled)
 	ErrDuplicateInheritedType // Inherited type specified twice
 	ErrNoDeclAfterAttr        // Attribute must be followed by a declaration
 	ErrMisplacedControlStmt   // Can't use 'stop'/'next' statement outside of 'when'/'for'/'while' loop
 	ErrRedeclaredLabel        // Label redeclared in the same function
+	ErrRedeclaredOverload     // Overload redeclared with same params
+	ErrVariadicDefault        // Variadic parameter can't a default value
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -503,5 +506,11 @@ func (e *Error) handleSyntaxError() string {
 			kind = "stop"
 		}
 		return "A " + Quote(kind) + " statement can only be used within a 'for', 'when', or 'while' loop"
+	case ErrRedeclaredOverload:
+		return "Overload " + Quote(e.Name) + " was already declared"
+	case ErrVariadicDefault:
+		return "A variadic parameter can't have a default value"
+	case ErrNonNameInGeneric:
+		return "The left-hand side of a generic type reference must be a type name"
 	}
 }

@@ -4,6 +4,8 @@
 // TODO: We could declare "fake" builtin types that the attributes could use,
 // as they don't need the methods.
 
+import _ = klar._builtin.attributes // Bootstrap attributes definitions first
+
 // Prints values to the console. When running outside the browser, this is
 // standard output (stdout). Any value can be printed. Values are displayed
 // in a way that is easy to debug -- such as displaying field keys and values
@@ -26,7 +28,7 @@ public func print(
     to writable: Writable,
     separator sep: String?,
     withFinalNewline addNewline: Bool = false,
-) -> Result
+) /* -> Result */
 
 // Includes [klar.io/Writable]. This is validated by the type checker.
 type Writable = Any | [Int] | [String]

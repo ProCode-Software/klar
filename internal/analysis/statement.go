@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -125,7 +126,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	fid := sctx.ctx.File
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
-		expr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
+		expr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, exprStmt))
 		switch {
 		case (sctx.flags & braceless) != 0:
 		// TODO: find a way to return the value type
@@ -165,10 +166,15 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case *ast.NextStatement:
 		c.checkControlStmt(stmt, stmt.Label, sctx)
 	case *ast.ReturnStatement:
-		expr := c.checkExpr(stmt.Value, newExprFromStmtCtx(sctx, 0))
-		*sctx.returns = append(*sctx.returns, returnStmt{
-			expr: expr, pos: stmt.Value.GetRange(),
-		})
+		pos := stmt.Range
+		expr := newExprFromStmtCtx(sctx, 0)
+		if stmt.Value == nil {
+			expr.Type = NothingType
+		} else {
+			c.checkExpr(stmt.Value, expr)
+			pos = stmt.Value.GetRange()
+		}
+		*sctx.returns = append(*sctx.returns, returnStmt{expr: expr, pos: pos})
 	default:
 		panic(fmt.Sprintf("unhandled statement node: %T", stmt))
 	}
@@ -199,6 +205,9 @@ func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 			c.fileError(err, sctx.ctx.File)
 		}
 	}
+	// Body
+	bodyCtx := NewContext(sctx.ctx, sctx.ctx.File)
+	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
 }
 
 func (c *Checker) checkControlStmt(stmt ast.Statement,
@@ -256,6 +265,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 		c.fileError(err, fid)
 	}
 	var i int
+	bodyCtx := NewContext(sctx.ctx, fid)
 	for _, pair := range stmt.Variables {
 		var typ Type = InvalidType
 		// Use the user-provided type annotation, if any.
@@ -280,15 +290,26 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 				typ = varTypes[i] // Default type from the loop expression
 			}
 			// TODO: destructure and declare
+			for sym, typ := range c.followDestructure(
+				key, &Expr{Context: sctx.ctx, Type: typ}, // Just for followDestructure
+				stmt.Expression.GetRange(), true,
+			) {
+				sym := sym.(*ast.Symbol)
+				obj := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
+				_ = NewVariable(obj, LocalVar, typ)
+				c.declare(bodyCtx, obj)
+			}
 			i++
 		}
 	}
 	// Optional loop label
 	if lb := stmt.Label; lb != nil {
 		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
-			c.fileError(err, sctx.ctx.File)
+			c.fileError(err, fid)
 		}
 	}
+	// Body
+	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
 }
 
 func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerrs.Error) {
@@ -351,6 +372,7 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 	}
 	// Not iterable
 	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", t.String())
+	err.Label = "This value isn't iterable"
 	return repeatWithItem(Type(InvalidType), numVars), err
 }
 
@@ -374,18 +396,20 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 	var singleRHS *Expr
 	var singleRHSRange ranges.Range
 	if stmt.IsSingleRHS() {
-		singleRHS = c.checkExpr(stmt.Assignee[0], newExprFromStmtCtx(sctx, 0))
-		singleRHSRange = stmt.Assignee[0].GetRange()
+		singleRHS = c.checkExpr(stmt.Values[0], newExprFromStmtCtx(sctx, 0))
+		singleRHSRange = stmt.Values[0].GetRange()
 	}
 	for i, dest := range stmt.Assignee {
-		rhs := singleRHS
-		rhsRange := singleRHSRange
+		rhs, rhsRange := singleRHS, singleRHSRange
 		if singleRHS == nil {
-			rhs = c.checkExpr(stmt.Assignee[i], newExprFromStmtCtx(sctx, 0))
-			rhsRange = stmt.Assignee[i].GetRange()
+			rhs = c.checkExpr(stmt.Values[i], newExprFromStmtCtx(sctx, 0))
+			rhsRange = stmt.Values[i].GetRange()
 		}
 		for dest, typ := range c.followDestructure(dest, rhs, rhsRange, false) {
 			lhs := c.checkExpr(dest, newExprFromStmtCtx(sctx, 0))
+			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
+				continue
+			}
 			switch lhs.Type.(type) {
 			case *Constant:
 			// Can't assign to a const
@@ -395,9 +419,10 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 			if !Compatible(typ, lhs.Type) {
 				err := typeMismatch(lhs.Type, typ, rhsRange)
 				err.AddHighlight(
-					"This has type "+quote(lhs.Type.String()),
+					"The assignee has type "+quote(lhs.Type.String()),
 					dest.GetRange(),
 				)
+				err.Label = strings.Replace(err.Label, "This", "This value", 1)
 				c.fileError(err, sctx.ctx.File)
 				continue
 			}
