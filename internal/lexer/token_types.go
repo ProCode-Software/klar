@@ -180,7 +180,8 @@ var KeywordMap = map[string]TokenType{
 	"_":     Underscore,
 	"true":  Boolean,
 	"false": Boolean,
-	"nil":   Nil,
+	"nil":   Nil, // TODO: Possibly change 'nil' to 'none'
+	"none":  Nil,
 }
 
 // ReservedIdent is the set of keywords that cannot be used as variable names.
