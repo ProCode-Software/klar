@@ -33,9 +33,7 @@ func (p *Parser) ParsePublicModifier() ast.Statement {
 	}
 	switch stmt.(type) {
 	case *ast.BadExpression:
-	case *ast.EnumDeclaration, *ast.FunctionDeclaration,
-		*ast.InterfaceDeclaration, ast.TypeDeclaration,
-		*ast.StructDeclaration, *ast.TypeAliasDeclaration,
+	case *ast.FunctionDeclaration, ast.TypeDeclaration,
 		*ast.VariableDeclaration, *ast.FuncAliasDeclaration,
 		ast.ModifierDeclaration:
 		return &ast.PublicDeclaration{Declaration: stmt}

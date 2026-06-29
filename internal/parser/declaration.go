@@ -219,7 +219,7 @@ func (p *Parser) ParseStruct(
 				fieldMap[name.Name] = name.Range()
 			}
 			return name
-		}, 0, lexer.Comma, false)
+		}, 0, lexer.Comma, true)
 		// Type
 		if isAssignment(p.CurrKind()) {
 			// Default value without explicit type

@@ -62,6 +62,18 @@ func (p *Parser) nudError() {
 	p.skipUntilBoundary()
 }
 
+func (p *Parser) ledError() {
+	tok := p.Curr()
+	if tok.Kind == lexer.Not {
+		err := klarerrs.UnexpectedToken(tok)
+		err.Hint("Did you mean '!!' for an assertion?")
+		p.Error(err)
+		p.Advance()
+		return
+	}
+	p.unexpectedTokenError()
+}
+
 // countConsecutiveNot counts the number of consecutive `!` tokens.
 func (p *Parser) countConsecutiveNot() (n int) {
 	for p.HasTokens() {

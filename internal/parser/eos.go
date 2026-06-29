@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"slices"
-
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -43,10 +41,9 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 outer:
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
-			tok       = p.Tokens[i]
-			kind      = tok.Kind
-			prev      lexer.TokenType
-			insertEOS = true
+			tok  = p.Tokens[i]
+			kind = tok.Kind
+			prev lexer.TokenType
 		)
 		if len(new) > 0 {
 			prev = new[len(new)-1].Kind
@@ -117,32 +114,40 @@ outer:
 			new = append(new, tok)
 			continue
 		}
-		if i > 0 {
-			insertEOS = i > 0 && CanEndStatement(prev)
+		var (
+			// If a newline follows a keyword like 'func', don't add a newline
+			continuesBefore = i == 0 || CanEndStatement(prev)
+			nextTokI        = readComments(i)
+			continuesStmt   = nextTokI < len(p.Tokens) &&
+				ContinuesStatement(p.Tokens[nextTokI].Kind)
+		)
+		// The first consecutive newline is preserved
+		// (ContinuesStatement(Newline) == true). If this is currently
+		// the last one, ensure that newline is actually allowed after.
+		// If not, remove that newline.
+		if prev == lexer.Newline && continuesStmt {
+			new = new[:len(new)-1]
 		}
-		nextTokI := readComments(i)
-		// Should add EOS before next token?
-		if insertEOS && nextTokI < len(p.Tokens) &&
-			ContinuesStatement(p.Tokens[nextTokI].Kind) {
-			insertEOS = false
-		}
-		if insertEOS {
+		// Add this EOS if the next token can't have a newline before
+		// (for example, if the next token is '+', continuesStmt == true)
+		if continuesBefore && !continuesStmt {
 			new = append(new, tok)
 		}
-		i = nextTokI - 1 // Continuing the loop
+		i = nextTokI - 1 // Continuing the loop, skipping comments
 	}
 	// Add EOF if not present
 	if len(new) > 0 && new[len(new)-1].Kind != lexer.EOF {
 		panic("EOF not present in input p.Tokens")
 	}
-	p.Tokens = slices.Clip(new)
+	p.Tokens = new
 	brackets = nil
 	return comments
 }
 
-// Never add EOS after these tokens. All of the handled tokens are NUDs, otherwise
-// an EOS is added if ContinuesStatement(t) returns false.
+// Never add EOS after these tokens. An EOS is added if [ContinuesStatement](t)
+// returns false.
 func CanEndStatement(t lexer.TokenType) bool {
+	// All handled tokens are NUDs
 	switch t {
 	case
 		// Punctuation

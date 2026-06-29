@@ -200,7 +200,12 @@ func (p *Parser) ParseTupleType() ast.Type {
 	}
 	// Type has 1 item and key, with no trailing comma.
 	if len(t.Values) == 1 && len(t.Values[0].Keys) <= 1 && !trailingComma {
-		return &ast.ParenType{Type: t.Values[0].Value}
+		v := t.Values[0]
+		pt := &ast.ParenType{Type: v.Value}
+		if len(v.Keys) == 1 {
+			pt.Label = v.Keys[0]
+		}
+		return pt
 	}
 	return t
 }

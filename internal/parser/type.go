@@ -67,6 +67,14 @@ func (p *Parser) ParseUnionType(left ast.Type, bp BindingPower) *ast.UnionType {
 }
 
 func (p *Parser) ParseGenericType(left ast.Type, bp BindingPower) *ast.GenericType {
+	switch left.(type) {
+	case *ast.TypeAlias, *ast.QualifiedTypeAlias, *ast.PrimitiveType:
+	default:
+		p.ErrorLabelled(
+			klarerrs.Node(klarerrs.ErrNonNameInGeneric, left),
+			"This must be a name of a type",
+		)
+	}
 	params := make([]ast.Type, 0, 1)
 	p.Expect(lexer.LessThan)
 	if p.CurrKind() == lexer.GreaterThan {

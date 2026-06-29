@@ -221,8 +221,8 @@ func (p *Parser) ParseList() *ast.ListLiteral {
 // Parses an index or slice expression.
 //
 //	list[0]    list.first
-//	list[1:3]  list[1:]
-//	list[:3]   list[:]
+//	list[1...3]  list[1:]
+//	list[..<3]   list[:]
 func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.Expression {
 	var item ast.Expression
 	if p.Advance().Kind != lexer.LeftBracket {
@@ -233,21 +233,27 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			Computed: false,
 		}
 	}
-	// Slice [:3]
+	// Slice with no explicit start bound [..<3] or [...3]
 	if k := p.CurrKind(); k == lexer.Ellipsis || k == lexer.DotDotLessThan {
-		r := &ast.RangeExpression{Operator: newOperator(p.Advance())}
+		s := &ast.SliceExpression{Object: left, Operator: newOperator(p.Advance())}
 		if p.CurrKind() != lexer.RightBracket {
-			r.To = p.ParseExpression(RangeBindingPower)
+			s.To = p.ParseExpression(RangeBindingPower)
 		} else if k == lexer.DotDotLessThan {
 			// '..<' must have end
-			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrExpectedExprAfterOpenRange, p.PeekBehind()), "Expected an upper bound after this")
+			p.ErrorLabelled(
+				klarerrs.Token(klarerrs.ErrExpectedExprAfterOpenRange, p.PeekBehind()),
+				"Expected an upper bound after this",
+			)
 		}
 		if p.CurrKind() == lexer.Ellipsis {
-			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrStepInListSlice, p.Advance()), "List slices must be continuous")
-			r.Step = p.ParseExpression(RangeBindingPower)
+			p.ErrorLabelled(
+				klarerrs.Token(klarerrs.ErrStepInListSlice, p.Advance()),
+				"List slices must be continuous",
+			)
+			_ = p.ParseExpression(RangeBindingPower)
 		}
 		p.Expect(lexer.RightBracket)
-		return r
+		return s
 	}
 	// Expression
 	item = p.ParseExpression(ExpressionBindingPower)
@@ -255,7 +261,10 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 
 	if rang, ok := item.(*ast.RangeExpression); ok {
 		if rang.Step != nil {
-			p.ErrorLabelled(klarerrs.Node(klarerrs.ErrStepInListSlice, rang.Step), "List slices must be continuous")
+			p.ErrorLabelled(
+				klarerrs.Node(klarerrs.ErrStepInListSlice, rang.Step),
+				"List slices must be continuous",
+			)
 		}
 		return &ast.SliceExpression{
 			Object:   left,
@@ -396,7 +405,10 @@ func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression
 		}
 		curr := p.CurrKind()
 		if curr == lexer.DotDotLessThan {
-			p.ErrorLabelled(klarerrs.Token(klarerrs.ErrEllipsisForOpenRangeStep, p.Curr()), "Steps are defined using '...'")
+			p.ErrorLabelled(
+				klarerrs.Token(klarerrs.ErrEllipsisForOpenRangeStep, p.Curr()),
+				"Steps are defined using '...'",
+			)
 			curr = lexer.Ellipsis
 		}
 		if curr == lexer.Ellipsis {
@@ -602,7 +614,10 @@ func (p *Parser) ParseTryExpression() *ast.TryExpression {
 	t := &ast.TryExpression{}
 	// Invalid try-catch block: try {}
 	if p.CurrKind() == lexer.LeftCurlyBrace {
-		p.ErrorLabelled(klarerrs.Token(klarerrs.ErrTryBlock, p.Curr()), "Klar doesn't have try-catch")
+		p.ErrorLabelled(
+			klarerrs.Token(klarerrs.ErrTryBlock, p.Curr()),
+			"Klar doesn't have try-catch",
+		)
 		p.ParseBlock() // Just parse it
 		return t
 	}
