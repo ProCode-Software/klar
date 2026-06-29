@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/config/glaslock"
-	"github.com/ProCode-Software/klar/internal/util/graph"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/util/graph"
 )
 
 type ProjectCompiler struct {
@@ -213,9 +213,9 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 	if len(compiler.Errors) > 0 {
 		if pc.Compiler.Logger.Enabled(context.TODO(), slog.LevelError) {
 			pc.Compiler.Logger.Error("Modules being bootstrapped failed to compile")
-			pc.Compiler.Logger.Error("========== BEGIN COMPILER ERRORS ==========")
+			pc.Compiler.Logger.Error("========== BEGIN BOOTSTRAP ERRORS ==========")
 			pc.PrintAllErrors(compiler.Errors)
-			pc.Compiler.Logger.Error("========== END COMPILER ERRORS ==========")
+			pc.Compiler.Logger.Error("========== END BOOTSTRAP ERRORS ==========")
 		}
 		return &InterfaceError{Code: ErrInternalCompileError, Err: compiler.Errors[0]}
 	}

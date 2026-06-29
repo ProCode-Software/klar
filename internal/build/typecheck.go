@@ -29,7 +29,7 @@ func (pkc *PackageCompiler) TypeCheckModule(
 	mod := analysis.NewModule(
 		m.Name(), m.Path, importPath,
 		m.Programs,
-		opts.KlarVersion, opts.Target,
+		opts.KlarVersion, opts.Targets,
 	)
 	if m.SingleFile {
 		mod.Flags |= analysis.SingleFileModule
@@ -57,7 +57,7 @@ func (pkc *PackageCompiler) getCheckerOptions(mod *Module) *analysis.Options {
 	}
 	opts := &analysis.Options{
 		CheckerOptions:       checkerOptions,
-		Target:               pkc.Targets[0], // TODO
+		Targets:              pkc.Targets,
 		IsTest:               pkc.Mode == ModeTest,
 		MaxErrors:            MaxErrors,
 		KlarVersion:          nil, // TODO: [version.Specifier].Min()

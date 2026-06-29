@@ -38,7 +38,6 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 			return nil, err
 		}
 	}
-
 	// Load modules from cache or parse their files
 	ld := NewLoader(pkc.Compiler, pkc.Input, pkc.Deps)
 	ld.Root = pkc.Root
@@ -108,6 +107,17 @@ func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (
 	succeededModules []*Module, err error,
 ) {
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
+	// If the build mode is parse-only, we don't need to typecheck. Just return
+	// the modules without syntax errors.
+	if pkc.Mode == ModeParse {
+		for _, importPathStr := range loaded.sortedDeps {
+			if mod, ok := pkc.Deps.TryGet(importPathStr); ok && !mod.Failed {
+				succeededModules = append(succeededModules, mod)
+			}
+		}
+		return succeededModules, nil
+	}
+
 	skippedModules := make(map[*Module]struct{})
 typeCheckModules:
 	for i, importPathStr := range loaded.sortedDeps {

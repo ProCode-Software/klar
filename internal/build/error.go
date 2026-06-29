@@ -12,11 +12,11 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/util/graph"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
+	"github.com/ProCode-Software/klar/internal/util/graph"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )

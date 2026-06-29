@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProCode-Software/klar/internal/util/graph"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/util/graph"
 	"golang.org/x/sync/errgroup"
 )
 
