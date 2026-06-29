@@ -334,7 +334,7 @@ func (n *WhenCase) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *WhenExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkSlice[*WhenCase]{3, n.Cases})
+	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkNode{2, n.Label}, walkSlice[*WhenCase]{3, n.Cases})
 }
 
 func (n *WhileStatement) Walk(v Visitor, c *Cursor) StopCode {

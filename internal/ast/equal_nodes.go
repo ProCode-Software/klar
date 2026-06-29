@@ -1477,7 +1477,7 @@ func (a *WhenExpression) Equal(b2 Node) bool {
 	if !equalSlice(a.Subjects, b.Subjects) {
 		return false
 	}
-	if a.Label != b.Label {
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	if !equalSlice(a.Cases, b.Cases) {
