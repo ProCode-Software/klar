@@ -28,7 +28,10 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	var minLine, maxLine uint32
 	for _, hl := range highlights {
 		currStart, currEnd := hl.Range.Start.Line, hl.Range.End.Line
-		minLine, maxLine = min(minLine, currStart), max(maxLine, currEnd)
+		if currStart < minLine || minLine == 0 {
+			minLine = currStart
+		}
+		maxLine = max(maxLine, currEnd)
 	}
 	// The ranges that will actually be rendered
 	startLine, endLine := r.getBoxRanges(minLine, maxLine)
@@ -84,15 +87,14 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	return r.buf.WriteTo(r.Output)
 }
 
-func (r *Reporter) getBoxRanges(start, end uint32) (startLine, endLine uint32) {
-	startLine = uint32(max(1, int(start)-r.MaxLines+1))
+func (r *Reporter) getBoxRanges(start, end uint32) (from, to uint32) {
+	from = uint32(max(1, int(start)-r.MaxLines+1))
 	// If the ranges are far apart, render less lines before the first
 	// range to stay closer to MaxLines.
-	if 1 < startLine && startLine < start &&
-		endLine-startLine > uint32(r.MaxLines) {
-		startLine += 1
+	if 1 < from && from < start && end-from > uint32(r.MaxLines) {
+		from += 1
 	}
-	return startLine, end
+	return from, end
 }
 
 // printMessage prints the error message and error code.

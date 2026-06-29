@@ -8,11 +8,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
-// printUnderlines prints the underlines for the single-line highlights, as well as
-// the label for overflowing highlights and the rightmost highlight. pipeLen is the
-// number of spaces to add in order to account for the pipes of the multiline highlights.
+// printUnderlines prints the underlines for the single-line highlights,
+// as well as the label for overflowing highlights and the rightmost highlight.
+// pipeLen is the number of spaces to add in order to account for the pipes of
+// the multiline highlights.
 func (r *Reporter) printUnderlines(s *state, pipeLen int,
-	highlights []klarerrs.Highlight, printLineStart func(rem []klarerrs.Highlight),
+	highlights []klarerrs.Highlight, printLineStart func(rem []klarerrs.Highlight) int,
 ) (remHls []klarerrs.Highlight) {
 	var lastCol uint32 = 1
 	for i, hl := range highlights {
@@ -56,7 +57,8 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 			startCol := pipeLen + int(hl.Range.Start.Col-1)
 			r.printLabel(
 				hl.Message, s.hlColors[hl],
-				startCol, int(hl.Range.LineLength()), func() { printLineStart(remHls) },
+				startCol, int(hl.Range.LineLength()),
+				func() int { return printLineStart(remHls) },
 			)
 		} else {
 			remHls = append(remHls, hl)
@@ -70,7 +72,7 @@ func (r *Reporter) printUnderlines(s *state, pipeLen int,
 // If stemsOnly is true, it only prints the stems and not the labels.
 func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 	printLineStart func(), pipeLen int, stemsOnly bool,
-) {
+) (lastStemCol int) {
 	for len(remHls) > 0 {
 		printLineStart()
 		var lastCol uint32 = 1
@@ -83,6 +85,7 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 			)
 			r.padding(lastCol, rang.Start.Col)
 			r.appendSpace(stemOffset)
+			lastStemCol = int(rang.Start.Col) + stemOffset
 			if i < len(remHls)-1 || stemsOnly {
 				r.appendRune(r.CharacterSet.BoxL, color)
 				lastCol = rang.End.Col
@@ -93,7 +96,7 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 			}
 		}
 		if stemsOnly {
-			return
+			return lastStemCol
 		}
 		// Label and cut off the rightmost highlight
 		hl := remHls[len(remHls)-1]
@@ -102,6 +105,7 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 		r.newline()
 		remHls = remHls[:len(remHls)-1]
 	}
+	return lastStemCol
 }
 
 func (r *Reporter) printEndingMultilineLabels(s *state,
@@ -124,7 +128,7 @@ func (r *Reporter) printEndingMultilineLabels(s *state,
 			char.RepeatRune(r.CharacterSet.BoxT, max(0, pipeLen)),
 			char.RepeatRune(r.CharacterSet.HighlightMulti, int(hl.Range.End.Col)),
 		)
-		r.printLabel(hl.Message, color, -1 /* I don't care */, -1, nil) // TODO: care
+		r.printLabel(hl.Message, color, -1 /* Not applicable */, -1, nil)
 		r.newline()
 	}
 }
@@ -167,29 +171,38 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []klarerrs.H
 	}
 }
 
-// printLabel prints a space and a label, wrapping the label if it doesn't fit in the
-// terminal's width. If width > 0, printLabel may print an arrow on the next
-// line with label under. offset is the number of spaces to add after the line
-// number. ulWidth is the length of the underline in order to center the label.
+// printLabel prints a space and a label, wrapping the label if it doesn't
+// fit in the terminal's width. If ulWidth > 0, printLabel may print an arrow
+// on the next line with label under. offset is the number of spaces to add
+// between the line number and the underline. ulWidth is the length of the
+// underline in order to center the label.
 func (r *Reporter) printLabel(label, color string,
-	offset, ulWidth int, printLineStart func(),
+	offset, ulWidth int, printLineStart func() (lastPipeCol int),
 ) {
 	if label == "" {
 		return
 	}
 	labelLen := utf8.RuneCountInString(label)
 	// If the label doesn't fit within the terminal's width, print it on the next line
+	//
+	// TODO: This width check and the one inside don't account for the length of the
+	// line numbers (and margin), so the label could still overflow a bit. We may have
+	// to pass the length of the edge of the box or a [*state] object to printLabel.
 	if ulWidth > 0 && Width > 0 && offset+labelLen+ulWidth > Width {
 		r.newline()
-		printLineStart() // Print pipes
+		// If there are pipes that need to be printed, adjust the offset.
+		// Normally, the offset would be the dotted portion:
+		// 	1 | ................~~~~~~~~
+		// If there are pipes that need to be printed, the offset would become:
+		// 	1 |    |............~~~~~~~~
+		offset -= printLineStart()
 		// Center the label
 		ulCenter := offset + ulWidth/2
 		textCenter := max(ulCenter-(labelLen/2), 0)
-		// If the label doesn't fit within the terminal at all, start at the left
-		if textCenter+labelLen > Width {
-			textCenter = 0
+		// If the label doesn't fit within the terminal at all, it won't be centered
+		if textCenter+labelLen <= Width {
+			r.appendSpace(textCenter)
 		}
-		r.appendSpace(textCenter)
 	}
 	r.appendSpace(1)
 	r.appendString(label, color)

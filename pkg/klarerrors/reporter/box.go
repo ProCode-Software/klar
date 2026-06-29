@@ -206,14 +206,16 @@ func (r *Reporter) printHighlights(s *state, line, lastCol uint32,
 	// Print the underlines
 	if len(singleLine) > 0 {
 		printLineStart()
-		singleLine = r.printUnderlines(s, pipeLen, singleLine, func(rem []klarerrs.Highlight) {
+		singleLine = r.printUnderlines(s, pipeLen, singleLine, func(
+			rem []klarerrs.Highlight,
+		) (lastPipeCol int) {
 			// If underline line overflows, print the stems of the other highlights
 			// on the next line.
 			if len(rem) > 0 {
-				r.printArrows(s, rem, printLineStart, pipeLen, true)
-			} else {
-				printLineStart()
+				return r.printArrows(s, rem, printLineStart, pipeLen, true)
 			}
+			printLineStart()
+			return 0
 		})
 		r.newline()
 	}
