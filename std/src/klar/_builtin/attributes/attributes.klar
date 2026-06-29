@@ -10,7 +10,6 @@
 /// ```
 ///
 /// This file is part of the Klar compiler and exists for documentation purposes.
-import _ = klar._builtin
 
 // A version literal. This is here for documentation purposes.
 type #Version
@@ -47,7 +46,7 @@ public func external(
 
     // Path to the JavaScript file implementing this. `{target}` may be
     // interpolated into the string to insert the target into the path.
-    file file: String,
+    file _: String,
 
     // The name of the exported object implementing this. If omitted
     // (or set to 'default'), the default export will be used.
