@@ -1,5 +1,7 @@
 # Klar Error Reporter
 
+Provides an error reporting API for detailed errors with syntax highlighting, similar to Rust's compiler diagnostics.
+
 ## Examples
 
 Examples are also available in [sample.txt](./sample.txt), and [hints.txt](./hints.txt) for output containing hints.
@@ -53,6 +55,36 @@ Hint: Otherwise, initialize an empty list with a specific type. (Replace 'T' wit
        ·                                                  ++++  +
 ````
 
+## Based on
+
+Similar implementations were used as a reference for this package.
+
+- [zkat/miette (Rust)](https://github.com/zkat/miette)
+- [gabrielcsapo/miette (JS)](https://github.com/gabrielcsapo/miette) (Used by [Gleam](https://gleam.run/))
+- [brendanzab/codespan (Rust)](https://github.com/brendanzab/codespan)
+- [zesterer/ariadne (Rust)](https://codeberg.org/zesterer/ariadne)
+
+All implementations were based on the Rust and Elm compilers' rich compiler diagnostics. This implementation was created to report helpful errors to Klar users. It is also the first implementation for the Go ecosystem.
+
+## Features
+
+- Display syntax-highlighted source code spans in messages, with highlights and labels
+- Additional context is supported
+- Reports warnings
+- Display hints with colored edit diffs
+- Wraps within the terminal's width
+- Includes Unicode and ASCII character sets, with support for custom character sets and color themes
+
 ## API
 
+See the full API in [api.go](./api.go)
+
 ## Architecture
+
+## Future work
+
+- Support reporting hints/info diagnostics. Currently, only errors and warnings are supported.
+- Use an API independent of [internal/klarerrs](../../../internal/klarerrs) and move detail, highlight, and diff types to this package.
+- Possibly support non-Klar token types. Currently, it still can be used with other languages (see [printKlonDiagnostic](../../../internal/build/error.go) in the compiler).
+- Add error themes to the Klar compiler such as GitHub and [Frost](https://github.com/ProCode-Software/vscode-themes)
+- Move to a module separate from the Klar compiler
