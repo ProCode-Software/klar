@@ -69,7 +69,7 @@ func (r Range) PosIn(p Position) bool {
 	if p.Line < r.Start.Line || p.Line > r.End.Line {
 		return false
 	}
-	return p.Col >= r.Start.Col && p.Col <= r.End.Col
+	return p.Col >= r.Start.Col && p.Col < r.End.Col
 }
 
 // RangeIn reports whether r2 is entirely inside r.

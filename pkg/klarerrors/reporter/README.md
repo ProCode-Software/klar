@@ -64,7 +64,7 @@ Similar implementations were used as a reference for this package.
 - [brendanzab/codespan (Rust)](https://github.com/brendanzab/codespan)
 - [zesterer/ariadne (Rust)](https://codeberg.org/zesterer/ariadne)
 
-All implementations were based on the Rust and Elm compilers' rich compiler diagnostics. This implementation was created to report helpful errors to Klar users. It is also the first implementation for the Go ecosystem.
+All implementations were based on the Rust and Elm compilers' rich compiler diagnostics. This implementation was created to report helpful errors to Klar users. It is also the first implementation for the Go ecosystem. This is the third rewrite of Klar's error reporter.
 
 ## Features
 

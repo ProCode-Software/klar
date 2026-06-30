@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -17,7 +18,7 @@ func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
 	// Sort by column position, then deletions first
 	slices.SortFunc(dl.ranges, sortDiffEdits)
 	var (
-		orig         = r.getOriginalTokens(s, dl.line)
+		orig         = r.getTokensOnLine(s, dl.line)
 		merged, last = r.makeMergedTokens(dl.line, orig, dl.ranges)
 		firstOnLine  int // Index of the first token on the current line
 	)
@@ -33,8 +34,8 @@ func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
 	return last
 }
 
-// sortDiffEdits sorts inline edits by their column position, ensuring that
-// deletions are processed before additions at the same column.
+// sortDiffEdits sorts inline edits by their column position. If two edits
+// begin at the same position, deletions are sorted before additions.
 func sortDiffEdits(a, b klarerrs.DiffEdit) int {
 	if colOrder := cmp.Compare(a.Start().Col, b.Start().Col); colOrder != 0 {
 		return colOrder
@@ -48,8 +49,8 @@ func sortDiffEdits(a, b klarerrs.DiffEdit) int {
 	return 0
 }
 
-// getOriginalTokens returns the tokens from the original source that intersect with line.
-func (r *Reporter) getOriginalTokens(s *diffState, line uint32) []lexer.Token {
+// getTokensOnLine returns the tokens from the original source that intersect with line.
+func (r *Reporter) getTokensOnLine(s *diffState, line uint32) []lexer.Token {
 	for i := s.lastReadTok; i < len(s.tokens); i++ {
 		tok := s.tokens[i]
 		if tok.Position.Line > line {
@@ -103,8 +104,8 @@ func (r *Reporter) makeMergedTokens(
 	}
 
 	for _, tok := range orig {
-		// Insert additions starting at or before the current column
-		for currEdit < len(edits) && edits[currEdit].Start().Col <= tok.Position.Col {
+		// Insert additions starting before the current column
+		for currEdit < len(edits) && edits[currEdit].Start().Col < tok.Position.Col {
 			addAddition(edits[currEdit])
 		}
 
@@ -184,26 +185,22 @@ func (r *Reporter) printDiffUnderlines(s *diffState, tokens []lexer.Token, line 
 		if end.Line < line {
 			continue
 		}
-
 		if tok.Position.Line == line {
 			// Padding between tokens
-			if pad := int(tok.Position.Col) - int(lastCol); pad > 0 {
-				r.appendSpace(pad)
-				lastCol = tok.Position.Col
-			}
+			r.padding(lastCol, tok.Position.Col)
+			lastCol = tok.Position.Col
 		}
 		// Calculate length on this line
-		partLen := r.tokenLenOnLine(tok, line)
+		ulLen := r.tokenLenOnLine(tok, line)
 		switch tok.Kind {
 		case deletedToken:
-			r.appendString(strings.Repeat("-", int(partLen)), r.ColorPalette.DiffDelete)
+			r.appendf(r.ColorPalette.DiffDelete, "%s", char.Repeat('-', int(ulLen)))
 		case addedToken:
-			r.appendString(strings.Repeat("+", int(partLen)), r.ColorPalette.DiffAdd)
+			r.appendf(r.ColorPalette.DiffAdd, "%s", char.Repeat('+', int(ulLen)))
 		default:
-			r.appendSpace(int(partLen))
+			r.appendSpace(int(ulLen))
 		}
-		lastCol += partLen
-
+		lastCol += ulLen
 		if end.Line > line {
 			break
 		}
