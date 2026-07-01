@@ -19,6 +19,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
+          cache: true
 
       - name: Build
         run: ./scripts/build.sh
@@ -33,3 +34,5 @@ jobs:
           gh release create "prebuild-$prebuild_num" -p \
             -t "Prebuild $prebuild_num" \
             --latest --generate-notes ./bin/*
+        env:
+          GH_TOKEN: ${{ github.token }}
