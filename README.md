@@ -63,7 +63,7 @@ After you run the installer, you'll have access to the Klar compiler, toolchain,
 
 ```sh
 klar --help  # Show commands
-klar repl    # Easily run Klar code without a project
+klar repl    # Easily run Klar code without a project. You'll see a printed AST of your code.
 klar new     # Interactively start a new project
 klar build   # Build your project
 klar run     # Quickly compile and run your project
@@ -71,6 +71,9 @@ klar test    # Run your project's tests
 klar format  # Format the files in your project
 glas --help  # Use Glas, the Klar package manager
 ```
+
+> [!NOTE]
+> While the typechecker is in active development, you may set the `NO_TYPECHECK=1` environment variable to disable typechecking. When disabled, only syntax is checked. Otherwise, you can see what we're working on, but you may see type errors for unimplemented functionality.
 
 ## Examples
 

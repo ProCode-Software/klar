@@ -3,6 +3,7 @@ package build
 import (
 	"errors"
 	"log/slog"
+	"os"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -109,7 +110,7 @@ func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	// If the build mode is parse-only, we don't need to typecheck. Just return
 	// the modules without syntax errors.
-	if pkc.Mode == ModeParse {
+	if pkc.Mode == ModeParse || os.Getenv("NO_TYPECHECK") == "1" {
 		for _, importPathStr := range loaded.sortedDeps {
 			if mod, ok := pkc.Deps.TryGet(importPathStr); ok && !mod.Failed {
 				succeededModules = append(succeededModules, mod)
