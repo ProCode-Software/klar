@@ -100,38 +100,46 @@ Please build from source instead by rerunning without the '--prebuild' flag" && 
 Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
     fi
 
-    # Find the name of the GitHub release asset
     progress "📦 Downloading prebuilt Klar and Glas binaries..."
     products=(klar glas)
+    release_json=$(curl -s "https://api.github.com/repos/ProCode-Software/klar/releases?per_page=1")
     if ! command -v jq &> /dev/null; then
         # Alternative for Windows (Git Bash) users without jq
-        binary_name=$(curl -s "https://api.github.com/repos/ProCode-Software/klar/releases/latest" |
+        tag_name=$(echo "$release_json" | grep -oE '"tag_name":[ ]*"[^"]+"' |
+            head -n 1 | sed -E 's/"tag_name":[ ]*"([^"]+)"/\1/')
+        binary_name=$(echo "$release_json" |
             grep -oE '"browser_download_url":[ ]*"[^"]+"' |
             sed -E 's/"browser_download_url":[ ]*"([^"]+)"/\1/' |
             grep -E 'klar-.*'"$prebuild_os_name"'-'"$prebuild_arch_name"'.*' |
             head -n 1)
     else
-        binary_name=$(curl -s "https://api.github.com/repos/ProCode-Software/klar/releases/latest" |
-            jq -r '.assets[] | select(.name | test("^klar-.*'"$prebuild_os_name"'-'"$prebuild_arch_name"'")) | .browser_download_url')
+        tag_name=$(echo "$release_json" | jq -r '.[0].tag_name')
+        binary_name=$(echo "$release_json" |
+            jq -r '.[0].assets[] | select(.name | test("^klar-.*'"$prebuild_os_name"'-'"$prebuild_arch_name"'")) | .browser_download_url')
+    fi
+
+    if [[ -z $tag_name || $tag_name == null ]]; then
+        red "Unfortunately, we couldn't find any Klar releases on GitHub.
+  Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
     fi
 
     if [[ -z $binary_name ]]; then
-        red "Unfortunately, we couldn't find a prebuilt binary for $prebuild_os_name-$prebuild_arch_name.
-Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
+        red "Unfortunately, we couldn't find a prebuilt binary for $prebuild_os_name-$prebuild_arch_name in release $tag_name.
+  Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
     fi
 
     # Download Klar and Glas
     get_exec "$prebuild_os_name"
     for product in "${products[@]}"; do
-        product_url=${binary_name//klar/$product}
+        product_url=${binary_name//klar-/$product-}
         product_exec=${product}_exec
         curl -fsSL -o "$build_dir/${!product_exec}" "$product_url"
     done
 
     # Download the standard library
     progress "📚 Downloading the standard library..."
-    curl -fsSL -o "$build_dir/stdlib.zip" "https://github.com/ProCode-Software/klar/releases/latest/download/stdlib.zip"
-    unzip -o "$build_dir/stdlib.zip" -d "$build_dir"
+    curl -fsSL -o "$build_dir/stdlib.zip" "https://github.com/ProCode-Software/klar/releases/download/$tag_name/stdlib.zip"
+    unzip -o "$build_dir/stdlib.zip" -d "$build_dir" &>/dev/null
 }
 
 build_from_source() {
