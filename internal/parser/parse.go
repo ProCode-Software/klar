@@ -13,7 +13,7 @@ import (
 func (p *Parser) Parse() *ast.Program {
 	defer p.handlePanic()
 	var (
-		body     = make([]ast.Statement, 0, len(p.Tokens)/10)
+		body     = []ast.Statement{}
 		comments = p.InsertEOS()
 	)
 	for p.HasTokens() {
@@ -27,7 +27,7 @@ func (p *Parser) Parse() *ast.Program {
 	return &ast.Program{
 		Body:     slices.Clip(body),
 		Comments: comments,
-		BaseNode: ast.BaseNode{Range: ranges.Range{
+		BaseNode: ast.BaseNode{ranges.Range{
 			Start: p.Tokens[0].Position,
 			End:   p.Tokens[len(p.Tokens)-1].Position,
 		}},

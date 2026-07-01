@@ -76,36 +76,36 @@ func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {
 	return frags
 }
 
-func (pBase *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Expression) {
+func (p *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Expression) {
 	content = append(content, lexer.Token{
 		Kind:     lexer.EOF,
 		Position: content[len(content)-1].End(),
 	})
-	p := New(content, &pBase.Options)
-	defer p.Reset()
-	p.InsertEOS()
+	ip := New(content, &p.Options)
+	defer ip.Reset()
+	ip.InsertEOS()
 	// Allow type pattern matching in when cases
 	// when str {
 	//	"Hello {_}" -> ...
 	//	"{x: Int} cats" -> ...
 	// }
-	if pBase.isWhenCase() && p.PeekKind() == lexer.Colon {
-		name := p.ParseIdentOrDiscard()
-		p.Expect(lexer.Colon)
-		typ := p.ParseType(DefaultTypeBindingPower)
+	if p.isWhenCase() && ip.PeekKind() == lexer.Colon {
+		name := ip.ParseIdentOrDiscard()
+		ip.Expect(lexer.Colon)
+		typ := ip.ParseType(DefaultTypeBindingPower)
 		res = &ast.StringTypeMatch{
-			BaseNode: newBaseNode(name.Position, p.lastTokEnd()),
+			BaseNode: newBaseNode(name.Position, ip.lastTokEnd()),
 			Name:     name,
 			Type:     typ,
 		}
 	} else {
-		res = p.ParseExpression(ExpressionBindingPower)
+		res = ip.ParseExpression(ExpressionBindingPower)
 	}
 	// Copy errors back
-	pBase.Errors = append(pBase.Errors, p.Errors...)
+	p.Errors = append(p.Errors, ip.Errors...)
 	// Check that there is nothing else
-	if c := p.CurrKind(); c != lexer.Newline && c != lexer.EOF {
-		pBase.Error(klarerrs.Token(klarerrs.ErrExpectedInterpolationEnd, p.Curr()))
+	if c := ip.CurrKind(); c != lexer.Newline && c != lexer.EOF {
+		p.Error(klarerrs.Token(klarerrs.ErrExpectedInterpolationEnd, ip.Curr()))
 	}
 	return res
 }
