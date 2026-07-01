@@ -17,6 +17,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
+      - run: go install ./...
 
       - name: Build
         run: ./scripts/build.sh
