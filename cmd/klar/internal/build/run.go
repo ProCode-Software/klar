@@ -33,8 +33,7 @@ func Build(r *command.Runner) {
 	c := build.NewCompiler(build.ModeBuild, cwd)
 	pc := build.NewProjectCompiler(c)
 
-	// Logging
-	// ==========
+	// 1. Logging
 	jsonOutput := r.Flag("json-output").Bool()
 	if err := build.SetLogger(c, r.Flag("verbose").Bool(), jsonOutput); err != nil {
 		cli.FailureError(err)
@@ -50,8 +49,7 @@ func Build(r *command.Runner) {
 		c.Progress = NewBuildStatus(cwd)
 	}
 
-	// --config flag
-	// =========
+	// 2. --config flag
 	var (
 		configFlag      = r.Flag("config")
 		forcedKlarBuild *klarbuild.File
@@ -71,8 +69,7 @@ func Build(r *command.Runner) {
 	}
 	// If unset, a klar.build will be searched for
 
-	// Resolve command-line inputs
-	// =========
+	// 3. Resolve command-line inputs
 	pc.Inputs = make([]*build.Input, 0, len(inputArgs))
 	addInput := func(path string) {
 		input, err := pc.ResolveInput(path, klarBuildMode)
@@ -111,25 +108,21 @@ func Build(r *command.Runner) {
 		addInput(pkgPath)
 	}
 
-	// Resolve lockfiles and download dependencies for each input
-	// ========
+	// 4. Resolve lockfiles and download dependencies for each input
 	if err := pc.DownloadDeps(); err != nil {
 		c.FailWithError(err)
 	}
 
-	// Compile!
-	// ==========
+	// 5. Compile!
 	// TODO: error if --output is file and there are multiple inputs
 	res, err := pc.Compile()
 
-	// Print error/success messages
-	// ===========
+	// 6. Print error/success messages
 
 	// If we're showing the compiler's progress, clear the line before showing errors
 	if !c.ProgressHidden() {
 		fmt.Print(ansi.ClearLine)
 	}
-
 	switch {
 	case jsonOutput:
 		isMaxErrors := res != nil && res.IsMaxErrors
@@ -300,14 +293,14 @@ func playErrorSound() {
 	// TODO: use a different path
 	home, err := os.UserHomeDir()
 	if err != nil {
-		cli.Failure("Failed to get home directory:", err)
+		return
 	}
 	soundPath := filepath.Join(home, "Downloads/fahh.mp3")
 
 	// TODO: make this cross-platform
 	cmd := exec.Command("pw-play", soundPath)
 	if err := cmd.Start(); err != nil {
-		cli.Failure("Failed to play error sound:", err)
+		return
 	}
 }
 
