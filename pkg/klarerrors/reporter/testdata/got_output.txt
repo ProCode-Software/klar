@@ -29,7 +29,7 @@ Syntax error: Braces are required around this statement (requiredBraces)
 
   ┌─ main.klar:2:3
 1 │ deleteThisLine()
-  · ╭━━━━━━━━━━━━━━━
+  · ╭━━━━━━━━━━━━━━━━
 2 │ │ x := 1
   · │   ┯━ ^ 'x' is set to 1
   · │   ╰─ Something else is better

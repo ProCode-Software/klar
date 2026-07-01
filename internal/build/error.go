@@ -56,7 +56,7 @@ const (
 	ErrLexer                // Lexer error
 	ErrInvalidConfig        // Failed to parse configuration
 	ErrKlarVersion          // Compiler version too old to compile a package
-	ErrDepCycle             // Dependency cycle
+	ErrImportCycle          // Dependency cycle
 	ErrDepNotFound          // Dependency not found or installed
 	ErrInternalCompileError // Internal modules failed to compile
 	ErrNoManifest           // No manifest found
@@ -120,7 +120,7 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 		return fmt.Sprintf(
 			"Can't pass <c>%s</c> as an input outside of", err.Value,
 		), "<m>klar test</m>"
-	case ErrDepCycle:
+	case ErrImportCycle:
 		cycleErr := err.Err.(*graph.CycleError[string])
 		if len(cycleErr.Cycle) == 1 {
 			// Self-cycle

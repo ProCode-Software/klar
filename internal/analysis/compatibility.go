@@ -95,3 +95,14 @@ func Implements(a, b Type) bool {
 	}
 	return false
 }
+
+func isTypeName(t Type) bool {
+	switch t := t.(type) {
+	case *TypeName:
+		return true
+	case *Object:
+		return t.IsTypeName()
+	default:
+		return false
+	}
+}

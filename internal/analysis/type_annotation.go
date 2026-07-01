@@ -85,7 +85,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 			return ErrorType
 		// TODO: Task
 		default:
-			panic(fmt.Sprintf("unhandled primitive type id: %s", expr.Primitive))
+			panic(fmt.Sprintf("unhandled primitive type id: %d", expr.Primitive))
 		}
 	case *ast.RestType:
 		// Invalid outside of function. RestType is already explicitly handled

@@ -412,9 +412,16 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 			}
 			switch lhs.Type.(type) {
 			case *Constant:
-			// Can't assign to a const
+				// Can't assign to a const
+				err := klarerrs.Node(klarerrs.ErrAssignToConst, dest)
+				// TODO: Name and range of declaration
+				c.fileError(err, sctx.ctx.File)
+				continue
 			case *Function, *Overload, *FunctionAlias:
 				// Functions are readonly
+			case *EnumRef:
+			case *StructField:
+				// Ensure it isn't readonly
 			}
 			if !Compatible(typ, lhs.Type) {
 				err := typeMismatch(lhs.Type, typ, rhsRange)

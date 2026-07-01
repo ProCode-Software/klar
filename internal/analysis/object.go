@@ -3,6 +3,7 @@ package analysis
 import (
 	"fmt"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -71,6 +72,9 @@ func (obj *Object) Module() *Module { return obj.module }
 
 // Type returns the type of the object
 func (obj *Object) Type() ObjectKind { return obj.typ }
+
+// Underlying is equivalent to obj.Type()
+func (obj *Object) Underlying() Type { return obj.typ }
 
 // Kind returns the kind of the object. Kind is equivalent to obj.Type().Kind().
 func (obj *Object) Kind() Kind { return obj.typ.Kind() }
@@ -286,6 +290,27 @@ func Underlying(t Type) Type {
 	}
 }
 
+func UnderlyingTypeName(t Type) Type {
+	for {
+		oldT := t
+		if u, ok := t.(Underlyer); ok {
+			t = u.Underlying()
+		} else {
+			return t
+		}
+		// Tuples can't be compared, but if we reach this, there
+		// is no underlying type.
+		if _, ok := t.(Tuple); ok || t == oldT {
+			return t
+		}
+		if _, ok := oldT.(*TypeName); ok {
+			if _, ok := t.(Underlyer); !ok {
+				return oldT
+			}
+		}
+	}
+}
+
 type Untyped Kind
 
 func (u Untyped) String() string {
@@ -298,12 +323,28 @@ func (u Untyped) String() string {
 		return "Int"
 	case Untyped(KindStruct):
 		return "struct"
+	case Untyped(KindEnum):
+		return "enum"
 	default:
 		panic(fmt.Sprintf("invalid untyped type: %s", Kind(u)))
 	}
 }
 
 func (u Untyped) Kind() Kind { return Kind(u) }
+
+// Used for shorthand struct/enum initialization.
+type UntypedInit struct {
+	Name   string
+	kind   Kind // KindEnum or KindStruct
+	Params []UntypedParam
+}
+
+func (i UntypedInit) Kind() Kind { return i.kind }
+
+type UntypedParam struct {
+	Label string
+	Expr  ast.Expression
+}
 
 // Types that can be indexed (via `obj.index` or `obj[index]`) implement Indexer.
 // If Index or IndexDot return (nil, nil), the type can't be indexed.

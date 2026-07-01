@@ -134,7 +134,7 @@ func (ld *Loader) Load() (*Loaded, error) {
 	}
 
 	if loaded.sortedDeps, err = g.Toposort(); err != nil {
-		return loaded, &InterfaceError{Code: ErrDepCycle, Err: err}
+		return loaded, &InterfaceError{Code: ErrImportCycle, Err: err}
 	}
 	return loaded, nil
 }

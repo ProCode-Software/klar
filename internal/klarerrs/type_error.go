@@ -45,6 +45,8 @@ const (
 	ErrOver2LoopVars       // Can't declare more than 2 loop variables in a 'for' loop
 	ErrMultipleIntIterVars // Only 1 variable allowed when iterating over Int
 	ErrAssignToConst       // Attempted reassignment to constant reference
+	ErrInvalidAssignType   // Can't reassign a module item, enum item, or function
+	ErrAssignToIntfField   // Can't assign to an interface field
 
 	// Literal ====
 
@@ -123,6 +125,8 @@ func (e *Error) handleTypeError() string {
 		return "You can only apply an attribute to a declaration"
 	case ErrGenericTypeAlias:
 		return "The right-hand side of a type alias declaration can't be a generic"
+	case ErrAssignToConst:
+		return "You can't assign to a constant!"
 	case ErrDepCycle:
 		isTypeDecl := e.BoolParam("type")
 		isSelf := e.BoolParam("self")

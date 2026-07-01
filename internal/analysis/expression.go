@@ -183,7 +183,7 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 	if Underlying(obj.typ) == nil {
 		c.checkDeclaration(obj)
 	}
-	t.Type = obj.typ
+	t.Type = obj
 	switch {
 	case !obj.IsTypeName():
 	case (t.mode & callLHS) != 0:
@@ -519,7 +519,7 @@ func (c *Checker) checkSliceExpr(expr *ast.SliceExpression, t *Expr) {
 func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 	lhs := c.checkExpr(expr.Callee, newChildExpr(t, callLHS))
 	var und Type
-	if _, ok := lhs.Type.(*TypeName); ok {
+	if obj, ok := lhs.Type.(*Object); ok && obj.IsTypeName() {
 		// Type initializer
 		t.Type = lhs.Type
 		und = Underlying(lhs.Type)
@@ -573,6 +573,7 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 		t.Type = Untyped(KindStruct)
 	default:
 		err := klarerrs.Node(klarerrs.ErrUntypedStruct, expr)
+		err.Label = "I don't know the type of this struct"
 		diff := klarerrs.NewDiff(
 			c.module.ResolveFilePath(t.Context.File),
 			klarerrs.DeletedRange{ranges.SingleChar(expr.Range.Start)}, // '.'
@@ -588,6 +589,29 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 }
 
 func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
+	switch {
+	case t.hint != nil:
+		if t.hint.Kind() == KindEnum {
+			t.Type = t.hint
+			return
+		}
+		t.Type = InvalidType
+	case t.mode&infer == 0:
+		t.Type = Untyped(KindEnum)
+	default:
+		err := klarerrs.Node(klarerrs.ErrUntypedEnum, expr)
+		err.Label = "I don't know the type of this enum"
+		diff := klarerrs.NewDiff(
+			c.module.ResolveFilePath(t.Context.File),
+			klarerrs.AddedString{Position: expr.Range.Start, String: "T"},
+		)
+		err.HintWithDiff(
+			"Add an explicit type before the enum item. (Replace 'T' with the intended type)",
+			diff,
+		)
+		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
+	}
 }
 
 func (c *Checker) checkCallArgs(lhs Type, expr *ast.CallExpression, t *Expr) {

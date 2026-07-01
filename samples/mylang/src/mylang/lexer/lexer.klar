@@ -13,7 +13,8 @@ type Lexer {
 
 // Returns a new lexer that reads from `input`
 func Lexer(input: String) {
-    self = Lexer(:input, index: 0)
+    type Xexer = Lexer
+    self = Xexer(:input, index: 0)
 }
 
 // Reads a single character

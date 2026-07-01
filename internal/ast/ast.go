@@ -6,7 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-//go:generate go tool stringer -type=PrimitiveTypeName -linecomment
 //go:generate go run ../cmd/asttempl
 
 // All AST tokens implement the Node interface.

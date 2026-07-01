@@ -85,7 +85,7 @@ func indexTypeMismatchError(code klarerrs.Code, exp, got Type, label string) *kl
 
 func quoteAka(t Type) string {
 	ts := t.String()
-	if und := Underlying(t).String(); und != ts {
+	if und := UnderlyingTypeName(t).String(); und != ts {
 		return fmt.Sprintf("%s (aka %s)", quote(ts), quote(und))
 	}
 	return quote(ts)

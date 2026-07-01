@@ -13,7 +13,6 @@ const (
 	_ Code = ModuleErrorPrefix + iota
 
 	ErrModuleNotFound          // Module not found
-	ErrImportCycle             // Modules depend on each other
 	ErrSelfImport              // Module imports itself
 	ErrModuleKlarTooNew        // Module being imported requires a newer Klar version
 	ErrImporterError           // Importer returned a miscellaneous error

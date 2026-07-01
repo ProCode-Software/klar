@@ -112,7 +112,7 @@ func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {
 	}
 	sorted, err := g.Toposort()
 	if err != nil {
-		return nil, &InterfaceError{Code: ErrDepCycle, Err: err}
+		return nil, &InterfaceError{Code: ErrImportCycle, Err: err}
 	}
 	modules := make([]*Module, 0, len(sorted))
 	for i, hash := range sorted {

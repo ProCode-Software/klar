@@ -78,6 +78,8 @@ type Generic struct {
 	Index int // Index within the declaration, starting at 0
 }
 
+func (g *Generic) Underlying() Type { return g }
+
 func (g *Generic) String() string {
 	if g.Object == nil {
 		return "generic"
