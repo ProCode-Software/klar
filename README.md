@@ -31,13 +31,35 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 ## Installation & Quickstart
 
+Currently, as the installer builds from source, [Go](https://go.dev/) and Git are required to install Klar. If you don't have them available, you can also [download a prebuilt binary](#prebuilt-binaries) [here](https://github.com/ProCode-Software/klar/releases).
+
 To get started with Klar, run the installer with the following command:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ProCode-Software/klar/main/install.sh | bash
 ```
 
+If you're on Windows, consider using Git Bash or WSL to run the installer.
+
+The installer gives you two options on how to install Klar:
+
+1. **Build from source**, which builds Klar directly from the latest commits on the main branch. This requires Git and the Go toolchain to be installed.
+2. **Download a prebuilt binary**, which doesn't require Go or Git to be installed. Note that prebuilt binaries are built occasionally and won't have the latest features and bug fixes. The installer will automatically download the appropriate binary from the [releases page](https://github.com/ProCode-Software/klar/releases).
+
+<details>
+    <summary><b>Manual prebuild installation</b></summary>
+
+1. Download the Klar and Glas prebuilds for your platform from the [releases page](https://github.com/ProCode-Software/klar/releases).
+2. From the same page, download a copy of the standard library (`stdlib.zip`).
+3. Extract the standard library to any directory
+4. Set the `$KLAR_STD` environment variable to that path. It should point to the unzipped directory named `std` (not `stdlib` or `std/src/std`).
+5. When you're done, you can run the downloaded Klar and Glas binaries from the command line.
+
+</details>
+
 After you run the installer, you'll have access to the Klar compiler, toolchain, and Glas package manager.
+
+### Usage
 
 ```sh
 klar --help  # Show commands
@@ -106,7 +128,7 @@ func testSum() {
 // Run using `klar test`
 ```
 
-## Contributing
+## Contributing, Issues, and PRs
 
 For a basic contribution guide for ths repo, see [CONTRIBUTING.md](https://github.com/ProCode-Software/klar/blob/main/CONTRIBUTING.md). It also contains a guide on learning how the Klar compiler works.
 

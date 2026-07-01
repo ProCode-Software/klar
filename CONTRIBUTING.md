@@ -2,6 +2,17 @@
 
 Welcome to the Klar repository! We appreciate your interest in contributing to Klar.
 
+## Quick Links
+
+Here are some topics you may have been directed to this file about. Click on a link below to jump to that section.
+
+- [Issues & Bug Reports](#bug--crash-reports)
+- [Pull Requests](#pull-requests)
+- [Discussions vs. Issues vs. PRs](#discussions-vs-issues-vs-prs)
+- [Repo Development Guide](#development-guide)
+- [Project Structure](#project-structure) & [Common Go Packages](#common-packagesdirectories)
+- [Using AI](#using-ai)
+
 ## Goals
 
 Klar is a programming language designed to be different from existing languges, unafraid to rethink features to make an experience that is more consistent and easier to learn. It's also a language that can be taught as a first programming language. The feature set stays small and opinionated. There aren't multiple ways to implement something in Klar; just one idiomatic solution.
@@ -13,11 +24,15 @@ Klar compiles to JavaScipt, and in the future, possibly its own runtime. Related
 Other smaller goals:
 
 - Errors for humans. Friendly error messages that people can actually understand, rather than sounding robotic. Display specific context and suggest hints.
-- An extensive standard library so developers have all the functionality they need, first-party and pre-installed. This reduces the reliance on external libraries, which may not have the same quality as the standard library, and also the growing issue of supply chain attacks (NPM and the JS community are notorious for)
+- An extensive standard library so developers have all the functionality they need, first-party and pre-installed. This reduces the reliance on external libraries, which may not have the same quality as the standard library, and also the growing issue of supply chain attacks (that NPM and the JS ecosystem are notorious for)
 - An uncomplicated package manager. And one that is safe: Display packages' details to the user before installing them
-- A decentralized package registry. Developers can upload their packages to platforms their familiar with --- the same place they upload their code. This means less passwords users have to remeber --- and less attack vectors for users to get hacked, no occupied package names.
+- A decentralized package registry. Developers can upload their packages to platforms their familiar with --- the same place they upload their code. This means less passwords users have to remember --- and less attack vectors for developers to get hacked. No occupied package names or name scalping/squatting.
 
-## Table of Contents
+## Developer Background
+
+### Klar Users
+
+### Project Contributors
 
 ## Commenting on RFCs
 
@@ -55,6 +70,22 @@ When filing a crash report issue, please include:
 
 We also allow reporting bugs that you haven't experienced, but are still possible (based on the source code) under certain circumstances and steps. If you file these, make sure you look at the compiler's source code, and provide steps that could likely produce the bug.
 
+As this project is still in early development, **do not file bug reports on unimplemented or incomplete features.** You can still file bug reports on parts we consider complete, such as the lexer.
+
+Examples of incomplete features you shouldn't report bugs on:
+
+- The type checker
+- Incomplete features from the [roadmap](https://github.com/klar-lang/klar/tree/main/ROADMAP.md)
+- Stubs, placeholders, and code with TODO comments
+
+Examples of complete features you can report bugs on:
+
+- Areas of functionality that haven't seen major commits in a while (except bug fixes), such as the parser
+- Features marked as complete in our roadmap
+- Panics outside of features we haven't committed to recently.
+
+When reporting bugs, consider looking at smaller features and details, rather than the full feature. For example, you can report a bug in the Klon decoder, but don't expect everything _else_ in the Klon library to be complete.
+
 ## Pull Requests
 
 **Make sure there's already an issue filed before starting a PR!**. PRs aren't an excuse to skip the issue/discussion commenting process.
@@ -83,22 +114,23 @@ If there's a typo in a Markdown file or documentation in the repo, you're welcom
 
 ## Using AI
 
-You may use AI to write code and tests. However, **you may not use AI to write issues, or PRs in this project.** We want interactions and collaboration between humans in the Klar project. Low-effort or AI-generated PRs and issues will be closed quickly.
+You may use AI to write code and tests. However, **you may not use AI to write issues, PRs, or discussions in this project.** We want thoughts of, and interactions and collaboration, between humans in the Klar project. Remember that this programming language is targeted to humans and beginners, not computers and AI agents. Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly.
 
 ### Writing Code with AI
 
-If you choose to write code with AI, make sure it follows the same style as the rest of the project's code. The author should be responsible for checking; don't put it on us. We're more likely to close issues with poor code style if they contain more AI-generated content.
+If you choose to write code with AI, make sure it follows the same style as the rest of the project's code. The author should be responsible for checking; don't put it on us. We're more likely to close issues with poor code style if they contain more AI-generated content. We do not want to be disgusted by AI slop code that will make us immediately close your PR.
 
 > [!TIP]
 > Use the [AGENTS.md](./AGENTS.md) and this contributing guide (CONTRIBUING.md) as steering guides for LLMs
 
-Some common signs of LLM-generated code that violate our code style (for Go code):
+Some common signs of LLM-generated code that violate our code style (for Go code), based on my personal experiences with AI agents:
 
 - Excessive separation of lines in functions, between groups of logic and returns
 - Excessive comments explaining _absolutely everything_
 - Excessive numbering/lettering groups of logic after an LLM sees it in the codebase
 - Excessive nesting of if-statements
 - Short or generic variable names. Or using names I don't like, such as `idx` ("index").
+
     ```go
     type Compiler struct {
         WorkDir   string
@@ -114,8 +146,10 @@ Some common signs of LLM-generated code that violate our code style (for Go code
         *slog.Logger
     }
     ```
+
     - _For context, `collectMu` is used for concurently sending `Error`s to the `Errors` and `Warnings` slices (as files are parsed in parallel)_
     - If a mutex for this purpose were to be added to the multi-purpose `Compiler` object, it should be named after what it's used for, not just `mu` just because it's a mutex. What happens if we need multiple mutexes for the Compiler?
+
 - Not using the latest language features, or rejecting them as incorrect or nonexistent (such as `new(expr)` to return a pointer to `expr`, added in Go 1.26)
 
 TODO: Add examples of each
@@ -241,7 +275,7 @@ We use the `./scripts/build.sh` to build Klar binaries for production. It involv
 
 ## Code Style
 
-With more code being written by AI, to maintan the code quality from humans, we've created style guides for some languages. See the [docs/CodeStyle](./docs/CodeStyle) folder for the languages we've written style guides for.
+With more code being written by AI, to maintan the code quality from humans, we've created style guides for some languages. See the [docs/CodeStyle](./docs/CodeStyle) folder for the languages we've written style guides for. For Go, see [docs/CodeStyle/GoStyleGuide.md](./docs/CodeStyle/GoStyleGuide.md)
 
 In the Klar codebase, we want the source code to be **understandable and maintainable**. Developers looking for inspiration from other compilers should be able to look at the Klar codebase, and understand our implementation. Additional benefits of understandable and maintainable code:
 
@@ -253,7 +287,7 @@ In the Klar codebase, we want the source code to be **understandable and maintai
 
 ### Formatters
 
-- **Go:** [gofumpt](https://github.com/mvdan/gofumpt) (gofmt with additional preferences) via `./scripts/format.sh`
+- **Go:** [gofumpt](https://github.com/mvdan/gofumpt) (a more opinionated version of gofmt) via `./scripts/format.sh`
 - **JavaScript, TypeScript, JSON**: [oxfmt](https://oxc.rs/) via `bun oxfmt`
 
 Ensure you format your code before submitting your PR. Never file a PR just to format unformatted files.
@@ -271,5 +305,5 @@ Some documentation files that can be updated include:
 
 When submitting your changes, you're allowed to:
 
-- Update multiple files with information about the same topic
+- Update multiple files with information about the same topic, or
 - Update a single file with information about multiple topics
