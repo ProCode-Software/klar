@@ -1,0 +1,33 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+
+      - name: Build
+        run: ./scripts/build.sh
+        env:
+          COMMIT_VER: 1
+
+      - name: Create GitHub Release
+        run: |
+          last_prebuild=$(gh release ls -L 1 --json tagName | jq -r '.[0].tagName')
+          [[ $last_prebuild == null ]] && last_prebuild=0
+          prebuild_num=$((${last_prebuild/prebuild-/} + 1))
+          gh release create "prebuild-$prebuild_num" -p \
+            -t "Prebuild $prebuild_num" \
+            --latest --generate-notes ./bin/*
