@@ -113,6 +113,7 @@ const (
 	ErrRedeclaredField         // Struct or interface field redeclared
 	ErrRedeclaredGeneric       // Generic parameter redeclared
 	ErrNonNameInGeneric        // Left-hand side of generic type isn't a name
+	ErrRedeclaredParam         // (Enum item) Parameter already declares
 
 	// When =====
 
@@ -512,5 +513,7 @@ func (e *Error) handleSyntaxError() string {
 		return "A variadic parameter can't have a default value"
 	case ErrNonNameInGeneric:
 		return "The left-hand side of a generic type reference must be a type name"
+	case ErrRedeclaredParam:
+		return ""
 	}
 }

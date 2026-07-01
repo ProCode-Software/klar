@@ -7,33 +7,39 @@ import (
 
 // Compatible returns whether type a is compatible with b.
 func Compatible(a, b Type) bool {
+	aKind, bKind := a.Kind(), b.Kind()
 	if ut, ok := a.(Untyped); ok {
 		if ut == Untyped(IntType) && (b == IntType || b == FloatType) {
 			return true
 		}
 		// Untyped nil and untyped empty list
-		if Kind(ut) == b.Kind() {
+		if Kind(ut) == bKind {
 			return true
 		}
 	}
 	// Allow checking for compatibility with kinds
 	// Example: Compatible(t, KindStuct) returns true if t is a struct
 	if b, ok := b.(Kind); ok && !b.IsPrimitive() {
-		return a.Kind() == b
+		return aKind == b
 	}
 	if a, ok := a.(*NoReturn); ok && a.Type == nil {
 		return true // This is a TODO function and is compatible with any type
 	}
-	if a.Kind() == KindList && b.Kind() == KindList {
-		return Compatible(Underlying(a).(*List).Elem, Underlying(b).(*List).Elem)
-	}
-	if b.Kind() == KindOptional && a.Kind() != KindOptional {
+	switch {
+	case aKind == KindList && bKind == KindList:
+		a = Underlying(a).(*List).Elem
+		b = Underlying(b).(*List).Elem
+		return Compatible(a, b)
+	case bKind == KindOptional && aKind != KindOptional:
 		b = Underlying(b).(*Optional).Elem
 		return Compatible(a, b)
-	}
-	if b.Kind() == KindResult && a.Kind() != KindResult {
+	case bKind == KindResult && aKind != KindResult:
 		b := Underlying(b).(*Result)
 		return Compatible(a, b.Success) || Compatible(a, b.Error)
+	case bKind == KindTag, bKind == KindInterface:
+		if Implements(a, b) {
+			return true
+		}
 	}
 	return TypesEqual(a, b) // TODO
 }
@@ -63,4 +69,29 @@ func ConcreteTypeOf(t Type) Type {
 	default:
 		return t
 	}
+}
+
+// Implements returns whether type a implements b.
+func Implements(a, b Type) bool {
+	a = Underlying(a)
+	if b.Kind() != KindTag {
+		// TODO: Interface (and possibly struct) implementation checking
+		return false
+	}
+	b = Underlying(b).(*Tag)
+	switch a := Underlying(a).(type) {
+	case *Enum:
+		_, ok := a.Inherited[b]
+		return ok
+	case *Struct:
+		_, ok := a.Inherited[b]
+		return ok
+	case *Interface:
+		_, ok := a.Inherited[b]
+		return ok
+	case *Tag:
+		_, ok := a.Implements[b]
+		return ok
+	}
+	return false
 }

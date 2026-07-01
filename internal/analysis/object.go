@@ -296,6 +296,8 @@ func (u Untyped) String() string {
 		return "[]"
 	case Untyped(IntType):
 		return "Int"
+	case Untyped(KindStruct):
+		return "struct"
 	default:
 		panic(fmt.Sprintf("invalid untyped type: %s", Kind(u)))
 	}

@@ -6,6 +6,7 @@ import (
 )
 
 type Struct struct {
+	Inherited    map[Type]struct{}  // Structs, interfaces, and tags
 	Fields       []*Object          // Type is [*StructField]
 	fieldMap     map[string]*Object // Contains fields and methods
 	Initializers []*Object          // Type is [*Overload]
@@ -20,8 +21,10 @@ func (s *Struct) String() string { return "<struct>" }
 func (s *Struct) Kind() Kind     { return KindStruct }
 
 type FieldMethodSet struct {
+	All     map[string]Type
 	Fields  map[string]Type
 	Methods map[string]*Function
+	// TODO: Should we add a map of ambiguous field/methods?
 }
 
 type StructField struct {
@@ -38,11 +41,12 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	fctx := o.LookupContext()
 	o.typ.(*TypeName).Type = str
 
-	// TODO: inherited types
-	// We're just checking their kinds for now. Add the fields and methods later.
-	c.checkInheritedTypes(node.InheritedTypes, KindStruct, fctx)
+	// We're just checking their kinds for now. TODO: Add the fields and methods later.
+	str.Inherited = c.checkInheritedTypes(node.InheritedTypes, KindStruct, fctx)
 
 	if len(node.Fields) == 0 {
+		// TODO: Remove when fmset is implemented
+		str.fieldMap = make(map[string]*Object, 0)
 		return
 	}
 	str.fieldMap = make(map[string]*Object)
@@ -50,7 +54,10 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	for _, field := range node.Fields {
 		var (
 			typ   = c.parseType(field.Type, fctx)
-			attrs = c.parseAttributes(field.Attributes, structFieldAttribute, o.file)
+			attrs = c.parseAttributes(
+				field.Attributes, attrTargetKindOf(field, true),
+				field.Range, o.file,
+			)
 		)
 		for _, id := range field.Names {
 			f := &StructField{
@@ -79,15 +86,14 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 
 func (s *Struct) IndexDot(f string) (Type, *klarerrs.Error) {
 	// TODO: use fmset to also add inherited fields/methods
-	obj, ok := s.fieldMap[f]
-	if !ok {
-		return nil, &klarerrs.Error{
-			Code:  klarerrs.ErrFieldNotFound,
-			Label: "Field " + quote(f) + " doesn't exist",
-			Name:  f,
-		}
+	if obj, ok := s.fieldMap[f]; ok {
+		return obj.typ, nil
 	}
-	return obj.typ, nil
+	err := fieldNotFound(f)
+	if len(s.fieldMap) == 0 {
+		err.Hint("The struct has no fields.")
+	}
+	return nil, err
 }
 
 // makeDefaultInitializers creates the default initializers for the

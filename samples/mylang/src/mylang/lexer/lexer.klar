@@ -64,7 +64,6 @@ func Lexer.readToken() -> Token {
         }
     }
     crashout("unreachable")
-    return .(2)
 }
 
 func Lexer.readIdentifier() -> Token {

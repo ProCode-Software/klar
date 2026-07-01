@@ -21,6 +21,7 @@ const (
 	ErrEnumSameValue          // Enum value must be unique
 	ErrCantInferStringEnum    // Can't infer string enum value
 	ErrUnknownAttribute       // Unknown attribute
+	ErrInvalidAttributeTarget // You can only apply attributes to declarations
 	ErrGenericTypeAlias       // Type alias cannot be a generic type
 	ErrDepCycle               // Circular type reference
 	ErrMismatchTupleDestruct  // Number of destructured tuple items on left > right
@@ -29,6 +30,7 @@ const (
 	ErrInvalidInitReturn      // Initializer for T must return T | T? | Result<T>
 	ErrInvalidListInitReturn  // Initializer for List must return a list (List | List? | Result<List>)
 	ErrMissingReturn          // Function doesn't return Nothing but contains no return statements
+	ErrPrivateAttributes      // @deprecated and @added attributes aren't allowed on private declarations
 
 	// Type expression ====
 
@@ -46,8 +48,10 @@ const (
 
 	// Literal ====
 
-	ErrUnknownStructShorthand // Can't determine type of struct from shorthand (`.(...)`)
-	ErrUnknownEnumShorthand   // Can't determine type of enum from shorthand (`.key`)
+	ErrUntypedStruct    // Can't determine type of struct from shorthand (`.(...)`)
+	ErrUntypedEnum      // Can't determine type of enum from shorthand (`.key`)
+	ErrUntypedEmptyList // Can't infer type of empty list
+	ErrUntypedNil       // 'nil' requires a type (explicit type at assignment)
 
 	// Expression ====
 
@@ -70,8 +74,6 @@ const (
 	ErrInvalidStringMult     // String must be multiplied by Int
 	ErrNonBoolLogical        // Operands in logical expression must be boolean
 	ErrInvalidInOperand      // Right-hand side of 'in' operator must be a list or map
-	ErrUntypedEmptyList      // Can't infer type of empty list
-	ErrUntypedNil            // 'nil' requires a type (explicit type at assignment)
 	ErrNothingAsValue        // Function returning Nothing can't be used as a value
 	ErrNonResultInTry        // Expression after 'try' must be a Result
 	ErrInvalidAssertType     // Type being asserted must be a result or optional
@@ -79,6 +81,7 @@ const (
 	ErrGenericParamsRequired // Reference to generic type requires params
 	ErrNonGenericType        // Generics passed to type that doesn't accept any
 	ErrInvalidGenericCount   // Too few/many generic parameters passed
+	ErrIndexEnumMethod       // An enum method is only accessible on individual items
 )
 
 func (e *Error) handleTypeError() string {
@@ -116,6 +119,8 @@ func (e *Error) handleTypeError() string {
 		)
 	case ErrUnknownAttribute:
 		return "I don't recognize the " + name + " attribute"
+	case ErrInvalidAttributeTarget:
+		return "You can only apply an attribute to a declaration"
 	case ErrGenericTypeAlias:
 		return "The right-hand side of a type alias declaration can't be a generic"
 	case ErrDepCycle:
@@ -218,6 +223,10 @@ func (e *Error) handleTypeError() string {
 		return "I can't determine the item type of this empty list"
 	case ErrUntypedNil:
 		return "'nil' requires an explicit type at assignment"
+	case ErrUntypedStruct:
+		return "I can't determine the type of this struct from the shorthand notation"
+	case ErrUntypedEnum:
+		return "I can't determine the type of this enum from the shorthand notation"
 	case ErrNothingAsValue:
 		return "This function returns Nothing and can't be used as a value"
 	case ErrNonResultInTry:
@@ -225,6 +234,8 @@ func (e *Error) handleTypeError() string {
 	case ErrInvalidAssertType:
 		return "The expression before '!!' must be a Result or optional"
 	case ErrNotAFunction:
-		return "Type " + Quote(e.Name) + " isn't a function and can't be called"
+		return "Type " + e.Name + " isn't a function and can't be called"
+	case ErrIndexEnumMethod:
+		return "Method " + Quote(e.Name) + " can only be accessed on each of the enum's items, not the enum itself"
 	}
 }

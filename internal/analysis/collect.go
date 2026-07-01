@@ -8,6 +8,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type methodInfo struct {
@@ -91,9 +92,15 @@ func (c *Checker) collectTopLevelObjects(
 			}
 			if len(attrs) > 0 {
 				// If we're here, the attributes weren't applied to a declaration.
-				// TODO: Do we need to report an error here?
-				panic("Attributes weren't applied")
-				// attrs = attrs[:0]
+				// For example, they were attached to a statement.
+				err := klarerrs.Node(klarerrs.ErrInvalidAttributeTarget, stmt)
+				err.Label = "Can't apply attributes to this statement"
+				err.AddHighlight(
+					"These attributes were applied to the statement",
+					ranges.FromSlice(attrs),
+				)
+				c.fileError(err, fid)
+				attrs = attrs[:0]
 			}
 			// Top-level statement: only allowed in main.klar or single-file modules
 			if allowTopLevel {

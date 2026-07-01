@@ -94,12 +94,14 @@ func (c Code) Format() string {
 // FormatCount returns the given count followed by the pluralized version
 // of the given word. If n == 0, "no" is used in place of the number.
 func FormatCount(n int, word string) string {
-	if n == 0 {
+	switch n {
+	case 0:
 		return "no " + word + "s"
-	} else if n == 1 {
+	case 1:
 		return "1 " + word
+	default:
+		return fmt.Sprintf("%d %ss", n, word)
 	}
-	return fmt.Sprintf("%d %ss", n, word)
 }
 
 // FormatThis returns "this" if n is 1, or "these" otherwise.

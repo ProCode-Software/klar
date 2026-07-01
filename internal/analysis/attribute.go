@@ -1,8 +1,11 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -31,36 +34,42 @@ type Deprecation struct {
 
 type External struct{}
 
-type attrTargetKind uint8
+type attrMode uint8
 
 const (
-	unsupportedAttribute attrTargetKind = iota
+	// @added and @deprecated are allowed on all declarations
+	nameAttr attrMode = 1 << iota
+	targetAttr
+	externalAttr
 
-	structFieldAttribute // @name, @deprecated
-	intfFieldAttribute   // @name, @deprecated, @target
-	enumVariantAttribute // @name, @deprecated
-	funcAttribute        // All attributes
-	typeAttribute        // @name, @deprecated
-	typeAliasAttribute   // @deprecated, @external
-	varAttribute         // @name, @deprecated, @external
+	structFieldAttrs = nameAttr
+	intfFieldAttrs   = nameAttr | targetAttr
+	enumVariantAttrs = nameAttr
+	funcAttrs        = nameAttr | targetAttr | externalAttr
+	funcAliasAttrs   = nameAttr
+	typeAttrs        = nameAttr
+	intfAttrs        = 0 // @deprecated and @added only
+	tagAttrs         = 0
+	typeAliasAttrs   = externalAttr
+	varAttrs         = nameAttr | externalAttr
 )
 
 func (c *Checker) parseAttributes(attrs []*ast.Attribute,
-	kind attrTargetKind, fid FileID,
+	target attrTarget, nodeRange ranges.Range, fid FileID,
 ) *Attributes {
 	if len(attrs) == 0 {
 		return nil
 	}
 	a := &Attributes{}
 	for _, stmt := range attrs {
-		c.parseAttribute(a, stmt, kind, fid)
+		c.parseAttribute(a, stmt, target, nodeRange, fid)
 	}
 	return a
 }
 
 // parseAttribute parses a single attribute into the corresponding field in a.
 func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
-	kind attrTargetKind, fid FileID,
+	t attrTarget, nodeRange ranges.Range, fid FileID,
 ) {
 	// TODO: Should this be a limitation?
 	if attributesModule == c.module {
@@ -78,22 +87,43 @@ func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
 	}
 }
 
-func attrTargetKindOf(n ast.Node) attrTargetKind {
+type attrTarget struct {
+	node   ast.Node
+	str    string
+	mode   attrMode
+	public bool
+}
+
+func (t attrTarget) supports(m attrMode) bool { return (t.mode & m) != 0 }
+
+func attrTargetKindOf(n ast.Node, public bool) attrTarget {
 	switch n.(type) {
-	case *ast.StructField:
-		return structFieldAttribute
-	case *ast.TypeAliasDeclaration:
-		return typeAliasAttribute
-	case *ast.EnumItem:
-		return enumVariantAttribute
-	case ast.TypeDeclaration:
-		return typeAttribute
-	case *ast.InterfaceItem:
-		return intfFieldAttribute
+	// Other declarations
 	case *ast.FunctionDeclaration:
-		return funcAttribute
+		return attrTarget{n, "a function", funcAttrs, public}
 	case *ast.VariableDeclaration:
-		return varAttribute
+		return attrTarget{n, "a variable", varAttrs, public}
+	case *ast.FuncAliasDeclaration:
+		return attrTarget{n, "a function alias", funcAliasAttrs, public}
+
+	// Type declarations
+	case *ast.TypeAliasDeclaration:
+		return attrTarget{n, "a type alias", typeAliasAttrs, public}
+	case *ast.InterfaceDeclaration:
+		return attrTarget{n, "an interface", intfAttrs, public}
+	case *ast.StructDeclaration, *ast.EnumDeclaration:
+		return attrTarget{n, "a type", typeAttrs, public}
+	case *ast.TagDeclaration:
+		return attrTarget{n, "a tag", tagAttrs, public}
+
+	// Entries in type declarations
+	case *ast.EnumItem:
+		return attrTarget{n, "an enum variant", enumVariantAttrs, public}
+	case *ast.InterfaceItem:
+		return attrTarget{n, "an interface field", intfFieldAttrs, public}
+	case *ast.StructField:
+		return attrTarget{n, "a struct field", structFieldAttrs, public}
 	}
-	return unsupportedAttribute
+	panic(fmt.Sprintf("unhandled or unsupported attribute target: %T", n))
+	// return unsupportedAttr
 }

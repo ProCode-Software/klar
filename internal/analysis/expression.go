@@ -7,6 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Expr struct {
@@ -102,6 +103,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.CallExpression:
 		c.checkCallExpr(expr, t)
 	case *ast.EnumLiteral:
+		c.checkEnumLiteral(expr, t)
 	case *ast.WhenExpression:
 		c.checkWhenExpr(expr, t)
 	case *ast.LambdaExpression:
@@ -136,6 +138,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.ObjectPipeline:
 	case *ast.ForExpression:
 	case *ast.StructDotInit:
+		c.checkStructDotInitExpr(expr, t)
 	case *ast.GoExpression:
 		c.checkGoExpr(expr, t)
 	case *ast.AwaitExpression:
@@ -515,13 +518,19 @@ func (c *Checker) checkSliceExpr(expr *ast.SliceExpression, t *Expr) {
 
 func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 	lhs := c.checkExpr(expr.Callee, newChildExpr(t, callLHS))
+	var und Type
 	if _, ok := lhs.Type.(*TypeName); ok {
 		// Type initializer
 		t.Type = lhs.Type
+		und = Underlying(lhs.Type)
 	} else {
-		switch lhs.Type.Kind() {
-		case KindFunction:
-			fn := Underlying(lhs.Type).(*Function)
+		if lhs.Type.Kind() == InvalidType {
+			t.Type = InvalidType
+			return
+		}
+		und = Underlying(lhs.Type)
+		switch fn := und.(type) {
+		case *Function:
 			if isTODO(fn) {
 				t.mode |= todoExpr
 			}
@@ -536,9 +545,8 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 				t.Type = p1.Type
 				return
 			}
-		case InvalidType:
-			t.Type = InvalidType
-			return
+		case *EnumFunction:
+		case *Lambda:
 		default:
 			// Not a function (or initializer)
 			err := klarerrs.Node(klarerrs.ErrNotAFunction, expr.Callee)
@@ -550,10 +558,39 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 			return
 		}
 	}
-	c.checkCallArgs(lhs, expr, t)
+	c.checkCallArgs(und, expr, t)
 }
 
-func (c *Checker) checkCallArgs(lhs *Expr, expr *ast.CallExpression, t *Expr) {
+func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
+	switch {
+	case t.hint != nil:
+		if t.hint.Kind() == KindStruct {
+			t.Type = t.hint
+			return
+		}
+		t.Type = InvalidType
+	case t.mode&infer == 0:
+		t.Type = Untyped(KindStruct)
+	default:
+		err := klarerrs.Node(klarerrs.ErrUntypedStruct, expr)
+		diff := klarerrs.NewDiff(
+			c.module.ResolveFilePath(t.Context.File),
+			klarerrs.DeletedRange{ranges.SingleChar(expr.Range.Start)}, // '.'
+			klarerrs.AddedString{Position: expr.Range.Start, String: "T"},
+		)
+		err.HintWithDiff(
+			"Add an explicit type before the parameters. (Replace 'T' with the intended type)",
+			diff,
+		)
+		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
+	}
+}
+
+func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
+}
+
+func (c *Checker) checkCallArgs(lhs Type, expr *ast.CallExpression, t *Expr) {
 }
 
 func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {

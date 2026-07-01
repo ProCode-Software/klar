@@ -15,7 +15,7 @@ func NewDiff(file string, edits ...DiffEdit) *Diff {
 }
 
 type DiffEdit interface {
-	Operation() bool
+	Operation() bool // True for additions, false for deletions
 	FullLine() bool
 	Start() lexer.Position
 	EndLine() uint32

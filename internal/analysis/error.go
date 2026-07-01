@@ -138,3 +138,12 @@ func cycleError(cycle []*Object) *klarerrs.Error {
 	}
 	return err
 }
+
+func fieldNotFound(name string) *klarerrs.Error {
+	return &klarerrs.Error{
+		Code:  klarerrs.ErrFieldNotFound,
+		Label: "Field " + quote(name) + " doesn't exist",
+		Name:  name,
+	}
+	// A range will be added later by the caller of [Indexer.IndexDot]
+}

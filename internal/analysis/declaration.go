@@ -46,12 +46,14 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 	}
 	// Parse the attributes if any (top-level only)
 	if attrs != nil {
-		obj.attrs = c.parseAttributes(*attrs, attrTargetKindOf(obj.info.node), obj.file)
+		obj.attrs = c.parseAttributes(
+			*attrs, attrTargetKindOf(obj.info.node, obj.public), obj.rang, obj.file,
+		)
 		*attrs = (*attrs)[:0]
 	}
 	/* if obj.name == "_" {
 		// Since the object won't be added to the context, it won't be checked.
-		// For discarded idents, it's guranteed there are no dependencies
+		// For discarded idents, it's guaranteed there are no dependencies
 		c.checkDeclaration(obj)
 	} */
 	// obj.order = uint32(len(ctx.declInfo))

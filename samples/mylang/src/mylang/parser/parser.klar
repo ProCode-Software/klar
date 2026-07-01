@@ -32,7 +32,7 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
             .newline -> parser.advance(),
             .eof -> {},
             _ -> {
-                errors += [.expected("a newline", parser.current())]
+                errors += [.expected("a newline", got: parser.current())]
                 next :loop
             }
         }
@@ -94,14 +94,14 @@ func Parser.parseValue() -> Result<Value, SyntaxError> {
         }
         .string(content, singleQuote) -> return StringValue(value, singleQuote),
         .boolean(value) -> return BoolValue(value),
-        _ -> return SyntaxError.expected("a value", token)
+        _ -> return SyntaxError.expected("a value", got: token)
     }
 }
 
 public type SyntaxError {
-    .expected(kind: string, got: Token)
+    .expected(kind: String, got: Token)
     .flagNameMustBeIdent(Token)
-    .invalidNumber(number: string)
+    .invalidNumber(number: String)
 }
 
 /*

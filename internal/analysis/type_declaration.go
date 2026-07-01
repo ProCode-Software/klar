@@ -15,7 +15,7 @@ import (
 //   - [*Struct]
 //   - [*Interface]
 //   - [*Enum]
-//   - [*TagType]
+//   - [*Tag]
 type TypeName struct {
 	Type
 	Name string
@@ -31,11 +31,11 @@ func (n *TypeName) String() string {
 func (n *TypeName) Underlying() Type { return n.Type }
 func (n *TypeName) objKind()         {}
 
-// TagType represents a Klar tag type.
-type TagType struct{ Implements map[Type]struct{} }
+// Tag represents a Klar tag type.
+type Tag struct{ Implements map[Type]struct{} }
 
-func (*TagType) Kind() Kind     { return KindTag }
-func (*TagType) String() string { return "<tag>" }
+func (*Tag) Kind() Kind     { return KindTag }
+func (*Tag) String() string { return "<tag>" }
 
 // checkTypeDecl checks the type declaration in decl.node and sets
 // the type of o's Type. o's Type should be [*TypeName]. The completed
@@ -61,7 +61,7 @@ func (c *Checker) checkTypeDecl(o *Object) {
 
 func (c *Checker) checkTagType(o *Object, node *ast.TagDeclaration) {
 	// TODO: Check that each inherited type was declared within this module
-	o.TypeName().Type = &TagType{
+	o.TypeName().Type = &Tag{
 		Implements: c.checkInheritedTypes(node.InheritedTypes, KindTag, o.LookupContext()),
 	}
 }

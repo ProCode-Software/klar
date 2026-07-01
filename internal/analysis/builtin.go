@@ -124,7 +124,7 @@ func (m *Map) Index(i Type) (Type, *klarerrs.Error) {
 		return &Optional{m.Value}, nil
 	}
 	err := indexTypeMismatchError(
-		klarerrs.ErrInvalidMapIndex, m.Key, i, "This has type "+quote(i.String()),
+		klarerrs.ErrInvalidMapIndex, m.Key, i, "This index has type "+quote(i.String()),
 	)
 	err.Name = m.String()
 	return nil, err

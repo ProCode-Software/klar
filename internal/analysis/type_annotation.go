@@ -50,6 +50,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 	case *ast.MapType:
 		return &Map{c.parseType(expr.Key, ctx), c.parseType(expr.Value, ctx)}
 	case *ast.FunctionType:
+		return c.checkFunctionType(expr, ctx)
 	case *ast.OptionalType:
 		inner := c.parseType(expr.Value, ctx)
 		// Don't chain optionals. TODO: Check that the user doesn't do this
@@ -82,7 +83,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 			return ResultNothing
 		case ast.PrimitiveError:
 			return ErrorType
-			// TODO: Task
+		// TODO: Task
 		default:
 			panic(fmt.Sprintf("unhandled primitive type id: %s", expr.Primitive))
 		}
@@ -90,6 +91,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 		// Invalid outside of function. RestType is already explicitly handled
 		// when function signatures are checked.
 		c.fileError(klarerrs.Node(klarerrs.ErrInvalidRestType, expr), ctx.File)
+		return InvalidType
 	case *ast.TupleType:
 		tup := Tuple{}
 		for _, pair := range expr.Values {
@@ -102,6 +104,7 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 	case *ast.UnionType:
 		return c.checkUnionType(expr, ctx)
 	case *ast.MethodType:
+		panic("*ast.MethodType outside of interface field")
 	default:
 		panic(fmt.Sprintf("unhandled type expression: %T", expr))
 	}

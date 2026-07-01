@@ -247,7 +247,11 @@ func (p *Parser) ParseStruct(
 func (p *Parser) ParseInterface(
 	typeName ast.Identifier, inherited []ast.Type,
 ) *ast.InterfaceDeclaration {
-	fieldMap := make(map[string]struct{})
+	type declared struct {
+		rang   ranges.Range
+		method bool
+	}
+	fieldMap := make(map[string]declared)
 	intf := &ast.InterfaceDeclaration{Identifier: typeName, InheritedTypes: inherited}
 
 	parseSeries(p, &intf.Items, func() *ast.InterfaceItem {
@@ -261,12 +265,23 @@ func (p *Parser) ParseInterface(
 				p.ErrorLabelled(klarerrs.Token(klarerrs.ErrDiscardIntfField, p.Curr()), "Remove the field")
 			}
 			name := p.ParseMapIdentOrDiscard(0)
-			if _, ok := fieldMap[name.Name]; ok {
+			// Not accurate if there are multiple keys in this method (invalid)
+			isMethod := p.CurrKind() == lexer.LeftParenthesis
+			// Multiple overloads can be declared for methods
+			if first, ok := fieldMap[name.Name]; ok && (!isMethod || !first.method) {
 				err := klarerrs.Node(klarerrs.ErrRedeclaredField, name)
 				err.SetParam("kind", "interface")
+				err.Label = "Item " + klarerrs.Quote(name.Name) + " was already declared"
+				hl := "It was originally declared here"
+				if first.method && !isMethod {
+					hl += " as a method"
+				} else if !first.method && isMethod {
+					hl += " as a field"
+				}
+				err.AddHighlight(hl, first.rang)
 				p.Error(err)
 			}
-			fieldMap[name.Name] = struct{}{}
+			fieldMap[name.Name] = declared{rang: name.Range()}
 			return name
 		}, 0, lexer.Comma, false)
 
@@ -295,6 +310,7 @@ func (p *Parser) ParseInterface(
 				fn.ReturnType = p.ParseType(DefaultTypeBindingPower)
 			}
 			fn.Range.End = p.lastTokEnd()
+			fieldMap[f.Keys[0].Name] = declared{rang: fn.Range, method: true}
 			f.Value = fn
 		} else {
 			// Type
