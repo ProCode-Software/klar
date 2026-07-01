@@ -58,7 +58,7 @@ func NewSession() (*Session, error) {
 }
 
 func Run(*command.Runner) {
-	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+cli.KlarVersion))
+	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+cli.KlarVersionAndCommit))
 	ansi.ColorPrintln(
 		ansi.CodeGray,
 		"Type %s for more information. Press %s or type %s to exit.",

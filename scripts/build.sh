@@ -53,7 +53,7 @@ function build_binaries() {
                 if [[ $os == "windows" ]]; then
                     out_path+=".exe"
                 fi
-                GOOS=$os GOARCH=$arch go build -ldflags="${LDFLAGS[*]}" --trimpath \
+                GOOS=$os GOARCH=$arch go build --trimpath -ldflags="${LDFLAGS[*]}" \
                     -o "$out_path" \
                     "$KLAR_ROOT/cmd/$product"
             done
@@ -64,7 +64,7 @@ function build_binaries() {
 function build_klar_wasm() {
     echo Compiling klarwasm...
     out_path="$KLAR_ROOT/bin/klar-$ver_name-browser.wasm"
-    GOOS=js GOARCH=wasm go build -ldflags="${LDFLAGS[*]}" --trimpath \
+    GOOS=js GOARCH=wasm go build --trimpath -ldflags="${LDFLAGS[*]}" \
         -o "$out_path" \
         "$KLAR_ROOT/cmd/klarwasm"
 }

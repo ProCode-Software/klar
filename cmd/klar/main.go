@@ -48,7 +48,7 @@ func main() {
 	case "--help", "-h":
 		ShowHelp(os.Stdout, true)
 	case "-v", "--version":
-		fmt.Printf("Klar %s\n", cli.KlarVersion)
+		fmt.Printf("Klar %s (%s)\n", cli.KlarVersion, cli.KlarCommit)
 	case "test", "glas", "upgrade", "new", "format", "check",
 		"docs", "lint", "clean", "generate", "zen":
 		cli.Failure(ansi.ColorSprintf(

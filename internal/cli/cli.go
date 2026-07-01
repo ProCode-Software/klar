@@ -4,15 +4,13 @@ import "github.com/ProCode-Software/klar/internal/version"
 
 var KlarVersion, KlarCommit string
 
+var KlarVersionAndCommit = KlarVersion + "+" + KlarCommit
+
 var ParsedKlarVersion *version.Version
 
 func init() {
 	var err error
-	v := KlarVersion
-	if KlarCommit != "" {
-		v += "+" + KlarCommit
-	}
-	ParsedKlarVersion, err = version.Parse(v)
+	ParsedKlarVersion, err = version.Parse(KlarVersion)
 	if err != nil {
 		panic("failed to parse Klar version: " + err.Error())
 	}

@@ -30,7 +30,7 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Println(
 		ansi.Bold(KlarGradient("Klar:")),
 		util.RandomSlice(RandomDescriptions),
-		ansi.Gray("v"+cli.KlarVersion),
+		ansi.Gray("v"+cli.KlarVersionAndCommit),
 	)
 
 	// Usage

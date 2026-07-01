@@ -29,7 +29,7 @@ func main() {
 	case "--help", "-h":
 		ShowHelp(os.Stdout)
 	case "-v", "--version":
-		fmt.Printf("Glas/Klar %s\n", Version)
+		fmt.Printf("Glas/Klar %s (%s)\n", Version, cli.KlarCommit)
 	case "": // TODO
 		cli.Failure(ansi.ColorSprintf(
 			ansi.CodeBold,
