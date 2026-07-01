@@ -10,8 +10,13 @@ import (
 )
 
 func parseHex(str string) int32 {
-	//nolint:gosec // There is a length limit in the lexer
-	return int32(tryStrconv(strconv.ParseInt(str, 16, 32)))
+	val, err := strconv.ParseInt(str, 16, 32)
+	if err != nil {
+		// There is a length limit in the lexer, so there should be no overflow
+		panic("strconv.ParseInt failed while parsing hex escape: " + err.Error())
+	}
+	//nolint:gosec
+	return int32(val)
 }
 
 func (p *Parser) parseStringEscapes(tok lexer.Token) []ast.StringFragment {

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,16 +11,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
-
-// tryStrconv returns res, panicking if err != nil.
-func tryStrconv[T any](res T, err error) T {
-	if err != nil {
-		// All Klar number are valid Go numbers. strconv failing means
-		// there is a bug in the lexer.
-		panic("strconv.ParseInt/ParseFloat should not fail: " + err.Error())
-	}
-	return res
-}
 
 func (p *Parser) handleInvalidNumber(
 	ne *lexer.NumberError, format lexer.IntFormat, tok lexer.Token,
@@ -61,21 +52,22 @@ func (p *Parser) handleInvalidNumber(
 
 func (p *Parser) ParseNumber() ast.Expression {
 	var (
-		token  = p.Advance()
-		src    = token.Source
-		a      = token.Attributes["params"].(lexer.NumberAttrs)
+		tok    = p.Advance()
+		src    = tok.Source
+		a      = tok.Attributes["params"].(lexer.NumberAttrs)
 		format = a.Format
 	)
 	switch {
 	case a.Error != nil:
-		p.handleInvalidNumber(a.Error, format, token)
+		p.handleInvalidNumber(a.Error, format, tok)
 		// Set default value for ParseInt call
 		src = "0"
 	case (a.Flags & lexer.IsFloat) != 0:
 		// Exponents are floats
+		val, err := strconv.ParseFloat(src, 64)
 		return &ast.FloatLiteral{
 			Source:    src,
-			Value:     tryStrconv(strconv.ParseFloat(src, 64)),
+			Value:     tryStrconv(p, tok, val, err),
 			Separator: (a.Flags & lexer.HasSeparator) != 0,
 			Exponent:  (a.Flags & lexer.HasExponent) != 0,
 		}
@@ -84,12 +76,30 @@ func (p *Parser) ParseNumber() ast.Expression {
 	case len(src) > 1 && (src[1] == '_' || lexer.IsDigit(rune(src[1]))):
 		src = strings.TrimLeft(src, "0")
 	}
+	val, err := strconv.ParseInt(src, 0, 0)
 	return &ast.IntegerLiteral{
 		Format:    format,
 		Source:    src,
-		Value:     tryStrconv(strconv.ParseInt(src, 0, 0)),
+		Value:     tryStrconv(p, tok, val, err),
 		Separator: (a.Flags & lexer.HasSeparator) != 0,
 	}
+}
+
+// tryStrconv returns res after handling any error. If there is a value overflow,
+// an error is reported to the parser. If any other error occurs, tryStrconv panics.
+func tryStrconv[T int64 | float64](p *Parser, tok lexer.Token, res T, err error) T {
+	if err == nil {
+		return res
+	}
+	if errors.Is(err, strconv.ErrRange) {
+		err := klarerrs.Token(klarerrs.ErrNumberTooBig, tok)
+		err.Name = tok.Source
+		p.ErrorLabelled(err, "Can you read this number?")
+		return res
+	}
+	// All Klar number are valid Go numbers. Apart from an overflow, strconv
+	// failing means there is a bug in the lexer.
+	panic(fmt.Sprintf("strconv.ParseInt/Float failed while parsing numeric literal: %v", err))
 }
 
 func (p *Parser) ParseSymbol() *ast.Symbol {

@@ -38,6 +38,7 @@ const (
 
 	ErrStringEscape            // Invalid string escape
 	ErrUnicodeEscapeTooBig     // Unicode escape over 0x10FFFF
+	ErrNumberTooBig            // Numeric literal is too small or large
 	ErrConsecutiveSeparator    // Number has consecutive _
 	ErrMisplacedSeparator      // Number has separator somewhere where it's not supposed to
 	ErrTrailingSeparator       // Number has misplaced _
@@ -513,6 +514,8 @@ func (e *Error) handleSyntaxError() string {
 		return "A variadic parameter can't have a default value"
 	case ErrNonNameInGeneric:
 		return "The left-hand side of a generic type reference must be a type name"
+	case ErrNumberTooBig:
+		return "The number " + Quote(e.Name) + " is too large"
 	case ErrRedeclaredParam:
 		return ""
 	}
