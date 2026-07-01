@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir -p "$(go env GOPATH)/bin"
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-          go install ./...
+      - run: go install ./...
 
       - name: Build
         run: ./scripts/build.sh
