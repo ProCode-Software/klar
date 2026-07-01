@@ -214,6 +214,7 @@ if [[ $global -eq 1 ]]; then
     sudo install -m 755 "$klar_exec" "$glas_exec" "$BIN_DIR"
 else
     BIN_DIR="$HOME/.local/bin"
+    if [[ $GOOS == windows ]]; then BIN_DIR="$LocalAppData/Klar/bin"
     install -m 755 "$klar_exec" "$glas_exec" "$BIN_DIR"
     # Only add to PATH if it's not already there
     if [[ $add_to_path -eq 1 && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
