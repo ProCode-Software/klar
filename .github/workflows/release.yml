@@ -43,7 +43,6 @@ jobs:
           [[ $last_prebuild == null ]] && last_prebuild=0
           prebuild_num=$((${last_prebuild/prebuild-/} + 1))
           gh release create "prebuild-$prebuild_num" -p \
-            -t "Prebuild $prebuild_num" \
-            --latest --generate-notes ./bin/*
+            -t "Prebuild $prebuild_num" --generate-notes ./bin/*
         env:
           GH_TOKEN: ${{ github.token }}
