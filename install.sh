@@ -96,6 +96,8 @@ download_prebuild() {
         [aarch64]=arm64
     )
     os=$(uname -s)
+    # Git Bash on Windows
+    if [[ ${os,,} == "msys-nt"* ]]; then os=windows; fi
     prebuild_os_name=${oses[${os,,}]}
     if [[ -z $prebuild_os_name ]]; then
         red "Unfortunately, we don't provide prebuilds for the $os operating system :(
