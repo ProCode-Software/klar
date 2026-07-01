@@ -30,13 +30,21 @@ if [[ -n $add_to_path && $global -eq 1 ]]; then
     red "Can't enable '--add-to-path' with '--global'" && exit 1
 fi
 
+if [[ -t 0 ]]; then
+    tty_in=/dev/stdin
+elif [[ -r /dev/tty ]]; then
+    tty_in=/dev/tty
+else
+    red "This script needs an interactive terminal to prompt for options. Run with '--help' for details." && exit 1
+fi
+
 if [[ -z $global ]]; then
     yellow "Where do you want to install Klar?"
     select location in "Local (current user)" "Global (all users)"; do
         case "$location" in
         "Local (current user)")
             global=0
-            read -p "$(yellow "Do you want to add Klar to PATH? (Y/n): ")" -n 1 -r
+            read -p "$(yellow "Do you want to add Klar to PATH? (Y/n): ")" -n 1 -r < "$tty_in"
             echo
             if [[ ${REPLY,,} != 'n' ]]; then
                 add_to_path=1
@@ -45,7 +53,7 @@ if [[ -z $global ]]; then
         "Global (all users)") global=1 ;;
         esac
         break
-    done
+    done < "$tty_in"
 fi
 if [[ -z $use_prebuild ]]; then
     yellow "Do you want to build from source, or use a prebuilt binary?"
@@ -56,7 +64,7 @@ if [[ -z $use_prebuild ]]; then
         "Download a prebuilt binary") use_prebuild=1 ;;
         esac
         break
-    done
+    done < "$tty_in"
 fi
 
 echo
@@ -140,6 +148,9 @@ Please build from source instead by rerunning without the '--prebuild' flag" && 
     progress "📚 Downloading the standard library..."
     curl -fsSL -o "$build_dir/stdlib.zip" "https://github.com/ProCode-Software/klar/releases/download/$tag_name/stdlib.zip"
     unzip -o "$build_dir/stdlib.zip" -d "$build_dir" &>/dev/null
+    
+    # For the shared stdlib installation step
+    [[ $prebuild_os_name == macos ]] && GOOS=darwin || GOOS=$prebuild_os_name
 }
 
 build_from_source() {
