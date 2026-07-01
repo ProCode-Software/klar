@@ -20,12 +20,6 @@ jobs:
           go-version-file: 'go.mod'
           check-latest: true
 
-      - name: Install Go tools
-        run: |
-          mkdir -p "$(go env GOPATH)/bin"
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-      - run: go install ./...
-
       - name: Build
         run: ./scripts/build.sh
         env:

@@ -8,7 +8,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-//go:generate stringer -type=Code
+//go:generate go tool stringer -type=Code
 
 type Error struct {
 	Code  Code
