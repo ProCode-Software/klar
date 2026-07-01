@@ -31,8 +31,6 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 ## Installation & Quickstart
 
-Currently, as the installer builds from source, [Go](https://go.dev/) and Git are required to install Klar. If you don't have them available, you can also [download a prebuilt binary](#prebuilt-binaries) [here](https://github.com/ProCode-Software/klar/releases).
-
 To get started with Klar, run the installer with the following command:
 
 ```sh
@@ -43,7 +41,7 @@ If you're on Windows, consider using Git Bash or WSL to run the installer.
 
 The installer gives you two options on how to install Klar:
 
-1. **Build from source**, which builds Klar directly from the latest commits on the main branch. This requires Git and the Go toolchain to be installed.
+1. **Build from source**, which builds Klar directly from the latest commits on the main branch. This requires Git and the [Go](https://go.dev/) toolchain to be installed.
 2. **Download a prebuilt binary**, which doesn't require Go or Git to be installed. Note that prebuilt binaries are built occasionally and won't have the latest features and bug fixes. The installer will automatically download the appropriate binary from the [releases page](https://github.com/ProCode-Software/klar/releases).
 
 <details>

@@ -149,8 +149,8 @@ Please build from source instead by rerunning without the '--prebuild' flag" && 
     # Download the standard library
     progress "📚 Downloading the standard library..."
     curl -fsSL -o "$build_dir/stdlib.zip" "https://github.com/ProCode-Software/klar/releases/download/$tag_name/stdlib.zip"
-    unzip -o "$build_dir/stdlib.zip" -d "$build_dir" &>/dev/null
-    
+    unzip -o "$build_dir/stdlib.zip" -d "$build_dir" &> /dev/null
+
     # For the shared stdlib installation step
     [[ $prebuild_os_name == macos ]] && GOOS=darwin || GOOS=$prebuild_os_name
 }
@@ -214,6 +214,7 @@ if [[ $global -eq 1 ]]; then
     sudo install -m 755 "$klar_exec" "$glas_exec" "$BIN_DIR"
 else
     BIN_DIR="$HOME/.local/bin"
+    # shellcheck disable=SC2154
     if [[ $GOOS == windows ]]; then BIN_DIR="$LocalAppData/Klar/bin"; fi
     install -m 755 "$klar_exec" "$glas_exec" "$BIN_DIR"
     # Only add to PATH if it's not already there
