@@ -33,11 +33,16 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 To get started with Klar, run the installer with the following command:
 
+**Linux/macOS:**
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ProCode-Software/klar/main/install.sh | bash
 ```
 
-If you're on Windows, consider using Git Bash or WSL to run the installer.
+**Windows:**
+```powershell
+irm https://raw.githubusercontent.com/ProCode-Software/klar/main/install.ps1 | iex
+```
 
 The installer gives you two options on how to install Klar:
 
