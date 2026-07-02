@@ -191,14 +191,15 @@ build_from_source() {
 
     # Build Klar and Glas executables
     export GOEXPERIMENT=jsonv2
-    VERSION="0.1.0"
-    LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'"
+    VERSION="0.0.1"
+    COMMIT=$(git rev-parse --short HEAD)
+    LDFLAGS=("-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")
 
     get_exec "$GOOS"
     progress "🏗️ Building Klar and Glas binaries..."
     go generate ./...
-    go build -ldflags="$LDFLAGS" -o "$klar_exec" ./cmd/klar
-    go build -ldflags="$LDFLAGS" -o "$glas_exec" ./cmd/glas
+    go build -ldflags="${LDFLAGS[*]}" -o "$klar_exec" ./cmd/klar
+    go build -ldflags="${LDFLAGS[*]}" -o "$glas_exec" ./cmd/glas
 }
 
 if [[ $use_prebuild -eq 1 ]]; then
