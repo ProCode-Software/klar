@@ -32,7 +32,7 @@ func (err *FilesystemError) Error() string {
 }
 func (err *FilesystemError) Unwrap() error { return err.base }
 func (err *FilesystemError) IsNotExist() bool {
-	return err.op == "stat" && errors.Is(err.base, fs.ErrNotExist)
+	return errors.Is(err.base, fs.ErrNotExist)
 }
 
 // InterfaceErrorCode represents the error type of an [InterfaceError].
@@ -199,8 +199,7 @@ func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) erro
 			absPath = file
 		}
 		c.Reporter.LoadFile(
-			file,
-			util.RelPath(c.WorkDir, absPath),
+			file, util.RelPath(c.WorkDir, absPath),
 			makeKlonTokens(file),
 		)
 	}

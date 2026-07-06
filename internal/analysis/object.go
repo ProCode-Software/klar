@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -127,12 +128,12 @@ type ObjectKind interface {
 	Underlying() Type
 }
 
-type InvalidTypeObject struct{}
+type InvalidObject struct{}
 
-func (o *InvalidTypeObject) Kind() Kind       { return InvalidType }
-func (o *InvalidTypeObject) String() string   { return o.Kind().String() }
-func (o *InvalidTypeObject) Underlying() Type { return o.Kind() }
-func (o *InvalidTypeObject) objKind()         {}
+func (o *InvalidObject) Kind() Kind       { return InvalidType }
+func (o *InvalidObject) String() string   { return o.Kind().String() }
+func (o *InvalidObject) Underlying() Type { return o.Kind() }
+func (o *InvalidObject) objKind()         {}
 
 // Type Kinds
 // ============
@@ -220,30 +221,30 @@ func (k Kind) String() string {
 	}[k]
 }
 
-func (k Kind) IndexDot(i string) (Type, *klarerrs.Error) {
+func (k Kind) Index(i string, t *Expr) *klarerrs.Error {
 	if !k.IsPrimitive() {
 		panic("cannot Index non-primitive type")
 	}
-	return indexBuiltin(k.String(), i)
+	return indexBuiltin(k.String(), i, t)
 }
 
-func (k Kind) Index(i Type) (Type, *klarerrs.Error) {
-	if !k.IsPrimitive() {
+func (k Kind) IndexComputed(i Type, t *Expr) *klarerrs.Error {
+	switch {
+	case !k.IsPrimitive():
 		panic("cannot Index non-primitive type")
-	}
-	if k != StringType {
-		return noComputedIndex{}.Index(i)
-	}
-
-	// String is the only primitive that allows computed indexing
-	if i.Kind() != IntType {
-		return nil, indexTypeMismatchError(
+	case k != StringType:
+		// String is the only primitive that allows computed indexing
+		return indexError(klarerrs.ErrInvalidComputedIndex, i, "")
+	case i.Kind() != IntType:
+		return indexTypeMismatchError(
 			klarerrs.ErrNonNumericIndex,
 			StringType, i, "Can't index String using type "+i.String(),
 		)
+	default:
+		// TODO: constant analysis (negative index, out of range index)
+		t.Type = StringType
+		return nil
 	}
-	// TODO: constant analysis (negative index, out of range index)
-	return StringType, nil
 }
 
 // Types
@@ -260,12 +261,6 @@ type Type interface {
 	// of the type with the given name.
 	// StringWithName(string) string
 }
-
-// The result of a function call that doesn't return. Statements
-// following this are unreachable.
-type NoReturn struct{ Type }
-
-func (u *NoReturn) Underlying() Type { return u.Type }
 
 // Underlyer is implemented by types or objects that have an underlying type.
 type Underlyer interface {
@@ -290,6 +285,8 @@ func Underlying(t Type) Type {
 	}
 }
 
+func As[T Type](t Type) T { return Underlying(t).(T) }
+
 func UnderlyingTypeName(t Type) Type {
 	for {
 		oldT := t
@@ -311,20 +308,54 @@ func UnderlyingTypeName(t Type) Type {
 	}
 }
 
+// Types that can be dot-indexed (via `obj.index`) implement Indexer.
+// If Index sets t's Type to nil and returns nil, the type can't be indexed.
+type Indexer interface {
+	Index(index string, t *Expr) *klarerrs.Error
+}
+
+// Types can be indexed via `obj[index]`.
+// ComputedIndexer is implemented by the following types:
+//   - [Map] when index is type [Map.Key]
+//   - [List] when index is [IntType]
+//   - [StringType] when index is [IntType]
+//   - [Tuple] when index is a constant [IntType]
+type ComputedIndexer interface {
+	IndexComputed(index Type, t *Expr) *klarerrs.Error
+}
+
+// Per the spec
+var (
+	_ = [...]ComputedIndexer{&Map{}, &List{}, StringType, Tuple{}}
+	_ = [...]Indexer{
+		&Map{}, &List{}, &Struct{}, &Enum{}, &Interface{}, &Task{},
+		StringType, IntType, FloatType, ErrorType,
+	}
+)
+
+// The result of a function call that doesn't return. Statements
+// following this are unreachable.
+type NoReturn struct{ Type }
+
+func (u *NoReturn) Underlying() Type { return cmp.Or[Type](u.Type, u /* is a TODO */) }
+
+// Untyped can only be one of:
+//   - [KindOptional] (for nil literal)
+//   - [KindList] (for empty list literal)
+//   - [KindMap] (for empty map literal)
+//   - [IntType] (for numeric (non-float) literal).
 type Untyped Kind
 
 func (u Untyped) String() string {
 	switch u {
 	case Untyped(KindOptional):
-		return "nil"
+		return "none"
 	case Untyped(KindList):
 		return "[]"
 	case Untyped(IntType):
 		return "Int"
-	case Untyped(KindStruct):
-		return "struct"
-	case Untyped(KindEnum):
-		return "enum"
+	case Untyped(KindMap):
+		return "#{}"
 	default:
 		panic(fmt.Sprintf("invalid untyped type: %s", Kind(u)))
 	}
@@ -334,34 +365,89 @@ func (u Untyped) Kind() Kind { return Kind(u) }
 
 // Used for shorthand struct/enum initialization.
 type UntypedInit struct {
-	Name   string
-	kind   Kind // KindEnum or KindStruct
-	Params []UntypedParam
+	kind   Kind           // [KindEnum] or [KindStruct]
+	Node   ast.Expression // [*ast.EnumLiteral] or [*ast.StructDotInit]
+	Params []*ast.CallParam
 }
 
-func (i UntypedInit) Kind() Kind { return i.kind }
+func (i *UntypedInit) Kind() Kind     { return i.kind }
+func (i *UntypedInit) String() string { return i.kind.String() }
 
-type UntypedParam struct {
-	Label string
-	Expr  ast.Expression
-}
+func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type {
+	if hint != nil {
+		return hint
+	}
+	switch ut := typ.(type) {
+	case Untyped:
+		switch ut.Kind() {
+		case KindOptional:
+			// Untyped nil
+			err := klarerrs.Node(klarerrs.ErrUntypedNil, node)
+			err.Label = "I don't know what optional type this is"
+			c.fileError(err, fid)
+			return InvalidType
+		case IntType:
+			// If untyped, then it's an Int by default
+			return IntType
+		case KindList:
+			// No hint and no list items: unknown list type
+			err := klarerrs.Node(klarerrs.ErrUntypedEmptyList, node)
+			err.Label = "This list is empty and its type can't be inferred"
 
-// Types that can be indexed (via `obj.index` or `obj[index]`) implement Indexer.
-// If Index or IndexDot return (nil, nil), the type can't be indexed.
-type Indexer interface {
-	// Most types support IndexDot
-	IndexDot(index string) (Type, *klarerrs.Error)
-	// The following types support Index (won't return an error):
-	// 	- [Map] when index is type [Map.Key]
-	// 	- [List] when index is [IntType]
-	// 	- [StringType] when index is [IntType]
-	//  - [Tuple] when index is a constant [IntType]
-	// Calling Index on any other type will return an error.
-	Index(index Type) (Type, *klarerrs.Error)
-}
+			// Suggest hints
+			err.Hint("If you're declaring a variable, add a type annotation before ':='.")
 
-type noComputedIndex struct{}
-
-func (noComputedIndex) Index(index Type) (Type, *klarerrs.Error) {
-	return nil, indexError(klarerrs.ErrInvalidComputedIndex, index, "")
+			diff2 := klarerrs.NewDiff(
+				c.module.ResolveFilePath(fid),
+				klarerrs.AddedString{Position: node.GetRange().Start, String: "[T]("},
+				klarerrs.AddedString{Position: node.GetRange().End, String: ")"},
+			)
+			err.HintWithDiff(
+				"Otherwise, initialize an empty list with a specific type. (Replace 'T' with the intended item type)",
+				diff2,
+			)
+			c.fileError(err, fid)
+			return InvalidType
+		case KindMap:
+			// No hint and no map items: unknown map type
+			err := klarerrs.Node(klarerrs.ErrUntypedEmptyMap, node)
+			err.Label = "This map is empty and its type can't be inferred"
+			// TODO: Diff
+			c.fileError(err, fid)
+			return InvalidType
+		default:
+			panic(fmt.Sprintf("unhandled Untyped type: Untyped(%s)", ut.Kind()))
+		}
+	case *UntypedInit:
+		if enum, ok := ut.Node.(*ast.EnumLiteral); ok {
+			err := klarerrs.Node(klarerrs.ErrUntypedEnum, enum)
+			err.Label = "I don't know the type of this enum"
+			diff := klarerrs.NewDiff(
+				c.module.ResolveFilePath(fid),
+				klarerrs.AddedString{Position: enum.Range.Start, String: "T"},
+			)
+			err.HintWithDiff(
+				"Add an explicit type before the enum item. (Replace 'T' with the intended type)",
+				diff,
+			)
+			c.fileError(err, fid)
+			return InvalidType
+		}
+		// Struct
+		err := klarerrs.Node(klarerrs.ErrUntypedStruct, ut.Node)
+		err.Label = "I don't know the type of this struct"
+		diff := klarerrs.NewDiff(
+			c.module.ResolveFilePath(fid),
+			klarerrs.DeletedRange{ranges.SingleChar(ut.Node.GetRange().Start)}, // '.'
+			klarerrs.AddedString{Position: ut.Node.GetRange().Start, String: "T"},
+		)
+		err.HintWithDiff(
+			"Add an explicit type before the parameters. (Replace 'T' with the intended type)",
+			diff,
+		)
+		c.fileError(err, fid)
+		return InvalidType
+	default:
+		return typ // Already typed (TODO: This could be list of untyped)
+	}
 }

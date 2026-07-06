@@ -291,6 +291,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 					key.Name,
 					ov.Object.file, key.Range(), ov.Object.module, nil,
 				)
+				vr.flags |= needsSet
 				_ = NewVariable(vr, LocalVar, typ)
 				c.declare(ctx, vr)
 				ov.NamedReturns = append(ov.NamedReturns, vr)
@@ -311,6 +312,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 			rt.Label.Name,
 			ov.Object.file, rt.Label.Range(), ov.Object.module, nil,
 		)
+		vr.flags |= needsSet
 		_ = NewVariable(vr, LocalVar, ov.Return)
 		c.declare(ctx, vr)
 		ov.NamedReturns = append(ov.NamedReturns, vr)
@@ -411,6 +413,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	fn *Function, retRange ranges.Range, fctx *Context,
 ) {
 	sctx := newStmtContext(ov.InnerContext, ov.file, allowReturn)
+	sctx.returnHint = ov.Return
 	c.checkBlock(stmt.Body.Body, sctx)
 
 	// Ensure return statements are present. They aren't needed if:
@@ -515,6 +518,15 @@ func (o *Overload) Kind() Kind { return KindFunction }
 
 func (o *Overload) String() string {
 	var b strings.Builder
+	writeVariadic := func(p *Variable) bool {
+		if p.Object != nil && p.Object.flags&VariadicParam != 0 {
+			b.WriteString("...")
+			b.WriteString(p.Type.(*List).Elem.String())
+			return true
+		}
+		return false
+	}
+
 	// Generics
 	if len(o.Generics) > 0 {
 		b.WriteByte('<')
@@ -532,7 +544,11 @@ func (o *Overload) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
+		if writeVariadic(param) {
+			continue
+		}
 		b.WriteString(param.Type.String())
+
 	}
 	// Labelled params
 	for i, param := range o.LabelledParams {
@@ -541,6 +557,9 @@ func (o *Overload) String() string {
 		}
 		b.WriteString(param.Label)
 		b.WriteString(": ")
+		if writeVariadic(param.Variable) {
+			continue
+		}
 		b.WriteString(param.Type.String())
 	}
 	b.WriteByte(')')

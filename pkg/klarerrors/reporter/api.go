@@ -44,6 +44,7 @@ type Reporter struct {
 	// If true, Reporter prints a separator before the next error.
 	alreadyPrinted bool
 	files          map[string]*file
+	lazyFiles      map[string]func() (shortPath string, tokens []lexer.Token)
 	buf            *bytes.Buffer
 }
 
@@ -87,13 +88,25 @@ func (r *Reporter) LoadFile(path, shortPath string, tokens []lexer.Token) {
 	r.files[path] = &file{tokens: tokens, shortPath: shortPath}
 }
 
+func (r *Reporter) LoadLazyFile(
+	path string,
+	load func() (shortPath string, tokens []lexer.Token),
+) {
+	if r.lazyFiles == nil {
+		r.lazyFiles = map[string](func() (string, []lexer.Token)){}
+	}
+	r.lazyFiles[path] = load
+}
+
 // RemoveFile unloads path with path's tokens from r.
 // If a file with path is not found, RemoveFile is a no-op.
 func (r *Reporter) RemoveFile(path string) {
 	delete(r.files, path)
+	delete(r.lazyFiles, path)
 }
 
 // FileLoaded returns true if path is loaded in r.
 func (r *Reporter) FileLoaded(path string) bool {
-	return r.files != nil && r.files[path] != nil
+	return (r.files != nil && r.files[path] != nil) ||
+		(r.lazyFiles != nil && r.lazyFiles[path] != nil)
 }

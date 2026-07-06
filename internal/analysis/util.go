@@ -47,14 +47,14 @@ func repeatWithItem[T any](item T, count int) []T {
 	return result
 }
 
-func indexBuiltin(builtin, f string) (Type, *klarerrs.Error) {
+func indexBuiltin(builtin, f string, t *Expr) *klarerrs.Error {
 	builtinObj := builtinModule.Context.Lookup(builtin)
 	if builtinObj == nil {
 		panic("invalid builtin: " + builtin)
 	}
 	if builtinObj.IsTypeName() {
 		if bt, ok := builtinObj.TypeName().Type.(*bootstrapType); ok {
-			return bt.IndexDot(f)
+			return bt.Index(f, t)
 		}
 	}
 	// TODO: Is this reachable?
@@ -62,7 +62,7 @@ func indexBuiltin(builtin, f string) (Type, *klarerrs.Error) {
 	if !ok {
 		panic("builtin " + builtin + " does not implement Indexer")
 	}
-	return indexer.IndexDot(f)
+	return indexer.Index(f, t)
 }
 
 func indexError(code klarerrs.Code, t Type, label string) *klarerrs.Error {

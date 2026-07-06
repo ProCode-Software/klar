@@ -253,8 +253,7 @@ func (p *Parser) parseAssignableTypePairs(pairs *[]*ast.AssignableTypePair,
 				End:   pair.Keys[len(pair.Keys)-1].GetRange().End,
 			})
 			p.missingParamTypeAnnotError(
-				err, "variable", len(pair.Keys),
-				(*pairs)[len(*pairs)-1].GetRange(),
+				err, "variable", len(pair.Keys), (*pairs)[len(*pairs)-1].GetRange(),
 			)
 			p.Error(err)
 		}

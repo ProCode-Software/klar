@@ -2,12 +2,14 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 )
 
 // TODO: Implement. For now, subjects and bodies are checked
 func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
-	for _, subj := range expr.Subjects {
-		c.checkExpr(subj, newChildExpr(t, infer))
+	subjects := make([]*Expr, len(expr.Subjects))
+	for i, subj := range expr.Subjects {
+		subjects[i] = c.checkExpr(subj, newChildExpr(t, 0)) // TODO: Convert to typed
 	}
 	valHint := t.hint
 	for i, cs := range expr.Cases {
@@ -18,6 +20,13 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 		}
 		switch body := cs.Body.(type) {
 		case *ast.Block:
+			if t.mode&exprStmt == 0 {
+				err := klarerrs.Node(klarerrs.ErrBlockInWhenExpr, body)
+				err.AddHighlight("This 'when' is being used as an expression", expr.Range)
+				err.Label = "This is only allowed in a 'when' statement"
+				c.fileError(err, t.FileID())
+				// We will still check the body
+			}
 			sctx := newChildStmtContext(t.stmtCtx, bodyCtx, stmtFlags)
 			c.checkBlock(body.Body, sctx)
 		case ast.Statement:

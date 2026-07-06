@@ -14,9 +14,11 @@ const (
 	LocalOnly
 	// Passed to [Checker.parseType] to avoid errors for a generic without params
 	genericLHS
+	// Applied to variables that are named returns. They must be set before use or return
+	needsSet
 )
 
-func parseFlags(flags []Flag) (flag Flag) {
+func parseFlags[T ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](flags []T) (flag T) {
 	for _, fl := range flags {
 		flag |= fl
 	}

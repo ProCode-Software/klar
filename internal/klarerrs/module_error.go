@@ -39,7 +39,7 @@ func (e *Error) handleModuleError() string {
 		if slices.Contains(imports.StdlibImports, base) {
 			return "Can't find a module named " + path + " in the standard library"
 		}
-		return "Can't find a module named " + Quote(base)
+		return "Can't find a module named " + Quote(i.ImportPath)
 	case ErrImporterError:
 		return fmt.Sprintf("Failed to import %s: %v", path, i.Err)
 	case ErrImporterNotFound:

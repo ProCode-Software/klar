@@ -7,25 +7,25 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Expr struct {
 	Type    Type
-	Context *Context
-	mode    exprMode
 	hint    Type
+	mode    exprMode // Input mode
+	gotMode exprMode // Output mode
+	Context *Context
 	stmtCtx *stmtContext
 }
 
-func NewExpr(ctx *Context, flags exprMode) *Expr {
-	return &Expr{Context: ctx, mode: flags}
+func NewExpr(ctx *Context, flags ...exprMode) *Expr {
+	return &Expr{Context: ctx, mode: parseFlags(flags)}
 }
 
 func newChildExpr(parent *Expr, flags exprMode) *Expr {
 	return &Expr{
 		Context: parent.Context,
-		mode:    (parent.mode &^ infer) | flags,
+		mode:    parent.mode | flags,
 		stmtCtx: parent.stmtCtx,
 	}
 }
@@ -33,7 +33,7 @@ func newChildExpr(parent *Expr, flags exprMode) *Expr {
 func newChildExprWithHint(parent *Expr, hint Type, flags exprMode) *Expr {
 	return &Expr{
 		Context: parent.Context,
-		mode:    (parent.mode &^ infer) | flags,
+		mode:    parent.mode | flags,
 		stmtCtx: parent.stmtCtx,
 		hint:    hint,
 	}
@@ -47,22 +47,26 @@ func newExprFromStmtCtx(sctx *stmtContext, flags exprMode) *Expr {
 	return &Expr{Context: sctx.ctx, mode: flags, stmtCtx: sctx}
 }
 
-type exprMode int
+type exprMode uint16
 
 const (
+	// Input modes
 	typeInit exprMode = 1 << iota
 	callLHS
-	constExpr
-	infer // Disallow untyped values
-	todoExpr
+	constExpr // Can also be output
 	exprStmt
+
+	// Output modes
+	todoExpr
+	intfField
 )
 
 func (e *Expr) ConstValue() ConstValue {
 	return UnknownConst{}
 }
 
-func (e *Expr) Kind() Kind { return e.Type.Kind() }
+func (e *Expr) Kind() Kind     { return e.Type.Kind() }
+func (e *Expr) FileID() FileID { return e.Context.File }
 
 func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	switch expr := expr.(type) {
@@ -79,12 +83,10 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkStringLiteral(expr, t)
 	case *ast.IntegerLiteral:
 		// All numeric literals can be used as Float, so `3.0 + 5` is valid.
-		// TODO: Use Untyped type and ConstValue
-		switch {
-		case t.hint != nil && t.hint.Kind() == FloatType:
-		case t.mode&infer != 0:
-			t.Type = IntType
-		default:
+		// TODO: use ConstValue
+		if t.hint != nil && t.hint.Kind() == FloatType {
+			t.Type = FloatType
+		} else {
 			t.Type = Untyped(IntType)
 		}
 	case *ast.FloatLiteral:
@@ -94,6 +96,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.Symbol:
 		c.checkSymbolExpr(expr, t)
 	case *ast.MapLiteral:
+		c.checkMapLiteral(expr, t)
 	case *ast.TupleLiteral:
 		c.checkTupleLiteral(expr, t)
 	case *ast.ListLiteral:
@@ -107,18 +110,24 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.WhenExpression:
 		c.checkWhenExpr(expr, t)
 	case *ast.LambdaExpression:
+		c.checkLambdaExpr(expr, t)
 	case *ast.RangeExpression:
 		c.checkRangeExpr(expr, t)
 	case *ast.RestExpression:
-	// TODO: Check for rest expressions where they are allowed, so we can
-	// report an error if they are reached here.
-	// They are allowed in:
-	// - Calls
-	// - Tuples
-	// - Lists
-	// - Maps
-	// - List slices
+		// TODO: Check for rest expressions where they are allowed, so we can
+		// report an error if they are reached here.
+		// They only are allowed in:
+		// - Calls
+		// - Tuples
+		// - Lists
+		// - Maps
+		// - List slices
+		err := klarerrs.Node(klarerrs.ErrInvalidRestExpr, expr)
+		err.Label = "Can't use a rest expression here"
+		c.fileError(err, t.Context.File)
+		t.Type = InvalidType
 	case *ast.PipelineExpression:
+		c.checkPipelineExpr(expr, t)
 	case *ast.BadExpression:
 		t.Type = InvalidType
 	case *ast.SliceExpression:
@@ -126,8 +135,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.ParenExpression:
 		c.checkExpr(expr.Expression, t)
 	case *ast.RegexLiteral:
-		t.Type = RegExType
-		// TODO: Check interpolations
+		c.checkRegexLiteral(expr, t)
 	case *ast.VersionLiteral:
 		// These are only parsed within attributes.
 		// TODO: Find a way to read these when applying attributes
@@ -136,7 +144,9 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.MapCastExpression:
 		c.checkMapCastExpr(expr, t)
 	case *ast.ObjectPipeline:
+		c.checkObjectPipeline(expr, t)
 	case *ast.ForExpression:
+	// TODO: Factor logic from [Checker.checkForStmt] to use in checkForExpr
 	case *ast.StructDotInit:
 		c.checkStructDotInitExpr(expr, t)
 	case *ast.GoExpression:
@@ -152,6 +162,11 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	}
 	if t.Type == nil {
 		t.Type = InvalidType
+	}
+	// If a hint is provided, ensure the expression's type is compatible with it
+	if t.hint != nil && t.Type != InvalidType && !Compatible(t.Type, t.hint) {
+		c.fileError(typeMismatch(t.hint, t.Type, expr.GetRange()), t.FileID())
+		t.Type = t.hint
 	}
 	// Ensure a function that returns Nothing isn't being used as a value
 	// TODO: Should we move this to function/pipeline/try/await checking?
@@ -324,59 +339,51 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 		t.Type = InvalidType
 		return
 	}
-	// Types that can be indexed implement [Indexer]
+	// Types that can be indexed by dot implement [Indexer]
 	indexer, ok := Underlying(lhs.Type).(Indexer)
-	cantIndexErr := func() {
+	var err *klarerrs.Error
+	if expr.Computed {
+		rhs := c.checkExpr(expr.Property, newChildExpr(t, 0))
+		// TODO: handle unions (union of #{Int: Andy} and [Any]
+		// supports computed indexing)
+		if compIndexer, ok := Underlying(lhs.Type).(ComputedIndexer); ok {
+			err = compIndexer.IndexComputed(rhs.Type, t)
+		} else {
+			err = indexError(klarerrs.ErrInvalidComputedIndex, rhs.Type, "")
+		}
+
+		if err != nil && err.Code == klarerrs.ErrInvalidComputedIndex {
+			err.Name = lhs.Type.String()
+			// If the user uses a String computed index, suggest using a dot
+			// index instead. (TODO: diff)
+			if rhs.Type.Kind() == StringType {
+				err.Code = klarerrs.ErrDotIndexRequired
+				err.Label = "Type " + quote(lhs.Type.String()) +
+					" must be indexed via a dot index"
+			} else {
+				err.Label = "Can't index type " + quote(lhs.Type.String()) +
+					" using type " + quote(rhs.Type.String())
+			}
+		}
+	} else if ok {
+		// Dot-index
+		field := expr.Property.(*ast.Symbol).Identifier
+		err = indexer.Index(field, t)
+	}
+
+	switch {
+	case !ok, t.Type == nil && err == nil:
 		err := klarerrs.Node(klarerrs.ErrInvalidIndexType, expr.Object)
 		err.Info = klarerrs.TypeErrorInfo{GotType: lhs.Type.String()}
 		err.Label = "Can't index " + klarerrs.WithA(lhs.Type.Kind().String())
 		// err.Label = "Type " + klarerrs.Quote(lhs.Type.String()) + " can't be indexed"
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
-	}
-	if !ok {
-		// Can't index the LHS type
-		cantIndexErr()
-		return
-	}
-
-	var err *klarerrs.Error
-	if expr.Computed {
-		rhs := c.checkExpr(expr.Property, newChildExpr(t, 0))
-		// TODO: handle unions (union of #{Int: Andy} and [Any]
-		// supports computed indexing)
-		t.Type, err = indexer.Index(rhs.Type)
-
-		// Add LHS type information to error. And if the user uses a String
-		// computed index, suggest using a dot index instead. (TODO: diff)
-		if err != nil && err.Code == klarerrs.ErrInvalidComputedIndex {
-			err.Name = lhs.Type.String()
-			if rhs.Type.Kind() == StringType {
-				err.Code = klarerrs.ErrDotIndexRequired
-				err.Label = "Type " + quote(lhs.Type.String()) + " must be indexed via a dot index"
-			} else {
-				err.Label = "Can't index type " + quote(lhs.Type.String()) +
-					" using type " + quote(rhs.Type.String())
-			}
-		}
-	} else {
-		// Dot-index
-		field := expr.Property.(*ast.Symbol).Identifier
-		t.Type, err = indexer.IndexDot(field)
-	}
-	if t.Type == nil && err == nil {
-		// Still can't index type
-		cantIndexErr()
-		return
-	}
-	// Error while indexing, such as:
-	// - Using a computed index for a field
-	//   - TODO: Handle that here by calling IndexDot with the string if Index fails
-	// - Type doesn't support computed indexing (e.g. struct)
-	// - Indexing using an unknown field
-	// - Index out of range for list constants
-	// - Non-constant tuple index
-	if err != nil {
+	case err != nil:
+		// Error while indexing, such as:
+		// - Indexing using an unknown field
+		// - Index out of range for list constants
+		// - Non-constant tuple index
 		if err.Code == klarerrs.ErrFieldNotFound {
 			err.SetParam("type", lhs.Type.String())
 		}
@@ -478,7 +485,11 @@ func (c *Checker) checkBinaryExpr(expr *ast.BinaryExpression, t *Expr) {
 		rhsKind := rhs.Type.Kind()
 		switch rhsKind {
 		case KindMap:
-			mp := Underlying(rhs.Type).(*Map)
+			// We're using Any to avoid displaying 'invalid type' in the error below
+			mp := c.toTyped(
+				Underlying(rhs.Type), &Map{lhs.Type, AnyType},
+				expr.Right, t.Context.File,
+			).(*Map)
 			if !Compatible(lhs.Type, mp.Key) {
 				err := typeMismatch(mp.Key, lhs.Type, expr.Left.GetRange())
 				err.AddHighlight(
@@ -546,6 +557,12 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 				return
 			}
 		case *EnumFunction:
+		case *UntypedInit:
+			if fn.kind == KindEnum && fn.Params == nil {
+				calledInit := &UntypedInit{kind: KindEnum, Node: expr, Params: expr.Args}
+				t.Type = calledInit
+				return // Won't check params now
+			}
 		case *Lambda:
 		default:
 			// Not a function (or initializer)
@@ -563,55 +580,18 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 
 func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 	switch {
+	case t.hint != nil && t.hint.Kind() == KindStruct:
+		t.Type = t.hint
 	case t.hint != nil:
-		if t.hint.Kind() == KindStruct {
-			t.Type = t.hint
-			return
-		}
 		t.Type = InvalidType
-	case t.mode&infer == 0:
-		t.Type = Untyped(KindStruct)
 	default:
-		err := klarerrs.Node(klarerrs.ErrUntypedStruct, expr)
-		err.Label = "I don't know the type of this struct"
-		diff := klarerrs.NewDiff(
-			c.module.ResolveFilePath(t.Context.File),
-			klarerrs.DeletedRange{ranges.SingleChar(expr.Range.Start)}, // '.'
-			klarerrs.AddedString{Position: expr.Range.Start, String: "T"},
-		)
-		err.HintWithDiff(
-			"Add an explicit type before the parameters. (Replace 'T' with the intended type)",
-			diff,
-		)
-		c.fileError(err, t.Context.File)
-		t.Type = InvalidType
+		t.Type = Untyped(KindStruct)
 	}
+	// Check the parameters once its type is inferred
+	c.queue(func() { c.checkStructDotInitParams(expr, t) }, false)
 }
 
-func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
-	switch {
-	case t.hint != nil:
-		if t.hint.Kind() == KindEnum {
-			t.Type = t.hint
-			return
-		}
-		t.Type = InvalidType
-	case t.mode&infer == 0:
-		t.Type = Untyped(KindEnum)
-	default:
-		err := klarerrs.Node(klarerrs.ErrUntypedEnum, expr)
-		err.Label = "I don't know the type of this enum"
-		diff := klarerrs.NewDiff(
-			c.module.ResolveFilePath(t.Context.File),
-			klarerrs.AddedString{Position: expr.Range.Start, String: "T"},
-		)
-		err.HintWithDiff(
-			"Add an explicit type before the enum item. (Replace 'T' with the intended type)",
-			diff,
-		)
-		c.fileError(err, t.Context.File)
-		t.Type = InvalidType
-	}
+func (c *Checker) checkStructDotInitParams(expr *ast.StructDotInit, t *Expr) {
 }
 
 func (c *Checker) checkCallArgs(lhs Type, expr *ast.CallExpression, t *Expr) {
@@ -661,4 +641,95 @@ func (c *Checker) checkMapCastExpr(expr *ast.MapCastExpression, t *Expr) {
 	val := c.parseType(expr.ValueType, t.Context)
 	// TODO: Check params
 	t.Type = &Map{key, val}
+}
+
+func (c *Checker) checkLambdaExpr(expr *ast.LambdaExpression, t *Expr) {
+	bodyCtx := NewContext(t.Context, t.Context.File)
+	sig := &Lambda{}
+	// For now, we're only collecting the explicit types for params and returns
+	for _, pair := range expr.Params {
+		if pair.Type == nil {
+			continue
+		}
+		typ, variadic := c.parseTypeOrVariadic(pair.Type, t.Context)
+		if variadic {
+			sig.Variadic = true
+			// Ensure this is the last param
+		}
+		// sig.Params is lazy-initialized only if any explicit types were provided
+		if sig.Params == nil {
+			sig.Params = make([]Type, 0, len(expr.Params))
+		}
+		for range max(len(pair.Keys), 1) {
+			sig.Params = append(sig.Params, typ)
+		}
+	}
+	// TODO: params and checking return type
+	c.queue(func() {
+		// There was an error before this queued function, such as wrong
+		// param counts or types.
+		if t.Type == InvalidType {
+			return
+		}
+		// At the time this is run, the function's params and return type
+		// should be resolved.
+		if t.hint == nil {
+			// Untyped lambda. Ensure we have all the param types, or report an error.
+			// Invalid:
+			// 	_ = func a, b {}
+			// Valid:
+			//  _ = func(a: Int, b: Int) -> Int {}
+		}
+		c.checkBlock(expr.Block.Body, newStmtContext(bodyCtx, t.Context.File, 0))
+		sig.Complete = true
+	}, true)
+	t.Type = sig
+}
+
+const PipelineResultName = "value"
+
+func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
+	var (
+		valObj = NewObject(
+			PipelineResultName, t.Context.File, expr.Range, c.module, nil,
+		)
+		valVar      = NewVariable(valObj, PipelineVar, nil)
+		pipelineCtx = NewContext(t.Context, t.Context.File)
+	)
+	for i, step := range expr.Steps {
+		if ret, ok := step.(*ast.ReturnStatement); ok {
+			if (t.mode & exprStmt) != 0 {
+				// A `return` in a pipeline is only allowed in expresion statements.
+				// Not allowed:
+				// 	_ = a() |> b |> return
+				err := klarerrs.Node(klarerrs.ErrReturnInPipelineExpr, ret)
+				err.Label = "This is only allowed when the pipeline is a statement"
+				c.fileError(err, t.Context.File)
+			}
+			c.checkReturnStmt(ret, t.stmtCtx)
+			continue
+		}
+		// TODO: Ensure each step is a call, and pass `value` as a param
+		e := newChildExpr(t, 0)
+		e.Context = pipelineCtx
+		c.checkExpr(step.(ast.Expression), e)
+		valVar.Type = e.Type // Set `value` to the type of the last step
+		if i == 0 {
+			pipelineCtx.Declare(valObj)
+		}
+	}
+	t.Type = valVar.Type
+}
+
+func (c *Checker) checkObjectPipeline(expr *ast.ObjectPipeline, t *Expr) {
+	obj := c.checkExpr(expr.Object, newChildExpr(t, 0))
+	for _, step := range expr.Steps {
+		switch step := step.(type) {
+		case *ast.CallExpression:
+			_ = step
+		case *ast.AssignmentStatement:
+
+		}
+	}
+	_ = obj
 }

@@ -16,8 +16,8 @@ func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
 func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	// Use t's type hint if available
 	var hint Type
-	if listHint, ok := t.hint.(*List); ok {
-		hint = listHint.Elem
+	if t.hint != nil && t.hint.Kind() == KindList {
+		hint = Underlying(t.hint).(*List).Elem
 	}
 
 	list := &List{hint}
@@ -27,11 +27,9 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	}
 
 	if list.Elem == nil {
-		if (t.mode & infer) == 0 {
-			t.Type = Untyped(KindList)
-			return
-		}
-		// No hint and no list items: unknown list type
+		t.Type = Untyped(KindList)
+		return
+		/* // No hint and no list items: unknown list type
 		err := klarerrs.Node(klarerrs.ErrUntypedEmptyList, expr)
 		err.Label = "This list is empty and its type can't be inferred"
 
@@ -49,28 +47,25 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 		)
 
 		c.fileError(err, t.Context.File)
-		list.Elem = InvalidType
+		list.Elem = InvalidType */
 	}
 	t.Type = list
 }
 
 func (c *Checker) checkNilLiteral(expr *ast.NilLiteral, t *Expr) {
-	var hint Type
-	if opt, ok := t.hint.(*Optional); ok {
-		hint = opt.Elem
-	}
-	if hint == nil {
-		if (t.mode & infer) == 0 {
-			t.Type = Untyped(KindOptional)
-			return
-		}
-		// Untyped nil
-		err := klarerrs.Node(klarerrs.ErrUntypedNil, expr)
-		err.Label = "I don't know what optional type this is"
+	switch {
+	case t.hint != nil && t.hint.Kind() == KindOptional:
+		t.Type = t.hint // Hint is optional
+	case t.hint == nil:
+		t.Type = Untyped(KindOptional) // No hint
+	default:
+		// Hint is not optional
+		err := klarerrs.Node(klarerrs.ErrNotOptionalType, expr)
+		err.Name = quoteAka(t.hint)
+		err.Label = "This can't be applied to type " + err.Name
 		c.fileError(err, t.Context.File)
-		hint = InvalidType
+		t.Type = t.hint
 	}
-	t.Type = &Optional{hint}
 }
 
 func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
@@ -91,4 +86,36 @@ func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
 		e := c.checkExpr(interp.Expression, newChildExpr(t, 0))
 		_ = e
 	}
+}
+
+func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
+	mp := &Map{}
+	if t.hint != nil && t.hint.Kind() == KindMap {
+		hintMap := Underlying(t.hint).(*Map)
+		mp.Key, mp.Value = hintMap.Key, hintMap.Value
+	}
+	if len(expr.Entries) == 0 {
+		t.Type = Untyped(KindMap)
+		return
+	}
+	for _, entry := range expr.Entries {
+		mp.Value = c.checkExpr(entry.Value, newChildExprWithHint(t, mp.Value, 0)).Type
+		for _, key := range entry.Keys {
+			mp.Key = c.checkExpr(key, newChildExprWithHint(t, mp.Key, 0)).Type
+		}
+	}
+	t.Type = mp
+}
+
+func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {
+	t.Type = RegExType
+	// TODO: Check interpolations
+}
+
+func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
+	if t.hint != nil && t.hint.Kind() == KindEnum {
+		t.Type = t.hint
+		return
+	}
+	t.Type = &UntypedInit{kind: KindEnum, Node: expr}
 }

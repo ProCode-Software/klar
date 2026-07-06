@@ -42,23 +42,38 @@ func (c *Checker) wrapCompositeBootstrapTypes() {
 			}
 		}, false)
 	}
+	// Int, String, etc.
+	for _, prim := range primitives {
+		c.queue(func() {
+			obj := c.rootContext.Lookup(prim.name)
+			if obj == nil || !obj.IsTypeName() {
+				return
+			}
+			tn := obj.TypeName()
+			tn.Type = &bootstrapType{
+				asDeclared: tn.Type,
+				kind:       prim.typ,
+				withKind:   prim.typ,
+			}
+		}, false)
+	}
 }
 
-func (bt *bootstrapType) Index(i Type) (Type, *klarerrs.Error) {
-	if indexer, ok := Underlying(bt.withKind).(Indexer); ok {
-		return indexer.Index(i)
+func (bt *bootstrapType) IndexComputed(i Type, t *Expr) *klarerrs.Error {
+	if indexer, ok := Underlying(bt.withKind).(ComputedIndexer); ok {
+		return indexer.IndexComputed(i, t)
 	}
-	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
-		return indexer.Index(i)
+	if indexer, ok := Underlying(bt.asDeclared).(ComputedIndexer); ok {
+		return indexer.IndexComputed(i, t)
 	}
-	return nil, nil
+	return nil
 }
 
-func (bt *bootstrapType) IndexDot(i string) (Type, *klarerrs.Error) {
+func (bt *bootstrapType) Index(i string, t *Expr) *klarerrs.Error {
 	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
-		return indexer.IndexDot(i)
+		return indexer.Index(i, t)
 	}
-	return nil, nil
+	return nil
 }
 
 func (bt *bootstrapType) CanIndex() bool {

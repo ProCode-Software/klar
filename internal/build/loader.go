@@ -1,12 +1,18 @@
 package build
 
 import (
+	"fmt"
+	"log/slog"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ProCode-Software/klar/internal/build/cache"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/util/graph"
@@ -70,14 +76,15 @@ func (ld *Loader) Load() (*Loaded, error) {
 		return nil, err
 	}
 
-	// 2. Delete removed modules/files from cache
+	// TODO: If a cached module depends on a module that needs to be
+	// recompiled, does the cached module get re-typechecked? Ensure
+	// that happens.
+
+	// 2. Delete removed modules/files from cache. TODO: Does
+	// this do that?
 	for mod := range cachedCh {
 		ld.Deps.Set(mod, mod.Checked.ImportPathString())
 		loaded.cached = append(loaded.cached, mod)
-		if false {
-			// TODO: delete the removed files from mod
-			needsTypeCheckCh <- mod
-		}
 	}
 	close(needsTypeCheckCh)
 
@@ -171,6 +178,11 @@ func (ld *Loader) loadPackageDeps(g *graph.Graph[string]) error {
 		ld.Root = false
 		moduleLoader.graph = g // Don't toposort loaded modules
 		if _, err := moduleLoader.Load(); err != nil {
+			if fserr, ok := err.(*FilesystemError); ok && fserr.IsNotExist() &&
+				fserr.Path == modulePath {
+				// The local dependency doesn't exist in the package
+				continue // An error will be reported by the typechecker
+			}
 			return err
 		}
 	}
@@ -183,12 +195,12 @@ func (ld *Loader) loadOrParseModule(m *Module,
 	m.ModTimes = make(map[string]time.Time, len(m.Programs))
 
 	// Stdin inputs are never cached
-	if ok := ld.Kind != KindStdin && ld.loadFromCache(m); ok {
+	if fullyCached := ld.Kind != KindStdin &&
+		false; /* ld.loadFromCache(m, reporterMu) */ fullyCached {
 		return true
 	}
-	// TODO: Never cache stdin inputs
 
-	// We need to parse each file from scratch
+	// Some or all files need to be reparsed and typechecked
 	// ======
 
 	var mu sync.Mutex
@@ -208,25 +220,78 @@ func (ld *Loader) loadOrParseModule(m *Module,
 // loadFromCache attempts to load the module from cache, modifying
 // m and returning whether the module is fully cached. loadFromCache may
 // set m's individual files and still return false.
-func (ld *Loader) loadFromCache(m *Module) (ok bool) {
-	// TODO: load from cache
-	// Also check that files weren't deleted
-	// Also, for each file that wasn't changed, set m.Programs
-	// Re-emit warnings
-	// Check if stale
-	/* var cachedModTime time.Time // TODO: for each program
+func (ld *Loader) loadFromCache(m *Module, reporterMu *sync.Mutex) (ok bool) {
+	// TODO: We need a custom serialization format for the cache.
+	// 1. For [analysis.Module], many objects contain unexported fields,
+	// which Gob can't decode, and pointer reference equality isn't preserved.
+	// 2. For [ast.Program], all interface nodes have to be pre-registered,
+	// so we can't save to cache without doing that.
+
+	ok = true
+	// 1. Try to load from cache
+	cached, err := cache.Load(ld.PkgInfo.CacheDir(), m.Path)
+	if err != nil {
+		// TODO: Return the error
+		return false
+	}
+	if cached == nil {
+		return false // Not in cache
+	}
 	for file := range m.Programs {
-		path := m.Path
-		if !filepath.IsAbs(file) { // Single-file
-			path = filepath.Join(m.Path, file)
-		}
+		path := m.FilePath(file)
 		stat, err := os.Stat(path)
 		if err != nil {
-			return false
+			ok = false // Idk
+			continue
 		}
+		// 2. Ensure there are no new files
+		if _, isNew := cached.Programs[file]; !isNew {
+			ok = false
+			continue // File created since the module was cached
+		}
+		// 3. Check mod times of each file. If the file on disk is
+		// is newer, we have to parse from scratch.
+		cachedModTime := cached.ModTimes[file]
 		if diskModTime := stat.ModTime(); cachedModTime.Before(diskModTime) {
-			return false // File changed on disk
+			ok = false // File changed on disk
+			continue
 		}
-	} */
+		// 4. Use the cached AST for unchanged files. If some files in
+		// a module changed, the ones that didn't will be set.
+		m.Programs[file] = cached.Programs[file]
+		m.ModTimes[file] = cached.ModTimes[file]
+	}
+	// 5. Ensure no files were deleted since the module was cached
+	for name := range cached.Programs {
+		if _, stillExists := m.Programs[name]; !stillExists {
+			ok = false // File was deleted since being cached
+		}
+	}
+	// 6. Re-emit cached warnings
+	cachedWarns := cached.Warnings
+	if !ok {
+		cachedWarns = make([]*klarerrs.Error, 0, len(cached.Warnings))
+		for _, warn := range cached.Warnings {
+			// Only show warnings from files that are still cached (not
+			// changed or deleted)
+			if prog, _ := m.Programs[filepath.Base(warn.File)]; prog != nil {
+				cachedWarns = append(cachedWarns, warn)
+			}
+		}
+	}
+	// Note: The cache doesn't store files' tokens, which are required to display
+	// an error's source code. When a warning (or another error that uses one
+	// of these files as a detail) needs the tokens, the reporter can lazy-
+	// tokenize the file (no parsing needed).
+	if hasErrs, _ := ld.sendErrors(cachedWarns); hasErrs {
+		panic(fmt.Sprintf("cached module %s shouldn't contain errors", m.Path))
+	}
+	if ok {
+		// 7. If there were no stale files, use the cached typechecked module
+		// m.Checked = cached.Checked
+		ld.Debug("Module fully loaded from cache", slog.String("path", m.Path))
+		return true
+	}
+	ld.Debug("Module partially loaded from cache", slog.String("path", m.Path))
 	return false
 }

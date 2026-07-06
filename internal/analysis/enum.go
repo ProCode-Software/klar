@@ -21,7 +21,6 @@ type Enum struct {
 	Methods      []*Object // Type [*Function]
 	Initializers []*Object // Type [*Overload]
 	MethodSet
-	noComputedIndex
 }
 
 // Not a value.
@@ -48,7 +47,6 @@ type EnumRef struct {
 	// Uncomment for constant analysis
 	// Params []Type // Nil if Called is false or there are no params
 	Called bool // If the params have been passed. True if there are no params.
-	noComputedIndex
 }
 
 func NewEnumRef(ei *EnumItem) *EnumRef {
@@ -58,7 +56,6 @@ func NewEnumRef(ei *EnumItem) *EnumRef {
 type EnumFunction struct {
 	*Lambda
 	*EnumItem
-	noComputedIndex
 }
 
 func (ef *EnumFunction) String() string   { return ef.Enum.Name }
@@ -68,8 +65,9 @@ func (ef *EnumFunction) Underlying() Type { return ef }
 func newEnumFunction(ei *EnumItem) *EnumFunction {
 	return &EnumFunction{
 		Lambda: &Lambda{
-			Params: ei.Params,
-			Return: &EnumRef{EnumItem: ei, Called: true},
+			Params:   ei.Params,
+			Return:   &EnumRef{EnumItem: ei, Called: true},
+			Complete: true,
 		},
 		EnumItem: ei,
 	}
@@ -135,7 +133,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 					continue
 				}
 				if _, ok := ei.paramMap[key.Name]; ok {
-					err := klarerrs.Node(klarerrs.ErrRedeclaredParam, key)
+					err := klarerrs.Node(klarerrs.ErrRedeclaredParamLabel, key)
 					err.Label = "A parameter named " + quote(key.Name) + " already exists"
 					err.AddHighlight(
 						"It was first defined here",
@@ -310,9 +308,10 @@ func (item *EnumItem) ParamByName(label string) Type {
 	return item.Params[i]
 }
 
-func (e *Enum) IndexDot(name string) (Type, *klarerrs.Error) {
+func (e *Enum) Index(name string, t *Expr) *klarerrs.Error {
 	if item, ok := e.itemMap[name]; ok {
-		return NewEnumRef(item), nil
+		t.Type = NewEnumRef(item)
+		return nil
 	}
 	// Show a more concise error message if the user tries to access a method
 	if e.methodMap != nil {
@@ -322,8 +321,8 @@ func (e *Enum) IndexDot(name string) (Type, *klarerrs.Error) {
 				Label: "Choose an enum item to access this method",
 				Name:  name,
 			}
-			return nil, err
+			return err
 		}
 	}
-	return nil, fieldNotFound(name)
+	return fieldNotFound(name)
 }

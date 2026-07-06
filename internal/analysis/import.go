@@ -151,7 +151,7 @@ func (c *Checker) declareErrorImport(stmt *ast.ImportStatement, fctx *Context) {
 		ns = stmt.Alias.Name
 	}
 	// Declare the namespace
-	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &InvalidTypeObject{})
+	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &InvalidObject{})
 	c.declare(fctx, nsObj)
 }
 
@@ -192,7 +192,6 @@ func (c *Checker) reportImportError(importPath string, err error,
 type Namespace struct {
 	ImportPath string
 	Context    *Context
-	noComputedIndex
 }
 
 func (*Namespace) Kind() Kind          { return KindNamespace }
@@ -223,10 +222,7 @@ func (ns *Namespace) lookupExport(target string) (*Object, *klarerrs.Error) {
 	return obj, nil
 }
 
-func (ns *Namespace) IndexDot(field string) (Type, *klarerrs.Error) {
-	obj, err := ns.lookupExport(field)
-	if err != nil {
-		return nil, err
-	}
-	return obj.typ, nil
+func (ns *Namespace) Index(field string, t *Expr) (err *klarerrs.Error) {
+	t.Type, err = ns.lookupExport(field)
+	return err
 }

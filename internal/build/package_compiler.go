@@ -4,7 +4,9 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
 
+	"github.com/ProCode-Software/klar/internal/build/cache"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
@@ -52,8 +54,17 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 	}
 
 	// Typecheck
-	return pkc.TypeCheckModules(loaded)
+	if modules, err = pkc.TypeCheckModules(loaded); err != nil {
+		return
+	}
 	// TODO: Codegen?
+
+	// Save succeeded modules to cache
+	// TODO: Cache is unimplemented
+	/* if err = pkc.WriteToCache(loaded.sortedDeps); err != nil {
+		return modules, err
+	} */
+	return modules, nil
 }
 
 func CheckCompilerCompatibility(spec version.Specifier) error {
@@ -161,4 +172,35 @@ typeCheckModules:
 		succeededModules = append(succeededModules, mod)
 	}
 	return succeededModules, nil
+}
+
+func (pkc *PackageCompiler) WriteToCache(importPaths []string) error {
+	for _, importPath := range importPaths {
+		m, ok := pkc.Deps.TryGet(importPath)
+		if !ok || m.Stdin || m.Failed {
+			// Dependency doesn't exist. Error already reported
+			// Stdin inputs shouldn't be cached
+			// Module has errors (not warnings)
+			continue
+		}
+		cacheMod := &cache.Module{
+			Path:       m.Path,
+			Programs:   m.Programs,
+			ModTimes:   m.ModTimes,
+			SingleFile: m.SingleFile,
+			Checked:    m.Checked,
+		}
+		// Only add compile warnings from inside this module
+		for _, warn := range pkc.Warnings {
+			if (m.SingleFile && warn.File == m.Path) ||
+				(!m.SingleFile && filepath.Dir(warn.File) == m.Path) {
+				cacheMod.Warnings = append(cacheMod.Warnings, warn)
+			}
+		}
+		if err := cache.Save(pkc.PkgInfo.CacheDir(), cacheMod); err != nil {
+			return err
+		}
+		pkc.Debug("Saved module to cache", slog.String("module", pkc.Path))
+	}
+	return nil
 }

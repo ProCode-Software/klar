@@ -114,7 +114,7 @@ const (
 	ErrRedeclaredField         // Struct or interface field redeclared
 	ErrRedeclaredGeneric       // Generic parameter redeclared
 	ErrNonNameInGeneric        // Left-hand side of generic type isn't a name
-	ErrRedeclaredParam         // (Enum item) Parameter already declares
+	ErrRedeclaredParamLabel    // Parameter label for enum item or function already declared
 
 	// When =====
 
@@ -149,6 +149,9 @@ const (
 	ErrRedeclaredLabel        // Label redeclared in the same function
 	ErrRedeclaredOverload     // Overload redeclared with same params
 	ErrVariadicDefault        // Variadic parameter can't a default value
+	ErrBlockInWhenExpr        // Block bodies are only allowed in when statements
+	ErrInvalidRestExpr        // Rest expression used outside of list, call, tuple, or map
+	ErrReturnInPipelineExpr   // Return statement not allowed in pipeline expression
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -350,8 +353,6 @@ func (e *Error) handleSyntaxError() string {
 		return "Generic parameters aren't allowed in function aliases"
 	case ErrUnderscoreWithRest:
 		return "Don't use '_' with a rest; use just '...' instead"
-	case ErrReturnOutsideFunc:
-		return "Can't use return statement outside of a function"
 	case ErrReturnPipelineNotLast:
 		return "The 'return' in a pipeline must be the last step"
 	case ErrPublicGoesFirst:
@@ -516,7 +517,13 @@ func (e *Error) handleSyntaxError() string {
 		return "The left-hand side of a generic type reference must be a type name"
 	case ErrNumberTooBig:
 		return "The number " + Quote(e.Name) + " is too large"
-	case ErrRedeclaredParam:
-		return ""
+	/* case ErrRedeclaredParamLabel:
+	return "" */
+	case ErrReturnOutsideFunc:
+		return "A 'return' statement is only allowed within a function body"
+	case ErrBlockInWhenExpr:
+		return "A block can only be used as the body of a 'when' case in a 'when' statement, not expression"
+	case ErrVariadicNotLast:
+		return "The variadic parameter must be the last parameter in the function"
 	}
 }

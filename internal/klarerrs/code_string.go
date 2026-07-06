@@ -116,7 +116,7 @@ func _() {
 	_ = x[ErrRedeclaredField-180]
 	_ = x[ErrRedeclaredGeneric-181]
 	_ = x[ErrNonNameInGeneric-182]
-	_ = x[ErrRedeclaredParam-183]
+	_ = x[ErrRedeclaredParamLabel-183]
 	_ = x[ErrNoForIterator-184]
 	_ = x[ErrUnderscoreWithRest-185]
 	_ = x[ErrNotAllowedInWhen-186]
@@ -143,6 +143,9 @@ func _() {
 	_ = x[ErrRedeclaredLabel-207]
 	_ = x[ErrRedeclaredOverload-208]
 	_ = x[ErrVariadicDefault-209]
+	_ = x[ErrBlockInWhenExpr-210]
+	_ = x[ErrInvalidRestExpr-211]
+	_ = x[ErrReturnInPipelineExpr-212]
 	_ = x[ErrTypeMismatch-401]
 	_ = x[ErrUnwrapRequired-402]
 	_ = x[ErrAliasSelfType-403]
@@ -164,47 +167,51 @@ func _() {
 	_ = x[ErrInvalidListInitReturn-419]
 	_ = x[ErrMissingReturn-420]
 	_ = x[ErrPrivateAttributes-421]
-	_ = x[ErrNotAType-422]
-	_ = x[ErrTypeAsValue-423]
-	_ = x[ErrInvalidRestType-424]
-	_ = x[ErrNotIterable-425]
-	_ = x[ErrNonBoolWhileCond-426]
-	_ = x[ErrOver2LoopVars-427]
-	_ = x[ErrMultipleIntIterVars-428]
-	_ = x[ErrAssignToConst-429]
-	_ = x[ErrInvalidAssignType-430]
-	_ = x[ErrAssignToIntfField-431]
-	_ = x[ErrUntypedStruct-432]
-	_ = x[ErrUntypedEnum-433]
-	_ = x[ErrUntypedEmptyList-434]
-	_ = x[ErrUntypedNil-435]
-	_ = x[ErrInvalidRangeType-436]
-	_ = x[ErrStepWithStringRange-437]
-	_ = x[ErrNonConstStringRange-438]
-	_ = x[ErrOpenStringRange-439]
-	_ = x[ErrNonLetterStringRange-440]
-	_ = x[ErrMultiCharStringRange-441]
-	_ = x[ErrInvalidIndexType-442]
-	_ = x[ErrNonNumericIndex-443]
-	_ = x[ErrInvalidMapIndex-444]
-	_ = x[ErrFieldNotFound-445]
-	_ = x[ErrInvalidComputedIndex-446]
-	_ = x[ErrDotIndexRequired-447]
-	_ = x[ErrNegateNonNumeric-448]
-	_ = x[ErrNonBoolLogicalOperand-449]
-	_ = x[ErrInvalidArithType-450]
-	_ = x[ErrIntTimesString-451]
-	_ = x[ErrInvalidStringMult-452]
-	_ = x[ErrNonBoolLogical-453]
-	_ = x[ErrInvalidInOperand-454]
-	_ = x[ErrNothingAsValue-455]
-	_ = x[ErrNonResultInTry-456]
-	_ = x[ErrInvalidAssertType-457]
-	_ = x[ErrNotAFunction-458]
-	_ = x[ErrGenericParamsRequired-459]
-	_ = x[ErrNonGenericType-460]
-	_ = x[ErrInvalidGenericCount-461]
-	_ = x[ErrIndexEnumMethod-462]
+	_ = x[ErrNamedReturnNotSet-422]
+	_ = x[ErrNotAType-423]
+	_ = x[ErrTypeAsValue-424]
+	_ = x[ErrInvalidRestType-425]
+	_ = x[ErrNotANamespace-426]
+	_ = x[ErrNotIterable-427]
+	_ = x[ErrNonBoolWhileCond-428]
+	_ = x[ErrOver2LoopVars-429]
+	_ = x[ErrMultipleIntIterVars-430]
+	_ = x[ErrAssignToConst-431]
+	_ = x[ErrInvalidAssignType-432]
+	_ = x[ErrAssignToIntfField-433]
+	_ = x[ErrUntypedStruct-434]
+	_ = x[ErrUntypedEnum-435]
+	_ = x[ErrUntypedEmptyList-436]
+	_ = x[ErrUntypedEmptyMap-437]
+	_ = x[ErrUntypedNil-438]
+	_ = x[ErrInvalidRangeType-439]
+	_ = x[ErrStepWithStringRange-440]
+	_ = x[ErrNonConstStringRange-441]
+	_ = x[ErrOpenStringRange-442]
+	_ = x[ErrNonLetterStringRange-443]
+	_ = x[ErrMultiCharStringRange-444]
+	_ = x[ErrInvalidIndexType-445]
+	_ = x[ErrNonNumericIndex-446]
+	_ = x[ErrInvalidMapIndex-447]
+	_ = x[ErrFieldNotFound-448]
+	_ = x[ErrInvalidComputedIndex-449]
+	_ = x[ErrDotIndexRequired-450]
+	_ = x[ErrNegateNonNumeric-451]
+	_ = x[ErrNonBoolLogicalOperand-452]
+	_ = x[ErrInvalidArithType-453]
+	_ = x[ErrIntTimesString-454]
+	_ = x[ErrInvalidStringMult-455]
+	_ = x[ErrNonBoolLogical-456]
+	_ = x[ErrInvalidInOperand-457]
+	_ = x[ErrNothingAsValue-458]
+	_ = x[ErrNonResultInTry-459]
+	_ = x[ErrInvalidAssertType-460]
+	_ = x[ErrNotAFunction-461]
+	_ = x[ErrGenericParamsRequired-462]
+	_ = x[ErrNonGenericType-463]
+	_ = x[ErrInvalidGenericCount-464]
+	_ = x[ErrIndexEnumMethod-465]
+	_ = x[ErrNotOptionalType-466]
 	_ = x[ErrTooManyErrors - -1]
 	_ = x[WarnNotEqualOr-301]
 	_ = x[WarnEqualAnd-302]
@@ -214,9 +221,9 @@ func _() {
 
 const (
 	_Code_name_0 = "ErrTooManyErrorsNoPrefix"
-	_Code_name_1 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrNumberTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrIdentMustHaveLetterErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrRedeclaredGenericErrNonNameInGenericErrRedeclaredParamErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadowErrVarConstMixInDeclErrMultipleVariadicParamErrVariadicNotLastErrDuplicateInheritedTypeErrNoDeclAfterAttrErrMisplacedControlStmtErrRedeclaredLabelErrRedeclaredOverloadErrVariadicDefault"
+	_Code_name_1 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrNumberTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrIdentMustHaveLetterErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrRedeclaredGenericErrNonNameInGenericErrRedeclaredParamLabelErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrMethodInOtherScopeErrProvenUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadowErrVarConstMixInDeclErrMultipleVariadicParamErrVariadicNotLastErrDuplicateInheritedTypeErrNoDeclAfterAttrErrMisplacedControlStmtErrRedeclaredLabelErrRedeclaredOverloadErrVariadicDefaultErrBlockInWhenExprErrInvalidRestExprErrReturnInPipelineExpr"
 	_Code_name_2 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnused"
-	_Code_name_3 = "TypeErrorPrefixErrTypeMismatchErrUnwrapRequiredErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrFieldAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUnknownAttributeErrInvalidAttributeTargetErrGenericTypeAliasErrDepCycleErrMismatchTupleDestructErrTupleRestDestructErrOverloadReturnMismatchErrInvalidInitReturnErrInvalidListInitReturnErrMissingReturnErrPrivateAttributesErrNotATypeErrTypeAsValueErrInvalidRestTypeErrNotIterableErrNonBoolWhileCondErrOver2LoopVarsErrMultipleIntIterVarsErrAssignToConstErrInvalidAssignTypeErrAssignToIntfFieldErrUntypedStructErrUntypedEnumErrUntypedEmptyListErrUntypedNilErrInvalidRangeTypeErrStepWithStringRangeErrNonConstStringRangeErrOpenStringRangeErrNonLetterStringRangeErrMultiCharStringRangeErrInvalidIndexTypeErrNonNumericIndexErrInvalidMapIndexErrFieldNotFoundErrInvalidComputedIndexErrDotIndexRequiredErrNegateNonNumericErrNonBoolLogicalOperandErrInvalidArithTypeErrIntTimesStringErrInvalidStringMultErrNonBoolLogicalErrInvalidInOperandErrNothingAsValueErrNonResultInTryErrInvalidAssertTypeErrNotAFunctionErrGenericParamsRequiredErrNonGenericTypeErrInvalidGenericCountErrIndexEnumMethod"
+	_Code_name_3 = "TypeErrorPrefixErrTypeMismatchErrUnwrapRequiredErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrFieldAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUnknownAttributeErrInvalidAttributeTargetErrGenericTypeAliasErrDepCycleErrMismatchTupleDestructErrTupleRestDestructErrOverloadReturnMismatchErrInvalidInitReturnErrInvalidListInitReturnErrMissingReturnErrPrivateAttributesErrNamedReturnNotSetErrNotATypeErrTypeAsValueErrInvalidRestTypeErrNotANamespaceErrNotIterableErrNonBoolWhileCondErrOver2LoopVarsErrMultipleIntIterVarsErrAssignToConstErrInvalidAssignTypeErrAssignToIntfFieldErrUntypedStructErrUntypedEnumErrUntypedEmptyListErrUntypedEmptyMapErrUntypedNilErrInvalidRangeTypeErrStepWithStringRangeErrNonConstStringRangeErrOpenStringRangeErrNonLetterStringRangeErrMultiCharStringRangeErrInvalidIndexTypeErrNonNumericIndexErrInvalidMapIndexErrFieldNotFoundErrInvalidComputedIndexErrDotIndexRequiredErrNegateNonNumericErrNonBoolLogicalOperandErrInvalidArithTypeErrIntTimesStringErrInvalidStringMultErrNonBoolLogicalErrInvalidInOperandErrNothingAsValueErrNonResultInTryErrInvalidAssertTypeErrNotAFunctionErrGenericParamsRequiredErrNonGenericTypeErrInvalidGenericCountErrIndexEnumMethodErrNotOptionalType"
 	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycleErrExportUndefinedErrNotExportedErrLabelUndefined"
 	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmptyErrImportPathConflictErrNoPublicExports"
 	_Code_name_6 = "ImplementationErrorPrefix"
@@ -224,9 +231,9 @@ const (
 
 var (
 	_Code_index_0 = [...]uint8{0, 16, 24}
-	_Code_index_1 = [...]uint16{0, 17, 35, 51, 74, 98, 124, 149, 166, 187, 211, 233, 253, 272, 287, 300, 319, 334, 349, 371, 386, 409, 430, 450, 464, 481, 499, 516, 534, 560, 582, 604, 617, 636, 655, 675, 696, 720, 744, 767, 790, 811, 834, 857, 876, 896, 912, 930, 950, 969, 987, 1004, 1023, 1041, 1065, 1080, 1098, 1122, 1146, 1170, 1199, 1226, 1243, 1258, 1282, 1309, 1327, 1356, 1374, 1401, 1426, 1451, 1477, 1492, 1514, 1533, 1554, 1574, 1595, 1616, 1631, 1649, 1669, 1688, 1706, 1722, 1743, 1762, 1779, 1790, 1804, 1818, 1832, 1847, 1859, 1872, 1883, 1904, 1924, 1938, 1958, 1973, 1993, 2017, 2035, 2060, 2078, 2101, 2119, 2140, 2158}
+	_Code_index_1 = [...]uint16{0, 17, 35, 51, 74, 98, 124, 149, 166, 187, 211, 233, 253, 272, 287, 300, 319, 334, 349, 371, 386, 409, 430, 450, 464, 481, 499, 516, 534, 560, 582, 604, 617, 636, 655, 675, 696, 720, 744, 767, 790, 811, 834, 857, 876, 896, 912, 930, 950, 969, 987, 1004, 1023, 1041, 1065, 1080, 1098, 1122, 1146, 1170, 1199, 1226, 1243, 1258, 1282, 1309, 1327, 1356, 1374, 1401, 1426, 1451, 1477, 1492, 1514, 1533, 1554, 1574, 1595, 1616, 1631, 1649, 1669, 1688, 1711, 1727, 1748, 1767, 1784, 1795, 1809, 1823, 1837, 1852, 1864, 1877, 1888, 1909, 1929, 1943, 1963, 1978, 1998, 2022, 2040, 2065, 2083, 2106, 2124, 2145, 2163, 2181, 2199, 2222}
 	_Code_index_2 = [...]uint8{0, 13, 27, 39, 54, 64}
-	_Code_index_3 = [...]uint16{0, 15, 30, 47, 63, 85, 107, 130, 155, 180, 196, 218, 237, 262, 281, 292, 316, 336, 361, 381, 405, 421, 441, 452, 466, 484, 498, 517, 533, 555, 571, 591, 611, 627, 641, 660, 673, 692, 714, 736, 754, 777, 800, 819, 837, 855, 871, 894, 913, 932, 956, 975, 992, 1012, 1029, 1048, 1065, 1082, 1102, 1117, 1141, 1158, 1180, 1198}
+	_Code_index_3 = [...]uint16{0, 15, 30, 47, 63, 85, 107, 130, 155, 180, 196, 218, 237, 262, 281, 292, 316, 336, 361, 381, 405, 421, 441, 461, 472, 486, 504, 520, 534, 553, 569, 591, 607, 627, 647, 663, 677, 696, 714, 727, 746, 768, 790, 808, 831, 854, 873, 891, 909, 925, 948, 967, 986, 1010, 1029, 1046, 1066, 1083, 1102, 1119, 1136, 1156, 1171, 1195, 1212, 1234, 1252, 1270}
 	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60, 78, 92, 109}
 	_Code_index_5 = [...]uint16{0, 17, 34, 47, 66, 82, 101, 122, 138, 157, 183, 203, 217, 238, 256}
 )
@@ -236,13 +243,13 @@ func (i Code) String() string {
 	case -1 <= i && i <= 0:
 		i -= -1
 		return _Code_name_0[_Code_index_0[i]:_Code_index_0[i+1]]
-	case 100 <= i && i <= 209:
+	case 100 <= i && i <= 212:
 		i -= 100
 		return _Code_name_1[_Code_index_1[i]:_Code_index_1[i+1]]
 	case 300 <= i && i <= 304:
 		i -= 300
 		return _Code_name_2[_Code_index_2[i]:_Code_index_2[i+1]]
-	case 400 <= i && i <= 462:
+	case 400 <= i && i <= 466:
 		i -= 400
 		return _Code_name_3[_Code_index_3[i]:_Code_index_3[i+1]]
 	case 500 <= i && i <= 506:

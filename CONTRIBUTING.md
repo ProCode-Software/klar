@@ -26,7 +26,7 @@ Other smaller goals:
 - Errors for humans. Friendly error messages that people can actually understand, rather than sounding robotic. Display specific context and suggest hints.
 - An extensive standard library so developers have all the functionality they need, first-party and pre-installed. This reduces the reliance on external libraries, which may not have the same quality as the standard library, and also the growing issue of supply chain attacks (that NPM and the JS ecosystem are notorious for)
 - An uncomplicated package manager. And one that is safe: Display packages' details to the user before installing them
-- A decentralized package registry. Developers can upload their packages to platforms their familiar with --- the same place they upload their code. This means less passwords users have to remember --- and less attack vectors for developers to get hacked. No occupied package names or name scalping/squatting.
+- A decentralized package registry. Developers can upload their packages to platforms their familiar with -- the same place they upload their code. This means less passwords users have to remember -- and less attack vectors for developers to get hacked. No occupied package names or name scalping/squatting.
 
 ## Developer Background
 

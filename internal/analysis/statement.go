@@ -12,6 +12,7 @@ import (
 type stmtContext struct {
 	ctx        *Context
 	returns    *[]returnStmt
+	returnHint Type
 	loopLabels map[string]*loopLabel
 	flags      stmtFlags
 	collector  *stmtCollector
@@ -51,6 +52,9 @@ func newStmtContext(ctx *Context, fid FileID, flags stmtFlags) *stmtContext {
 func newChildStmtContext(parentSctx *stmtContext,
 	childCtx *Context, flags stmtFlags,
 ) *stmtContext {
+	if parentSctx == nil {
+		return newStmtContext(childCtx, childCtx.File, flags)
+	}
 	return &stmtContext{
 		ctx:        childCtx,
 		returns:    parentSctx.returns,
@@ -100,7 +104,8 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 		}
 	}
 	if len(normalStmts) < len(stmts) {
-		// Actually check the declarations. Similar to [Checker.Check]
+		// Actually check the declarations. Similar to [Checker.Check]. Variables
+		// are checked before these so functions can forward-reference them.
 		c.checkDirectCycles(sctx.ctx)
 		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
 	}
@@ -166,15 +171,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case *ast.NextStatement:
 		c.checkControlStmt(stmt, stmt.Label, sctx)
 	case *ast.ReturnStatement:
-		pos := stmt.Range
-		expr := newExprFromStmtCtx(sctx, 0)
-		if stmt.Value == nil {
-			expr.Type = NothingType
-		} else {
-			c.checkExpr(stmt.Value, expr)
-			pos = stmt.Value.GetRange()
-		}
-		*sctx.returns = append(*sctx.returns, returnStmt{expr: expr, pos: pos})
+		c.checkReturnStmt(stmt, sctx)
 	default:
 		panic(fmt.Sprintf("unhandled statement node: %T", stmt))
 	}
@@ -184,6 +181,25 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
 		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
 	}
+}
+
+func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) {
+	if sctx == nil || sctx.flags&allowReturn == 0 {
+		err := klarerrs.Node(klarerrs.ErrReturnOutsideFunc, stmt)
+		err.Label = "This 'return' statement is outside of a function"
+		c.fileError(err, sctx.ctx.File)
+	}
+	e := newExprFromStmtCtx(sctx, 0)
+	e.hint = sctx.returnHint
+	var pos ranges.Range
+	if stmt.Value == nil {
+		e.Type = NothingType
+		pos = stmt.Value.GetRange()
+	} else {
+		c.checkExpr(stmt.Value, e)
+		pos = stmt.Value.GetRange()
+	}
+	*sctx.returns = append(*sctx.returns, returnStmt{expr: e, pos: pos})
 }
 
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
@@ -247,10 +263,11 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 	if numPairs := len(stmt.Variables); numPairs > 1 {
 		numVars = numPairs
 	} else if numPairs > 0 {
-		numVars = len(stmt.Variables[0].Keys) + (numPairs - 1)
+		numVars = len(stmt.Variables[0].Keys) + numPairs - 1
 	}
 	numVars = min(numVars, MaxLoopVars) // Will always be in range [0, MaxLoopVars]
 
+	// TODO: Convert iterExpr to a typed value
 	iterExpr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
 	varTypes, err := c.isIterable(iterExpr.Type, numVars)
 	if err != nil {
@@ -291,8 +308,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 			}
 			// TODO: destructure and declare
 			for sym, typ := range c.followDestructure(
-				key, &Expr{Context: sctx.ctx, Type: typ}, // Just for followDestructure
-				stmt.Expression.GetRange(), true,
+				key, typ, sctx.ctx.File, stmt.Expression.GetRange(), true,
 			) {
 				sym := sym.(*ast.Symbol)
 				obj := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
@@ -405,7 +421,9 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 			rhs = c.checkExpr(stmt.Values[i], newExprFromStmtCtx(sctx, 0))
 			rhsRange = stmt.Values[i].GetRange()
 		}
-		for dest, typ := range c.followDestructure(dest, rhs, rhsRange, false) {
+		for dest, typ := range c.followDestructure(
+			dest, rhs.Type, sctx.ctx.File, rhsRange, false,
+		) {
 			lhs := c.checkExpr(dest, newExprFromStmtCtx(sctx, 0))
 			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
 				continue

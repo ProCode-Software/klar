@@ -241,8 +241,13 @@ case "$GOOS $global" in
 *" 0") STD_DIR="$HOME/.local/share/klar/std" ;;
 esac
 
-mkdir -p "$STD_DIR"
-cp -R ./std/* "$STD_DIR"
+if [[ $global -eq 1 ]]; then
+    sudo mkdir -p "$STD_DIR"
+    sudo mv -t "$STD_DIR" ./std/*
+else
+    mkdir -p "$STD_DIR"
+    mv -t "$STD_DIR" ./std/*
+fi
 
 echo -e "
 \e[1;92m🐨 Klar has been successfully installed!\e[m

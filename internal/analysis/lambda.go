@@ -4,12 +4,15 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Lambda struct {
-	Params   []Type
+	Params   []Type // Variadic param isn't a List
 	Variadic bool
 	Return   Type
+	Complete bool
 }
 
 func (*Lambda) Kind() Kind { return KindFunction }
@@ -26,10 +29,52 @@ func (l *Lambda) String() string {
 		b.WriteString(param.String())
 	}
 	b.WriteByte(')')
+	if l.Return != nil && l.Return.Kind() != NothingType {
+		b.WriteString(" -> ")
+		b.WriteString(l.Return.String())
+	}
 	return b.String()
 }
 func (l *Lambda) Underlying() Type { return l }
 
 func (c *Checker) checkFunctionType(expr *ast.FunctionType, ctx *Context) Type {
-	return InvalidType
+	l := &Lambda{Params: make([]Type, 0, len(expr.Parameters.Values))}
+	for i, pair := range expr.Parameters.Values {
+		typ, variadic := c.parseTypeOrVariadic(pair.Value, ctx)
+		for range max(len(pair.Keys), 1) {
+			l.Params = append(l.Params, typ)
+		}
+		if variadic {
+			l.Variadic = true
+			// Ensure this is the last and only paramerer
+			if len(pair.Keys) > 1 || i < len(expr.Parameters.Values)-1 {
+				var node ast.Node
+				var after ranges.Range
+				if len(pair.Keys) > 1 {
+					// `(k1, k2: ...Int, _: Int)`
+					node = pair.Keys[0]
+					after = ranges.Range{
+						pair.Keys[1].Position,
+						expr.Parameters.Values[len(expr.Parameters.Values)-1].Range.End,
+					}
+				} else {
+					// `(k: ...Int, _: Int)`
+					node = pair
+					after = ranges.FromSlice(expr.Parameters.Values[i+1:])
+				}
+				err := klarerrs.Node(klarerrs.ErrVariadicNotLast, node)
+				err.Label = "This should be the last parameter"
+				// Highlight the params after this
+				err.AddHighlight("It should go after these", after)
+				c.fileError(err, ctx.File)
+			}
+		}
+	}
+	if expr.ReturnType != nil {
+		l.Return = c.parseType(expr.ReturnType, ctx)
+	} else {
+		l.Return = NothingType
+	}
+	l.Complete = true
+	return l
 }

@@ -11,6 +11,13 @@ import (
 func (r *Reporter) getFile(name string) *file {
 	file, ok := r.files[name]
 	if !ok {
+		// Lazily load the file if neccessary
+		if load, _ := r.lazyFiles[name]; load != nil {
+			shortPath, tokens := load()
+			r.LoadFile(name, shortPath, tokens)
+			delete(r.lazyFiles, name)
+			return r.files[name]
+		}
 		if name == "" {
 			panic("missing file name in Error")
 		}

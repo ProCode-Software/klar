@@ -1,6 +1,9 @@
 package analysis
 
-import "github.com/ProCode-Software/klar/internal/ast"
+import (
+	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+)
 
 type Interface struct {
 	// Doesn't guarantee compatibility because items can be overidden.
@@ -72,4 +75,27 @@ func (c *Checker) checkIntfMethod(
 	ident ast.Identifier, meth *ast.MethodType, fctx *Context,
 ) *Overload {
 	return nil
+}
+
+func (i *Interface) Index(field string, t *Expr) *klarerrs.Error {
+	if i.DeclaredFields != nil {
+		if typ, ok := i.DeclaredFields[field]; ok {
+			t.Type = typ
+			return nil
+		}
+	}
+	if i.DeclaredMethods != nil {
+		if meth, ok := i.DeclaredMethods[field]; ok {
+			t.Type = meth
+			return nil
+		}
+	}
+	// Extension method
+	if i.methodMap != nil {
+		if meth, ok := i.methodMap[field]; ok {
+			t.Type = meth
+			return nil
+		}
+	}
+	return fieldNotFound(field)
 }

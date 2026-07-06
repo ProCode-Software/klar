@@ -12,7 +12,6 @@ type Struct struct {
 	Initializers []*Object          // Type is [*Overload]
 	MethodSet
 	fmset *FieldMethodSet // Lazy-computed
-	noComputedIndex
 }
 
 var _ SupportsMethods = &Struct{}
@@ -84,16 +83,17 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	}
 }
 
-func (s *Struct) IndexDot(f string) (Type, *klarerrs.Error) {
+func (s *Struct) Index(f string, t *Expr) *klarerrs.Error {
 	// TODO: use fmset to also add inherited fields/methods
 	if obj, ok := s.fieldMap[f]; ok {
-		return obj.typ, nil
+		t.Type = obj.typ
+		return nil
 	}
 	err := fieldNotFound(f)
 	if len(s.fieldMap) == 0 {
 		err.Hint("The struct has no fields.")
 	}
-	return nil, err
+	return err
 }
 
 // makeDefaultInitializers creates the default initializers for the

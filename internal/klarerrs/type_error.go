@@ -31,12 +31,14 @@ const (
 	ErrInvalidListInitReturn  // Initializer for List must return a list (List | List? | Result<List>)
 	ErrMissingReturn          // Function doesn't return Nothing but contains no return statements
 	ErrPrivateAttributes      // @deprecated and @added attributes aren't allowed on private declarations
+	ErrNamedReturnNotSet      // Named returns must be set before use or return
 
 	// Type expression ====
 
 	ErrNotAType        // Variable or function used in type context
 	ErrTypeAsValue     // Type used as a value
 	ErrInvalidRestType // Rest type used outside of function parameter
+	ErrNotANamespace   // Left-hand side of type index must be a namespace
 
 	// Statement ====
 
@@ -53,6 +55,7 @@ const (
 	ErrUntypedStruct    // Can't determine type of struct from shorthand (`.(...)`)
 	ErrUntypedEnum      // Can't determine type of enum from shorthand (`.key`)
 	ErrUntypedEmptyList // Can't infer type of empty list
+	ErrUntypedEmptyMap  // Can't infer type of empty map
 	ErrUntypedNil       // 'nil' requires a type (explicit type at assignment)
 
 	// Expression ====
@@ -84,6 +87,7 @@ const (
 	ErrNonGenericType        // Generics passed to type that doesn't accept any
 	ErrInvalidGenericCount   // Too few/many generic parameters passed
 	ErrIndexEnumMethod       // An enum method is only accessible on individual items
+	ErrNotOptionalType       // 'nil' is only valid for optional types
 )
 
 func (e *Error) handleTypeError() string {
@@ -241,5 +245,15 @@ func (e *Error) handleTypeError() string {
 		return "Type " + e.Name + " isn't a function and can't be called"
 	case ErrIndexEnumMethod:
 		return "Method " + Quote(e.Name) + " can only be accessed on each of the enum's items, not the enum itself"
+	case ErrNamedReturnNotSet:
+		var op string
+		if e.StringParam("op") == "return" { // return | use
+			op = "the function returns"
+		} else {
+			op = "it can be used"
+		}
+		return "Named return variable " + Quote(e.Name) + " must be set before " + op
+	case ErrNotOptionalType:
+		return "'none' can only be used as a value of an optional type"
 	}
 }

@@ -87,29 +87,47 @@ func (t Tuple) String() string {
 	return b.String()
 }
 
+func (tup Tuple) IndexComputed(index Type, t *Expr) *klarerrs.Error {
+	if index.Kind() != IntType {
+		return indexTypeMismatchError(
+			klarerrs.ErrNonNumericIndex,
+			KindTuple, index, "Can't index a tuple using type "+index.String(),
+		)
+	}
+	// TODO: Constant analysis to get the actual item at the index. For now,
+	// indexing a tuple returns a union of the tuple's elements.
+	if len(tup) == 0 {
+		t.Type = InvalidType
+	} else {
+		t.Type = &Union{Types: tup}
+	}
+	return nil
+}
+
 type List struct{ Elem Type }
 
 func (l *List) Kind() Kind     { return KindList }
 func (l *List) String() string { return "[" + l.Elem.String() + "]" }
 
-func (l *List) IndexDot(f string) (Type, *klarerrs.Error) {
-	t, err := indexBuiltin("List", f)
+func (l *List) Index(f string, t *Expr) *klarerrs.Error {
+	err := indexBuiltin("List", f, t)
 	// Add a hint to use `list += [item]` instead of `list.append(item)`
-	if f == "append" && err != nil {
+	if err != nil && f == "append" {
 		err.Hint("Use += to append to a list.")
 	}
-	return t, err
+	return err
 }
 
-func (l *List) Index(i Type) (Type, *klarerrs.Error) {
+func (l *List) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 	if i.Kind() != IntType {
-		return nil, indexTypeMismatchError(
+		return indexTypeMismatchError(
 			klarerrs.ErrNonNumericIndex,
 			KindList, i, "Can't index a list using type "+i.String(),
 		)
 	}
+	t.Type = l.Elem
 	// TODO: constant analysis (negative index, out of range index)
-	return l.Elem, nil
+	return nil
 }
 
 type Map struct{ Key, Value Type }
@@ -119,21 +137,22 @@ func (m *Map) String() string {
 	return fmt.Sprintf("#{%s: %s}", m.Key.String(), m.Value.String())
 }
 
-func (m *Map) Index(i Type) (Type, *klarerrs.Error) {
+func (m *Map) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 	if Compatible(i, m.Key) {
-		return &Optional{m.Value}, nil
+		t.Type = &Optional{m.Value}
+		return nil
 	}
 	err := indexTypeMismatchError(
 		klarerrs.ErrInvalidMapIndex, m.Key, i, "This index has type "+quote(i.String()),
 	)
 	err.Name = m.String()
-	return nil, err
+	return err
 }
 
-func (m *Map) IndexDot(i string) (Type, *klarerrs.Error) {
-	typ, builtinErr := indexBuiltin("Map", i)
+func (m *Map) Index(i string, t *Expr) *klarerrs.Error {
+	builtinErr := indexBuiltin("Map", i, t)
 	if builtinErr == nil {
-		return typ, nil
+		return nil
 	}
 	// For maps, `m.key` is the same as `m['key']`. Builtin fields have
 	// precedence over map keys, so this only runs for unknown fields.
@@ -142,11 +161,12 @@ func (m *Map) IndexDot(i string) (Type, *klarerrs.Error) {
 	// a builtin field (such as `lenth`) and if the Map's key type is String,
 	// it will silently succeed. Or warn if the field is similar to a builtin?
 	if m.Key.Kind() == StringType {
-		return &Optional{m.Value}, nil
+		t.Type = &Optional{m.Value}
+		return nil
 	}
 	// If it isn't a String key, always look for a field on the Map
 	// builtin, so return the error from that
-	return nil, builtinErr
+	return builtinErr
 }
 
 type Optional struct{ Elem Type }
@@ -177,7 +197,7 @@ func (t *Task) String() string {
 	return "Task<" + t.Result.String() + ">"
 }
 
-func (t *Task) IndexDot(f string) (Type, *klarerrs.Error) { return indexBuiltin("Task", f) }
+func (*Task) Index(f string, e *Expr) *klarerrs.Error { return indexBuiltin("Task", f, e) }
 
 // Loading
 // ==========

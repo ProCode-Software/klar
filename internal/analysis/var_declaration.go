@@ -49,11 +49,12 @@ type VariableKind uint8
 
 const (
 	_              VariableKind = iota
-	TopLevelVar                 // Module-level variable
 	LocalVar                    // Locally declared variable
+	TopLevelVar                 // Module-level variable
 	SelfVar                     // self
 	FuncParamVar                // Function parameter
 	StructFieldVar              // Struct field
+	PipelineVar                 // value
 )
 
 type Constant struct {
@@ -78,14 +79,17 @@ func (c *Checker) checkVarDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExprWithHint(o.LookupContext(), vinfo.expType, infer))
+		e = c.checkExpr(val, NewExprWithHint(o.LookupContext(), vinfo.expType, 0))
+		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
 		*vinfo.rhsExpr = e
 	}
 	// TODO: Go calls check.initVar, which checks if the expression is untyped
 	// nil, sets untyped values to typed types, and calls check.assignment.
 
 	// Destructure the RHS
-	for dest, typ := range c.followDestructure(vinfo.lhs, e, val.GetRange(), true) {
+	for dest, typ := range c.followDestructure(
+		vinfo.lhs, e.Type, e.Context.File, val.GetRange(), true,
+	) {
 		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
 		// the types of other variables using the same rhsExpr.
 		if sym := dest.(*ast.Symbol); sym.Identifier == o.name {
@@ -110,8 +114,9 @@ func (c *Checker) checkConstDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e := NewExprWithHint(o.LookupContext(), vinfo.expType, constExpr|infer)
+		e := NewExprWithHint(o.LookupContext(), vinfo.expType, constExpr)
 		c.checkExpr(val, e)
+		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
 		*vinfo.rhsExpr = e
 	}
 

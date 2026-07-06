@@ -43,7 +43,7 @@ func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 	return err
 }
 
-func kindOf(typ Type) string {
+func kindOf(typ ObjectKind) string {
 	// TODO: finish implementing
 	switch typ := typ.(type) {
 	case *Variable:
@@ -57,6 +57,8 @@ func kindOf(typ Type) string {
 			return "type"
 		}
 		return typ.Kind().String()
+	case *Namespace:
+		return "namespace"
 	case nil:
 		return ""
 	default:

@@ -18,13 +18,9 @@ import (
 // errors would have already been reported by [Checker.declareVars]). If
 // nameOnly == true, all yielded nodes are [*ast.Symbol].
 func (c *Checker) followDestructure(
-	dest ast.Assignable, e *Expr, r ranges.Range, nameOnly bool,
+	lhs ast.Assignable, rhs Type, fid FileID, r ranges.Range, nameOnly bool,
 ) iter.Seq2[ast.Assignable, Type] {
-	dc := &destructureContext{
-		fid:      e.Context.File,
-		rhsRange: r,
-		nameOnly: nameOnly,
-	}
+	dc := &destructureContext{fid: fid, rhsRange: r, nameOnly: nameOnly}
 	return func(yield func(ast.Assignable, Type) bool) {
 		dc.walk = func(dest ast.Expression, typ Type) bool {
 			// Ensure the expression can actually be in a destructure pattern.
@@ -67,7 +63,7 @@ func (c *Checker) followDestructure(
 				return yield(dest, typ)
 			}
 		}
-		dc.walk(dest, e.Type)
+		dc.walk(lhs, rhs)
 	}
 }
 
@@ -77,6 +73,9 @@ type destructureContext struct {
 	rhsRange ranges.Range
 	nameOnly bool // Reports syntax errors if false
 }
+
+// TODO: In List and Tuple destructure, ensure there is only 1 rest. Also properly
+// check for the next destructure patterns after the rest.
 
 func (c *Checker) walkListDestructure(dest *ast.ListLiteral,
 	t Type, dc *destructureContext,

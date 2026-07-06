@@ -285,7 +285,7 @@ type PipelineExpression struct {
 type ObjectPipeline struct {
 	BaseNode
 	Object Expression
-	Steps  []Node // Assignment or method call
+	Steps  []Node // [CallExpression] or [AssignmentStatement]
 }
 
 // A ForExpression is a [ForStatement] used as an expression.
@@ -721,7 +721,7 @@ type IdentifierPair struct {
 
 type AssignableTypePair struct {
 	BaseNode
-	Keys  []Assignable
-	Type  Type
-	Value Expression
+	Keys  []Assignable // Always at least 1
+	Type  Type         // Can be nil
+	Value Expression   // Can be nil
 }

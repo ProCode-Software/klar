@@ -1,4 +1,5 @@
 // import klar.js.{Object}
+// import klar.collections
 
 type #K
 type #V
