@@ -74,6 +74,7 @@ const (
 	ErrDotIndexRequired      // Dot index required to index this type instead of computed String index
 	ErrNegateNonNumeric      // Negate '-' operator only supported on Int and Float
 	ErrNonBoolLogicalOperand // Operand to '||', '&&', and '!' operator must be Bool
+	ErrInvalidOperation      // Type doesn't support an arithmetic operation
 	ErrInvalidArithType      // Operand for arithmetic operation must be numeric
 	ErrIntTimesString        // Should be String * Int, in that exact order
 	ErrInvalidStringMult     // String must be multiplied by Int
@@ -88,6 +89,7 @@ const (
 	ErrInvalidGenericCount   // Too few/many generic parameters passed
 	ErrIndexEnumMethod       // An enum method is only accessible on individual items
 	ErrNotOptionalType       // 'nil' is only valid for optional types
+	ErrInvalidCollectionType // Items in a list or map must have the same type
 )
 
 func (e *Error) handleTypeError() string {
@@ -255,5 +257,9 @@ func (e *Error) handleTypeError() string {
 		return "Named return variable " + Quote(e.Name) + " must be set before " + op
 	case ErrNotOptionalType:
 		return "'none' can only be used as a value of an optional type"
+	case ErrInvalidCollectionType:
+		return "All of the items in a " + e.StringParam("kind") + " must have the same type"
+	case ErrIntTimesString:
+		return "In string multiplication, the String operand must be on the left"
 	}
 }

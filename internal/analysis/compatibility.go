@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
 	"slices"
@@ -16,7 +17,7 @@ func Compatible(a, b Type) bool {
 	aKind, bKind := a.Kind(), b.Kind()
 	switch a := Underlying(a).(type) {
 	case Untyped:
-		if a == Untyped(IntType) && (b == IntType || b == FloatType) {
+		if a == Untyped(IntType) && (bKind == IntType || bKind == FloatType) {
 			return true
 		}
 		// Untyped nil, empty list, map, etc.
@@ -161,7 +162,7 @@ func isTypeName(t Type) bool {
 // Examples:
 //
 //	CommonType(UntypedInt, Int) -> Int
-//	CommonType(interface A, type that implements A) -> a
+//	CommonType(interface A, type that implements A) -> A
 func CommonType(a, b Type) Type {
 	compatAB := Compatible(a, b)
 	compatBA := Compatible(b, a)
@@ -179,5 +180,29 @@ func CommonType(a, b Type) Type {
 			"CommonType(a, b): unhandled: Compatible(a, b) = %t, Compatible(b, a) = %t",
 			compatAB, compatBA,
 		))
+	}
+}
+
+// commonTypeOptional is [CommonType], but accepts nil arguments. If
+// any argument is nil, the non-nil argument is returned. If both are nil,
+// commonTypeOptional panics. commonTypeOptional returns nil if
+// [CommonType](a, b) returns nil.
+func commonTypeOptional(a, b Type) Type {
+	if a == nil || b == nil {
+		nonNil := cmp.Or(a, b)
+		if nonNil == nil {
+			panic("commonTypeOptional(nil, nil)")
+		}
+		return nonNil
+	}
+	return CommonType(a, b)
+}
+
+func IsUntyped(t Type) bool {
+	switch Underlying(t).(type) {
+	case Untyped, *UntypedInit:
+		return true
+	default:
+		return false
 	}
 }

@@ -337,6 +337,8 @@ var (
 // following this are unreachable.
 type NoReturn struct{ Type }
 
+func (nr *NoReturn) IsTODO() bool { return nr.Type == nil }
+
 func (u *NoReturn) Underlying() Type { return cmp.Or[Type](u.Type, u /* is a TODO */) }
 
 // Untyped can only be one of:

@@ -28,6 +28,23 @@ func (o Operator) Len() uint32 { return uint32(len(o.Kind.String())) }
 
 func (o Operator) Range() ranges.Range { return ranges.Range{o.Position, o.End()} }
 
+// If o is a compound assignment operator (e.g. '+=', '*='), returns the uncompound
+// operator ('+' and '*' respectively).
+func (o Operator) Uncompound() Operator {
+	uncompounded, ok := map[lexer.TokenType]lexer.TokenType{
+		lexer.PlusEqual:     lexer.Plus,
+		lexer.MinusEqual:    lexer.Minus,
+		lexer.AsteriskEqual: lexer.Asterisk,
+		lexer.SlashEqual:    lexer.SlashEqual,
+		lexer.PercentEqual:  lexer.Percent,
+		lexer.CaretEqual:    lexer.Caret,
+	}[o.Kind]
+	if ok {
+		o.Kind = uncompounded
+	}
+	return o
+}
+
 // An Identifier represents a name in the source code.
 type Identifier struct {
 	Name     string

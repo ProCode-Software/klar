@@ -79,7 +79,7 @@ func (c *Checker) checkVarDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExprWithHint(o.LookupContext(), vinfo.expType, 0))
+		e = c.checkExpr(val, NewExpr(o.LookupContext()).withHint(vinfo.expType))
 		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
 		*vinfo.rhsExpr = e
 	}
@@ -114,8 +114,7 @@ func (c *Checker) checkConstDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		e = *vinfo.rhsExpr
 	} else {
-		e := NewExprWithHint(o.LookupContext(), vinfo.expType, constExpr)
-		c.checkExpr(val, e)
+		e = c.checkExpr(val, NewExpr(o.LookupContext(), constExpr).withHint(vinfo.expType))
 		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
 		*vinfo.rhsExpr = e
 	}

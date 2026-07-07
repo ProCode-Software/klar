@@ -225,8 +225,16 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 				}
 				// TODO: Should it be delayed?
 				// TODO: Should a default value be allowed with a generic param?
-				t := NewExprWithHint(ctx, typ, constExpr)
+				t := NewExpr(ctx, constExpr)
 				c.checkExpr(param.Default, t)
+				if !Compatible(t.Type, typ) {
+					err := typeMismatch(typ, t.Type, param.Default.GetRange())
+					err.Node = param.Default
+					err.AddHighlight(
+						"The type of the parameter is "+quoteAka(typ),
+						param.Type.GetRange(),
+					)
+				}
 			}
 		}
 	}
@@ -423,7 +431,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	// - The function is an initializer (TODO: warn about a missing return
 	// if 'self' isn't mutated)
 	if len(*sctx.returns) == 0 && ov.Return.Kind() != NothingType &&
-		len(ov.NamedReturns) == 0 && sctx.flags&unreachable == 0 &&
+		len(ov.NamedReturns) == 0 && sctx.flags&unreachableStmt == 0 &&
 		ov.info.funcKind != initFunc {
 		err := klarerrs.Position(klarerrs.ErrMissingReturn, stmt.Body.Range.End)
 		err.Label = "No 'return' statements in the body"

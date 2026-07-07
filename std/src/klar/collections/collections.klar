@@ -1,0 +1,5 @@
+public type SortOrder {
+    .increasing // A < B
+    .equal // A == B
+    .decreasing // A > B
+}

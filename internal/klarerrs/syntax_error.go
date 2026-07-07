@@ -136,7 +136,7 @@ const (
 	ErrRedeclared             // Can't redeclare variable or function
 	ErrTopLevel               // Multiple files in a module have top-level statements
 	ErrMethodInOtherScope     // Method must be in the same scope as struct definition
-	ErrProvenUnreachable      // Unreachable statement after return/break/next
+	ErrAlwaysUnreachable      // Unreachable statement after return/stop/next/crashout
 	ErrUnusedValue            // Unused literal expression statement
 	ErrReturnOutsideFunc      // Return statement not allowed outside of function
 	ErrImportShadow           // Import shadows top-level object
@@ -337,8 +337,9 @@ func (e *Error) handleSyntaxError() string {
 		return "A object pipeline step must be an assignment or method call"
 	case ErrInvalidGenericType:
 		return "Only enums can have generic parameters"
-	case ErrProvenUnreachable:
-		return fmt.Sprintf("Unreachable statement after '%s'", e.Params["type"])
+	case ErrAlwaysUnreachable:
+		kind := e.StringParam("kind")
+		return "Everything after " + kind + " is always unreachable"
 	case ErrReservedKeyword:
 		return fmt.Sprintf(
 			"Can't use %s as an identifier because it is a reserved keyword",

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
@@ -34,8 +35,8 @@ const (
 	allowReturn   stmtFlags = 1 << iota // Function body
 	allowNextStop                       // Allow 'next' and 'stop' (for/while/when)
 	finalWhenCase
-	unreachable
-	braceless // Body of a braceless 'when' case
+	unreachableStmt // After an expr/stmt that doesn't return (return/stop/next/crashout)
+	braceless       // Body of a braceless 'when' case
 	allowForwardDecl
 )
 
@@ -110,9 +111,25 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
 	}
 
+	var unreachableReported bool
 	// Check everything else in the block, including variable declarations.
-	for _, stmt := range normalStmts {
+	for i, stmt := range normalStmts {
 		c.checkStmt(stmt, sctx)
+
+		// Ensure there is no code after a return (always unreachable). We will
+		// continue typechecking those unreachable statements, but don't report
+		// another error. Never reported after TODO calls.
+		if sctx.flags&unreachableStmt != 0 && !unreachableReported && i < len(normalStmts)-1 {
+			err := klarerrs.Slice(klarerrs.ErrAlwaysUnreachable, normalStmts[i:])
+			err.SetParam("kind", terminatingStmtKind(stmt))
+			if len(normalStmts[i:]) == 1 {
+				err.Label = "This statement is unreachable"
+			} else {
+				err.Label = "These statements are unreachable"
+			}
+			c.fileError(err, sctx.ctx.File)
+			unreachableReported = true
+		}
 	}
 }
 
@@ -123,6 +140,22 @@ func canForwardDeclareInFunc(stmt ast.Statement) bool {
 	default:
 		return false
 	}
+}
+
+func terminatingStmtKind(stmt ast.Statement) string {
+	switch stmt := stmt.(type) {
+	case *ast.ReturnStatement:
+		return "a 'return' statement"
+	case *ast.StopStatement:
+		return "a 'stop' statement"
+	case *ast.NextStatement:
+		return "a 'next' statement"
+	case *ast.ExpressionStatement:
+		if sym, ok := stmt.Expression.(*ast.Symbol); ok && sym.Identifier == "crashout" {
+			return "a 'crashout()' call"
+		}
+	}
+	return "an expression that crashouts"
 }
 
 func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
@@ -199,6 +232,7 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 		c.checkExpr(stmt.Value, e)
 		pos = stmt.Value.GetRange()
 	}
+	sctx.flags |= unreachableStmt
 	*sctx.returns = append(*sctx.returns, returnStmt{expr: e, pos: pos})
 }
 
@@ -234,6 +268,7 @@ func (c *Checker) checkControlStmt(stmt ast.Statement,
 		c.fileError(klarerrs.Node(klarerrs.ErrMisplacedControlStmt, stmt), fid)
 		return
 	}
+	sctx.flags |= unreachableStmt
 	if label != nil {
 		labelDef, ok := sctx.loopLabels[label.Name]
 		if !ok {
@@ -410,19 +445,20 @@ func (c *Checker) checkAssignment(e *Expr) {
 
 func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtContext) {
 	var singleRHS *Expr
-	var singleRHSRange ranges.Range
+	var singleRHSNode ast.Expression
 	if stmt.IsSingleRHS() {
 		singleRHS = c.checkExpr(stmt.Values[0], newExprFromStmtCtx(sctx, 0))
-		singleRHSRange = stmt.Values[0].GetRange()
+		singleRHSNode = stmt.Values[0]
 	}
+	uc := stmt.Operator.Uncompound()
 	for i, dest := range stmt.Assignee {
-		rhs, rhsRange := singleRHS, singleRHSRange
+		rhs, rhsNode := singleRHS, singleRHSNode
 		if singleRHS == nil {
 			rhs = c.checkExpr(stmt.Values[i], newExprFromStmtCtx(sctx, 0))
-			rhsRange = stmt.Values[i].GetRange()
+			rhsNode = stmt.Values[i]
 		}
 		for dest, typ := range c.followDestructure(
-			dest, rhs.Type, sctx.ctx.File, rhsRange, false,
+			dest, rhs.Type, sctx.ctx.File, rhsNode.GetRange(), false,
 		) {
 			lhs := c.checkExpr(dest, newExprFromStmtCtx(sctx, 0))
 			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
@@ -442,7 +478,7 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 				// Ensure it isn't readonly
 			}
 			if !Compatible(typ, lhs.Type) {
-				err := typeMismatch(lhs.Type, typ, rhsRange)
+				err := typeMismatch(lhs.Type, typ, rhsNode.GetRange())
 				err.AddHighlight(
 					"The assignee has type "+quote(lhs.Type.String()),
 					dest.GetRange(),
@@ -450,6 +486,13 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 				err.Label = strings.Replace(err.Label, "This", "This value", 1)
 				c.fileError(err, sctx.ctx.File)
 				continue
+			}
+			// For compound assign operators (like '+='), check if `LHS + RHS` is supported
+			if uc.Kind != lexer.Equal {
+				c.checkBinaryOperation(
+					uc, lhs.Type, typ,
+					dest, rhsNode, nil, sctx.ctx.File,
+				)
 			}
 		}
 	}

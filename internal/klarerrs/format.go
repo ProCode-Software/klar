@@ -112,6 +112,13 @@ func FormatThis(n int) string {
 	return "these"
 }
 
+func FormatThisUpper(n int) string {
+	if n == 1 {
+		return "This"
+	}
+	return "These"
+}
+
 func FormatThisWord(n int, word string) string {
 	if n == 1 {
 		return "this " + word

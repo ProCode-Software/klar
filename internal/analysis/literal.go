@@ -8,12 +8,16 @@ import (
 func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
 	tup := make(Tuple, len(expr.Values))
 	for i, expr := range expr.Values {
-		tup[i] = c.checkExpr(expr, newChildExpr(t, 0)).Type
+		tup[i] = c.checkExprFrom(expr, t).Type
 	}
 	t.Type = tup
 }
 
 func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
+	if len(expr.Items) == 0 { // Empty list
+		t.Type = Untyped(KindList)
+		return
+	}
 	// Use t's type hint if available
 	var hint Type
 	if t.hint != nil && t.hint.Kind() == KindList {
@@ -21,35 +25,19 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	}
 
 	list := &List{hint}
-	for _, expr := range expr.Items {
-		e := c.checkExpr(expr, newChildExprWithHint(t, list.Elem, 0))
-		list.Elem = e.Type
-	}
-
-	if list.Elem == nil {
-		t.Type = Untyped(KindList)
-		return
-		/* // No hint and no list items: unknown list type
-		err := klarerrs.Node(klarerrs.ErrUntypedEmptyList, expr)
-		err.Label = "This list is empty and its type can't be inferred"
-
-		// Suggest hints
-		err.Hint("If you're declaring a variable, add a type annotation before ':='.")
-
-		diff2 := klarerrs.NewDiff(
-			c.module.ResolveFilePath(t.Context.File),
-			klarerrs.AddedString{Position: expr.Range.Start, String: "[T]("},
-			klarerrs.AddedString{Position: expr.Range.End, String: ")"},
-		)
-		err.HintWithDiff(
-			"Otherwise, initialize an empty list with a specific type. (Replace 'T' with the intended item type)",
-			diff2,
-		)
-
-		c.fileError(err, t.Context.File)
-		list.Elem = InvalidType */
-	}
 	t.Type = list
+	for i, item := range expr.Items {
+		e := c.checkExprFrom(item, t)
+		prev := list.Elem
+		if stop := c.inferLiteral(e, &list.Elem, item, hint, func(err *klarerrs.Error) {
+			err.SetParam("kind", "list")
+			err.AddHighlight(
+				"The previous item has type "+quoteAka(prev), expr.Items[i-1].GetRange(),
+			)
+		}); stop {
+			return
+		}
+	}
 }
 
 func (c *Checker) checkNilLiteral(expr *ast.NilLiteral, t *Expr) {
@@ -83,28 +71,99 @@ func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
 		}
 		// TODO: Check that each expression can be cast to String
 		// And disallow certain expression nodes (using an exprMode)
-		e := c.checkExpr(interp.Expression, newChildExpr(t, 0))
+		e := c.checkExprFrom(interp.Expression, t)
 		_ = e
 	}
 }
 
 func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
-	mp := &Map{}
-	if t.hint != nil && t.hint.Kind() == KindMap {
-		hintMap := Underlying(t.hint).(*Map)
-		mp.Key, mp.Value = hintMap.Key, hintMap.Value
-	}
+	// Untyped empty map
 	if len(expr.Entries) == 0 {
 		t.Type = Untyped(KindMap)
 		return
 	}
-	for _, entry := range expr.Entries {
-		mp.Value = c.checkExpr(entry.Value, newChildExprWithHint(t, mp.Value, 0)).Type
-		for _, key := range entry.Keys {
-			mp.Key = c.checkExpr(key, newChildExprWithHint(t, mp.Key, 0)).Type
+
+	mp := &Map{}
+	t.Type = mp
+	// Use map hint if available
+	var hasHint bool
+	if t.hint != nil && t.hint.Kind() == KindMap {
+		hintMap := Underlying(t.hint).(*Map)
+		mp.Key, mp.Value = hintMap.Key, hintMap.Value
+		hasHint = true
+	}
+
+	for i, entry := range expr.Entries {
+		// Value
+		var valHint Type
+		if hasHint {
+			valHint = mp.Key
+		}
+		v := c.checkExprFrom(entry.Value, t)
+		prev := mp.Value
+		if stop := c.inferLiteral(v, &mp.Value, entry.Value, valHint, func(err *klarerrs.Error) {
+			err.SetParam("kind", "map")
+			err.AddHighlight(
+				"The previous value has type "+quoteAka(prev),
+				expr.Entries[i-1].Value.GetRange(),
+			)
+		}); stop {
+			return
+		}
+
+		// Keys
+		var keyHint Type
+		if hasHint {
+			keyHint = mp.Key
+		}
+		for j, key := range entry.Keys {
+			k := c.checkExprFrom(key, t)
+			prev := mp.Key
+			if stop := c.inferLiteral(k, &mp.Key, key, keyHint, func(err *klarerrs.Error) {
+				err.SetParam("kind", "map")
+				var prevKey ast.Node
+				if j > 0 {
+					prevKey = entry.Keys[j-1]
+				} else {
+					prevEntry := expr.Entries[i-1]
+					prevKey = prevEntry.Keys[len(prevEntry.Keys)-1]
+				}
+				err.AddHighlight(
+					"The previous key has type "+quoteAka(prev), prevKey.GetRange(),
+				)
+			}); stop {
+				return
+			}
 		}
 	}
-	t.Type = mp
+}
+
+func (c *Checker) inferLiteral(e *Expr, inferred *Type,
+	node ast.Node, hint Type, onError func(*klarerrs.Error),
+) (stop bool) {
+	if hint != nil && !Compatible(e.Type, *inferred) {
+		err := typeMismatch(*inferred, e.Type, node.GetRange())
+		err.Node = node
+		if onError != nil {
+			onError(err)
+		}
+		c.fileError(err, e.FileID())
+	} else if hint == nil {
+		prev := *inferred
+		if *inferred = commonTypeOptional(*inferred, e.Type); *inferred == nil {
+			// List items must have the same type
+			err := typeMismatch(prev, e.Type, node.GetRange())
+			err.Code = klarerrs.ErrInvalidCollectionType
+			err.Node = node
+			if onError != nil {
+				onError(err)
+			}
+			c.fileError(err, e.FileID())
+			*inferred = InvalidType
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {

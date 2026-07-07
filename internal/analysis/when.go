@@ -9,7 +9,7 @@ import (
 func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 	subjects := make([]*Expr, len(expr.Subjects))
 	for i, subj := range expr.Subjects {
-		subjects[i] = c.checkExpr(subj, newChildExpr(t, 0)) // TODO: Convert to typed
+		subjects[i] = c.checkExprFrom(subj, t) // TODO: Convert to typed
 	}
 	valHint := t.hint
 	for i, cs := range expr.Cases {

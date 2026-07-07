@@ -23,7 +23,7 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
         cmd := parser.parseCommand()
         when cmd {
             SyntaxError -> {
-                errors += [cmd, Command(2)]
+                errors += [cmd]
                 next :loop
             }
         }
