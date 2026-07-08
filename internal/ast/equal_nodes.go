@@ -321,10 +321,7 @@ func (a *FloatLiteral) Equal(b2 Node) bool {
 	if a.Source != b.Source {
 		return false
 	}
-	if a.Exponent != b.Exponent {
-		return false
-	}
-	if a.Separator != b.Separator {
+	if a.Flags != b.Flags {
 		return false
 	}
 	return true
@@ -582,7 +579,7 @@ func (a *IntegerLiteral) Equal(b2 Node) bool {
 	if a.Source != b.Source {
 		return false
 	}
-	if a.Separator != b.Separator {
+	if a.Flags != b.Flags {
 		return false
 	}
 	return true

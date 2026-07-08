@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"unicode"
 )
 
@@ -205,7 +204,6 @@ loop:
 	var flags []byte
 	for r, b := range t.Tokenize {
 		if !IsASCIILetter(r) {
-			fmt.Println("2.5 =", t.Pos)
 			break
 		}
 		c := byte(r)

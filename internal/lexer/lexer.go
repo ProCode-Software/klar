@@ -273,14 +273,14 @@ func (l *Lexer) CurrRune() (rune, error) {
 }
 
 func (l *Lexer) PeekRune() (rune, error) {
-	b, err := l.Reader.Peek(8)
-	if err != nil {
+	next, err := l.Reader.Peek(8)
+	if handleReadError(err) && len(next) < 2 {
 		return 0, err
 	}
-	_, size := utf8.DecodeRune(b)
-	if len(b) <= size {
+	_, n := utf8.DecodeRune(next)
+	if len(next[n:]) < 1 {
 		return 0, io.EOF
 	}
-	r2, _ := utf8.DecodeRune(b[size:])
-	return r2, nil
+	r, _ := utf8.DecodeRune(next[n:])
+	return r, nil
 }

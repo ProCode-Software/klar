@@ -72,10 +72,10 @@ type (
 
 type IntegerLiteral struct {
 	BaseNode
-	Format    lexer.IntFormat
-	Value     int64
-	Source    string
-	Separator bool
+	Format lexer.IntFormat
+	Value  int64
+	Source string
+	Flags  lexer.NumberFlags
 }
 
 type BooleanLiteral struct {
@@ -87,10 +87,9 @@ type NilLiteral struct{ BaseNode }
 
 type FloatLiteral struct {
 	BaseNode
-	Value     float64
-	Source    string
-	Exponent  bool
-	Separator bool
+	Value  float64
+	Source string
+	Flags  lexer.NumberFlags // [lexer.IsFloat] is always on
 }
 
 type RegexLiteral struct {
