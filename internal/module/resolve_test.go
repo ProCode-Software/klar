@@ -1,53 +1,35 @@
 package module
 
 import (
-	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 )
 
-func tryGetwd(t *testing.T) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get current working directory: %v", err)
-	}
-	cwd += sep
-	return cwd
-}
-
 func TestPackageRoot(t *testing.T) {
-	cwd := tryGetwd(t)
 	tests := []struct{ input, wantPkg, wantProj string }{
 		{"/foo/bar/pkg", "", "/foo/bar"},
 		{"/path/to/dir/src/x", "/path/to/dir", "/path/to/dir"},
 		{"/alfa/bravo/", "/alfa/bravo", "/alfa/bravo"},
-		{"ax/bx/c/src", cwd + "ax/bx/c", cwd + "ax/bx/c"},
+		{"ax/bx/c/src", "ax/bx/c", "ax/bx/c"},
 		{
 			input:    "one/two/three/pkg/four/src/five.klar",
-			wantPkg:  cwd + "one/two/three/pkg/four",
-			wantProj: cwd + "one/two/three",
+			wantPkg:  "one/two/three/pkg/four",
+			wantProj: "one/two/three",
 		},
-		{"uno/dos/pkg/tres/", cwd + "uno/dos/pkg/tres", cwd + "uno/dos"},
+		{"uno/dos/pkg/tres/", "uno/dos/pkg/tres", "uno/dos"},
 		{"/", "/", "/"},
 		// Invalid projects. Not verified
 		{"/a/b/c/d/e/pkg/f/pkg/g", "/a/b/c/d/e/pkg/f/pkg/g", "/a/b/c/d/e/pkg/f"},
-		{"q/w/e/r/pkg/t/y/src/u", cwd + "q/w/e/r/pkg/t/y", cwd + "q/w/e/r/pkg/t/y"},
+		{"q/w/e/r/pkg/t/y/src/u", "q/w/e/r/pkg/t/y", "q/w/e/r/pkg/t/y"},
 	}
 	for _, tc := range tests {
-		short := func(p string) string {
-			if strings.HasPrefix(p, cwd) {
-				return "$CWD/" + p[len(cwd):]
-			}
-			return p
-		}
+		tc.wantPkg, tc.wantProj = filepath.Clean(tc.wantPkg), filepath.Clean(tc.wantProj)
 		t.Run("", func(t *testing.T) {
 			pkg, proj := PackageRoot(tc.input)
-			if pkg != tc.wantPkg || proj != tc.wantProj {
+			if filepath.Clean(pkg) != tc.wantPkg || filepath.Clean(proj) != tc.wantProj {
 				t.Errorf(
 					"PackageRoot(%#v) = (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
-					short(tc.input),
-					short(pkg), short(proj),
-					short(tc.wantPkg), short(tc.wantProj),
+					tc.input, pkg, proj, tc.wantPkg, tc.wantProj,
 				)
 			}
 		})

@@ -15,7 +15,8 @@ func splitPath(p string) (string, string) {
 }
 
 // PackageRoot returns the package root and project root
-// for a given path, following the Klar Project Structure Spec.
+// for a given path, following the Klar Project Structure Spec. For accurate
+// results, p should be an absolute path.
 func PackageRoot(p string) (pkg, project string) {
 	// Check if a manifest is located in dir
 	if info, err := os.Stat(p); err == nil && !info.IsDir() {
