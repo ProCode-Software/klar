@@ -12,9 +12,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// printInline prints a line with inline diff underlines. Inline diffs are where diff
+// printInlineDiffLine prints a line with inline diff underlines. Inline diffs are where diff
 // ranges, both additions and deletions, are displayed alongside the original source.
-func (r *Reporter) printInline(s *diffState, dl *diffLine) (lastLine uint32) {
+func (r *Reporter) printInlineDiffLine(s *diffState, dl *diffLine) (lastLine uint32) {
 	// Sort by column position, then deletions first
 	slices.SortFunc(dl.ranges, sortDiffEdits)
 	var (
@@ -104,11 +104,6 @@ func (r *Reporter) makeMergedTokens(
 	}
 
 	for _, tok := range orig {
-		// Insert additions starting before the current column
-		for currEdit < len(edits) && edits[currEdit].Start().Col < tok.Position.Col {
-			addAddition(edits[currEdit])
-		}
-
 		// Check if this token was deleted
 		isDeleted := slices.ContainsFunc(edits, func(edit klarerrs.DiffEdit) bool {
 			del, ok := edit.(klarerrs.DeletedRange)
@@ -116,6 +111,14 @@ func (r *Reporter) makeMergedTokens(
 		})
 		if isDeleted {
 			tok.Kind = deletedToken
+		}
+		// Insert additions starting at or before the current column. If the token was
+		// deleted, only additions BEFORE it are added.
+		for currEdit < len(edits) && edits[currEdit].Start().Col <= tok.Position.Col {
+			if isDeleted && edits[currEdit].Start().Col == tok.Position.Col {
+				break
+			}
+			addAddition(edits[currEdit])
 		}
 		// Add the offset from the last actual token
 		if lastCol < tok.Position.Col {

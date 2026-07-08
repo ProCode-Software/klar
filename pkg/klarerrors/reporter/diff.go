@@ -64,12 +64,11 @@ func (r *Reporter) printDiff(diff *klarerrs.Diff) {
 		} else {
 			// Inline diffs are where diff ranges, both additions and deletions, are
 			// displayed alongside the original source.
-			lastLine = r.printInline(state, dl)
+			lastLine = r.printInlineDiffLine(state, dl)
 		}
 	}
 }
 
-// groupDiffLines organizes disjoint diff ranges by line number so they can be accurately displayed together.
 func (r *Reporter) groupDiffLines(diff *klarerrs.Diff) (
 	lines map[uint32]*diffLine, end uint32,
 ) {
@@ -120,7 +119,7 @@ func (r *Reporter) printFullLineRemove(s *diffState, dl *diffLine) (lastLine uin
 		// The diff's token range doesn't include the line, so we can't print it
 		panic(fmt.Sprintf("no tokens found for line %d", dl.line))
 	}
-	srcTokens := r.setTokenKind(s.tokens[firstTokI:maxTokI], deletedToken)
+	srcTokens := setTokenKind(s.tokens[firstTokI:maxTokI], deletedToken)
 	srcState := &state{tokens: srcTokens}
 	r.printDiffLineNumber(s, dl.line, false, true)
 	r.printSourceLine(srcState, dl.line, new(int), nil)
@@ -150,7 +149,7 @@ func (r *Reporter) printFullLineAdd(s *diffState, dl *diffLine) (lastLine uint32
 		return dl.line
 	case klarerrs.AddedTokens:
 		var (
-			srcTokens = r.setTokenKind(edit.Tokens, addedToken)
+			srcTokens = setTokenKind(edit.Tokens, addedToken)
 			srcState  = &state{tokens: srcTokens}
 			end       = edit.EndLine()
 		)
@@ -164,7 +163,7 @@ func (r *Reporter) printFullLineAdd(s *diffState, dl *diffLine) (lastLine uint32
 	return dl.line
 }
 
-func (r *Reporter) setTokenKind(tokens []lexer.Token, kind lexer.TokenType) []lexer.Token {
+func setTokenKind(tokens []lexer.Token, kind lexer.TokenType) []lexer.Token {
 	tokens = slices.Clone(tokens)
 	for i := range tokens {
 		tokens[i].Kind = kind
