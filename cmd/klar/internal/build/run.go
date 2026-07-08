@@ -103,7 +103,7 @@ func Build(r *command.Runner) {
 	}
 	if len(pc.Inputs) == 0 {
 		// If no inputs were provided, compile the current *package*
-		pkgPath, _ := module.PackageRoot(".")
+		pkgPath, _ := module.PackageRoot(c.WorkDir)
 		c.Info("Building current package", slog.String("package", pkgPath))
 		addInput(pkgPath)
 	}
