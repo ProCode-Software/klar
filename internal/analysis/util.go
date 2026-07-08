@@ -65,24 +65,6 @@ func indexBuiltin(builtin, f string, t *Expr) *klarerrs.Error {
 	return indexer.Index(f, t)
 }
 
-func indexError(code klarerrs.Code, t Type, label string) *klarerrs.Error {
-	err := &klarerrs.Error{
-		Code:  code,
-		Label: label,
-		Info:  klarerrs.TypeErrorInfo{GotType: t.String()},
-	}
-	return err
-}
-
-func indexTypeMismatchError(code klarerrs.Code, exp, got Type, label string) *klarerrs.Error {
-	err := &klarerrs.Error{
-		Code:  code,
-		Label: label,
-		Info:  klarerrs.TypeErrorInfo{ExpectedType: exp.String(), GotType: got.String()},
-	}
-	return err
-}
-
 func quoteAka(t Type) string {
 	ts := t.String()
 	if und := UnderlyingTypeName(t).String(); und != ts {

@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -77,13 +78,37 @@ func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 }
 
 func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
-	err := klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange)
+	err := cmp.Or(
+		tryUnwrapRequiredError(exp, got, gotRange),
+		klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange),
+	)
 	err.Label = "This has type " + klarerrs.Quote(got.String())
 	err.Info = klarerrs.TypeErrorInfo{
 		ExpectedType: exp.String(),
 		GotType:      got.String(),
 	}
 	return err
+}
+
+func tryUnwrapRequiredError(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
+	var kind string
+	switch got := Underlying(got).(type) {
+	case *Optional:
+		if !Compatible(got.Elem, exp) {
+			return nil
+		}
+		kind = "Optional"
+	case *Result:
+		if !Compatible(got.Success, exp) {
+			return nil
+		}
+		kind = "Result"
+	default:
+		return nil
+	}
+	return klarerrs.Range(klarerrs.ErrUnwrapRequired, gotRange).
+		SetParam("kind", kind).
+		SetParam("before", "before it can be used as "+quote(exp.String()))
 }
 
 func handlePanic() {
@@ -148,4 +173,22 @@ func fieldNotFound(name string) *klarerrs.Error {
 		Name:  name,
 	}
 	// A range will be added later by the caller of [Indexer.IndexDot]
+}
+
+func indexError(code klarerrs.Code, t Type, label string) *klarerrs.Error {
+	err := &klarerrs.Error{
+		Code:  code,
+		Label: label,
+		Info:  klarerrs.TypeErrorInfo{GotType: t.String()},
+	}
+	return err
+}
+
+func indexTypeMismatchError(code klarerrs.Code, exp, got Type, label string) *klarerrs.Error {
+	err := &klarerrs.Error{
+		Code:  code,
+		Label: label,
+		Info:  klarerrs.TypeErrorInfo{ExpectedType: exp.String(), GotType: got.String()},
+	}
+	return err
 }
