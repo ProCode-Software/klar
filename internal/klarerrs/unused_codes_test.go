@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/tabwriter"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -48,7 +49,6 @@ func TestUnusedErrorCodes(t *testing.T) {
 			break
 		}
 	}
-
 	if klarerrsPkg == nil {
 		t.Fatal("could not find internal/klarerrs package")
 	}
@@ -162,6 +162,14 @@ func TestUnusedErrorCodes(t *testing.T) {
 	}
 
 	if len(unused) > 0 {
-		t.Errorf("%d unused error codes found:\n  %s", len(unused), strings.Join(unused, "\n  "))
+		t.Errorf("%d unused error codes found:", len(unused))
+		tw := tabwriter.NewWriter(t.Output(), 10, 4, 2, ' ', 0)
+		for i := 0; i < len(unused); {
+			row := unused[i:min(i+4, len(unused))]
+			tw.Write([]byte(strings.Join(row, "\t")))
+			tw.Write([]byte{'\n'})
+			i += len(row)
+		}
+		tw.Flush()
 	}
 }

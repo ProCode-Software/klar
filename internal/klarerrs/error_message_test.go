@@ -8,37 +8,48 @@ import (
 	"testing"
 )
 
-var errorTypes = map[string]Code{
-	"SyntaxError":    SyntaxErrorPrefix,
-	"TypeError":      TypeErrorPrefix,
-	"ReferenceError": ReferenceErrorPrefix,
-	"Warning":        WarningPrefix,
-}
-
-func runTest(name string, prefix Code, t *testing.T) {
-	for code := prefix + 1; !strings.HasPrefix(code.String(), "Code("); code++ {
+func TestErrorMessages(t *testing.T) {
+	for code := Code(1); ; code++ {
+		if code%100 == 0 && code != SyntaxErrorPrefix+100 {
+			continue // x00
+		}
+		ok := true
+		e := &Error{Code: code}
+		if noTitle(e) {
+			break
+		}
+		if strings.HasPrefix(code.String(), "Code(") {
+			// Go to next prefix
+			code = (code/100 + 1) * 100 // x00 is skipped by 'continue'
+			continue
+		}
 		func() {
 			defer func() {
-				if err := recover(); err != nil {
-					// If it panics, that means the error message needs data
-					// (such as an AST node) to print the message, and therefore,
-					// an error exists.
-					return
+				if r, _ := recover().(string); r != "" {
+					if _, err := fmt.Sscanf(
+						r, "error %s doesn't have a message", new(string),
+					); err == nil {
+						ok = false
+					}
 				}
 			}()
-			err := &Error{Code: code}
-			msg := err.Error()
-			if msg == "" || strings.HasPrefix(msg, fmt.Sprintf("%s: %s", name, code)) {
-				t.Errorf("missing: %s - %s", name, code)
+			msg := e.Error()
+			if msg == "" || strings.HasPrefix(msg, fmt.Sprintf("%s: %s", e.Title(), code)) {
+				ok = false
 			}
 		}()
+		if !ok {
+			t.Errorf("missing code for %s: %s", e.Title(), e.Code)
+		}
 	}
 }
 
-func TestErrorMessages(t *testing.T) {
-	for name, spec := range errorTypes {
-		t.Run(name, func(t *testing.T) {
-			runTest(name, spec, t)
-		})
-	}
+func noTitle(e *Error) (noTitle bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			noTitle = true
+		}
+	}()
+	noTitle = e.Title() == ""
+	return
 }
