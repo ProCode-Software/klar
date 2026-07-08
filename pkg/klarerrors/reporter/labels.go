@@ -74,6 +74,13 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 	printLineStart func(), pipeLen int, stemsOnly bool,
 ) (lastStemCol int) {
 	for len(remHls) > 0 {
+		// TODO: Don't printLineStart for lines without labels
+		if !slices.ContainsFunc(
+			remHls,
+			func(hl klarerrs.Highlight) bool { return hl.Message != "" },
+		) {
+			return lastStemCol
+		}
 		printLineStart()
 		var lastCol uint32 = 1
 		// Print arrow lines
@@ -86,10 +93,15 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 			r.padding(lastCol, rang.Start.Col)
 			r.appendSpace(stemOffset)
 			lastStemCol = int(rang.Start.Col) + stemOffset
-			if i < len(remHls)-1 || stemsOnly {
+			switch {
+			case hl.Message == "":
+				// Highlight without message. Print no line
+				r.appendSpace(1)
+				lastCol = rang.End.Col
+			case i < len(remHls)-1, stemsOnly:
 				r.appendRune(r.CharacterSet.BoxL, color)
 				lastCol = rang.End.Col
-			} else {
+			default:
 				// Rightmost
 				r.appendRune(r.CharacterSet.ArrowBL, color)
 				r.appendRune(r.CharacterSet.BoxT, color)
@@ -100,8 +112,10 @@ func (r *Reporter) printArrows(s *state, remHls []klarerrs.Highlight,
 		}
 		// Label and cut off the rightmost highlight
 		hl := remHls[len(remHls)-1]
-		startOffset := (int(hl.Range.Start.Col) - 1) + pipeLen
-		r.printLabel(hl.Message, s.hlColors[hl], startOffset, -1, nil)
+		if hl.Message != "" {
+			startOffset := (int(hl.Range.Start.Col) - 1) + pipeLen
+			r.printLabel(hl.Message, s.hlColors[hl], startOffset, -1, nil)
+		}
 		r.newline()
 		remHls = remHls[:len(remHls)-1]
 	}
