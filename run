@@ -4,7 +4,7 @@ set -e
 KLAR_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 export KLAR_STD=$KLAR_DIR/std
 
-VERSION="0.1.0"
+VERSION="0.0.1"
 LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'"
 # ldflags: separate with another -X ...
 
@@ -12,7 +12,7 @@ LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'
 go generate "$KLAR_DIR"/internal/klarerrs
 
 # Clear console
-if [[ "$1" = "-keep" ]]; then
+if [[ $1 == "-keep" ]]; then
     shift
 elif [[ $1 != -build ]]; then
     clear

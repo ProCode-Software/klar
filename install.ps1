@@ -169,7 +169,7 @@ function Invoke-BuildFromSource {
 
     # Build Klar and Glas executables
     $env:GOEXPERIMENT = 'jsonv2'
-    $version = '0.1.0'
+    $version = '0.0.1'
     $commit = (& git rev-parse --short HEAD).Trim()
     $ldflags = "-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$version' -X 'github.com/ProCode-Software/klar/internal/cli.KlarCommit=$commit'"
 
