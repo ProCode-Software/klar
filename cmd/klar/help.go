@@ -17,18 +17,12 @@ var RandomDescriptions = []string{
 	ansi.Cyan("🐨 A koala-approved programming language!"),
 }
 
-func KlarGradient(text string) string {
-	// This is just for the VSCode color dialog
-	rgba := func(r, g, b, _ uint8) [3]int { return [3]int{int(r), int(g), int(b)} }
-	return ansi.Gradient(text, rgba(189, 247, 90, 1), rgba(91, 220, 230, 1))
-}
-
 func ShowHelp(w io.Writer, full bool) {
 	hb := NewHelpBuilder(w)
 
 	// Title
 	hb.Println(
-		ansi.Bold(KlarGradient("Klar:")),
+		ansi.Bold(util.KlarGradient("Klar:")),
 		util.RandomSlice(RandomDescriptions),
 		ansi.Gray("v"+cli.KlarVersionAndCommit),
 	)
@@ -50,16 +44,16 @@ func ShowHelp(w io.Writer, full bool) {
 
 	hb.Split(ansi.BrightBlue)
 	hb.Command("build", "Compile a Klar project")
+	hb.Command("new", "Create a new Klar project")
 	hb.Command("check", "Typecheck a Klar project")
 	hb.Command("format", "Format source code")
 	hb.Command("lint", "Lint source code")
-	hb.Command("new", "Create a new Klar project")
 	hb.Command("test", "Run tests for a Klar project")
 
 	hb.Split(ansi.Cyan)
 	hb.Command("clean", "Clean build cache")
 	hb.Command("upgrade", "Upgrade Klar to the latest version")
-	hb.Command("zen", "Show the Zen of Klar")
+	hb.Command("zen", "Show the Zen of Klar") // TODO: `klar lore` instead?
 	hb.Command("help", "Get help for a command or show this message")
 	hb.Flush()
 

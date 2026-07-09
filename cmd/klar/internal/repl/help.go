@@ -12,11 +12,7 @@ const LongDescription = `Starts a read-eval-print-loop (REPL) for Klar, which le
 
 For available commands for the REPL, run 'klar repl <<< help' or type 'help' in the REPL.`
 
-type action struct {
-	name, args, description, shortcut string
-}
-
-var actions = []action{
+var actions = []struct{ name, args, desc, shortcut string }{
 	{"exit", "", "Exit the REPL", "Ctrl+D"},
 	{"help", "", "Display this help message", ""},
 	{"load", "<file>", "Load and evaluate a Klar file in the REPL session", ""},
@@ -48,7 +44,7 @@ func (s *Session) PrintHelp() {
 		if a.args != "" {
 			str[0] += " " + ansi.Cyan(a.args)
 		}
-		str[1] = a.description
+		str[1] = a.desc
 		if a.shortcut != "" {
 			str[1] += ansi.Gray(" (" + a.shortcut + ")")
 		}

@@ -49,8 +49,8 @@ func main() {
 		ShowHelp(os.Stdout, true)
 	case "-v", "--version":
 		fmt.Printf("Klar %s (%s)\n", cli.KlarVersion, cli.KlarCommit)
-	case "test", "glas", "upgrade", "new", "format", "check",
-		"docs", "lint", "clean", "generate", "zen":
+	case "test", "glas", "docs", "lint", "generate":
+		// Unimplemented command
 		cli.Failure(ansi.ColorSprintf(
 			ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
@@ -68,13 +68,15 @@ func main() {
 		}
 		fallthrough
 	default:
-		if args[1][0] == '-' {
-			// Invalid usage
-			// TODO: show flags
+		// `klar -` is already handled above
+		if badFlag := args[1]; badFlag[0] == '-' {
+			// Invalid flag
+			cli.ColorErrorfln("<**>I don't understand the <c>%s</c> flag</**>", badFlag)
+			FlagHelp(NewHelpBuilder(os.Stderr))
 			cli.Exit(2)
 		}
-		cmd := command.Lookup(cmdName, commands, aliases)
-		if cmd != nil {
+		// Command
+		if cmd := command.Lookup(cmdName, commands, aliases); cmd != nil {
 			command.Run(cmd)
 			break
 		}
