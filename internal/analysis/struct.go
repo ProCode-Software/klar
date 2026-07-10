@@ -86,7 +86,7 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 func (s *Struct) Index(f string, t *Expr) *klarerrs.Error {
 	// TODO: use fmset to also add inherited fields/methods
 	if obj, ok := s.fieldMap[f]; ok {
-		t.Type = obj.typ
+		t.Type = obj
 		return nil
 	}
 	err := fieldNotFound(f)

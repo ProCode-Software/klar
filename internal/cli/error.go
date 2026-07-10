@@ -26,6 +26,11 @@ func Error(msg string, detail ...any) {
 	Custom("Error", msg, detail...)
 }
 
+// Warn prints a warning to [os.Stderr].
+func Warn(msg string, detail ...any) {
+	Custom(ansi.BoldBrightYellow("Warning"), msg, detail...)
+}
+
 // Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
 func Failure(msg string, detail ...any) {
 	Error(msg, detail...)

@@ -17,6 +17,8 @@ const (
 	Bun
 )
 
+const Default = JavaScript
+
 var Names = map[string]any{
 	"unknown": Unknown,
 	"js":      JavaScript,
@@ -39,6 +41,18 @@ func (t Target) String() string {
 	}[t]
 }
 
+func (t Target) Name() string {
+	return []string{
+		Unknown:    "unknown",
+		JavaScript: "JavaScript",
+		KlarVM:     "KlarVM",
+		Browser:    "browser",
+		Node:       "Node.js",
+		Deno:       "Deno",
+		Bun:        "Bun",
+	}[t]
+}
+
 func (t *Target) UnmarshalText(text []byte) error {
 	s := string(text)
 	if name, ok := Names[s]; ok {
@@ -56,4 +70,13 @@ func (t Target) IsJavaScript() bool {
 	default:
 		return false
 	}
+}
+
+// NormalizeJavaScript returns [JavaScript] if t represents a JavaScript
+// target, otherwise returns t.
+func (t Target) NormalizeJavaScript() Target {
+	if t.IsJavaScript() {
+		return JavaScript
+	}
+	return t
 }

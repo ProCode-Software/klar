@@ -35,10 +35,13 @@ const (
 
 	// Type expression ====
 
-	ErrNotAType        // Variable or function used in type context
-	ErrTypeAsValue     // Type used as a value
-	ErrInvalidRestType // Rest type used outside of function parameter
-	ErrNotANamespace   // Left-hand side of type index must be a namespace
+	ErrNotAType              // Variable or function used in type context
+	ErrTypeAsValue           // Type used as a value
+	ErrInvalidRestType       // Rest type used outside of function parameter
+	ErrNotANamespace         // Left-hand side of type index must be a namespace
+	ErrGenericParamsRequired // Reference to generic type requires params
+	ErrNonGenericType        // Generics passed to type that doesn't accept any
+	ErrInvalidGenericCount   // Too few/many generic parameters passed
 
 	// Statement ====
 
@@ -52,44 +55,52 @@ const (
 
 	// Literal ====
 
-	ErrUntypedStruct    // Can't determine type of struct from shorthand (`.(...)`)
-	ErrUntypedEnum      // Can't determine type of enum from shorthand (`.key`)
-	ErrUntypedEmptyList // Can't infer type of empty list
-	ErrUntypedEmptyMap  // Can't infer type of empty map
-	ErrUntypedNil       // 'nil' requires a type (explicit type at assignment)
+	ErrUntypedStruct         // Can't determine type of struct from shorthand (`.(...)`)
+	ErrUntypedEnum           // Can't determine type of enum from shorthand (`.key`)
+	ErrUntypedEmptyList      // Can't infer type of empty list
+	ErrUntypedEmptyMap       // Can't infer type of empty map
+	ErrUntypedNil            // 'nil' requires a type (explicit type at assignment)
+	ErrUnknownRegexFlag      // Unknown regex flag on current target
+	ErrNotOptionalType       // 'nil' is only valid for optional types
+	ErrInvalidCollectionType // Items in a list or map must have the same type
 
 	// Expression ====
 
-	ErrInvalidRangeType      // Can't range over this type
-	ErrStepWithStringRange   // Step isn't allowed with String range
-	ErrNonConstStringRange   // Range bounds must be constants when ranging over String
-	ErrOpenStringRange       // '..<' not allowed with range over String
-	ErrNonLetterStringRange  // Bounds of range over String must be a letter or digit
-	ErrMultiCharStringRange  // Bounds of range over String must be a single character
-	ErrInvalidIndexType      // Can't index this type
-	ErrNonNumericIndex       // Index for list/String/tuple must be Int
-	ErrInvalidMapIndex       // Map must be indexed with its key type
-	ErrFieldNotFound         // Field not found
-	ErrInvalidComputedIndex  // Computed index not supported for this type
-	ErrDotIndexRequired      // Dot index required to index this type instead of computed String index
+	ErrInvalidRangeType     // Can't range over this type
+	ErrStepWithStringRange  // Step isn't allowed with String range
+	ErrNonConstStringRange  // Range bounds must be constants when ranging over String
+	ErrOpenStringRange      // '..<' not allowed with range over String
+	ErrNonLetterStringRange // Bounds of range over String must be a letter or digit
+	ErrMultiCharStringRange // Bounds of range over String must be a single character
+	ErrInvalidIndexType     // Can't index this type
+	ErrNonNumericIndex      // Index for list/String/tuple must be Int
+	ErrInvalidMapIndex      // Map must be indexed with its key type
+	ErrFieldNotFound        // Field not found
+	ErrInvalidComputedIndex // Computed index not supported for this type
+	ErrDotIndexRequired     // Dot index required to index this type instead of computed String index
+	ErrNothingAsValue       // Function returning Nothing can't be used as a value
+	ErrNonResultInTry       // Expression after 'try' must be a Result
+	ErrInvalidAssertType    // Type being asserted must be a result or optional
+	ErrNotAFunction         // Can't call a non-function or initializer
+	ErrIndexEnumMethod      // An enum method is only accessible on individual items
+
+	// Binary/unary operation ====
+
 	ErrNegateNonNumeric      // Negate '-' operator only supported on Int and Float
-	ErrNonBoolLogicalOperand // Operand to '||', '&&', and '!' operator must be Bool
+	ErrNonBoolLogicalOperand // Operand for '||', '&&', or '!' operator must be Bool
 	ErrInvalidOperation      // Type doesn't support an arithmetic operation
 	ErrInvalidArithType      // Operand for arithmetic operation must be numeric
+	ErrInvalidAdditionType   // Type doesn't support the '+' operator
 	ErrIntTimesString        // Should be String * Int, in that exact order
 	ErrInvalidStringMult     // String must be multiplied by Int
 	ErrNonBoolLogical        // Operands in logical expression must be boolean
 	ErrInvalidInOperand      // Right-hand side of 'in' operator must be a list or map
-	ErrNothingAsValue        // Function returning Nothing can't be used as a value
-	ErrNonResultInTry        // Expression after 'try' must be a Result
-	ErrInvalidAssertType     // Type being asserted must be a result or optional
-	ErrNotAFunction          // Can't call a non-function or initializer
-	ErrGenericParamsRequired // Reference to generic type requires params
-	ErrNonGenericType        // Generics passed to type that doesn't accept any
-	ErrInvalidGenericCount   // Too few/many generic parameters passed
-	ErrIndexEnumMethod       // An enum method is only accessible on individual items
-	ErrNotOptionalType       // 'nil' is only valid for optional types
-	ErrInvalidCollectionType // Items in a list or map must have the same type
+	ErrOperandTypeMismatch   // Operands of and/or must have the same type
+
+	// When ====
+	ErrInvalidStrMatchType // Type not allowed in string pattern match type
+	ErrNestedTupleStrMatch // Nested tuples not allowed in
+	ErrRedundantStrMatch   // Explicit type of String provided in string pattern match
 )
 
 func (e *Error) handleTypeError() string {
@@ -258,8 +269,26 @@ func (e *Error) handleTypeError() string {
 	case ErrNotOptionalType:
 		return "'none' can only be used as a value of an optional type"
 	case ErrInvalidCollectionType:
-		return "All of the items in a " + e.StringParam("kind") + " must have the same type"
+		items := "items"
+		if e.StringParam("kind") == "'when' expression" {
+			items = "body expressions"
+		}
+		return "All " + items + " in a " + e.StringParam("kind") + " must have the same type"
 	case ErrIntTimesString:
 		return "In string multiplication, the String operand must be on the left"
+	case ErrInvalidStrMatchType:
+		return "Can't pattern-match " + WithA(e.Name) + " inside a string"
+	case ErrRedundantStrMatch:
+		return "The type of a string pattern-match variable is already a String"
+	case ErrUnknownRegexFlag:
+		msg := "I don't recognize the " + Quote(e.Name) + " regex flag"
+		if targ := e.StringParam("target"); targ != "" {
+			msg += " on the " + targ + " target"
+		}
+		return msg
+	case ErrOperandTypeMismatch:
+		return "Both operands of '" + e.Name + "' must have the same type"
+	case ErrInvalidAdditionType:
+		return "Can't add two " + e.Name + "s together"
 	}
 }

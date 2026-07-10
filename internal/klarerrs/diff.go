@@ -6,7 +6,7 @@ import (
 )
 
 type Diff struct {
-	File  string
+	File  string // Same as [Error.File] is empty
 	Edits []DiffEdit
 }
 
@@ -21,7 +21,7 @@ type DiffEdit interface {
 	EndLine() uint32
 }
 
-type DeletedRange struct{ Range ranges.Range }
+type DeletedRange struct{ ranges.Range }
 
 func (r DeletedRange) Operation() bool       { return false }
 func (r DeletedRange) FullLine() bool        { return false }

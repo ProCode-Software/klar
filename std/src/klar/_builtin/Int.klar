@@ -10,7 +10,7 @@ public func Int.isEven() -> Bool = self % 2 == 0
 public func Int.clamped(min min, max max: Int) -> Int = when self {
     < min -> min,
     > max -> max,
-    _ -> self
+    _ -> self * 2
 }
 
 // Returns a pair of the number divided by the provided divisor, and

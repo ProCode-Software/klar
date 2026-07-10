@@ -141,10 +141,6 @@ func (n *ListCastExpression) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkNode{1, n.Type}, walkSlice[*CallParam]{2, n.Args})
 }
 
-func (n *ListDestructure) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Destructure]{2, n.Values})
-}
-
 func (n *ListLiteral) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c, walkSlice[Expression]{1, n.Items})
 }
@@ -183,10 +179,6 @@ func (n *NextStatement) Walk(v Visitor, c *Cursor) StopCode {
 
 func (n *NilLiteral) Walk(v Visitor, c *Cursor) StopCode {
 	return walkFields(v, n, c)
-}
-
-func (n *ObjectDestructure) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*ObjectDestructureEntry]{1, n.Values})
 }
 
 func (n *ObjectDestructureEntry) Walk(v Visitor, c *Cursor) StopCode {
@@ -330,7 +322,7 @@ func (n *VersionLiteral) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *WhenCase) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{2, n.Guard}, walkNode{4, n.Body})
+	return walkFields(v, n, c, walkNode{2, n.Guard}, walkNode{3, n.Body})
 }
 
 func (n *WhenExpression) Walk(v Visitor, c *Cursor) StopCode {

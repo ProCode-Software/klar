@@ -122,6 +122,7 @@ const (
 	ErrUnderscoreWithRest // ... instead of ..._ or _...
 	ErrNotAllowedInWhen   // When expression not allowed in when case guard
 	ErrRequiredBraces     // Required braces around statement in when case
+	ErrWrongSubjectCount  //
 
 	// Misc =====
 	ErrTryBlock     // Klar doesn't have try-catch blocks
@@ -403,14 +404,14 @@ func (e *Error) handleSyntaxError() string {
 		if e.BoolParam("regex") {
 			kind = "regex"
 		}
-		return "I expected '}' here to end " + kind + " interpolation"
+		return "I expected '}' here to end the " + kind + " interpolation"
 	case ErrIfStatement:
 		return "Klar doesn't have if statements; use 'when' instead"
 	case ErrTryBlock:
 		return "Klar doesn't have try-catch statements"
 	case ErrTripleEqual:
 		op := FormatTokenType(e.TokenTypeParam("op"))
-		return "In Klar, comparisons are always strict; use " + op + " instead"
+		return "In Klar, comparisons are always strict; use just " + op + " instead"
 	case ErrSelfNameDiscard:
 		e.Hint("Remove the label")
 		return "Can't use '_' as name of self in method declaration"
@@ -526,5 +527,15 @@ func (e *Error) handleSyntaxError() string {
 		return "A block can only be used as the body of a 'when' case in a 'when' statement, not expression"
 	case ErrVariadicNotLast:
 		return "The variadic parameter must be the last parameter in the function"
+	case ErrWrongSubjectCount:
+		exp, got := e.IntParam("expected"), e.IntParam("got")
+		title := "Too many subjects in this case"
+		if got < exp {
+			title = "Not enough subjects in this case"
+		}
+		return fmt.Sprintf(
+			"%s: Expected %s, but this case has %d",
+			title, FormatCount(exp, "subject"), got,
+		)
 	}
 }

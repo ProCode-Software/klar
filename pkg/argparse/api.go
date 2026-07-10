@@ -85,11 +85,11 @@ func (p *Parser) StringFlag(name, desc, param, def string, aliases ...string) *P
 
 func (p *Parser) EnumFlag(
 	name, desc, param string,
-	opts map[string]any, def string, aliases ...string,
+	opts map[string]any, default_ string, aliases ...string,
 ) *Parser {
 	p.FlagDefs[name] = FlagDef{
 		Type:        TypeEnum,
-		Default:     newDefaultFlag(TypeEnum, &Enum{def, opts[def]}),
+		Default:     newDefaultFlag(TypeEnum, &Enum{default_, opts[default_]}),
 		Description: desc,
 		ParamName:   param,
 	}

@@ -3,6 +3,7 @@ package analysis
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
@@ -29,14 +30,15 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	for i, item := range expr.Items {
 		e := c.checkExprFrom(item, t)
 		prev := list.Elem
-		if stop := c.inferLiteral(e, &list.Elem, item, hint, func(err *klarerrs.Error) {
+		c.inferCollection(e, &list.Elem, item, hint, func(err *klarerrs.Error) {
+			if err.Code == klarerrs.ErrTypeMismatch {
+				return
+			}
 			err.SetParam("kind", "list")
 			err.AddHighlight(
 				"The previous item has type "+quoteAka(prev), expr.Items[i-1].GetRange(),
 			)
-		}); stop {
-			return
-		}
+		})
 	}
 }
 
@@ -101,15 +103,16 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 		}
 		v := c.checkExprFrom(entry.Value, t)
 		prev := mp.Value
-		if stop := c.inferLiteral(v, &mp.Value, entry.Value, valHint, func(err *klarerrs.Error) {
+		c.inferCollection(v, &mp.Value, entry.Value, valHint, func(err *klarerrs.Error) {
+			if err.Code == klarerrs.ErrTypeMismatch {
+				return
+			}
 			err.SetParam("kind", "map")
 			err.AddHighlight(
 				"The previous value has type "+quoteAka(prev),
 				expr.Entries[i-1].Value.GetRange(),
 			)
-		}); stop {
-			return
-		}
+		})
 
 		// Keys
 		var keyHint Type
@@ -119,7 +122,10 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 		for j, key := range entry.Keys {
 			k := c.checkExprFrom(key, t)
 			prev := mp.Key
-			if stop := c.inferLiteral(k, &mp.Key, key, keyHint, func(err *klarerrs.Error) {
+			c.inferCollection(k, &mp.Key, key, keyHint, func(err *klarerrs.Error) {
+				if err.Code == klarerrs.ErrTypeMismatch {
+					return
+				}
 				err.SetParam("kind", "map")
 				var prevKey ast.Node
 				if j > 0 {
@@ -131,16 +137,14 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 				err.AddHighlight(
 					"The previous key has type "+quoteAka(prev), prevKey.GetRange(),
 				)
-			}); stop {
-				return
-			}
+			})
 		}
 	}
 }
 
-func (c *Checker) inferLiteral(e *Expr, inferred *Type,
+func (c *Checker) inferCollection(e *Expr, inferred *Type,
 	node ast.Node, hint Type, onError func(*klarerrs.Error),
-) (stop bool) {
+) {
 	if hint != nil && !Compatible(e.Type, *inferred) {
 		err := typeMismatch(*inferred, e.Type, node.GetRange())
 		err.Node = node
@@ -148,7 +152,7 @@ func (c *Checker) inferLiteral(e *Expr, inferred *Type,
 			onError(err)
 		}
 		c.fileError(err, e.FileID())
-	} else if hint == nil {
+	} else if hint == nil && *inferred != InvalidType {
 		prev := *inferred
 		if *inferred = commonTypeOptional(*inferred, e.Type); *inferred == nil {
 			// List items must have the same type
@@ -160,15 +164,66 @@ func (c *Checker) inferLiteral(e *Expr, inferred *Type,
 			}
 			c.fileError(err, e.FileID())
 			*inferred = InvalidType
-			return true
 		}
 	}
-	return false
+}
+
+// TODO: Should we replace struct{}{} with human-friendly names
+var RegexFlags = map[target.Target]map[byte]struct{}{
+	target.JavaScript: {
+		'u': struct{}{}, 'v': struct{}{},
+		// TODO
+	},
+	target.KlarVM: {},
+	target.Unknown: { // Shared among all platforms
+		'g': struct{}{}, 'i': struct{}{}, 'm': struct{}{},
+	},
 }
 
 func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {
 	t.Type = RegExType
-	// TODO: Check interpolations
+
+	// Check flags
+	flagsStart := expr.GetRange().End.Sub(0, uint32(len(expr.Flags)))
+	validFlag := func(flag byte, t target.Target) bool {
+		if _, ok := RegexFlags[t][flag]; ok {
+			return true
+		}
+		_, ok := RegexFlags[target.Unknown][flag]
+		return ok
+	}
+	for i, flag := range expr.Flags {
+		for targ := range c.Options.NormalizedTargets {
+			if validFlag(flag, targ) {
+				continue
+			}
+			err := klarerrs.Position(
+				klarerrs.ErrUnknownRegexFlag, flagsStart.Add(0, uint32(i)),
+			)
+			err.Label = "Invalid regex flag"
+			err.Name = string(flag)
+			// Only show the target if the program is being compiled for multiple
+			if len(c.Options.Targets) > 1 {
+				err.SetParam("target", targ.Name())
+			}
+			// Show a hint if the flag is uppercase and the lowercase flag exists
+			if 'A' <= flag && flag <= 'Z' {
+				if validFlag(flag-'A'+'a', targ) {
+					err.Hint("Flags must be lowercase and are case-sensitive.")
+				}
+			}
+			c.fileError(err, t.FileID())
+		}
+	}
+
+	// Check interpolations
+	for _, frag := range expr.Fragments {
+		if _, ok := frag.(ast.TextFragment); ok {
+			continue
+		}
+		interp := frag.(ast.InterpolationFragment)
+		c.checkExprFrom(interp.Expression, t)
+	}
 }
 
 func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {

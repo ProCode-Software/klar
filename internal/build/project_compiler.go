@@ -13,6 +13,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/util/graph"
 )
 
@@ -48,6 +49,10 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 	if err := module.LoadSystemDirs(); err != nil {
 		return nil, err
 	}
+
+	// Set the target to JS for inputs with no provided target (no 'targets'
+	// field in manifest and no klar.build option)
+	pc.SetDefaultTargets()
 
 	// Load the bootstrapped modules that are needed for typechecking
 	if err := pc.CompileBootstrapped(); err != nil {
@@ -88,6 +93,14 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+func (pc *ProjectCompiler) SetDefaultTargets() {
+	for _, inp := range pc.Inputs {
+		if len(inp.Targets) == 0 {
+			inp.Targets = []target.Target{target.Default}
+		}
+	}
 }
 
 func (pc *ProjectCompiler) CompileDeps() ([]*Module, error) {

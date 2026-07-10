@@ -23,6 +23,8 @@ func Wrap(s string, w AllWriter, width, firstRowWith, margin int) {
 	wr.Wrap(s)
 }
 
+// TODO: Make a Wrap impl that returns a slice of lines (iterator)
+
 // Wrap wraps a string to a given width, with an optional left margin
 // and first row width. The first row is unindented.
 func (wr *Wrapper) Wrap(s string) {
@@ -127,8 +129,8 @@ func skipANSI(s string) (n int) {
 		ansiEndMin, start = 0x40, 2
 		n++
 	}
-	for j := start; j < len(s); j++ {
-		c := s[j]
+	for i := start; i < len(s); i++ {
+		c := s[i]
 		n++
 		if c >= ansiEndMin && c <= ansiEndMax {
 			return n

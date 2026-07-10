@@ -24,7 +24,7 @@ func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
 ) (methods map[string][]methodInfo, inits map[string][]*Object) {
 	var (
-		collector     = &stmtCollector{topLevel: true, ctx: c.rootContext}
+		collector     = &stmtCollector{topLevel: true, ctx: c.module.Context}
 		attrs         []*ast.Attribute
 		topLevelFctx  *Context
 		topLevelStmts []ast.Statement
@@ -376,7 +376,11 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 		singleExpr   **Expr
 	)
 	if d.ExplicitType != nil {
-		explicitType = c.parseType(d.ExplicitType, sc.ctx)
+		fctx := sc.ctx
+		if sc.ctx.File.TopLevel() {
+			fctx = c.FileContextOf(sc.fid)
+		}
+		explicitType = c.parseType(d.ExplicitType, fctx)
 	}
 	// If the RHS is a single value, store it so we can infer the
 	// expression once.

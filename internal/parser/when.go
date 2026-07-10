@@ -6,24 +6,25 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-func (p *Parser) parseCaseSubExpr() ast.Expression {
-	tok := p.Curr()
-	var res ast.Expression
-	switch tok.Kind {
-	// Relational operators don't need explicit LHS
-	// 	when x {
-	// 		< 5 -> ...
-	// }
-	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
-		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
-	case lexer.Underscore:
-		p.Advance()
-		res = &ast.Discard{}
-	default:
-		res = p.ParseExpression(ExpressionBindingPower)
+func (p *Parser) ParseWhenBlock() *ast.WhenExpression {
+	p.Expect(lexer.When)
+	w := &ast.WhenExpression{}
+	if p.CurrKind() != lexer.LeftCurlyBrace {
+		// Subjects
+		parseExprSeries(
+			p, &w.Subjects, ExpressionBindingPower,
+			lexer.LeftCurlyBrace, lexer.Comma,
+		)
+	} else {
+		p.Expect(lexer.LeftCurlyBrace)
 	}
-	return markStartEndPos(p, res, tok.Position)
+	lenSubj := len(w.Subjects)
+	parseSeries(
+		p, &w.Cases,
+		func() *ast.WhenCase { return p.parseWhenCase(max(lenSubj, 1)) },
+		lexer.RightCurlyBrace, 0, true,
+	)
+	return w
 }
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
@@ -36,6 +37,16 @@ func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 	oldIsWhenCase := p.flags & isWhenCase
 	p.flags |= isWhenCase
 	defer func() { p.flags = oldIsWhenCase }()
+	insertOption := func() {
+		if len(commaExp) != subjects {
+			p.Error(
+				klarerrs.Slice(klarerrs.ErrWrongSubjectCount, commaExp).
+					SetParam("expected", subjects).SetParam("got", len(commaExp)),
+			)
+		}
+		orOpts = append(orOpts, commaExp)
+		commaExp = commaExp[:0]
+	}
 	// ',' binds tighter than '|' in case
 loop:
 	for p.HasTokens() {
@@ -45,12 +56,10 @@ loop:
 		commaExp = append(commaExp, p.parseCaseSubExpr())
 		switch p.CurrKind() {
 		case lexer.Stroke:
-			orOpts = append(orOpts, commaExp)
-			clear(commaExp)
-			commaExp = commaExp[:0]
+			insertOption()
 			p.Advance()
 		case lexer.If, lexer.Arrow:
-			orOpts = append(orOpts, commaExp)
+			insertOption()
 			break loop
 		case lexer.Comma:
 			p.Advance()
@@ -73,7 +82,6 @@ loop:
 	// Block
 	case lexer.LeftCurlyBrace:
 		c.Body = p.ParseBlock()
-		c.Braces = true
 		braceLine := c.Body.(*ast.Block).Range.End.Line
 
 		if k := p.Curr(); k.Kind != lexer.RightCurlyBrace &&
@@ -120,23 +128,22 @@ func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
 	return false
 }
 
-func (p *Parser) ParseWhenBlock() *ast.WhenExpression {
-	p.Expect(lexer.When)
-	w := &ast.WhenExpression{}
-	if p.CurrKind() != lexer.LeftCurlyBrace {
-		// Subjects
-		parseExprSeries(
-			p, &w.Subjects, ExpressionBindingPower,
-			lexer.LeftCurlyBrace, lexer.Comma,
-		)
-	} else {
-		p.Expect(lexer.LeftCurlyBrace)
+func (p *Parser) parseCaseSubExpr() ast.Expression {
+	tok := p.Curr()
+	var res ast.Expression
+	switch tok.Kind {
+	// Relational operators don't need explicit LHS
+	// 	when x {
+	// 		< 5 -> ...
+	// }
+	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
+		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
+		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
+	case lexer.Underscore:
+		p.Advance()
+		res = &ast.Discard{}
+	default:
+		res = p.ParseExpression(ExpressionBindingPower)
 	}
-	lenSubj := len(w.Subjects)
-	parseSeries(
-		p, &w.Cases,
-		func() *ast.WhenCase { return p.parseWhenCase(lenSubj) },
-		lexer.RightCurlyBrace, 0, true,
-	)
-	return w
+	return markStartEndPos(p, res, tok.Position)
 }

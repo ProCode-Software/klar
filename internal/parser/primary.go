@@ -52,36 +52,33 @@ func (p *Parser) handleInvalidNumber(
 
 func (p *Parser) ParseNumber() ast.Expression {
 	var (
-		tok    = p.Advance()
-		src    = tok.Source
-		a      = tok.Attributes["params"].(lexer.NumberAttrs)
-		format = a.Format
+		tok = p.Advance()
+		src = tok.Source
+		a   = tok.Attributes["params"].(lexer.NumberAttrs)
 	)
 	switch {
 	case a.Error != nil:
-		p.handleInvalidNumber(a.Error, format, tok)
-		// Set default value for ParseInt call
-		src = "0"
+		p.handleInvalidNumber(a.Error, a.Format, tok)
+		src = "0" // Set default value for ParseInt call
 	case (a.Flags & lexer.IsFloat) != 0:
 		// Exponents are floats
 		val, err := strconv.ParseFloat(src, 64)
 		return &ast.FloatLiteral{
-			Source:    src,
-			Value:     tryStrconv(p, tok, val, err),
-			Separator: (a.Flags & lexer.HasSeparator) != 0,
-			Exponent:  (a.Flags & lexer.HasExponent) != 0,
+			Source: src,
+			Value:  tryStrconv(p, tok, val, err),
+			Flags:  a.Flags,
 		}
-	// Go parses 0 prefix as octal
+	// Go parses 0 prefix as octal (including '0_386')
 	// Also check if prefix is not 0o, 0b, or 0x
 	case len(src) > 1 && (src[1] == '_' || lexer.IsDigit(rune(src[1]))):
-		src = strings.TrimLeft(src, "0")
+		src = strings.TrimLeft(src, "0_")
 	}
 	val, err := strconv.ParseInt(src, 0, 0)
 	return &ast.IntegerLiteral{
-		Format:    format,
-		Source:    src,
-		Value:     tryStrconv(p, tok, val, err),
-		Separator: (a.Flags & lexer.HasSeparator) != 0,
+		Format: a.Format,
+		Source: src,
+		Value:  tryStrconv(p, tok, val, err),
+		Flags:  a.Flags,
 	}
 }
 

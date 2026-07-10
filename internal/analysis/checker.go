@@ -43,7 +43,6 @@ type Checker struct {
 	Errors       []*klarerrs.Error       // Errors reported while type checking.
 	Info         *Info
 	Options      *Options // Options for type checking.
-	rootContext  *Context // Context where top-level objects are defined.
 	module       *Module
 	nodeContexts map[ast.Node]*Context // Node where each context begins, excluding top-level
 
@@ -59,6 +58,9 @@ type Checker struct {
 //   - FileID == 0: Module context
 //   - FileID >= 1: File context.
 type FileID int
+
+func (f FileID) TopLevel() bool { return f == 0 }
+func (f FileID) Builtin() bool  { return f < 0 }
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
 // If opts == nil, default options are used.
@@ -89,7 +91,6 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 		Expressions: make(map[ast.Expression]*Expr),
 	}
 	mod.Info = c.Info
-	c.rootContext = mod.Context
 	c.module = mod
 	c.Programs = mod.Programs
 	c.Options = opts
@@ -111,13 +112,13 @@ func (c *Checker) Check() {
 	// If we're currently bootstrapping, wrap the declared types to allow
 	// special operations on them. This must be queued before function bodies.
 	if c.module.Flags.Has(BootstrapModule) {
-		c.wrapCompositeBootstrapTypes()
+		c.queue(c.wrapBootstrapTypes, false)
 	}
 
 	// Check for direct cycles among those objects
-	c.checkDirectCycles(c.rootContext)
+	c.checkDirectCycles(c.module.Context)
 	// Typecheck those declarations, but not function bodies
-	c.checkContextDecls(c.rootContext, methods, inits)
+	c.checkContextDecls(c.module.Context, methods, inits)
 
 	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)
@@ -135,13 +136,15 @@ func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 	for i, name := range sortedFiles {
 		i := FileID(i) + 1
 		c.module.fileID[i] = name
-		fileContexts[name] = NewContext(c.rootContext, i)
+		fileContexts[name] = NewContext(c.module.Context, i)
 		c.module.fileContext[i] = fileContexts[name]
 	}
 	return fileContexts
 }
 
 func (c *Checker) CheckedModule() *Module { return c.module }
+
+func (c *Checker) FileContextOf(fid FileID) *Context { return c.module.fileContext[fid] }
 
 // Keeps the created type information
 func (c *Checker) ResetState() {
@@ -150,7 +153,6 @@ func (c *Checker) ResetState() {
 func (c *Checker) ResetAll() {
 	c.module = nil
 	c.Errors = nil
-	c.rootContext = nil
 	c.Programs = nil
 	c.Options = nil
 	c.nodeContexts = nil
@@ -161,6 +163,22 @@ func (c *Checker) filePath(name string) string {
 		return c.module.Path
 	}
 	return filepath.Join(c.module.Path, name)
+}
+
+func (o *Options) NormalizedTargets(yield func(target.Target) bool) {
+	var hasJS bool
+	for _, t := range o.Targets {
+		if t.IsJavaScript() {
+			if hasJS {
+				continue
+			}
+			t = target.JavaScript
+			hasJS = true
+		}
+		if !yield(t) {
+			return
+		}
+	}
 }
 
 func (c *Checker) pushToPath(o *Object) {

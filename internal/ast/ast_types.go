@@ -96,7 +96,7 @@ type RegexLiteral struct {
 	BaseNode
 	Source    string
 	Flags     []byte
-	Fragments []StringFragment
+	Fragments []StringFragment // Only [TextFragment] and [InterpolationFragment]
 	Multiline bool
 }
 
@@ -254,10 +254,11 @@ type WhenExpression struct {
 
 type WhenCase struct {
 	BaseNode
-	Options [][]Expression // cases -> subjects
-	Guard   Expression     // <case> if <expr>
-	Braces  bool
-	Body    Node // [*Block], [Statement], or [Expression]. Syntax: -> <expr> | -> {...}
+	// Each options separated by '|', then Expression for each subject
+	Options [][]Expression
+	Guard   Expression // <case> if <expr>
+	// [*Block], [Statement], or [Expression]. Syntax: -> <expr/stmt> | -> {...}
+	Body Node
 }
 
 // In string interpolations for pattern matching in when blocks.
@@ -659,32 +660,9 @@ type Destructure interface {
 	destruct()
 }
 
-// Destructures a list or tuple
-//
-// Deprecated: Not used
-//
-//	(a, b) := x
-//	[a, b] := x
-type ListDestructure struct {
-	BaseNode
-	Tuple  bool
-	Values []Destructure
-}
-
-// Destructures a struct or map
-//
-// Deprecated: Not used
-//
-//	#{ name, age } := person
-//	#{ kind: type, info.{color} } := animal
-type ObjectDestructure struct {
-	BaseNode
-	Values []*ObjectDestructureEntry
-}
-
 // Entry for [ObjectDestructure]
 //
-// Deprecated: Not used
+// Deprecated: Not used. Only exists for reference only
 //
 //	#{ in.(name, age) }
 //	#{ cond: when }

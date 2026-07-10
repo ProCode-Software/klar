@@ -167,7 +167,7 @@ Be aware that many open-source contributors work on this project in their freeti
 ### Project Structure
 
 - `cmd` - Entry points for CLI commands, including `klar` and `glas`.
-- `docs` - Documentation related to the project. We plan for the public-facing docs website to be in its own repo.
+- `docs` - Documentation related to the project's architecture. We plan for the public-facing docs website to be in its own repo.
 - `internal` - Go packages internal to Klar.
 - `klar-vscode` - The VSCode extension for Klar, containing language definitions and syntax highlighting, and an LSP for Klar and Klon in the future.
 - `pkg` - Go packages publicly available for other projects to import

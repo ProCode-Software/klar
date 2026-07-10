@@ -7,7 +7,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
-	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func (pkc *PackageCompiler) TypeCheckModule(
@@ -15,10 +14,6 @@ func (pkc *PackageCompiler) TypeCheckModule(
 ) []*klarerrs.Error {
 	importPath := imports.NewImportPath(importPathStr)
 
-	// Set a default target for the input if there isn't one already
-	if len(pkc.Input.Targets) == 0 {
-		pkc.Input.Targets = []target.Target{0}
-	}
 	// Type checker options from klar.build
 	opts := pkc.getCheckerOptions(m)
 	importer := NewImporter(pkc.Input, importPath, pkc.Deps)

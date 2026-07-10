@@ -35,7 +35,7 @@ func (o Operator) Uncompound() Operator {
 		lexer.PlusEqual:     lexer.Plus,
 		lexer.MinusEqual:    lexer.Minus,
 		lexer.AsteriskEqual: lexer.Asterisk,
-		lexer.SlashEqual:    lexer.SlashEqual,
+		lexer.SlashEqual:    lexer.Slash,
 		lexer.PercentEqual:  lexer.Percent,
 		lexer.CaretEqual:    lexer.Caret,
 	}[o.Kind]

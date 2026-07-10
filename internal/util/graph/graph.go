@@ -71,7 +71,7 @@ func (g *Graph[T]) AllVertices() []T {
 func (g *Graph[T]) Edges() [][2]T { return g.edges }
 
 // Port of the JavaScript implementation of ProCode's Algorithm
-// See: https://github.com/ProCode-Software/TopoBench
+// See: https://github.com/ProCode-Software/procosort
 func (g *Graph[T]) Toposort() (sorted []T, err error) {
 	// 1. Create the initial dependency map
 	deps := make(map[T][]T, len(g.vertices)+len(g.edges)/4)
@@ -115,6 +115,10 @@ func (g *Graph[T]) Toposort() (sorted []T, err error) {
 		}
 		return 0
 	}), nil
+}
+
+func (g *Graph[T]) ToposortGrouped() (groups [][]T, err error) {
+	return nil, nil
 }
 
 func (g *Graph[T]) trackCycle(v T) []T {

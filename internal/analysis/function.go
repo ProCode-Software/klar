@@ -146,7 +146,12 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 			selfPos = stmt.Identifier.Range()
 		}
 		selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, nil)
-		ov.Self = NewVariable(selfObj, SelfVar, info.receiver.TypeName())
+		tn := info.receiver.TypeName()
+		if c.module.Flags.Has(BootstrapModule) {
+			// TODO: This is a temporary solution
+			tn = c.wrapBootstrappedTypeName(tn, info.receiver)
+		}
+		ov.Self = NewVariable(selfObj, SelfVar, tn)
 		c.declare(ctx, selfObj)
 	}
 

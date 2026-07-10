@@ -662,23 +662,6 @@ func (a *ListCastExpression) Equal(b2 Node) bool {
 	return true
 }
 
-func (a *ListDestructure) Equal(b2 Node) bool {
-	b, ok := b2.(*ListDestructure)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if a.Tuple != b.Tuple {
-		return false
-	}
-	if !equalSlice(a.Values, b.Values) {
-		return false
-	}
-	return true
-}
-
 func (a *ListLiteral) Equal(b2 Node) bool {
 	b, ok := b2.(*ListLiteral)
 	if !ok {
@@ -839,20 +822,6 @@ func (a *NilLiteral) Equal(b2 Node) bool {
 	}
 	if a == nil || b == nil {
 		return a == b
-	}
-	return true
-}
-
-func (a *ObjectDestructure) Equal(b2 Node) bool {
-	b, ok := b2.(*ObjectDestructure)
-	if !ok {
-		return false
-	}
-	if a == nil || b == nil {
-		return a == b
-	}
-	if !equalSlice(a.Values, b.Values) {
-		return false
 	}
 	return true
 }
@@ -1452,9 +1421,6 @@ func (a *WhenCase) Equal(b2 Node) bool {
 		return false
 	}
 	if a.Guard != nil && b.Guard != nil && !a.Guard.Equal(b.Guard) {
-		return false
-	}
-	if a.Braces != b.Braces {
 		return false
 	}
 	if a.Body != nil && b.Body != nil && !a.Body.Equal(b.Body) {

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ProCode-Software/klar/internal/cli/ansi"
 )
 
 func FormatDuration(dur time.Duration) string {
@@ -58,3 +60,9 @@ func RelPath(basePath, targPath string) string {
 
 // RandomSlice returns a random element from a slice.
 func RandomSlice[T any](s []T) T { return s[rand.IntN(len(s))] }
+
+func KlarGradient(text string) string {
+	// This is just for the VSCode color dialog
+	rgba := func(r, g, b, _ uint8) [3]int { return [3]int{int(r), int(g), int(b)} }
+	return ansi.Gradient(text, rgba(189, 247, 90, 1), rgba(91, 220, 230, 1))
+}

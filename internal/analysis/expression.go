@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 type Expr struct {
@@ -33,6 +34,7 @@ func newExprFromStmtCtx(sctx *stmtContext, flags ...exprMode) *Expr {
 	return &Expr{Context: sctx.ctx, mode: parseFlags(flags), stmtCtx: sctx}
 }
 
+// hint can be nil
 func (e *Expr) withHint(hint Type) *Expr {
 	e.hint = hint
 	return e
@@ -46,6 +48,7 @@ const (
 	callLHS
 	constExpr // Can also be output
 	exprStmt
+	patternMatch
 
 	// Output modes
 	todoExpr
@@ -376,6 +379,9 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 		// Dot-index
 		field := expr.Property.(*ast.Symbol).Identifier
 		err = indexer.Index(field, t)
+		if o, ok := t.Type.(*Object); ok && Underlying(o.typ) == nil {
+			c.checkDeclaration(o)
+		}
 	}
 
 	switch {
@@ -436,6 +442,14 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 	lhsNode, rhsNode ast.Expression, fullExpr *ast.BinaryExpression, fid FileID,
 ) (result Type) {
 	lhsKind, rhsKind := lhs.Kind(), rhs.Kind()
+	mismatchedOperandsError := func() *klarerrs.Error {
+		err := klarerrs.Node(klarerrs.ErrOperandTypeMismatch, rhsNode)
+		err.Name = op.String()
+		err.AddHighlight("This has type "+quoteAka(lhs), lhsNode.GetRange())
+		err.Label = "This has type " + quoteAka(rhs)
+		c.fileError(err, fid)
+		return err
+	}
 	// TODO: handle unions
 	// TODO: Respect t.hint. If the hint is `Int | Float`, `Int(2) and 5.5` is allowed
 	switch op.Kind {
@@ -458,14 +472,31 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 	case lexer.Plus:
 		// Int, Float, String, List, Map
 		if result = CommonType(lhs, rhs); result == nil {
-			result = InvalidType
-			return
+			c.fileError(mismatchedOperandsError(), fid)
+			return InvalidType
 		}
 		// TODO: Implement
 		switch result.Kind() {
 		case IntType, StringType, FloatType, KindList, KindMap:
 		default:
-			// Int on tuple + tuple to use (tuple1..., tuple2...) instead
+			err := klarerrs.Node(klarerrs.ErrInvalidAdditionType, rhsNode)
+			err.AddHighlight("", lhsNode.GetRange())
+			err.Label = "These have type " + quoteAka(result)
+			err.Name = result.Kind().String()
+			if result.Kind() == KindTuple {
+				// Hint on tuple + tuple to use (tuple1..., tuple2...) instead
+				// TODO: Can we use a line diff instead? (old line - new line)
+				err.HintWithDiff(
+					"To concatenate tuples, spread them into a single tuple", klarerrs.NewDiff(
+						"",
+						klarerrs.AddedString{Position: lhsNode.GetRange().Start, String: "("},
+						klarerrs.AddedString{Position: lhsNode.GetRange().End, String: "...,"},
+						klarerrs.DeletedRange{ranges.Range{op.Range().Start, op.Range().End.Add(0, 1)}},
+						klarerrs.AddedString{Position: rhsNode.GetRange().End, String: "...)"},
+					),
+				)
+			}
+			c.fileError(err, fid)
 		}
 	case lexer.Asterisk:
 		// Int, Float, String * Int
@@ -500,6 +531,7 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 		// Int, Float
 		if result = CommonType(lhs, rhs); result == nil {
 			// Mismatched operands
+			c.fileError(mismatchedOperandsError(), fid)
 			return InvalidType
 		}
 		if kind := result.Kind(); kind != IntType && kind != FloatType {
@@ -519,7 +551,7 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 		// Distributive: any type, but both sides must be the same
 		if result = CommonType(lhs, rhs); result == nil {
 			// Both operands must have the same type
-			// TODO: Error
+			c.fileError(mismatchedOperandsError(), fid)
 			return InvalidType
 		}
 		// TODO: Ensure they are used in another binary operation. With that
@@ -634,7 +666,7 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 	case t.hint != nil:
 		t.Type = InvalidType
 	default:
-		t.Type = Untyped(KindStruct)
+		t.Type = &UntypedInit{kind: KindStruct, Node: expr, Params: expr.Params}
 	}
 	// Check the parameters once its type is inferred
 	c.queue(func() { c.checkStructDotInitParams(expr, t) }, false)

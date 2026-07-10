@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -59,7 +60,7 @@ func newChildStmtContext(parentSctx *stmtContext,
 	return &stmtContext{
 		ctx:        childCtx,
 		returns:    parentSctx.returns,
-		loopLabels: parentSctx.loopLabels,
+		loopLabels: maps.Clone(parentSctx.loopLabels),
 		flags:      parentSctx.flags | flags,
 		collector:  &stmtCollector{ctx: childCtx, fid: childCtx.File},
 	}
@@ -182,6 +183,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case *ast.BadExpression:
 		return
 
+	// Declarations
 	case ast.TypeDeclaration:
 		c.declareType(stmt, sctx.collector, false, nil)
 	case *ast.FunctionDeclaration:
@@ -195,10 +197,14 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case ast.ModifierDeclaration:
 		// TODO: Could a main.klar file reach a public statement at the top-level?
 		panic("invalid AST: public declaration must be at top-level")
+
+	// Loops
 	case *ast.ForStatement:
 		c.checkForStmt(stmt, sctx)
 	case *ast.WhileStatement:
 		c.checkWhileStmt(stmt, sctx)
+
+	// Control
 	case *ast.StopStatement:
 		c.checkControlStmt(stmt, stmt.Label, sctx)
 	case *ast.NextStatement:
@@ -210,7 +216,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	}
 	// If we're checking a single statement, forward declarations aren't
 	// allowed, so we need to typecheck declarations immediately.
-	if canForwardDeclareInFunc(stmt) && (sctx.flags&allowForwardDecl) == 0 {
+	if canForwardDeclareInFunc(stmt) && sctx.flags&allowForwardDecl == 0 {
 		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
 		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
 	}
@@ -304,6 +310,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 
 	// TODO: Convert iterExpr to a typed value
 	iterExpr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
+	iterExpr.Type = c.toTyped(iterExpr.Type, nil, stmt.Expression, fid)
 	varTypes, err := c.isIterable(iterExpr.Type, numVars)
 	if err != nil {
 		err.Range = stmt.Expression.GetRange()
@@ -409,6 +416,7 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		}
 		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
 		err.SetParam("kind", "Result")
+		err.SetParam("before", "before it can be iterated over")
 		return varTypes, err
 	case KindOptional:
 		concrete := Underlying(t).(*Optional).Elem
@@ -417,6 +425,7 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		}
 		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
 		err.SetParam("kind", "Optional")
+		err.SetParam("before", "before it can be iterated over")
 		return varTypes, err
 	case InvalidType:
 		return repeatWithItem(Type(InvalidType), numVars), nil // Don't show an error

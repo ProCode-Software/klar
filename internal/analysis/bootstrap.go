@@ -12,9 +12,9 @@ import (
 // operations on the `List` type (such as iteration).
 type bootstrapType struct {
 	asDeclared Type // Most likely a struct
-	kind       Kind
+	kind       Kind // The kind the type represents
 	withKind   Type // Type if it actually had the kind
-	MethodSet
+	MethodSet       // TODO: Is this needed?
 }
 
 func (bt *bootstrapType) Kind() Kind       { return bt.kind }
@@ -26,37 +26,59 @@ var _ interface {
 	Indexer
 } = &bootstrapType{}
 
-func (c *Checker) wrapCompositeBootstrapTypes() {
+func (c *Checker) wrapBootstrapTypes() {
 	for _, ct := range compositeTypes {
-		// Queue it so we can store tn.Type, but still run this before functions are checked
-		c.queue(func() {
-			obj := c.rootContext.Lookup(ct.declaredName)
-			if obj == nil || !obj.IsTypeName() {
-				return
-			}
-			tn := obj.TypeName()
-			tn.Type = &bootstrapType{
-				asDeclared: tn.Type,
-				kind:       ct.kind,
-				withKind:   ct.asKind(c.rootContext),
-			}
-		}, false)
+		obj := c.module.Context.Lookup(ct.declaredName)
+		if obj == nil || !obj.IsTypeName() {
+			continue
+		}
+		tn := obj.TypeName()
+		tn.Type = &bootstrapType{
+			asDeclared: tn.Type,
+			kind:       ct.kind,
+			withKind:   ct.asKind(c.module.Context), // Root context to lookup generics
+		}
 	}
 	// Int, String, etc.
 	for _, prim := range primitives {
-		c.queue(func() {
-			obj := c.rootContext.Lookup(prim.name)
-			if obj == nil || !obj.IsTypeName() {
-				return
-			}
-			tn := obj.TypeName()
+		obj := c.module.Context.Lookup(prim.name)
+		if obj == nil || !obj.IsTypeName() {
+			continue
+		}
+		tn := obj.TypeName()
+		tn.Type = &bootstrapType{
+			asDeclared: tn.Type,
+			kind:       prim.typ,
+			withKind:   prim.typ,
+		}
+	}
+}
+
+func (c *Checker) wrapBootstrappedTypeName(tn *TypeName, recv *Object) *TypeName {
+	old := tn
+	tn = new(*tn)
+	tn.Type = nil
+	for _, prim := range primitives {
+		if prim.name == recv.name {
 			tn.Type = &bootstrapType{
-				asDeclared: tn.Type,
+				asDeclared: recv.TypeName().Type,
 				kind:       prim.typ,
 				withKind:   prim.typ,
 			}
-		}, false)
+			return tn
+		}
 	}
+	for _, comp := range compositeTypes {
+		if comp.declaredName == recv.name {
+			tn.Type = &bootstrapType{
+				asDeclared: recv.TypeName().Type,
+				kind:       comp.kind,
+				withKind:   comp.asKind(c.module.Context),
+			}
+			return tn
+		}
+	}
+	return old
 }
 
 func (bt *bootstrapType) IndexComputed(i Type, t *Expr) *klarerrs.Error {

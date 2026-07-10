@@ -9,8 +9,8 @@ type Visitor func(c *Cursor) StopCode
 type StopCode int
 
 const (
-	Continue     StopCode = iota
-	Stop                  // Stop the walk
+	ContinueWalk StopCode = iota
+	StopWalk              // Stop the walk
 	SkipChildren          // Skip the children of the current node
 	SkipParent            // Skip the rest of the parent node
 	SkipList              // Skip the rest of the items in the list
@@ -112,15 +112,15 @@ func walkFields(v Visitor, parent Node, c *Cursor, items ...walkItem) StopCode {
 		fieldI: fieldI,
 	}
 	switch v(pc) {
-	case Stop:
-		return Stop
+	case StopWalk:
+		return StopWalk
 	case SkipChildren:
-		return Continue
+		return ContinueWalk
 	case SkipParent:
 		return SkipChildren
 	case SkipList:
 		return SkipList
-	case Continue:
+	case ContinueWalk:
 	}
 
 	// Fields of the node (children)
@@ -138,27 +138,27 @@ childrenLoop:
 				}
 				_, _ = i, c
 				switch li.Walk(v, pc) {
-				case Stop:
-					return Stop
+				case StopWalk:
+					return StopWalk
 				case SkipChildren:
 					continue listLoop
 				case SkipList:
 					break listLoop
 				case SkipParent:
 					return SkipChildren
-				case Continue:
+				case ContinueWalk:
 				}
 			}
 		} else {
 			// Single Node
 			switch child.(walkNode).node.Walk(v, pc) {
-			case Stop:
-				return Stop
+			case StopWalk:
+				return StopWalk
 			case SkipChildren, SkipList:
 				break childrenLoop
 			case SkipParent:
 				return SkipChildren
-			case Continue:
+			case ContinueWalk:
 			}
 		}
 	}
