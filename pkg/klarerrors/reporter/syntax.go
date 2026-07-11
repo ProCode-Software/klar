@@ -9,7 +9,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 // GetTokenColor returns the color for token type k, or an empty
@@ -27,9 +26,8 @@ func (p *ColorPalette) GetTokenColor(k lexer.TokenType) string {
 func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 	tok := tokens[i]
 	color := r.ColorPalette.GetTokenColor(tok.Kind)
-	// Type/function colors may still be defined
-	if color == "" && tok.Kind != lexer.Identifier {
-		r.appendString(tok.Source, "")
+	if tok.Kind != lexer.Identifier {
+		r.appendString(tok.Source, color) // Use default color
 		return
 	}
 	// Previous and next token types (for colorizing identifiers)
@@ -42,8 +40,6 @@ func (r *Reporter) colorize(tokens []lexer.Token, i int) {
 	}
 
 	switch {
-	case tok.Kind != lexer.Identifier:
-		break // Use default color
 	case tok.Source == "TODO":
 		color = r.ColorPalette.BuiltinFunc
 	case
@@ -96,13 +92,6 @@ func (r *Reporter) colorizeString(t lexer.Token, targetLine uint32) (n uint32) {
 	if escColor == "" {
 		escColor = stringColor
 	}
-
-	// Fast path for single-line strings
-	if ranges.FromToken(t).IsSingleLine() {
-		r.appendString(t.Source, stringColor)
-		return uint32(utf8.RuneCountInString(t.Source))
-	}
-
 	if targetLine == t.Position.Line {
 		r.appendRune(attrs.QuoteStyle, stringColor)
 		n++
@@ -131,15 +120,9 @@ loop:
 				firstOnLine = true
 			}
 		case lexer.StringEscape:
+			// TODO: Colorize string interpolation tokens
 			// String interpolations may be multiline
-			var ranOnce bool
 			for line := range strings.SplitSeq(frag.Value, "\n") {
-				if ranOnce {
-					// There may be only 1 iteration if the escape doesn't
-					// contain the newline. If this loop runs again, it will
-					// reach here and terminate.
-					currLine++
-				}
 				if currLine > targetLine {
 					break loop
 				}
@@ -153,8 +136,12 @@ loop:
 					n += uint32(utf8.RuneCountInString(line))
 					firstOnLine = false
 				}
-				ranOnce = true
+				currLine++
 			}
+			// There may be only 1 iteration if the escape doesn't
+			// contain the newline. Within the loop, currLine is incremented
+			// regardless, so decrease it once. frag.Value is never empty.
+			currLine--
 		}
 	}
 	if !attrs.Unterminated && targetLine == t.End().Line {

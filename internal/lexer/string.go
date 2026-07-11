@@ -171,8 +171,6 @@ loop:
 			if braceCt == 0 {
 				if len(tokens) == 0 {
 					err = &EscapeError{ErrEscapeTooShort, l.Pos}
-				} else {
-					tokens[len(tokens)-1].setAttr("end", l.Pos)
 				}
 				b.WriteString(t.Source)
 				break loop
@@ -202,12 +200,13 @@ There are three types of strings in Klar:
 // TODO: leng doesn't include escapes
 func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 	var (
-		fragStart                   int
-		leng, firstOffset           uint32
-		isEscape, isNewline, unterm bool
-		escStart                    Position
-		frags                       []StringFragment
-		t                           = l.NewTokenizer(false)
+		fragStart           int
+		firstOffset         uint32
+		isEscape, isNewline bool
+		unterm              bool
+		escStart            Position
+		frags               []StringFragment
+		t                   = l.NewTokenizer(false)
 	)
 	newEscape := func(e StringEscape) {
 		if e.Type == EscInterpolation {
@@ -238,7 +237,6 @@ func (l *Lexer) ReadString(pos Position, delim rune) *Token {
 	}
 loop:
 	for r, b := range t.Tokenize {
-		leng++
 		if isEscape {
 			switch r {
 			case '\\', '{', 'b', 'e', 'f', 'n', 'r', 't', delim:
@@ -264,6 +262,7 @@ loop:
 		case '{':
 			if delim != '\'' { // " or `
 				escStart = l.prevCol()
+				endFrag()
 				newEscape(l.readStrInterp())
 				continue loop
 			}
@@ -293,13 +292,17 @@ loop:
 		unterm = true
 		endFrag()
 	}
-	return NewToken(pos, String, string(delim)+t.String()).withAttrs(attrs{
-		"end":    t.EndPos(),
-		"length": leng,
+
+	tok := NewToken(pos, String, string(delim)+t.String()).withAttrs(attrs{
+		"end": t.EndPos(),
 		"params": StringAttrs{
 			QuoteStyle:   delim,
 			Unterminated: unterm,
 			Fragments:    frags,
 		},
 	})
+	if t.EndPos().Line == pos.Line {
+		tok.setAttr("length", t.endPos.Col-pos.Col)
+	}
+	return tok
 }

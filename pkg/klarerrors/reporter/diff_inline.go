@@ -126,6 +126,7 @@ func (r *Reporter) makeMergedTokens(
 		}
 		// Add the original token
 		addToken(tok)
+		// TODO: extract the line length instead of tok.Len()
 		lastCol = tok.Position.Col + tok.Len()
 	}
 	// There may be more additions after the last source token
