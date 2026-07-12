@@ -75,7 +75,11 @@ func (r *Reporter) Report(e Error) (n int64, err error) {
 	}
 
 	// 5. Extended message
-	// TODO: not implemented in [*Error] yet
+	if e.Description() != "" {
+		r.newline()
+		util.Wrap(e.Description(), r.buf, Width, 0, 2)
+		r.newline()
+	}
 
 	// 6. Hints
 	for _, hint := range e.ErrorHints() {
@@ -103,8 +107,8 @@ func (r *Reporter) printMessage(e Error, hlc string) {
 	msgParts := strings.SplitAfterN(e.Message(), ": ", 2)
 	if r.UseColor {
 		b.WriteString(ansi.Color(hlc, e.Title()))
-		b.WriteString(ansi.Color(ansi.CodeBoldDim, ": "))
-		b.WriteString(ansi.Color(ansi.CodeBold, msgParts[0]))
+		b.WriteString(ansi.BoldDim(": "))
+		b.WriteString(ansi.Bold(msgParts[0]))
 	} else {
 		fmt.Fprintf(&b, "%s: %s", e.Title(), msgParts[0])
 	}

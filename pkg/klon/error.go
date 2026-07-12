@@ -56,6 +56,7 @@ func (err *Error) Message() string        { return err.Text }
 func (err *Error) ErrorCode() string                     { return "" }
 func (err *Error) IsWarning() bool                       { return err.Warning }
 func (err *Error) FilePath() string                      { return "" }
+func (err *Error) Description() string                   { return "" }
 func (err *Error) MainHighlight() string                 { return "" }
 func (err *Error) ErrorDetails() []klarerrs.Detail       { return nil }
 func (err *Error) ErrorHighlights() []klarerrs.Highlight { return nil }

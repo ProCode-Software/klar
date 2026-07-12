@@ -21,6 +21,7 @@ type Error struct {
 	Node  ast.Node
 	Info  Info
 
+	Desc       string
 	Label      string      // The message displayed next to the main highlight
 	Highlights []Highlight // Additional highlights to display
 	Details    []Detail    // Additional files context to display
@@ -171,6 +172,8 @@ func (e *Error) Error() string { return e.Message() }
 
 // IsWarning returns whether the diagnostic is a warning rather than an error.
 func (e *Error) IsWarning() bool { return e.Warning || e.Prefix() == WarningPrefix }
+
+func (e *Error) Description() string { return e.Desc }
 
 // ErrorCode returns the error code of the diagnostic as a string.
 func (e *Error) ErrorCode() string { return e.Code.Format() }

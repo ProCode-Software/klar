@@ -16,10 +16,11 @@ import (
 
 // Error is an interface that represents an error to report.
 type Error interface {
-	Title() string     // The title of the error, such as "Error".
-	Message() string   // The error message.
-	ErrorCode() string // The error code, displayed after the message.
-	IsWarning() bool   // Whether the error is a warning.
+	Title() string       // The title of the error, such as "Error".
+	Message() string     // The error message.
+	Description() string // Extended message
+	ErrorCode() string   // The error code, displayed after the message.
+	IsWarning() bool     // Whether the error is a warning.
 
 	FilePath() string       // The full path of the file where the error occurred.
 	Location() ranges.Range // The start and end positions of the error in the file.
