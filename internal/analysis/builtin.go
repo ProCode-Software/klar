@@ -29,40 +29,33 @@ var BuiltInContext = &Context{File: -1}
 //
 // Builtin types that are excluded from this list:
 // - List, Map, Result, Error (TODO)
-var primitives = []struct {
-	name string
-	typ  Kind
-}{
-	{"Int", IntType},
-	{"String", StringType},
-	{"Bool", BoolType},
-	{"Float", FloatType},
-	{"Any", AnyType},
-	{"Nothing", NothingType},
+var primitives = map[string]Kind{
+	"Int":     IntType,
+	"String":  StringType,
+	"Bool":    BoolType,
+	"Float":   FloatType,
+	"Any":     AnyType,
+	"Nothing": NothingType,
 }
 
 // Composite types
-var compositeTypes = []struct {
-	declaredName string // Name as declared in the builtin module
-	kind         Kind
-	asKind       func(*Context) Type // The type that actually has the kind
+// Keys are the names as declared in the builtin module
+var compositeTypes = map[string]struct {
+	kind   Kind
+	asKind func(*Context) Type // The type that actually has the kind
 }{
-	{"List", KindList, func(ctx *Context) Type {
-		return &List{ctx.Lookup("T").typ}
-	}},
-	{"Map", KindMap, func(ctx *Context) Type {
+	"List": {KindList, func(ctx *Context) Type { return &List{ctx.Lookup("T").typ} }},
+	"Map": {KindMap, func(ctx *Context) Type {
 		return &Map{ctx.Lookup("K").typ, ctx.Lookup("V").typ}
 	}},
-	{"Result", KindResult, func(ctx *Context) Type {
+	"Result": {KindResult, func(ctx *Context) Type {
 		return &Result{ctx.Lookup("T").typ, ErrorType} // TODO: Change to ctx.Lookup("E")
 	}},
-	{"Task", KindTask, func(ctx *Context) Type {
-		return &Task{ctx.Lookup("T").typ}
-	}},
-	{"Optional", KindOptional, func(ctx *Context) Type {
+	"Task": {KindTask, func(ctx *Context) Type { return &Task{ctx.Lookup("T").typ} }},
+	"Optional": {KindOptional, func(ctx *Context) Type {
 		return &Optional{ctx.Lookup("T").typ}
 	}},
-	{"Error", ErrorType, func(*Context) Type { return ErrorType }},
+	"Error": {ErrorType, func(*Context) Type { return ErrorType }},
 }
 
 // Builtin functions
@@ -227,10 +220,10 @@ func (c *Checker) loadInternalModules() {
 var builtinsLoaded bool
 
 func declareBuiltinTypes() {
-	for _, p := range primitives {
+	for name, kind := range primitives {
 		BuiltInContext.Declare(&Object{
-			name: p.name,
-			typ:  &TypeName{Type: p.typ},
+			name: name,
+			typ:  &TypeName{Type: kind},
 			file: BuiltInContext.File,
 		})
 	}

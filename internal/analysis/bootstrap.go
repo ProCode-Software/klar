@@ -27,8 +27,8 @@ var _ interface {
 } = &bootstrapType{}
 
 func (c *Checker) wrapBootstrapTypes() {
-	for _, ct := range compositeTypes {
-		obj := c.module.Context.Lookup(ct.declaredName)
+	for declaredName, ct := range compositeTypes {
+		obj := c.module.Context.Lookup(declaredName)
 		if obj == nil || !obj.IsTypeName() {
 			continue
 		}
@@ -40,45 +40,36 @@ func (c *Checker) wrapBootstrapTypes() {
 		}
 	}
 	// Int, String, etc.
-	for _, prim := range primitives {
-		obj := c.module.Context.Lookup(prim.name)
+	for name, kind := range primitives {
+		obj := c.module.Context.Lookup(name)
 		if obj == nil || !obj.IsTypeName() {
 			continue
 		}
 		tn := obj.TypeName()
 		tn.Type = &bootstrapType{
 			asDeclared: tn.Type,
-			kind:       prim.typ,
-			withKind:   prim.typ,
+			kind:       kind,
+			withKind:   kind,
 		}
 	}
 }
 
 func (c *Checker) wrapBootstrappedTypeName(tn *TypeName, recv *Object) *TypeName {
-	old := tn
-	tn = new(*tn)
-	tn.Type = nil
-	for _, prim := range primitives {
-		if prim.name == recv.name {
-			tn.Type = &bootstrapType{
-				asDeclared: recv.TypeName().Type,
-				kind:       prim.typ,
-				withKind:   prim.typ,
-			}
-			return tn
-		}
+	if kind, ok := primitives[recv.name]; ok {
+		return &TypeName{Name: tn.Name, Type: &bootstrapType{
+			asDeclared: recv.TypeName().Type,
+			kind:       kind,
+			withKind:   kind,
+		}}
 	}
-	for _, comp := range compositeTypes {
-		if comp.declaredName == recv.name {
-			tn.Type = &bootstrapType{
-				asDeclared: recv.TypeName().Type,
-				kind:       comp.kind,
-				withKind:   comp.asKind(c.module.Context),
-			}
-			return tn
-		}
+	if ct, ok := compositeTypes[recv.name]; ok {
+		return &TypeName{Name: tn.Name, Type: &bootstrapType{
+			asDeclared: recv.TypeName().Type,
+			kind:       ct.kind,
+			withKind:   ct.asKind(c.module.Context),
+		}}
 	}
-	return old
+	return tn
 }
 
 func (bt *bootstrapType) IndexComputed(i Type, t *Expr) *klarerrs.Error {
