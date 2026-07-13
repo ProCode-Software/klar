@@ -72,6 +72,6 @@ func (r *Reporter) padding(lastCol, currCol uint32) {
 	if padding := int(currCol) - int(lastCol); padding > 0 {
 		r.appendSpace(padding)
 	} else if padding < 0 {
-		panic("negative column offset")
+		panic(fmt.Sprintf("negative column offset: last = %d, curr = %d", lastCol, currCol))
 	}
 }

@@ -127,15 +127,16 @@ loop:
 					break loop
 				}
 				if currLine == targetLine {
-					// First fragment on line. Add leading spaces for same reason as above
+					// First fragment on line. Add leading spaces for same reason as
+					// `frag.LineOffset > 0` above.
 					if firstOnLine {
 						r.padding(1, frag.Pos.Col)
 						n += frag.Pos.Col - 1
 					}
 					r.appendString(line, escColor)
 					n += uint32(utf8.RuneCountInString(line))
-					firstOnLine = false
 				}
+				firstOnLine = false
 				currLine++
 			}
 			// There may be only 1 iteration if the escape doesn't
