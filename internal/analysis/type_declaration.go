@@ -57,11 +57,9 @@ func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
 func (a *TypeAlias) Underlying() Type { return a.Resolve() }
 
 func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
-	fctx := o.LookupContext()
-	tn := o.typ.(*TypeName)
 	alias := &TypeAlias{Name: o.name}
-	tn.Type = alias
-	rhs := c.parseType(node.Type, fctx)
+	o.TypeName().Type = alias
+	rhs := c.parseType(node.Type, o.LookupContext())
 	// Set to invalid if we couldn't typecheck the rhs
 	if rhs == nil {
 		rhs = InvalidType
@@ -107,7 +105,7 @@ func (*Tag) String() string { return "<tag>" }
 // declaration is created inside the [*TypeName].
 func (c *Checker) checkTypeDecl(o *Object) {
 	node := o.info.node.(ast.TypeDeclaration)
-	_ = o.typ.(*TypeName) // Should be a [*TypeName]
+	_ = o.TypeName() // Should be a [*TypeName]
 	switch node := node.(type) {
 	case *ast.StructDeclaration:
 		c.checkStructDecl(o, node)

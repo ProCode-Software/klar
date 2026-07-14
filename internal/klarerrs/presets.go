@@ -76,7 +76,7 @@ func Undefined(name string, rang ranges.Range) *Error {
 		Code:  ErrUndefined,
 		Name:  name,
 		Range: rang,
-		Label: "I can't find " + Quote(name),
+		Label: Quote(name) + " doesn't exist",
 	}
 }
 

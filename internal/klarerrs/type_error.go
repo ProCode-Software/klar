@@ -2,6 +2,7 @@ package klarerrs
 
 import (
 	"fmt"
+	"strconv"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	ErrCantInferStringEnum    // Can't infer string enum value
 	ErrUnknownAttribute       // Unknown attribute
 	ErrInvalidAttributeTarget // You can only apply attributes to declarations
+	ErrUnsupportedAttribute   // Current kind of declaration doesn't support an attribute
 	ErrGenericTypeAlias       // Type alias cannot be a generic type
 	ErrDepCycle               // Circular type reference
 	ErrMismatchTupleDestruct  // Number of destructured tuple items on left > right
@@ -42,6 +44,7 @@ const (
 	ErrGenericParamsRequired // Reference to generic type requires params
 	ErrNonGenericType        // Generics passed to type that doesn't accept any
 	ErrInvalidGenericCount   // Too few/many generic parameters passed
+	ErrOptionalMap           // Neither map keys nor values may have an optional type
 
 	// Statement ====
 
@@ -73,6 +76,7 @@ const (
 	ErrNonLetterStringRange // Bounds of range over String must be a letter or digit
 	ErrMultiCharStringRange // Bounds of range over String must be a single character
 	ErrInvalidIndexType     // Can't index this type
+	ErrNilMapIndex          // Indexing a map using a 'none' literal is always a 'none' value
 	ErrNonNumericIndex      // Index for list/String/tuple must be Int
 	ErrInvalidMapIndex      // Map must be indexed with its key type
 	ErrFieldNotFound        // Field not found
@@ -83,6 +87,12 @@ const (
 	ErrInvalidAssertType    // Type being asserted must be a result or optional
 	ErrNotAFunction         // Can't call a non-function or initializer
 	ErrIndexEnumMethod      // An enum method is only accessible on individual items
+	ErrEnumItemNoParams     // Can't call an enum item that doesn't take parameters
+	ErrInvalidRestValue     // Can't use this value in a rest
+	ErrMisplacedMapRest     // Map used in rest outside map literal
+	ErrDynamicRest          // Can't rest a list or string outside variadic parameter
+	ErrRestUncommonTuple    // Tuples can only be spread into lists if all their item's types are common
+	ErrSpreadEmptyTuple     // Can't spread an empty tuple
 
 	// Binary/unary operation ====
 
@@ -101,6 +111,11 @@ const (
 	ErrInvalidStrMatchType // Type not allowed in string pattern match type
 	ErrNestedTupleStrMatch // Nested tuples not allowed in
 	ErrRedundantStrMatch   // Explicit type of String provided in string pattern match
+	ErrWhenTrueMismatch    // Cases of a 'when' block without subjects must have type Bool
+	ErrWhenSubjectRequired
+
+	// Call ====
+	ErrWrongParamCount // Wrong number of parameters passed to a function
 )
 
 func (e *Error) handleTypeError() string {
@@ -290,5 +305,37 @@ func (e *Error) handleTypeError() string {
 		return "Both operands of '" + e.Name + "' must have the same type"
 	case ErrInvalidAdditionType:
 		return "Can't add two " + e.Name + "s together"
+	case ErrOptionalMap:
+		return "The type of a map's key or value can't be optional"
+	case ErrNilMapIndex:
+		return "When 'none' is used to index a map, the value is always 'none'"
+	case ErrWhenTrueMismatch:
+		return "A case in a 'when' expression with no subjects must evaluate to type Bool"
+	case ErrEnumItemNoParams:
+		return "Enum item " + Quote(e.Name) + " takes no parameters"
+	case ErrWrongParamCount:
+		exp, got := e.StringParam("expected"), e.IntParam("got")
+		if exp == "0" {
+			return "The function doesn't take any parameters, but you passed " +
+				strconv.Itoa(got)
+		}
+		var title string
+		if e.BoolParam("notEnough") {
+			title = "Not enough parameters passed to the function"
+		} else {
+			title = "Too many parameters passed to the function"
+		}
+		var expString, gotString string
+		if exp == "1" {
+			expString = "1 is required"
+		} else {
+			expString = exp + " are required"
+		}
+		if got == 0 {
+			gotString = "none"
+		} else {
+			gotString = strconv.Itoa(got)
+		}
+		return fmt.Sprintf("%s: %s, but you passed %s", title, expString, gotString)
 	}
 }

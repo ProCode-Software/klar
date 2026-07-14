@@ -66,11 +66,11 @@ func (c *Checker) parseType(expr ast.Type, ctx *Context, flags ...Flag) Type {
 		c.fileError(klarerrs.Node(klarerrs.ErrInvalidRestType, expr), ctx.File)
 		return InvalidType
 	case *ast.TupleType:
-		tup := Tuple{}
+		tup := &Tuple{}
 		for _, pair := range expr.Values {
 			item := c.parseType(pair.Value, ctx)
 			for range max(len(pair.Keys), 1) {
-				tup = append(tup, item)
+				tup.Items = append(tup.Items, item)
 			}
 		}
 		return tup

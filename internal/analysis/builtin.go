@@ -61,16 +61,16 @@ var compositeTypes = map[string]struct {
 // Builtin functions
 var BuiltinFuncs = []string{"print", "crashout", "clone", "zip", "TODO"}
 
-type Tuple []Type
+type Tuple struct{ Items []Type }
 
-func (t Tuple) Kind() Kind { return KindTuple }
-func (t Tuple) String() string {
-	if len(t) == 0 {
+func (t *Tuple) Kind() Kind { return KindTuple }
+func (t *Tuple) String() string {
+	if len(t.Items) == 0 {
 		return "()"
 	}
 	var b strings.Builder
 	b.WriteByte('(')
-	for i, elem := range t {
+	for i, elem := range t.Items {
 		if i > 0 {
 			b.WriteString(", ")
 		}
@@ -80,7 +80,7 @@ func (t Tuple) String() string {
 	return b.String()
 }
 
-func (tup Tuple) IndexComputed(index Type, t *Expr) *klarerrs.Error {
+func (tup *Tuple) IndexComputed(index Type, t *Expr) *klarerrs.Error {
 	if index.Kind() != IntType {
 		return indexTypeMismatchError(
 			klarerrs.ErrNonNumericIndex,
@@ -89,10 +89,10 @@ func (tup Tuple) IndexComputed(index Type, t *Expr) *klarerrs.Error {
 	}
 	// TODO: Constant analysis to get the actual item at the index. For now,
 	// indexing a tuple returns a union of the tuple's elements.
-	if len(tup) == 0 {
+	if len(tup.Items) == 0 {
 		t.Type = InvalidType
 	} else {
-		t.Type = &Union{Types: tup}
+		t.Type = &Union{Types: tup.Items}
 	}
 	return nil
 }
@@ -134,6 +134,10 @@ func (m *Map) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 	if Compatible(i, m.Key) {
 		t.Type = &Optional{m.Value}
 		return nil
+	}
+	if Underlying(i) == Untyped(KindOptional) {
+		// Nil literal key
+		return indexError(klarerrs.ErrNilMapIndex, i, "The result is always 'none'")
 	}
 	err := indexTypeMismatchError(
 		klarerrs.ErrInvalidMapIndex, m.Key, i, "This index has type "+quote(i.String()),

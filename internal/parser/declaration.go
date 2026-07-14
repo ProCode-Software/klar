@@ -262,7 +262,10 @@ func (p *Parser) ParseInterface(
 		// Names
 		parseSeries(p, &f.Keys, func() ast.Identifier {
 			if p.CurrKind() == lexer.Underscore {
-				p.ErrorLabelled(klarerrs.Token(klarerrs.ErrDiscardIntfField, p.Curr()), "Remove the field")
+				p.ErrorLabelled(
+					klarerrs.Token(klarerrs.ErrDiscardIntfField, p.Curr()),
+					"Remove the field",
+				)
 			}
 			name := p.ParseMapIdentOrDiscard(0)
 			// Not accurate if there are multiple keys in this method (invalid)

@@ -3,7 +3,6 @@ package lexer
 import (
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 type StringAttrs struct {
@@ -153,11 +152,24 @@ func (l *Lexer) readStrInterp() StringEscape {
 	b.WriteByte('{')
 loop:
 	for {
-		// TODO: rewrite this part. this sucks
-		if next, eof := l.PeekN(2); !eof {
-			if r, _ := utf8.DecodeRune(next); unicode.IsSpace(r) {
-				b.WriteRune(r)
+		// Read spaces so they are written to [StringEscape.Value]
+	readSpaces:
+		for {
+			r, _, err := l.Reader.ReadRune()
+			switch {
+			case handleReadError(err):
+				break readSpaces
+			case !unicode.IsSpace(r):
+				if err := l.Reader.UnreadRune(); err != nil {
+					panic(err)
+				}
+				break readSpaces
+			case r == '\n':
+				l.ResetPosition()
+			default:
+				l.Pos.Col++
 			}
+			b.WriteRune(r)
 		}
 		t := l.Tokenize()
 		switch t.Kind {

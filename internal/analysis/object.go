@@ -79,8 +79,42 @@ func (obj *Object) Underlying() Type { return obj.typ }
 // Kind returns the kind of the object. Kind is equivalent to obj.Type().Kind().
 func (obj *Object) Kind() Kind { return obj.typ.Kind() }
 
-// String returns a human-readable representation of the object.
+// String returns a human-readable representation of the object's type.
 func (obj *Object) String() string { return obj.typ.String() }
+
+// ObjectString returns a human-readable representation of the object.
+func (obj *Object) ObjectString() string {
+	declKind := "object"
+	filePath := fmt.Sprintf(" (%s:%s)", obj.FilePath(), obj.rang)
+	switch typ := obj.typ.(type) {
+	case *Function:
+		return typ.StringWithName(obj.name) + filePath
+	case *FunctionAlias:
+	case *Variable:
+		declKind = "var"
+	case *Constant:
+		declKind = "const"
+	case *TypeName:
+		switch inner := typ.Type.(type) {
+		case *Struct:
+			declKind = "struct"
+		case *StructField:
+			declKind = "field"
+		case *EnumItem:
+			declKind = "enum item"
+		case *Enum:
+			declKind = "enum"
+		case *Interface:
+			declKind = "interface"
+		case *Tag:
+			return "type #" + obj.name + filePath
+		default: // Including type alias
+			return fmt.Sprintf("type %s = %s%s", obj.name, inner.String(), filePath)
+		}
+		return declKind + obj.name + filePath
+	}
+	return fmt.Sprintf("%s %s: %s%s", declKind, obj.name, obj.Type().String(), filePath)
+}
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
@@ -241,7 +275,7 @@ func (k Kind) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 		)
 	default:
 		// TODO: constant analysis (negative index, out of range index)
-		t.Type = StringType
+		t.Type = &Optional{StringType}
 		return nil
 	}
 }
@@ -258,7 +292,7 @@ type ComputedIndexer interface {
 
 // Per the spec
 var (
-	_ = [...]ComputedIndexer{&Map{}, &List{}, StringType, Tuple{}}
+	_ = [...]ComputedIndexer{&Map{}, &List{}, StringType, &Tuple{}}
 	_ = [...]Indexer{
 		&Map{}, &List{}, &Struct{}, &Enum{}, &Interface{}, &Task{},
 		StringType, IntType, FloatType, ErrorType,

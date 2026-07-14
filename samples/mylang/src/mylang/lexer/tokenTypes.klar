@@ -24,8 +24,8 @@ public func String(token: Token) = when token {
     .backslash -> '\\',
     .eof -> '',
     .newline -> '\n',
-    .string(content, singleQuote: true) -> `'{content}'`,
-    .string(content, singleQuote: false) -> `"{content}"`,
+    .string(:content, singleQuote: true) -> `'{content}'`,
+    .string(:content, singleQuote: false) -> `"{content}"`,
     .boolean(true) -> "true",
     .boolean(false) -> "false",
 }

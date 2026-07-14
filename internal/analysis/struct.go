@@ -38,7 +38,7 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 	str := &Struct{}
 	str.nonMethodMap = &str.fieldMap
 	fctx := o.LookupContext()
-	o.typ.(*TypeName).Type = str
+	o.TypeName().Type = str
 
 	// We're just checking their kinds for now. TODO: Add the fields and methods later.
 	str.Inherited = c.checkInheritedTypes(node.InheritedTypes, KindStruct, fctx)

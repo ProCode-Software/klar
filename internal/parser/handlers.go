@@ -15,6 +15,7 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 			break
 		}
 		return nil, false
+
 	// Primary expression/literal
 	case lexer.Identifier:
 		if p.isAttribute() && p.isVersion() {
@@ -28,8 +29,11 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		res = p.ParseNumber()
 	case lexer.Boolean:
 		res = p.ParseBoolean()
+	case lexer.Regex:
+		res = p.ParseRegexLiteral()
 	case lexer.Nil:
 		res = p.ParseNil()
+
 	// Prefix/Unary
 	case lexer.Not, lexer.Minus:
 		res = p.ParseUnaryExpression()
@@ -48,27 +52,30 @@ func (p *Parser) handleNUD(kind lexer.TokenType) (res ast.Expression, handled bo
 		} else {
 			res = p.ParseList()
 		}
+
 	case lexer.Func:
 		res = p.ParseLambda()
-	case lexer.Dot:
-		res = p.ParseEnumLiteral()
-	case lexer.Ellipsis:
-		res = p.ParseLeftRest()
-	case lexer.Regex:
-		res = p.ParseRegexLiteral()
 	case lexer.When:
 		res = p.ParseWhenBlock()
 	case lexer.For:
 		res = p.ParseForExpression()
+	case lexer.Dot:
+		res = p.ParseEnumLiteral()
+
 	case lexer.Go:
 		res = p.ParseGoExpression()
 	case lexer.Await:
 		res = p.ParseAwaitExpression()
 	case lexer.Try:
 		res = p.ParseTryExpression()
+	case lexer.Ellipsis:
+		if !p.isWhenPattern() {
+			return nil, false
+		}
+		res = p.ParseLeftRest()
 	case lexer.Underscore:
 		u := p.Advance()
-		if !p.isWhenCase() {
+		if !p.isWhenPattern() {
 			p.Error(klarerrs.Token(klarerrs.ErrUnderscoreValue, u))
 		}
 		res = &ast.Discard{}
@@ -115,12 +122,22 @@ func (p *Parser) handleLED(
 	// Assertion
 	case lexer.NotNot:
 		res = p.ParseAssertExpression(left)
+	case lexer.As:
+		if !p.isWhenPattern() {
+			return nil, false
+		}
+		res = p.ParseAs(left)
+	case lexer.Stroke:
+		if !p.isWhenPattern() {
+			return nil, false
+		}
+		res = p.ParseSubOptions(left)
 	// Invalid assignment
 	case lexer.Equal, lexer.ColonEqual, lexer.PlusEqual, lexer.MinusEqual,
 		lexer.AsteriskEqual, lexer.SlashEqual, lexer.PercentEqual, lexer.CaretEqual:
 		err := klarerrs.Token(klarerrs.ErrAssignmentAsExpr, p.Advance())
 		if kind == lexer.Equal {
-			err.Hint("Did you mean to use '==' instead?")
+			err.Hint("Did you mean to use '==' instead for a comparison?")
 		}
 		p.Error(err)
 		res = &ast.BadExpression{
@@ -165,7 +182,9 @@ func (p *Parser) validateAssignable(node ast.Node) ast.Assignable {
 	return &ast.BadExpression{Value: node}
 }
 
-func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (res ast.Statement, handled bool) {
+func (p *Parser) handleTopLevelStatement(kind lexer.TokenType) (
+	res ast.Statement, handled bool,
+) {
 	startPos := p.Curr().Position
 	switch kind {
 	default:
@@ -241,7 +260,9 @@ func (p *Parser) handleTypeNUD(kind lexer.TokenType) (res ast.Type, handled bool
 	return res, true
 }
 
-func (p *Parser) handleTypeLED(kind lexer.TokenType, left ast.Type, bp BindingPower) (res ast.Type, handled bool) {
+func (p *Parser) handleTypeLED(
+	kind lexer.TokenType, left ast.Type, bp BindingPower,
+) (res ast.Type, handled bool) {
 	switch kind {
 	case lexer.Stroke:
 		res = p.ParseUnionType(left, bp)

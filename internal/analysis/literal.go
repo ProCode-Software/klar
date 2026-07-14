@@ -7,9 +7,9 @@ import (
 )
 
 func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
-	tup := make(Tuple, len(expr.Values))
+	tup := &Tuple{make([]Type, len(expr.Values))}
 	for i, expr := range expr.Values {
-		tup[i] = c.checkExprFrom(expr, t).Type
+		tup.Items[i] = c.checkExprFrom(expr, t).Type
 	}
 	t.Type = tup
 }
@@ -62,20 +62,18 @@ func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
 	t.Type = StringType
 	// Check all interpolations
 	for _, frag := range expr.Fragments {
-		interp, ok := frag.(*ast.InterpolationFragment)
+		interp, ok := frag.(ast.InterpolationFragment)
 		if !ok {
-			continue
-		}
-		if tm, ok := interp.Expression.(*ast.StringTypeMatch); ok {
-			// TODO: Store a whenContext in *Expr to declare pattern-matched variables
-			c.checkStringTypeMatch(tm, t)
 			continue
 		}
 		// TODO: Check that each expression can be cast to String
 		// And disallow certain expression nodes (using an exprMode)
-		e := c.checkExprFrom(interp.Expression, t)
-		_ = e
+		e := c.checkExprFrom(interp.Expression, t, stringInterpolation)
+		c.checkStringInterpolation(interp.Expression, e)
 	}
+}
+
+func (c *Checker) checkStringInterpolation(node ast.Expression, e *Expr) {
 }
 
 func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
@@ -120,7 +118,12 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 			keyHint = mp.Key
 		}
 		for j, key := range entry.Keys {
-			k := c.checkExprFrom(key, t)
+			k := t.NewChild()
+			if _, ok := key.(*ast.Symbol); ok {
+				k.Type = StringType
+			} else {
+				c.checkExpr(key, t)
+			}
 			prev := mp.Key
 			c.inferCollection(k, &mp.Key, key, keyHint, func(err *klarerrs.Error) {
 				if err.Code == klarerrs.ErrTypeMismatch {
@@ -232,4 +235,5 @@ func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
 		return
 	}
 	t.Type = &UntypedInit{kind: KindEnum, Node: expr}
+	c.queue(func() {}, false)
 }

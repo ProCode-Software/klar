@@ -64,7 +64,7 @@ func (fa *FunctionAlias) String() string {
 
 type Arity struct {
 	// The minimum and maximum number of parameters the function accepts,
-	// excluding labelled parametees. MaxParams can be -1 if there is no maximum.
+	// excluding labelled parameters. MaxParams can be -1 if there is no maximum.
 	MinParams, MaxParams int
 }
 
@@ -148,7 +148,6 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, nil)
 		tn := info.receiver.TypeName()
 		if c.module.Flags.Has(BootstrapModule) {
-			// TODO: This is a temporary solution
 			tn = c.wrapBootstrappedTypeName(tn, info.receiver)
 		}
 		ov.Self = NewVariable(selfObj, SelfVar, tn)
@@ -292,11 +291,11 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		// Discard keys don't count as named, so if the return type is a tuple
 		// with all discard keys, there are no named returns, and an explicit
 		// 'return' statement is required.
-		retTuple := make(Tuple, 0, len(rt.Values))
+		retTuple := &Tuple{make([]Type, 0, len(rt.Values))}
 		for _, pair := range rt.Values {
 			typ := c.parseType(pair.Value, ctx)
 			for _, key := range pair.Keys {
-				retTuple = append(retTuple, typ)
+				retTuple.Items = append(retTuple.Items, typ)
 				if key.IsZero() || key.IsDiscard() {
 					continue
 				}
@@ -311,7 +310,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 			}
 			if len(pair.Keys) == 0 {
 				// Otherwise the type won't be appended if there are no keys
-				retTuple = append(retTuple, typ)
+				retTuple.Items = append(retTuple.Items, typ)
 			}
 		}
 		ov.Return, retRange = retTuple, rt.Range
@@ -739,7 +738,7 @@ func sortByArity(a, b *Overload) int {
 }
 
 func (c *Checker) checkRedeclaredOverload(a, b *Overload) (ok bool) {
-	typesEqual := func(a, b *Variable) bool { return a.Type == b.Type }
+	typesEqual := func(a, b *Variable) bool { return TypesEqual(a.Type, b.Type) }
 	equal := slices.EqualFunc(a.Params, b.Params, typesEqual) &&
 		maps.EqualFunc(a.labelMap, b.labelMap, typesEqual)
 	return !equal

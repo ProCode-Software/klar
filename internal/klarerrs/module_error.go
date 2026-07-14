@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/module/imports"
-	"github.com/ProCode-Software/klar/internal/target"
 )
 
 const (
@@ -60,7 +59,7 @@ func (e *Error) handleModuleError() string {
 		)
 	case ErrUnsupportedImportTarget:
 		return "Can't import " + path + " because it doesn't support the " +
-			e.GetParam("currTarget").(target.Target).String() + " target"
+			e.Name + " target"
 	case ErrNoPublicExports:
 		return "Module " + path + " doesn't provide any public exports"
 	case ErrSelfImport:

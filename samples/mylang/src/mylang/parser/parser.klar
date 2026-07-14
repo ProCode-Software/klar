@@ -46,7 +46,7 @@ func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {
 func Parser.parseCommand() -> Result<Command, SyntaxError> {
     cmdName := when self.current() {
         .identifier(name) -> name
-        _ -> return SyntaxError.expected("command name", cmdNameToken)
+        _ -> return SyntaxError.expected("command name", got: self.current())
     }
     self.advance()
 
@@ -91,7 +91,7 @@ func Parser.parseValue() -> Result<Value, SyntaxError> {
                 _ -> return IntValue(val)
             }
         }
-        .string(content, singleQuote) -> return StringValue(value, singleQuote),
+        .string(str...) -> return StringValue(str...),
         .boolean(value) -> return BoolValue(value),
         _ -> return SyntaxError.expected("a value", got: token)
     }

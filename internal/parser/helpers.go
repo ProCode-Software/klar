@@ -38,27 +38,36 @@ func (p *Parser) lastTokEnd() lexer.Position {
 }
 
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
-	var isOk, isComputed bool
+	var ok, isComputed bool
 	sym := p.ParseExpression(ExpressionBindingPower)
+	as, _ := sym.(*ast.AsExpression)
+	if as != nil {
+		sym = as.Expression
+	}
 	switch sym := sym.(type) {
 	case *ast.Symbol:
-		key = sym
-		value = sym
-		isOk = true
+		key, value = sym, sym
+		ok = true
 	case *ast.IndexExpression:
 		if sym.Computed {
 			break
 		}
-		if prop, ok := sym.Property.(*ast.Symbol); ok {
-			key = prop
-			value = sym
-			isOk = true
+		if prop, ok2 := sym.Property.(*ast.Symbol); ok2 {
+			key, value = prop, sym
+			ok = true
 		}
+		// TODO: In the future, functions could be allowed?
+		// 	:value() for `value: value()`
+		//  :info.name() for `name: info.name()`
 	}
-	if !isOk {
+	if !ok {
 		err := klarerrs.Node(klarerrs.ErrInvalidLabelShorthand, sym)
 		err.Params = klarerrs.ErrorParams{"computed": isComputed}
 		p.Error(err)
+		return &ast.Symbol{}, &ast.BadExpression{}
+	}
+	if as != nil {
+		value = &ast.AsExpression{Expression: value, Name: as.Name}
 	}
 	return key, value
 }
@@ -111,7 +120,7 @@ func isComment(t lexer.TokenType) bool {
 	return false
 }
 
-// Reports [errors.ErrCurlyQuote] if tok is a Unicode curly quote (single or double)
+// Reports [klarerrs.ErrCurlyQuote] if tok is a Unicode curly quote (single or double)
 func (p *Parser) checkCurlyQuote(tok lexer.Token) bool {
 	var alt string
 	switch tok.Source {

@@ -96,7 +96,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 		Generics:  c.parseGenerics(node.Generics, o.file, fctx),
 		Inherited: c.checkInheritedTypes(node.Inherited, KindEnum, fctx),
 	}
-	o.typ.(*TypeName).Type = e
+	o.TypeName().Type = e
 
 	// Keep track of unique values
 	valueMap := make(map[ConstValue]*EnumItem)

@@ -13,13 +13,12 @@ type Lexer {
 
 // Returns a new lexer that reads from `input`
 func Lexer(input: String) {
-    type Xexer = Lexer
-    self = Xexer(:input, index: 0)
+    self = Lexer(:input, index: 0)
 }
 
 // Reads a single character
 func Lexer.read() -> String {
-    char := self.input[self.index]
+    char := self.input[self.index]!!
     self.prev = char
     self.index += 1
     return char
@@ -45,9 +44,9 @@ func Lexer.tokenize() -> [Token] {
 }
 
 // Whether `char` is an ASCII digit
-func isNumber(char: String) = char in '0'...'9'
+func isNumber(char: String) = char[0]!! in '0'...'9'
 // Whether `char` is an ASCII letter
-func isLetter(char: String) = char in 'A'...'Z' or 'a'...'z'
+func isLetter(char: String) = char[0]!! in 'A'...'Z' or 'a'...'z'
 
 func Lexer.readToken() -> Token {
     while self.hasTokens() :loop {
@@ -64,7 +63,7 @@ func Lexer.readToken() -> Token {
             _ -> return .illegal(char)
         }
     }
-    crashout("unreachable")
+    return .eof
 }
 
 func Lexer.readIdentifier() -> Token {
@@ -80,9 +79,9 @@ func Lexer.readIdentifier() -> Token {
         }
     }
     return self.buildToken(func src -> when src {
-        "true" -> .boolean(value: true)
-        "false" -> .boolean(value: false)
-        _ -> .identifier(name: src)
+        "true" -> .boolean(true)
+        "false" -> .boolean(false)
+        _ -> .identifier(src)
     })
 }
 

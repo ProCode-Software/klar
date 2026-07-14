@@ -24,7 +24,9 @@ func (expectError) expect()     {}
 func (withLabel) expect()       {}
 func (withMessage) expect()     {}
 
-func withExpectFlags(flags []expectFlag, exp lexer.TokenType, got lexer.Token) (err *Error, stay bool) {
+func withExpectFlags(
+	flags []expectFlag, exp lexer.TokenType, got lexer.Token,
+) (err *Error, stay bool) {
 	for _, flag := range flags {
 		switch flag := flag.(type) {
 		case expectError:

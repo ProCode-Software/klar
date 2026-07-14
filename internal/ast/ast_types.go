@@ -174,6 +174,7 @@ type RangeExpression struct {
 
 type RestExpression struct {
 	BaseNode
+	Left       bool       // If '...' is to the left of Expression (when pattern only)
 	Expression Expression // Can be nil in when cases
 }
 
@@ -212,6 +213,7 @@ type MapLiteral struct {
 // If Rest is true, len(Keys) should be 0.
 type MapItem struct {
 	Keys            []Expression // if not rest
+	ColonPos        lexer.Position
 	Value           Expression
 	Rest, Shorthand bool
 	BaseNode
@@ -256,7 +258,8 @@ type WhenCase struct {
 	BaseNode
 	// Each options separated by '|', then Expression for each subject
 	Options [][]Expression
-	Guard   Expression // <case> if <expr>
+	As      []Identifier // If `as ...` is after the options
+	Guard   Expression   // <case> if <expr>
 	// [*Block], [Statement], or [Expression]. Syntax: -> <expr/stmt> | -> {...}
 	Body Node
 }
@@ -266,6 +269,20 @@ type StringTypeMatch struct {
 	BaseNode
 	Name Identifier
 	Type Type
+}
+
+type AsExpression struct {
+	BaseNode
+	Expression Expression
+	Name       Identifier
+}
+
+// Options for a nested expression in a when pattern
+//
+//	[1 | 2]
+type SubOptions struct {
+	BaseNode
+	Options []Expression
 }
 
 type LambdaExpression struct {
@@ -285,7 +302,9 @@ type PipelineExpression struct {
 type ObjectPipeline struct {
 	BaseNode
 	Object Expression
-	Steps  []Node // [CallExpression] or [AssignmentStatement]
+	// [CallExpression] or [AssignmentStatement]. No LHS is computed. For
+	// [AssignmentStatement] there is always exactly 1 assignee.
+	Steps  []Node
 }
 
 // A ForExpression is a [ForStatement] used as an expression.

@@ -49,6 +49,8 @@ const (
 	constExpr // Can also be output
 	exprStmt
 	patternMatch
+	indexLHS
+	stringInterpolation
 
 	// Output modes
 	todoExpr
@@ -178,9 +180,21 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	if nr, ok := t.Type.(*NoReturn); ok && t.stmtCtx != nil && !nr.IsTODO() {
 		t.stmtCtx.flags |= unreachableStmt
 	}
+	// Ensure the expression is allowed to be used in t's context ([Expr.mode])
+	if filtered, kind := t.IsFiltered(expr); filtered {
+		_ = kind
+	}
 	// Record the expression node and its *Expr
 	c.Info.Expressions[expr] = t
 	return t
+}
+
+// IsFiltered reports whether the given node is disallowed based on e's mode.
+// This is to ensure specific types of nodes don't appear in certain targets,
+// such as 'when' expressions in string interpolations. A human-friendly
+// name of the node is returned if filtered is false.
+func (e *Expr) IsFiltered(expr ast.Expression) (filtered bool, node string) {
+	return
 }
 
 func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
@@ -204,6 +218,7 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 	case (t.mode & callLHS) != 0:
 		t.mode |= typeInit
 	case t.hint != nil && t.hint.Kind() == KindFunction:
+	case t.mode&indexLHS != 0 && obj.Kind() == KindEnum:
 	// Allowed if t.hint is a function (making the expression an initializer)
 	// 	parseInt: func(String) -> Result<Int> := Int
 	//
@@ -235,7 +250,9 @@ func (c *Checker) checkRangeExpr(expr *ast.RangeExpression, t *Expr) {
 	from, to := c.checkExprFrom(expr.From, t), c.checkExprFrom(expr.To, t)
 	iterType := CommonType(from.Type, to.Type)
 	reportTypeMismatch := func(a, b ast.Expression, ta, tb Type) {
-		// TODO: Error
+		err := typeMismatch(ta, tb, b.GetRange())
+		err.AddHighlight("This has type "+quoteAka(ta), a.GetRange())
+		c.fileError(err, t.FileID())
 		t.Type = &List{InvalidType}
 	}
 	if iterType == nil {
@@ -314,17 +331,17 @@ func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, t *Expr) {
 		t.Type = Underlying(typ).(*Task).Result
 	case KindTuple:
 		// If `a: Task<A>` and `b: Task<B>`, `await (a, b)` is `(A, B)`
-		tupleArg := Underlying(typ).(Tuple)
-		tupleRes := make(Tuple, len(tupleArg))
-		for i, elem := range tupleArg {
+		tupleArg := Underlying(typ).(*Tuple)
+		tupleRes := &Tuple{Items: make([]Type, len(tupleArg.Items))}
+		for i, elem := range tupleArg.Items {
 			// TODO:
 			taskItem, ok := Underlying(elem).(*Task)
 			if !ok {
 				errNotTask(elem) // Not a Task
-				tupleRes[i] = InvalidType
+				tupleRes.Items[i] = InvalidType
 				continue
 			}
-			tupleRes[i] = taskItem.Result
+			tupleRes.Items[i] = taskItem.Result
 		}
 		t.Type = tupleRes
 	case KindList:
@@ -344,7 +361,7 @@ func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, t *Expr) {
 }
 
 func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
-	lhs := c.checkExprFrom(expr.Object, t)
+	lhs := c.checkExprFrom(expr.Object, t, indexLHS)
 	if lhs.Type.Kind() == InvalidType {
 		t.Type = InvalidType
 		return
@@ -389,7 +406,6 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 		err := klarerrs.Node(klarerrs.ErrInvalidIndexType, expr.Object)
 		err.Info = klarerrs.TypeErrorInfo{GotType: lhs.Type.String()}
 		err.Label = "Can't index " + klarerrs.WithA(lhs.Type.Kind().String())
-		// err.Label = "Type " + klarerrs.Quote(lhs.Type.String()) + " can't be indexed"
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
 	case err != nil:
@@ -416,14 +432,35 @@ func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
 		// RHS must be an Int or Float
 		if rhsKind != IntType && rhsKind != FloatType {
 			got := rhs.Type.String()
-			err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr)
+			err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr.Right)
 			err.Label = "This has type " + quote(got)
 			err.Info = klarerrs.TypeErrorInfo{GotType: got}
 			c.fileError(err, t.Context.File)
 			t.Type = InvalidType
 		}
 	case lexer.Not:
-	// RHS must be Bool or optional
+		// RHS must be Bool
+		if rhsKind != BoolType {
+			got := rhs.Type.String()
+			err := klarerrs.Node(klarerrs.ErrNegateNonNumeric, expr.Right)
+			err.Label = "This has type " + quote(got)
+			err.Info = klarerrs.TypeErrorInfo{GotType: got}
+			err.Name = expr.Operator.String()
+			// Provide a hint if the user tried to negate an optional:
+			// 	isNil := !optional
+			if rhsKind == KindOptional {
+				hintWithDiff(
+					err, "To check for non-nilness, use 'expr != none'",
+					&klarerrs.DeletedRange{Range: expr.Operator.Range()},
+					&klarerrs.AddedString{
+						Position: expr.Right.GetRange().End.Add(0, 1),
+						String:   "!= none",
+					},
+				)
+			}
+			c.fileError(err, t.Context.File)
+		}
+		t.Type = BoolType
 	default:
 		panic(fmt.Sprintf("unhandled unary operator: %q", expr.Operator))
 	}
@@ -485,7 +522,8 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 			err.Name = result.Kind().String()
 			if result.Kind() == KindTuple {
 				// Hint on tuple + tuple to use (tuple1..., tuple2...) instead
-				// TODO: Can we use a line diff instead? (old line - new line)
+				// TODO: Can we use a line diff instead? (old line - new line
+				// Do this after we're able to print AST nodes
 				err.HintWithDiff(
 					"To concatenate tuples, spread them into a single tuple", klarerrs.NewDiff(
 						"",
@@ -527,7 +565,8 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 			return StringType
 		}
 		fallthrough
-	case lexer.Minus, lexer.Slash, lexer.Percent, lexer.Caret:
+	case lexer.Minus, lexer.Slash, lexer.Percent, lexer.Caret,
+		lexer.LessThan, lexer.LessEqualTo, lexer.GreaterThan, lexer.GreaterEqualTo:
 		// Int, Float
 		if result = CommonType(lhs, rhs); result == nil {
 			// Mismatched operands
@@ -547,6 +586,28 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 			c.fileError(err, fid)
 			return InvalidType
 		}
+		switch op.Kind {
+		case lexer.LessThan, lexer.LessEqualTo, lexer.GreaterThan, lexer.GreaterEqualTo:
+			result = BoolType
+		}
+	case lexer.EqualEqual, lexer.NotEqual:
+		compType := CommonType(lhs, rhs)
+		if compType == nil {
+			c.fileError(mismatchedOperandsError(), fid)
+			return BoolType
+		}
+		// In Klar, all types can be compared for equality
+		if compType.Kind() == KindFunction {
+			// If comparing functions, we can report an error if different function
+			// references are compared, because the result is always known.
+			// 	func a() = 1
+			// 	func b() = 1
+			// 	_ = a == b
+			// If at least 1 is a variable, we won't report an error.
+			// 	fn := a
+			//  _ = fn == b // Valid without constant analysis
+		}
+		return BoolType
 	case lexer.And, lexer.Or:
 		// Distributive: any type, but both sides must be the same
 		if result = CommonType(lhs, rhs); result == nil {
@@ -576,6 +637,17 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 					"This map has type "+quote(mp.String()),
 					rhsNode.GetRange(),
 				)
+				// If the LHS is a map value instead of a key, show a hint (V in #{K: V})
+				if Compatible(lhs, mp.Value) {
+					var not string
+					if op.Kind == lexer.NotIn {
+						not = "n't"
+					}
+					err.Hintf(
+						"The %s operator checks if a key, not a value, is%s in a map",
+						op, not,
+					)
+				}
 				c.fileError(err, fid)
 			}
 		case KindList:
@@ -603,60 +675,37 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 }
 
 func (c *Checker) checkRelationalExpr(expr *ast.RelationalExpression, t *Expr) {
+	for i, op := range expr.Operators {
+		lhsNode, rhsNode := expr.Expressions[i], expr.Expressions[i+1]
+		lhs, rhs := c.checkExprFrom(lhsNode, t), c.checkExprFrom(rhsNode, t)
+		c.checkBinaryOperation(op, lhs.Type, rhs.Type, lhsNode, rhsNode, nil, t.FileID())
+	}
 	t.Type = BoolType
 }
 
 func (c *Checker) checkSliceExpr(expr *ast.SliceExpression, t *Expr) {
 	lhs := c.checkExprFrom(expr.Object, t)
-	t.Type = lhs.Type
-}
-
-func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
-	lhs := c.checkExpr(expr.Callee, t.NewChild(callLHS))
-	var und Type
-	if obj, ok := lhs.Type.(*Object); ok && obj.IsTypeName() {
-		// Type initializer
-		t.Type = lhs.Type
-		und = Underlying(lhs.Type)
-	} else {
-		if lhs.Type.Kind() == InvalidType {
-			t.Type = InvalidType
-			return
+	for _, part := range [...]ast.Expression{expr.From, expr.To} {
+		if part == nil {
+			continue
 		}
-		und = Underlying(lhs.Type)
-		switch fn := und.(type) {
-		case *Function:
-			if isTODO(fn) {
-				t.mode |= todoExpr
-			}
-			t.Type = fn.Return
-			// TODO: This is temporary and will be removed when generic inference
-			// is implemented
-			if isCloneBuiltin(fn) && len(expr.Args) >= 1 {
-				p1 := c.checkExprFrom(expr.Args[0].Value, t)
-				t.Type = p1.Type
-				return
-			}
-		case *EnumFunction:
-		case *UntypedInit:
-			if fn.kind == KindEnum && fn.Params == nil {
-				calledInit := &UntypedInit{kind: KindEnum, Node: expr, Params: expr.Args}
-				t.Type = calledInit
-				return // Won't check params now
-			}
-		case *Lambda:
-		default:
-			// Not a function (or initializer)
-			err := klarerrs.Node(klarerrs.ErrNotAFunction, expr.Callee)
-			typ := quoteAka(lhs.Type)
-			err.Label = "This callee has type " + typ + " and can't be called"
-			err.Name = typ
-			c.fileError(err, t.Context.File)
-			t.Type = InvalidType
-			return
+		e := c.checkExprFrom(part, t)
+		if e.Kind() != IntType {
+			err := klarerrs.Node(klarerrs.ErrNonNumericIndex, part)
+			err.Label = "Can't slice a list using type " + quoteAka(e.Type)
+			err.Info = klarerrs.TypeErrorInfo{IntType.String(), e.Type.String()}
+			c.fileError(err, t.FileID())
 		}
 	}
-	c.checkCallArgs(und, expr, t)
+	switch lhs.Type.Kind() {
+	case KindList:
+		t.Type = lhs.Type
+	case KindTuple:
+		// TODO: Check constants and slice
+		t.Type = lhs.Type
+	default:
+		t.Type = lhs.Type
+	}
 }
 
 func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
@@ -670,12 +719,6 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 	}
 	// Check the parameters once its type is inferred
 	c.queue(func() { c.checkStructDotInitParams(expr, t) }, false)
-}
-
-func (c *Checker) checkStructDotInitParams(expr *ast.StructDotInit, t *Expr) {
-}
-
-func (c *Checker) checkCallArgs(lhs Type, expr *ast.CallExpression, t *Expr) {
 }
 
 func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
@@ -805,12 +848,48 @@ func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
 func (c *Checker) checkObjectPipeline(expr *ast.ObjectPipeline, t *Expr) {
 	obj := c.checkExprFrom(expr.Object, t)
 	for _, step := range expr.Steps {
+		lhs := t.NewChild()
 		switch step := step.(type) {
 		case *ast.CallExpression:
-			_ = step
+			c.checkIndexExpr(&ast.IndexExpression{
+				Object:   expr.Object,
+				Property: step.Callee,
+			}, lhs)
+			c.checkCallArgs(lhs.Type, step, t.NewChild())
 		case *ast.AssignmentStatement:
-
+			c.checkIndexExpr(&ast.IndexExpression{
+				Object:   expr.Object,
+				Property: step.Assignee[0],
+			}, lhs)
+			rhs := t.NewChild().withHint(lhs.Type)
+			c.checkExpr(step.Values[0], rhs)
+			c.checkAssignment(
+				lhs.Type, rhs.Type, step.Assignee[0], step.Values[0],
+				step.Operator.Uncompound(), t.FileID(),
+			)
 		}
 	}
 	_ = obj
+}
+
+// canSpreadTuple checks if the provided tuple can be spread into a list.
+// That is true if the types of all of the tuple's items are common.
+// If they are in common, the common type is returned. Otherwise,
+// canSpreadTuple returns nil and an error if the tuple can't be spread.
+func canSpreadTuple(t *Tuple) (commonType Type, err *klarerrs.Error) {
+	if len(t.Items) == 0 {
+		return nil, &klarerrs.Error{
+			Code:  klarerrs.ErrSpreadEmptyTuple,
+			Label: "This tuple is empty",
+		}
+	}
+	for _, item := range t.Items {
+		if commonType = CommonType(commonType, item); commonType == nil {
+			return nil, &klarerrs.Error{
+				Code:  klarerrs.ErrRestUncommonTuple,
+				Label: "This tuple has type " + t.String(),
+			}
+		}
+	}
+	return commonType, nil
 }

@@ -44,6 +44,10 @@ func (t Token) String() string {
 	return s + "}"
 }
 
+// To ensure Token doesn't implement LitterDump. The token will be printed
+// using the default format. Previously, Token implemented it through Position.
+func (t Token) LitterDump() {}
+
 func (t *Token) setAttr(key string, value any) *Token {
 	if t.Attributes == nil {
 		t.Attributes = make(attrs)

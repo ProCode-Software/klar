@@ -10,7 +10,7 @@ import (
 
 const (
 	isAttribute = 1 << iota // Allow version parsing
-	isWhenCase              // Allow '_'
+	whenPattern             // Allow '_'
 )
 
 // A Parser parses lexer tokens into an abstract syntax tree (AST).
@@ -51,14 +51,10 @@ func New(tokens []lexer.Token, options *Options) *Parser {
 }
 
 // Curr return the [lexer.Token] at the current parser index.
-func (p *Parser) Curr() lexer.Token {
-	return p.Tokens[p.Index]
-}
+func (p *Parser) Curr() lexer.Token { return p.Tokens[p.Index] }
 
 // PeekBehind return the [lexer.Token] before the current parser index.
-func (p *Parser) PeekBehind() lexer.Token {
-	return p.Tokens[p.Index-1]
-}
+func (p *Parser) PeekBehind() lexer.Token { return p.Tokens[p.Index-1] }
 
 // Peek return the next [lexer.Token] without advancing the parser.
 func (p *Parser) Peek() lexer.Token {
@@ -68,20 +64,17 @@ func (p *Parser) Peek() lexer.Token {
 	return p.Tokens[p.Index+1]
 }
 
-func (p *Parser) PeekKind() lexer.TokenType {
-	return p.Peek().Kind
-}
+func (p *Parser) PeekKind() lexer.TokenType { return p.Peek().Kind }
 
 // CurrKind return the Kind of the [lexer.Token] at the current parser index.
-func (p *Parser) CurrKind() lexer.TokenType {
-	return p.Curr().Kind
-}
+func (p *Parser) CurrKind() lexer.TokenType { return p.Curr().Kind }
 
 // Backup decrements the parser's index by 1.
 func (p *Parser) Backup() {
-	if p.Index > 0 {
-		p.Index--
+	if p.Index <= 0 {
+		panic("Parser.Backup() called with Index 0")
 	}
+	p.Index--
 }
 
 // Advance returns the current Token and increases the parser index.
@@ -197,8 +190,8 @@ func (p *Parser) handlePanic() {
 	}
 }
 
-func (p *Parser) isWhenCase() bool  { return (p.flags & isWhenCase) != 0 }
-func (p *Parser) isAttribute() bool { return (p.flags & isAttribute) != 0 }
+func (p *Parser) isWhenPattern() bool { return (p.flags & whenPattern) != 0 }
+func (p *Parser) isAttribute() bool   { return (p.flags & isAttribute) != 0 }
 
 // Reset resets all properties to defaults, freeing resources.
 func (p *Parser) Reset() {

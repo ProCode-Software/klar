@@ -71,9 +71,7 @@ func (i Identifier) String() string { return i.Name }
 // Range returns the range of i.
 func (i Identifier) Range() ranges.Range {
 	if i._range.Start.Line == 0 {
-		i._range = ranges.Range{i.Position, lexer.Position{
-			i.Position.Line, i.Position.Col + i.Len,
-		}}
+		i._range = ranges.Offset(i.Position, 0, i.Len)
 	}
 	return i._range
 }

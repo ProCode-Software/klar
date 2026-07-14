@@ -30,7 +30,6 @@ print(country)
 
 // Add a country later
 flagCountries['🇰🇷'] = 'South Korea'
-
 ```
 
 Like lists, maps can store multiple values, however, there are many key differences:
@@ -137,6 +136,16 @@ public func Map.keysAsValues() -> #{V: K} = for k, v in self -> (v, k)
 public func Map.delete(keys keys: ...K) {
     for key in keys {
         self[key] = none
+    }
+}
+
+// Deletes the entries that satisfy `pred`.
+public func Map.delete(where pred: func(K, V) -> Bool) {
+    for k, v in self {
+    self[k] = v
+        when pred(k, v) {
+            true -> self[k] = nil
+        }
     }
 }
 

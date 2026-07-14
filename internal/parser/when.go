@@ -28,46 +28,60 @@ func (p *Parser) ParseWhenBlock() *ast.WhenExpression {
 }
 
 func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
-	var (
-		c        = &ast.WhenCase{}
-		commaExp = make([]ast.Expression, 0, subjects)
-		orOpts   [][]ast.Expression
-	)
-	// Back up isWhenCase flag
-	oldIsWhenCase := p.flags & isWhenCase
-	p.flags |= isWhenCase
-	defer func() { p.flags = oldIsWhenCase }()
+	c := &ast.WhenCase{}
+	subjectPatterns := make([]ast.Expression, 0, subjects)
 	insertOption := func() {
-		if len(commaExp) != subjects {
+		if len(subjectPatterns) != subjects {
 			p.Error(
-				klarerrs.Slice(klarerrs.ErrWrongSubjectCount, commaExp).
-					SetParam("expected", subjects).SetParam("got", len(commaExp)),
+				klarerrs.Slice(klarerrs.ErrWrongSubjectCount, subjectPatterns).
+					SetParam("expected", subjects).
+					SetParam("got", len(subjectPatterns)),
 			)
 		}
-		orOpts = append(orOpts, commaExp)
-		commaExp = commaExp[:0]
+		c.Options = append(c.Options, subjectPatterns)
+		subjectPatterns = subjectPatterns[:0]
 	}
-	// ',' binds tighter than '|' in case
-loop:
-	for p.HasTokens() {
+	// Patterns and options
+	func() {
+		defer func(old uint8) { p.flags = old }(p.flags)
+		p.flags |= whenPattern
 		if p.CurrKind() == lexer.Stroke {
 			p.Advance()
 		}
-		commaExp = append(commaExp, p.parseCaseSubExpr())
-		switch p.CurrKind() {
-		case lexer.Stroke:
-			insertOption()
-			p.Advance()
-		case lexer.If, lexer.Arrow:
-			insertOption()
-			break loop
-		case lexer.Comma:
-			p.Advance()
-		default:
-			break loop
+		// ',' binds tighter than '|' in case
+	loop:
+		for p.HasTokens() {
+			subjectPatterns = append(subjectPatterns, p.parseCaseSubExpr())
+			switch p.CurrKind() {
+			case lexer.Stroke:
+				insertOption()
+				p.Advance()
+			case lexer.If, lexer.Arrow, lexer.As:
+				insertOption()
+				break loop
+			case lexer.Comma:
+				p.Advance()
+			default:
+				break loop
+			}
+		}
+	}()
+
+	// when a, b, c {
+	//   < 5, < 3, < 0 as x, y, z | > 10, > 20, > 30 as x, y, z -> ...
+	// }
+	if p.CurrKind() == lexer.As {
+		p.Advance()
+		parseSeries(p, &c.As, p.ParseIdentOrDiscard, 0, lexer.Comma, false)
+		if len(c.As) > subjects {
+			p.ErrorLabelled(
+				klarerrs.Slice(klarerrs.ErrWrongSubjectCount, c.As[subjects:]).
+					SetParam("expected", subjects).SetParam("got", len(c.As)),
+				"Extra subjects",
+			)
 		}
 	}
-	c.Options = orOpts
+
 	// Guard clause
 	// 	when x, y {
 	//		5, _ if y < 10 -> ...
@@ -76,7 +90,8 @@ loop:
 		p.Advance()
 		c.Guard = p.ParseExpression(ExpressionBindingPower)
 	}
-	p.flags = oldIsWhenCase
+
+	// Body
 	p.Expect(lexer.Arrow)
 	switch p.CurrKind() {
 	// Block
@@ -89,28 +104,26 @@ loop:
 			p.ExpectOneOf(lexer.Newline, lexer.Comma)
 		}
 	// Statement/expression outside braces
-	default:
-		switch p.CurrKind() {
+	case lexer.For, lexer.Func:
 		// Treat these tokens as expressions
-		case lexer.For, lexer.Func:
-			c.Body = p.ParseExpression(ExpressionBindingPower)
-			p.ExpectOneOf(lexer.Newline, lexer.Comma)
-			return c
-		}
+		c.Body = p.ParseExpression(ExpressionBindingPower)
+		p.ExpectOneOf(lexer.Newline, lexer.Comma)
+		return c
+	default:
 		// BUG: Braces/comma required before '<' starting next case
-		res := p.ParseStatement(allowCommaTerminator)
-		switch res := res.(type) {
+		stmt := p.ParseStatement(allowCommaTerminator)
+		switch stmt := stmt.(type) {
 		// All expressions are allowed
 		case *ast.ExpressionStatement:
-			c.Body = res.Expression
+			c.Body = stmt.Expression
 		// Allow some kinds of statements outside of braces
 		case *ast.AssignmentStatement, *ast.ReturnStatement,
 			*ast.NextStatement, *ast.StopStatement:
-			c.Body = res
+			c.Body = stmt
 		default:
 			// Expected expression error
-			p.Error(klarerrs.Node(klarerrs.ErrRequiredBraces, res))
-			c.Body = &ast.BadExpression{Value: res}
+			p.Error(klarerrs.Node(klarerrs.ErrRequiredBraces, stmt))
+			c.Body = &ast.BadExpression{Value: stmt}
 		}
 	}
 	return c
@@ -122,7 +135,7 @@ func isImplicitWhenOp(prevLine uint32, t lexer.Token) bool {
 		return false
 	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
 		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn,
-		lexer.Question, lexer.Dot:
+		lexer.Dot, lexer.Ellipsis, lexer.DotDotLessThan:
 		return t.Position.Line != prevLine
 	}
 	return false
@@ -136,14 +149,29 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 	// 	when x {
 	// 		< 5 -> ...
 	// }
-	case lexer.EqualEqual, lexer.NotEqual, lexer.LessThan, lexer.GreaterThan,
-		lexer.GreaterEqualTo, lexer.LessEqualTo, lexer.In, lexer.NotIn:
+	case lexer.EqualEqual, lexer.NotEqual, lexer.In, lexer.NotIn:
 		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
+	case lexer.LessThan, lexer.LessEqualTo, lexer.GreaterEqualTo, lexer.GreaterThan:
+		res = p.ParseRelationalExpression(nil, bpOf(tok.Kind))
 	case lexer.Underscore:
 		p.Advance()
 		res = &ast.Discard{}
 	default:
-		res = p.ParseExpression(ExpressionBindingPower)
+		res = p.ParseExpressionFilter(func(tt lexer.TokenType) bool {
+			return tt == lexer.Stroke || tt == lexer.As
+		}, WhenAsBindingPower, 0)
 	}
 	return markStartEndPos(p, res, tok.Position)
+}
+
+func (p *Parser) ParseAs(left ast.Expression) *ast.AsExpression {
+	p.Advance()
+	return &ast.AsExpression{Expression: left, Name: p.ParseIdentifier()}
+}
+
+func (p *Parser) ParseSubOptions(first ast.Expression) *ast.SubOptions {
+	opts := &ast.SubOptions{Options: []ast.Expression{first}}
+	p.Advance() // |
+	parseExprSeries(p, &opts.Options, ExpressionBindingPower, 0, lexer.Stroke)
+	return opts
 }

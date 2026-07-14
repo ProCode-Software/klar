@@ -42,13 +42,13 @@ const (
 	targetAttr
 	externalAttr
 
-	structFieldAttrs = nameAttr
-	intfFieldAttrs   = nameAttr | targetAttr
 	enumVariantAttrs = nameAttr
-	funcAttrs        = nameAttr | targetAttr | externalAttr
 	funcAliasAttrs   = nameAttr
-	typeAttrs        = nameAttr
+	funcAttrs        = nameAttr | targetAttr | externalAttr
 	intfAttrs        = 0 // @deprecated and @added only
+	intfFieldAttrs   = nameAttr | targetAttr
+	structFieldAttrs = nameAttr
+	typeAttrs        = nameAttr
 	tagAttrs         = 0
 	typeAliasAttrs   = externalAttr
 	varAttrs         = nameAttr | externalAttr
@@ -84,6 +84,12 @@ func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
 		err.Label = "Unknown attribute " + klarerrs.Quote(name)
 		c.fileError(err, fid)
 		return
+	}
+	// Check if the attribute is supported on the current declaration type
+	if mode := map[string]attrMode{
+		"name": nameAttr, "target": targetAttr, "external": externalAttr,
+		// Attributes not in this map are supported on all declarations
+	}[name]; mode != 0 && !t.supports(mode) {
 	}
 }
 

@@ -9,7 +9,10 @@ import (
 )
 
 type Lambda struct {
-	Params   []Type // Variadic param isn't a List
+	Params []Type // Variadic param isn't a List
+	// Arity can be calculated lazily, but if the declaration contains
+	// params with default values, this should be provided manually.
+	arity    Arity
 	Variadic bool
 	Return   Type
 	Complete bool
@@ -36,6 +39,23 @@ func (l *Lambda) String() string {
 	return b.String()
 }
 func (l *Lambda) Underlying() Type { return l }
+func (l *Lambda) Arity() Arity {
+	if l.arity != (Arity{0, 0}) {
+		return l.arity
+	}
+	a := Arity{}
+	for _, par := range l.Params {
+		if par.Kind() != KindOptional {
+			a.MinParams++
+		}
+		a.MaxParams++
+	}
+	if l.Variadic {
+		a.MaxParams = -1
+	}
+	l.arity = a
+	return a
+}
 
 func (c *Checker) checkFunctionType(expr *ast.FunctionType, ctx *Context) Type {
 	l := &Lambda{Params: make([]Type, 0, len(expr.Parameters.Values))}

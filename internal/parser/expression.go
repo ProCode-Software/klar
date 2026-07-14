@@ -158,6 +158,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			key, val := p.expectShorthand()
 			entries = append(entries, &ast.MapItem{
 				Keys:      []ast.Expression{key},
+				ColonPos:  start.Position,
 				Value:     val,
 				Shorthand: true,
 				BaseNode:  newBaseNode(start.Position, val.GetRange().End),
@@ -190,7 +191,7 @@ func (p *Parser) ParseMap() *ast.MapLiteral {
 			}
 			// Value
 			if !entry.Rest {
-				p.Expect(lexer.Colon)
+				entry.ColonPos = p.Expect(lexer.Colon).Position
 				entry.Value = p.ParseExpression(ExpressionBindingPower)
 			}
 			markEndPos(p, entry)
@@ -303,12 +304,10 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			// 	person2.greet(person: person)
 			p.Advance()
 			key, val := p.expectShorthand()
-			label := key.ToIdentifier()
-			arg.Label, arg.Value = &label, val
+			arg.Label, arg.Value = new(key.ToIdentifier()), val
 		case p.PeekKind() == lexer.Colon:
 			// Label (allow keywords)
-			label := p.ParseMapIdentifier(isLabel)
-			arg.Label = &label
+			arg.Label = new(p.ParseMapIdentifier(isLabel))
 			p.Advance() // :
 			fallthrough
 		default:
@@ -388,10 +387,14 @@ func (p *Parser) ParseLambda() *ast.LambdaExpression {
 	return l
 }
 
-// When case only: [...]
+// When case only: [...] or `..."string"`
 func (p *Parser) ParseLeftRest() *ast.RestExpression {
 	p.Expect(lexer.Ellipsis)
-	return &ast.RestExpression{Expression: p.ParseExpression(UnaryBindingPower)}
+	var expr ast.Expression
+	if nud, ok := p.handleNUD(p.CurrKind()); ok {
+		expr = p.ParseLED(nud, UnaryBindingPower)
+	}
+	return &ast.RestExpression{Left: true, Expression: expr}
 }
 
 func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression {

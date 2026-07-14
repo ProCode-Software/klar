@@ -29,17 +29,13 @@ type Underlyer interface {
 
 func Underlying(t Type) Type {
 	for {
-		oldT := t
 		if u, ok := t.(Underlyer); ok {
-			t = u.Underlying()
-		} else {
-			return t
+			oldT := t
+			if t = u.Underlying(); t != oldT {
+				continue
+			}
 		}
-		// Tuples can't be compared, but if we reach this, there
-		// is no underlying type.
-		if _, ok := t.(Tuple); ok || t == oldT {
-			return t
-		}
+		return t
 	}
 }
 
@@ -47,21 +43,18 @@ func As[T Type](t Type) T { return Underlying(t).(T) }
 
 func UnderlyingTypeName(t Type) Type {
 	for {
+		if tn, ok := t.(*TypeName); ok {
+			if _, ok := tn.Underlying().(Underlyer); !ok {
+				return tn
+			}  
+		}
 		oldT := t
 		if u, ok := t.(Underlyer); ok {
-			t = u.Underlying()
+			if t = u.Underlying(); t == oldT {
+				return t
+			}
 		} else {
 			return t
-		}
-		// Tuples can't be compared, but if we reach this, there
-		// is no underlying type.
-		if _, ok := t.(Tuple); ok || t == oldT {
-			return t
-		}
-		if _, ok := oldT.(*TypeName); ok {
-			if _, ok := t.(Underlyer); !ok {
-				return oldT
-			}
 		}
 	}
 }

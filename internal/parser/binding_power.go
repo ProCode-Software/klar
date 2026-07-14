@@ -14,8 +14,10 @@ const (
 	DefaultBindingPower BindingPower = iota // Zero
 
 	ExpressionBindingPower     // Minimum
+	WhenAsBindingPower         // as
 	ObjectPipelineBindingPower // |.
 	LogicalBindingPower        // ||, &&
+	WhenOptionBindingPower     // |
 	PipelineBindingPower       // |>
 	RelationalBindingPower     // ==, !=, >, <, <=, >=, in, !in
 	DistributiveBindingPower   // and, or
@@ -30,12 +32,14 @@ const (
 )
 
 var BindingPowerMap = map[lexer.TokenType]BindingPower{
-	// For error tolerance
+	lexer.As: WhenAsBindingPower,
 
 	lexer.StrokeDot: ObjectPipelineBindingPower,
 
 	lexer.AndAnd: LogicalBindingPower,
 	lexer.OrOr:   LogicalBindingPower,
+
+	lexer.Stroke: WhenOptionBindingPower,
 
 	lexer.Pipeline: PipelineBindingPower,
 

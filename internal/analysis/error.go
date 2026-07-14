@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -40,7 +41,7 @@ func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 	err.Label = klarerrs.Quote(old.name) + " already exists"
 	err.SetParam("oldKind", kindOf(old.typ))
 	err.SetParam("newKind", kindOf(new.typ))
-	err.SetParam("name", old.name)
+	err.Name = old.name
 	return err
 }
 
@@ -190,5 +191,24 @@ func indexTypeMismatchError(code klarerrs.Code, exp, got Type, label string) *kl
 		Label: label,
 		Info:  klarerrs.TypeErrorInfo{ExpectedType: exp.String(), GotType: got.String()},
 	}
+	return err
+}
+
+func invalidRestTypeError(typ Type, expr ast.Expression) *klarerrs.Error {
+	err := klarerrs.Node(klarerrs.ErrInvalidRestValue, expr)
+	if typ.Kind() == KindMap {
+		err.Code = klarerrs.ErrMisplacedMapRest
+		err.Label = "Can't rest a map outside a map literal"
+	} else {
+		err.Info = klarerrs.TypeErrorInfo{GotType: typ.String()}
+		err.Label = "Can't rest " + klarerrs.WithA(typ.Kind().String())
+	}
+	return err
+}
+
+func dynamicRestError(kind Kind, expr ast.Expression) *klarerrs.Error {
+	err := klarerrs.Node(klarerrs.ErrDynamicRest, expr)
+	err.Name = kind.String()
+	err.Label = "The parameter isn't variadic"
 	return err
 }

@@ -96,3 +96,7 @@ func isCloneBuiltin(t Type) bool {
 	// If currently bootstrapping
 	return t == builtinModule.Context.Lookup("clone").typ
 }
+
+func hintWithDiff(err *klarerrs.Error, hint string, edits ...klarerrs.DiffEdit) {
+	err.HintWithDiff(hint, klarerrs.NewDiff("", edits...))
+}

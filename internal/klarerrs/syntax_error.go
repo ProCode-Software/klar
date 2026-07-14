@@ -18,6 +18,7 @@ const (
 
 	ErrImportExpectedModule    // Unqualified import without module name
 	ErrImportInvalidWildcard   // Wildcard must be last part of module
+	ErrDotBeforeUnqualifiedImp // Use '.{' instead of '{' directly after import path
 	ErrWildcardWithUnqualified // Using unqualified import with wildcard
 	ErrEmptyUnqualifiedImport  // Empty unqualified import
 	ErrImportsGoFirst          // Imports always go before other declarations
@@ -69,14 +70,14 @@ const (
 	ErrSelfLabelInFuncAlias // Function aliases can't have a self label
 	ErrMissingFuncParamType // Required function parameter type
 	ErrNonNameFuncAlias     // Function alias target is not symbol or member
-	ErrComputedFuncAlias
-	ErrInvalidPublic     // Public modifier applied to non-declaration
-	ErrPublicGoesFirst   // Public modifier always goes first
-	ErrDuplicateModifier // More than 1 of the same modifier
-	ErrFuncDotAfterSelf  // Expected . after (self: type). This is unlike Go
-	ErrSelfNameDiscard   // Can't discard self name in method declaration
-	ErrChainedDefault    // Default value specified with multiple keys
-	ErrDiscardIntfField  // Interface field/method can't be '_'
+	ErrComputedFuncAlias    // Function alias target can't be a computed index
+	ErrInvalidPublic        // Public modifier applied to non-declaration
+	ErrPublicGoesFirst      // Public modifier always goes first
+	ErrDuplicateModifier    // More than 1 of the same modifier
+	ErrFuncDotAfterSelf     // Expected . after (self: type). This is unlike Go
+	ErrSelfNameDiscard      // Can't discard self name in method declaration
+	ErrChainedDefault       // Default value specified with multiple keys
+	ErrDiscardIntfField     // Interface field/method can't be '_'
 
 	// Expression =====
 
@@ -138,7 +139,7 @@ const (
 	ErrTopLevel               // Multiple files in a module have top-level statements
 	ErrMethodInOtherScope     // Method must be in the same scope as struct definition
 	ErrAlwaysUnreachable      // Unreachable statement after return/stop/next/crashout
-	ErrUnusedValue            // Unused literal expression statement
+	ErrUnusedValue            // Unused expression statement
 	ErrReturnOutsideFunc      // Return statement not allowed outside of function
 	ErrImportShadow           // Import shadows top-level object
 	ErrVarConstMixInDecl      // Var and const declared in the same declaration
@@ -147,7 +148,7 @@ const (
 	ErrDuplicateInheritedType // Inherited type specified twice
 	ErrNoDeclAfterAttr        // Attribute must be followed by a declaration
 	ErrMisplacedControlStmt   // Can't use 'stop'/'next' statement outside of 'when'/'for'/'while' loop
-	ErrRedeclaredLabel        // Label redeclared in the same function
+	ErrRedeclaredLoopLabel    // Loop label redeclared in the same function
 	ErrRedeclaredOverload     // Overload redeclared with same params
 	ErrVariadicDefault        // Variadic parameter can't a default value
 	ErrBlockInWhenExpr        // Block bodies are only allowed in when statements
@@ -172,7 +173,7 @@ func (e *Error) handleSyntaxError() string {
 	case ErrAssignmentAsExpr:
 		return "An assignment can't be used as an expression in Klar"
 	case ErrInvalidAssignment:
-		return "You can only assign to a variable, property, list slice, or destructuring pattern"
+		return "You can only assign to a variable, field, list slice, or destructuring pattern"
 		// Can't assign to this kind of expression
 	case ErrInvalidComma:
 		return "Expected an assignment, or a newline to separate multiple statements"
@@ -415,6 +416,8 @@ func (e *Error) handleSyntaxError() string {
 	case ErrSelfNameDiscard:
 		e.Hint("Remove the label")
 		return "Can't use '_' as name of self in method declaration"
+	case ErrDotBeforeUnqualifiedImp:
+		return "I expected '.' before unqualified imports"
 	case ErrInvalidLoop:
 		kind := e.TokenTypeParam("stmt")
 		var loop string
@@ -466,13 +469,7 @@ func (e *Error) handleSyntaxError() string {
 		}
 		return "Missing type for these labels"
 	case ErrRedeclared:
-		/*
-			"existing":       existing.FileRange(),
-			"name":           obj.name,
-			"existingIsType": existing.IsTypeDecl(),
-		*/
 		var (
-			name    = e.StringParam("name")
 			oldKind = e.StringParam("oldKind")
 			newKind = e.StringParam("newKind")
 			as      string
@@ -480,7 +477,7 @@ func (e *Error) handleSyntaxError() string {
 		if oldKind != newKind {
 			as = " as a " + oldKind
 		}
-		return Quote(name) + " was already declared" + as
+		return Quote(e.Name) + " was already declared" + as
 	case ErrTopLevel:
 		return "Only 'main.klar' and single-file modules can have top-level statements"
 	case ErrImportShadow:

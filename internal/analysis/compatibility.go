@@ -3,7 +3,6 @@ package analysis
 import (
 	"cmp"
 	"fmt"
-	"reflect"
 	"slices"
 )
 
@@ -32,6 +31,8 @@ func Compatible(a, b Type) bool {
 		}
 	}
 	switch {
+	case bKind == AnyType:
+		return aKind != KindOptional // A => Any if A != nil
 	case aKind == KindList && bKind == KindList:
 		// [A] => [B] if A => B
 		a = Underlying(a).(*List).Elem
@@ -86,25 +87,51 @@ func Compatible(a, b Type) bool {
 			}
 		}
 		return true
-	case bKind == AnyType:
-		return aKind != KindOptional // A => Any if A != nil
 	}
 	return TypesEqual(a, b) // TODO
 }
 
 // TypesEqual returns whether the underlying types of a and b are equal.
-func TypesEqual(a, b Type) bool {
-	a, b = Underlying(a), Underlying(b)
-
-	// Tuples can't be compared via '==' in Go
-	if tupA, ok := a.(Tuple); ok {
-		tupB, ok := b.(Tuple)
-		if !ok {
-			return false // One is a tuple and the other isn't
+func TypesEqual(a, b Type) (res bool) {
+	defer func() {
+		if !res {
+			fmt.Printf("\033[31m%#v\033[m | \033[32m%#v\033[m\n\n", a, b)
 		}
-		return slices.EqualFunc(tupA, tupB, TypesEqual)
+	}()
+	a, b = Underlying(a), Underlying(b)
+	// If one is invalid type, avoid showing many errors, so we will say
+	// they are compatible.
+	if a.Kind() == InvalidType || b.Kind() == InvalidType {
+		return true
 	}
-	return a == b || reflect.DeepEqual(a, b)
+	if a.Kind() != b.Kind() {
+		return false
+	}
+	// If the kinds are the same, any untyped type is compatible
+	switch b.(type) {
+	case Untyped, *UntypedInit, Kind:
+		return true
+	}
+	switch a := a.(type) {
+	case Untyped, *UntypedInit, Kind:
+		return true
+	case *List:
+		return TypesEqual(a.Elem, b.(*List).Elem)
+	case *Optional:
+		return TypesEqual(a.Elem, b.(*Optional).Elem)
+	case *Map:
+		b := b.(*Map)
+		return TypesEqual(a.Key, b.Key) && TypesEqual(b.Value, b.Value)
+	case *Tuple:
+		return slices.EqualFunc(a.Items, b.(*Tuple).Items, TypesEqual)
+	case *Result:
+		b := b.(*Result)
+		return TypesEqual(a.Success, b.Success) && TypesEqual(a.Error, b.Error)
+	case *Task:
+		return TypesEqual(a.Result, b.(*Task).Result)
+	}
+	// Such as structs, enums
+	return a == b
 }
 
 func ConcreteTypeOf(t Type) Type {

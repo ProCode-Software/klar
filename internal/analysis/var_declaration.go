@@ -125,7 +125,7 @@ func (c *Checker) checkConstDecl(o *Object) {
 		cnst.Value = UnknownConst{} // Ensure this is never nil if checking fails
 	}
 	cnst.Type = e.Type
-	c.checkAssignment(e) // TODO: Go type checker calls check.assignment
+	// TODO: Go type checker calls check.assignment
 }
 
 // IsConst returns true if the given name is a constant name

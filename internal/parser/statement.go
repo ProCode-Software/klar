@@ -133,6 +133,12 @@ func (p *Parser) ParseImportStatement() *ast.ImportStatement {
 unqualifiedImport:
 	// Unqualified import
 	if p.CurrKind() == lexer.LeftCurlyBrace {
+		if p.PeekBehind().Kind != lexer.Dot {
+			p.ErrorLabelled(
+				klarerrs.Token(klarerrs.ErrDotBeforeUnqualifiedImp, p.Curr()),
+				"Expected '.{' instead",
+			)
+		}
 		p.Advance() // {
 		switch {
 		case i.Wildcard:

@@ -62,6 +62,19 @@ var PrimitiveTypeMap = map[string]PrimitiveTypeName{
 	"Error":   PrimitiveError,
 }
 
+func (pt PrimitiveTypeName) String() string {
+	return map[PrimitiveTypeName]string{
+		PrimitiveAny:     "Any",
+		PrimitiveString:  "String",
+		PrimitiveInt:     "Int",
+		PrimitiveFloat:   "Float",
+		PrimitiveBool:    "Bool",
+		PrimitiveNothing: "Nothing",
+		PrimitiveResult:  "Result",
+		PrimitiveError:   "Error",
+	}[pt]
+}
+
 func (p *Program) Deps(yield func(imports.ImportPath) bool) {
 	for _, stmt := range p.Body {
 		imp, ok := stmt.(*ImportStatement)

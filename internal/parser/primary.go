@@ -13,15 +13,15 @@ import (
 )
 
 func (p *Parser) handleInvalidNumber(
-	ne *lexer.NumberError, format lexer.IntFormat, tok lexer.Token,
+	nerr *lexer.NumberError, format lexer.IntFormat, tok lexer.Token,
 ) {
 	var (
 		err    *klarerrs.Error
 		src    = tok.Source
 		tokPos = tok.Position
-		errPos = tokPos.Add(0, ne.Offset)
+		errPos = tokPos.Add(0, nerr.Offset)
 	)
-	switch ne.Code {
+	switch nerr.Code {
 	case lexer.ErrIntMisplacedSeparator:
 		switch {
 		case strings.Contains(src, "__"):
@@ -45,7 +45,7 @@ func (p *Parser) handleInvalidNumber(
 	case lexer.ErrInvalidDecimalPoint:
 		err = klarerrs.Position(klarerrs.ErrInvalidDecimalPoint, errPos)
 	default:
-		panic(fmt.Sprintf("unhandled lexer.NumberErrorCode: %d", ne.Code))
+		panic(fmt.Sprintf("unhandled lexer.NumberErrorCode: %d", nerr.Code))
 	}
 	p.Error(err)
 }

@@ -47,10 +47,7 @@ func Min(p1, p2 Position) Position {
 
 // Offset returns a [Range] that starts at start and has a length of endLine and endCol.
 func Offset(start Position, endLine, endCol uint32) Range {
-	return Range{
-		Start: start,
-		End:   Position{Line: start.Line + endLine, Col: start.Col + endCol},
-	}
+	return Range{Start: start, End: start.Add(endLine, endCol)}
 }
 
 // Ranges
@@ -137,7 +134,7 @@ type FileRange struct {
 }
 
 func (r FileRange) String() string {
-	return fmt.Sprintf("%s-%s", r.File, r.Range)
+	return fmt.Sprintf("%s:%s", r.File, r.Range)
 }
 
 func (r FileRange) FilePos() FilePos {

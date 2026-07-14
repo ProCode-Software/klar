@@ -87,6 +87,7 @@ func (p *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Expres
 		Position: content[len(content)-1].End(),
 	})
 	ip := New(content, &p.Options)
+	ip.flags = p.flags
 	defer ip.Reset()
 	ip.InsertEOS()
 	// Allow type pattern matching in when cases
@@ -94,7 +95,7 @@ func (p *Parser) parseStringInterpolation(content []lexer.Token) (res ast.Expres
 	//	"Hello {_}" -> ...
 	//	"{x: Int} cats" -> ...
 	// }
-	if p.isWhenCase() && ip.PeekKind() == lexer.Colon {
+	if p.isWhenPattern() && ip.PeekKind() == lexer.Colon {
 		name := ip.ParseIdentOrDiscard()
 		ip.Expect(lexer.Colon)
 		typ := ip.ParseType(DefaultTypeBindingPower)

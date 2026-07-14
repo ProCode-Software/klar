@@ -78,8 +78,8 @@ func newChildStmtContext(parentSctx *stmtContext,
 //	}
 func (sctx *stmtContext) declareLabel(name string, r ranges.Range) (err *klarerrs.Error) {
 	if other, ok := sctx.loopLabels[name]; ok {
-		err := klarerrs.Range(klarerrs.ErrRedeclaredLabel, r)
-		err.Label = "A label named " + quote(name) + " was already defined"
+		err := klarerrs.Range(klarerrs.ErrRedeclaredLoopLabel, r)
+		err.Label = "A loop label named " + quote(name) + " was already defined"
 		// If this is the top-level context, don't call it a function
 		if sctx.ctx.index > 0 {
 			err.SetParam("isFunc", true)
@@ -325,6 +325,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 	}
 	var i int
 	bodyCtx := NewContext(sctx.ctx, fid)
+	outer:
 	for _, pair := range stmt.Variables {
 		var typ Type = InvalidType
 		// Use the user-provided type annotation, if any.
@@ -336,6 +337,9 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 		if pair.Type != nil {
 			typ = c.parseType(pair.Type, sctx.ctx)
 			// TODO: Check that the annotation is compatible with the actual loop type
+			if i < MaxLoopVars && !Compatible(typ, varTypes[i]) {
+				c.fileError(typeMismatch(varTypes[i], typ, pair.Type.GetRange()), fid)
+			}
 		}
 		for _, key := range pair.Keys {
 			if i >= MaxLoopVars {
@@ -343,19 +347,18 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 				// 2 loop variables. Unless we add custom iterators to the language,
 				// however it's unlikely because lists are enough.
 				c.fileError(klarerrs.Node(klarerrs.ErrOver2LoopVars, key), fid)
-				break
+				break outer
 			}
 			if typ == InvalidType {
 				typ = varTypes[i] // Default type from the loop expression
 			}
-			// TODO: destructure and declare
 			for sym, typ := range c.followDestructure(
 				key, typ, sctx.ctx.File, stmt.Expression.GetRange(), true,
 			) {
 				sym := sym.(*ast.Symbol)
-				obj := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
-				_ = NewVariable(obj, LocalVar, typ)
-				c.declare(bodyCtx, obj)
+				vr := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
+				_ = NewVariable(vr, LocalVar, typ)
+				c.declare(bodyCtx, vr)
 			}
 			i++
 		}
@@ -428,12 +431,12 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		err.SetParam("before", "before it can be iterated over")
 		return varTypes, err
 	case InvalidType:
-		return repeatWithItem(Type(InvalidType), numVars), nil // Don't show an error
+		return []Type{InvalidType, InvalidType}[:numVars], nil // Don't show an error
 	}
 	// Not iterable
 	err = klarerrs.TypeError(klarerrs.ErrNotIterable, ranges.Range{}, "", t.String())
 	err.Label = "This value isn't iterable"
-	return repeatWithItem(Type(InvalidType), numVars), err
+	return []Type{InvalidType, InvalidType}[:numVars], err
 }
 
 // isAllowedAsStmt returns whether the given expression can be used as a statement.
@@ -447,9 +450,6 @@ func isAllowedAsStmt(expr ast.Expression) bool {
 	default:
 		return false
 	}
-}
-
-func (c *Checker) checkAssignment(e *Expr) {
 }
 
 func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtContext) {
@@ -473,36 +473,43 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
 				continue
 			}
-			switch lhs.Type.(type) {
-			case *Constant:
-				// Can't assign to a const
-				err := klarerrs.Node(klarerrs.ErrAssignToConst, dest)
-				// TODO: Name and range of declaration
-				c.fileError(err, sctx.ctx.File)
-				continue
-			case *Function, *Overload, *FunctionAlias:
-				// Functions are readonly
-			case *EnumRef:
-			case *StructField:
-				// Ensure it isn't readonly
-			}
-			if !Compatible(typ, lhs.Type) {
-				err := typeMismatch(lhs.Type, typ, rhsNode.GetRange())
-				err.AddHighlight(
-					"The assignee has type "+quote(lhs.Type.String()),
-					dest.GetRange(),
-				)
-				err.Label = strings.Replace(err.Label, "This", "This value", 1)
-				c.fileError(err, sctx.ctx.File)
-				continue
-			}
-			// For compound assign operators (like '+='), check if `LHS + RHS` is supported
-			if uc.Kind != lexer.Equal {
-				c.checkBinaryOperation(
-					uc, lhs.Type, typ,
-					dest, rhsNode, nil, sctx.ctx.File,
-				)
-			}
+			c.checkAssignment(lhs.Type, typ, dest, rhsNode, uc, sctx.ctx.File)
 		}
+	}
+}
+
+func (c *Checker) checkAssignment(
+	lhs, typ Type, lhsNode, rhsNode ast.Expression,
+	uc ast.Operator, fid FileID,
+) {
+	switch lhs.(type) {
+	case *Constant:
+		// Can't assign to a const
+		err := klarerrs.Node(klarerrs.ErrAssignToConst, lhsNode)
+		// TODO: Name and range of declaration
+		c.fileError(err, fid)
+		return
+	case *Function, *Overload, *FunctionAlias:
+		// Functions are readonly
+	case *EnumRef:
+	case *StructField:
+		// Ensure it isn't readonly
+	}
+	if !Compatible(typ, lhs) {
+		err := typeMismatch(lhs, typ, rhsNode.GetRange())
+		err.AddHighlight(
+			"The assignee has type "+quote(lhs.String()),
+			lhsNode.GetRange(),
+		)
+		err.Label = strings.Replace(err.Label, "This", "This value", 1)
+		c.fileError(err, fid)
+		return
+	}
+	// For compound assign operators (like '+='), check if `LHS + RHS` is supported
+	if uc.Kind != lexer.Equal {
+		c.checkBinaryOperation(
+			uc, lhs, typ,
+			lhsNode, rhsNode, nil, fid,
+		)
 	}
 }

@@ -28,6 +28,7 @@
     - typeOf??
     - typeNameOf??
     - sleep??
+- Ensure types can't be named after primitives
 
 ## Other
 - target property in manifest for defining target platform per module

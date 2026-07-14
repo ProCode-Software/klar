@@ -24,10 +24,10 @@ import (
 // invalid rest, or unused value).
 // An EOS token is always added after a [lexer.RightCurlyBrace] '}' token.
 func (p *Parser) InsertEOS() (comments []*ast.Comment) {
-	var (
-		new      = make([]lexer.Token, 0, len(p.Tokens))
-		brackets = make([]int, 0, len(p.Tokens)/8)
-	)
+	new := make([]lexer.Token, 0, len(p.Tokens))
+	brackets := make([]int, 0, len(p.Tokens)/8)
+	p.listCastTokens = make(map[int]struct{}) // Keep track of list cast tokens
+
 	// Parses all consecutive comments and returns the next non-comment token
 	readComments := func(i int) (nextNonComment int) {
 		i++
@@ -37,7 +37,6 @@ func (p *Parser) InsertEOS() (comments []*ast.Comment) {
 		}
 		return i
 	}
-	p.listCastTokens = make(map[int]struct{}) // Keep track of list cast tokens
 outer:
 	for i := 0; i < len(p.Tokens); i++ {
 		var (
@@ -93,6 +92,7 @@ outer:
 					Position: tok.Position,
 				})
 			}
+			// TODO: Map casts
 		case lexer.RightBracket:
 			newI := readComments(i)
 			lastBrackI := len(brackets) - 1
@@ -100,12 +100,11 @@ outer:
 				break
 			}
 			// List or map cast: [Int](...), #{String: Int}(...)
-			if newI < len(p.Tokens) && p.Tokens[newI].Kind == lexer.LeftParenthesis ||
-				p.Tokens[newI].Kind == lexer.HashLeftCurlyBrace {
+			if newI < len(p.Tokens) && p.Tokens[newI].Kind == lexer.LeftParenthesis {
 				p.listCastTokens[brackets[lastBrackI]] = struct{}{}
 				brackets = brackets[:lastBrackI] // Remove bracket
 				new = append(new, tok, p.Tokens[newI])
-				i = newI
+				i = newI // Skip '('
 				continue
 			}
 			brackets = brackets[:lastBrackI] // Remove bracket
@@ -114,6 +113,7 @@ outer:
 			new = append(new, tok)
 			continue
 		}
+		// This is where the actual semicolon insertion process happens!
 		var (
 			// If a newline follows a keyword like 'func', don't add a newline
 			continuesBefore = i == 0 || CanEndStatement(prev)

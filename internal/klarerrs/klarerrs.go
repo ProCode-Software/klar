@@ -114,6 +114,11 @@ func (e *Error) AddDetailf(file string, r ranges.Range, format string, v ...any)
 	return e
 }
 
+func (e *Error) WithLabel(label string) *Error {
+	e.Label = label
+	return e
+}
+
 // Message returns the error message.
 func (e *Error) Message() string {
 	switch e.Prefix() {

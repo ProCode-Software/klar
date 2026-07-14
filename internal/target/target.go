@@ -80,3 +80,12 @@ func (t Target) NormalizeJavaScript() Target {
 	}
 	return t
 }
+
+func Supports(targets []Target, curr Target) bool {
+	for _, t := range targets {
+		if t == curr || t == Unknown || (curr.IsJavaScript() && t == JavaScript) {
+			return true
+		}
+	}
+	return false
+}

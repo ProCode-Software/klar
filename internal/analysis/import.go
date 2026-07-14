@@ -57,13 +57,14 @@ func (c *Checker) performImports(files []string, fileContexts map[string]*Contex
 	}
 	for _, fileName := range files {
 		fctx := fileContexts[fileName]
+		var firstStmtI int
 		// Perform imports for the file
 		for i, stmt := range c.Programs[fileName].Body {
 			imp, ok := stmt.(*ast.ImportStatement)
 			if !ok {
-				fctx.setAttribute(firstStmtIndex, i)
 				break
 			}
+			firstStmtI = i + 1
 
 			impPathStr := imports.ImportPath.String(imp.Module)
 			// Try to load from cache, or import it fresh and save it to cache
@@ -71,6 +72,12 @@ func (c *Checker) performImports(files []string, fileContexts map[string]*Contex
 			if !ok {
 				res = &imported{}
 				res.module, res.err = c.importModule(imp.Module, ictx)
+				// Ensure the module is supported on the current targets
+				if res.err == nil {
+					if err := c.checkImportTargetSupport(res.module, imp); err != nil {
+						res.err = err
+					}
+				}
 				// Ensure the module has any public exports, otherwise report an error
 				if res.err == nil && !res.module.HasExports() {
 					res.err = klarerrs.ImportError(klarerrs.ErrNoPublicExports, imp.Module, nil)
@@ -86,6 +93,7 @@ func (c *Checker) performImports(files []string, fileContexts map[string]*Contex
 			}
 			c.applyImportedModule(res.module, imp, fctx)
 		}
+		fctx.setAttribute(firstStmtIndex, firstStmtI)
 	}
 }
 
@@ -189,6 +197,33 @@ func (c *Checker) reportImportError(importPath string, err error,
 	c.fileError(kerr, fid)
 }
 
+func (c *Checker) checkImportTargetSupport(imported *Module, stmt *ast.ImportStatement) *klarerrs.Error {
+	for _, currTarget := range c.module.Targets {
+		if target.Supports(imported.Targets, currTarget) {
+			continue
+		}
+		err := klarerrs.Node(klarerrs.ErrUnsupportedImportTarget, stmt).
+			SetParam("supported", imported.Targets)
+		err.Name = currTarget.Name()
+		err.Info = klarerrs.ModuleErrorInfo{ImportPath: imported.ImportPathString()}
+
+		var b strings.Builder
+		b.WriteString("The module supports these targets:\n  ")
+		for i, t := range imported.Targets {
+			if t == target.Unknown {
+				continue
+			}
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(t.Name())
+		}
+		err.Desc = b.String()
+		return err
+	}
+	return nil
+}
+
 type Namespace struct {
 	ImportPath string
 	Context    *Context
@@ -197,7 +232,7 @@ type Namespace struct {
 func (*Namespace) Kind() Kind          { return KindNamespace }
 func (ns *Namespace) Underlying() Type { return ns }
 func (*Namespace) objKind()            {}
-func (ns *Namespace) String() string   { return "<module>" }
+func (ns *Namespace) String() string   { return "module " + ns.ImportPath }
 
 func (ns *Namespace) lookupExport(target string) (*Object, *klarerrs.Error) {
 	obj := ns.Context.Lookup(target)
