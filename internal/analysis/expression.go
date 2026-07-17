@@ -210,7 +210,7 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 		return
 	}
 	// If the target value hasn't been completed yet, typecheck it
-	if Underlying(obj.typ) == nil {
+	if Underlying(obj.Type) == nil {
 		c.checkDeclaration(obj)
 	}
 	t.Type = obj
@@ -228,11 +228,11 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 	default:
 		// Type used as expression
 		err := klarerrs.Range(klarerrs.ErrTypeAsValue, s.Range).
-			SetParam("kind", kindOf(obj.typ))
+			SetParam("kind", kindOf(obj.Type))
 		err.Label = quote(name) + " is a type, not a value"
 		err.Name = name
-		if obj.context != BuiltInContext {
-			err.AddDetail(quote(name)+" was declared here", obj.FilePath(), obj.rang)
+		if obj.Context != BuiltInContext {
+			err.AddDetail(quote(name)+" was declared here", obj.FilePath(), obj.Range)
 		}
 		c.fileError(err, fid)
 		t.Type = InvalidType
@@ -398,7 +398,7 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, t *Expr) {
 		// Dot-index
 		field := expr.Property.(*ast.Symbol).Identifier
 		err = indexer.Index(field, t)
-		if o, ok := t.Type.(*Object); ok && Underlying(o.typ) == nil {
+		if o, ok := t.Type.(*Object); ok && Underlying(o.Type) == nil {
 			c.checkDeclaration(o)
 		}
 	}

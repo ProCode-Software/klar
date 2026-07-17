@@ -44,16 +44,16 @@ var compositeTypes = map[string]struct {
 	kind   Kind
 	asKind func(*Context) Type // The type that actually has the kind
 }{
-	"List": {KindList, func(ctx *Context) Type { return &List{ctx.Lookup("T").typ} }},
+	"List": {KindList, func(ctx *Context) Type { return &List{ctx.Lookup("T").Type} }},
 	"Map": {KindMap, func(ctx *Context) Type {
-		return &Map{ctx.Lookup("K").typ, ctx.Lookup("V").typ}
+		return &Map{ctx.Lookup("K").Type, ctx.Lookup("V").Type}
 	}},
 	"Result": {KindResult, func(ctx *Context) Type {
-		return &Result{ctx.Lookup("T").typ, ErrorType} // TODO: Change to ctx.Lookup("E")
+		return &Result{ctx.Lookup("T").Type, ErrorType} // TODO: Change to ctx.Lookup("E")
 	}},
-	"Task": {KindTask, func(ctx *Context) Type { return &Task{ctx.Lookup("T").typ} }},
+	"Task": {KindTask, func(ctx *Context) Type { return &Task{ctx.Lookup("T").Type} }},
 	"Optional": {KindOptional, func(ctx *Context) Type {
-		return &Optional{ctx.Lookup("T").typ}
+		return &Optional{ctx.Lookup("T").Type}
 	}},
 	"Error": {ErrorType, func(*Context) Type { return ErrorType }},
 }
@@ -239,9 +239,9 @@ var builtinsLoaded bool
 func declareBuiltinTypes() {
 	for name, kind := range primitives {
 		BuiltInContext.Declare(&Object{
-			name: name,
-			typ:  &TypeName{Type: kind},
-			file: BuiltInContext.File,
+			Name: name,
+			Type: &TypeName{Type: kind},
+			File: BuiltInContext.File,
 		})
 	}
 }
@@ -257,8 +257,8 @@ func declareBuiltinFunctions() {
 	// TODO: TODO() is assignable to any value.
 	// Change the return types for `crashout` and `TODO` so that any statement
 	// after a call to them should be deemed unreachable.
-	crashout := BuiltInContext.Lookup("crashout").typ.(*Function)
-	todo := BuiltInContext.Lookup("TODO").typ.(*Function)
+	crashout := BuiltInContext.Lookup("crashout").Type.(*Function)
+	todo := BuiltInContext.Lookup("TODO").Type.(*Function)
 	crashout.Return = &NoReturn{Type: crashout.Return}
 	todo.Return = &NoReturn{Type: todo.Return}
 }

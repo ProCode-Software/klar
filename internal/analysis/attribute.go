@@ -77,7 +77,7 @@ func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
 	}
 	name := attr.Name.Name
 	def := attributesModule.Context.Lookup(name)
-	if def == nil || !def.public || def.Kind() != KindFunction {
+	if def == nil || !def.Public || def.Kind() != KindFunction {
 		// Unknown attribute
 		err := klarerrs.Node(klarerrs.ErrUnknownAttribute, attr.Name)
 		err.Name = name

@@ -91,7 +91,7 @@ func (c *Checker) parseTypeAlias(expr *ast.TypeAlias, ctx *Context, flags Flag) 
 		return InvalidType
 	}
 	// If the target type hasn't been completed yet, typecheck it
-	if Underlying(target.typ) == nil {
+	if Underlying(target.Type) == nil {
 		c.checkDeclaration(target)
 	}
 	if !c.expectTypeName(target, expr, ctx.File) ||
@@ -106,18 +106,18 @@ func (c *Checker) expectTypeName(o *Object, expr ast.Node, fid FileID) bool {
 	if o.IsTypeName() {
 		return true
 	}
-	err := klarerrs.Node(klarerrs.ErrNotAType, expr).SetParam("kind", kindOf(o.typ))
-	err.Label = "Expected " + quote(o.name) + " to be a type"
-	err.Name = o.name
-	err.AddDetail(quote(o.name)+" was declared here", o.FilePath(), o.rang)
+	err := klarerrs.Node(klarerrs.ErrNotAType, expr).SetParam("kind", kindOf(o.Type))
+	err.Label = "Expected " + quote(o.Name) + " to be a type"
+	err.Name = o.Name
+	err.AddDetail(quote(o.Name)+" was declared here", o.FilePath(), o.Range)
 	c.fileError(err, fid)
 	return false
 }
 
 func (c *Checker) checkGenericCount(o *Object, r ranges.Range, flags Flag, fid FileID) bool {
-	if min, max := numGenerics(o.typ); min > 0 && flags&genericLHS == 0 {
+	if min, max := numGenerics(o.Type); min > 0 && flags&genericLHS == 0 {
 		err := genericParamsCountError(
-			klarerrs.ErrGenericParamsRequired, o.name, r, min, max,
+			klarerrs.ErrGenericParamsRequired, o.Name, r, min, max,
 		)
 		c.fileError(err, fid)
 		return false
@@ -134,13 +134,13 @@ func (c *Checker) parseQualifiedTypeAlias(expr *ast.QualifiedTypeAlias,
 		c.fileError(klarerrs.Undefined(nsIdent.Name, nsIdent.Range()), ctx.File)
 		return InvalidType
 	}
-	ns, ok := Underlying(nsObj.typ).(*Namespace)
+	ns, ok := Underlying(nsObj.Type).(*Namespace)
 	if !ok {
 		// In `x.y`, 'x' isn't a namespace
 		err := klarerrs.Node(klarerrs.ErrNotANamespace, nsIdent)
 		err.Label = fmt.Sprintf(
 			"%s is %s, not a namespace",
-			quote(nsIdent.Name), klarerrs.WithA(kindOf(nsObj.typ)),
+			quote(nsIdent.Name), klarerrs.WithA(kindOf(nsObj.Type)),
 		)
 		c.fileError(err, ctx.File)
 		return InvalidType

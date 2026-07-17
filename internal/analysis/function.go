@@ -52,7 +52,7 @@ func (fa *FunctionAlias) Underlying() Type {
 	if fa.Target == nil {
 		return nil
 	}
-	return fa.Target.typ
+	return fa.Target.Type
 }
 func (*FunctionAlias) objKind() {}
 func (fa *FunctionAlias) String() string {
@@ -84,7 +84,7 @@ func (g *Generic) String() string {
 	if g.Object == nil {
 		return "generic"
 	}
-	return "generic " + g.Object.name
+	return "generic " + g.Object.Name
 }
 
 // MethodAdder is implemented by types that can have methods added to them.
@@ -107,7 +107,7 @@ type MethodSet struct {
 const SelfName = "self"
 
 func (c *Checker) checkFuncDecl(o *Object) {
-	fn := o.typ.(*Function)
+	fn := o.Type.(*Function)
 	for _, ov := range fn.Overloads {
 		c.checkOverload(ov, o)
 	}
@@ -128,9 +128,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		panic("function is nil for non-initializer overload")
 	}
 	if fnObj != nil {
-		fn = fnObj.typ.(*Function)
+		fn = fnObj.Type.(*Function)
 	}
-	ctx := NewContext(fctx, ov.Object.file) // Function body context
+	ctx := NewContext(fctx, ov.Object.File) // Function body context
 	ov.InnerContext = ctx
 
 	// 1. Self/Receiver
@@ -145,7 +145,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		case isInit: // Initializer
 			selfPos = stmt.Identifier.Range()
 		}
-		selfObj := NewObject(selfName, ov.Object.file, selfPos, c.module, nil)
+		selfObj := NewObject(selfName, ov.Object.File, selfPos, c.module, nil)
 		tn := info.receiver.TypeName()
 		if c.module.Flags.Has(BootstrapModule) {
 			tn = c.wrapBootstrappedTypeName(tn, info.receiver)
@@ -155,7 +155,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	}
 
 	// 2. Generics
-	ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.file, ctx)
+	ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.File, ctx)
 
 	// 3. Params
 	var restParam *Variable // Unlabelled
@@ -164,10 +164,10 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	for _, param := range stmt.Parameters {
 		typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
 		for _, pn := range param.Names {
-			vrObj := NewObject(pn.Name.Name, ov.Object.file, pn.Name.Range(), c.module, nil)
+			vrObj := NewObject(pn.Name.Name, ov.Object.File, pn.Name.Range(), c.module, nil)
 			vr := NewVariable(vrObj, FuncParamVar, typ)
 			if variadic {
-				vr.Object.flags |= VariadicParam
+				vr.Object.Flags |= VariadicParam
 			}
 			c.declare(ctx, vrObj)
 			switch {
@@ -196,9 +196,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 					err.Label = "A variadic parameter was already defined"
 					err.AddHighlight(
 						"The first variadic parameter was defined here",
-						restParam.Object.rang,
+						restParam.Object.Range,
 					)
-					c.fileError(err, ov.file)
+					c.fileError(err, ov.File)
 					break
 				}
 				restParam = vr
@@ -224,7 +224,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 						"This parameter is defined as variadic",
 						param.Type.GetRange(),
 					)
-					c.fileError(err, ov.file)
+					c.fileError(err, ov.File)
 					continue
 				}
 				// TODO: Should it be delayed?
@@ -256,9 +256,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		// Highlight the params after this
 		after := ov.Params[slices.Index(ov.Params, restParam)+1:]
 		err.AddHighlight("It should go after these", ranges.Range{
-			after[0].Object.rang.Start, after[len(after)-1].Object.rang.End,
+			after[0].Object.Range.Start, after[len(after)-1].Object.Range.End,
 		})
-		c.fileError(err, restParam.Object.file)
+		c.fileError(err, restParam.Object.File)
 	}
 
 	var bodyExpr *Expr
@@ -301,9 +301,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 				}
 				vr := NewObject(
 					key.Name,
-					ov.Object.file, key.Range(), ov.Object.module, nil,
+					ov.Object.File, key.Range(), ov.Object.Module, nil,
 				)
-				vr.flags |= needsSet
+				vr.Flags |= needsSet
 				_ = NewVariable(vr, LocalVar, typ)
 				c.declare(ctx, vr)
 				ov.NamedReturns = append(ov.NamedReturns, vr)
@@ -322,9 +322,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		}
 		vr := NewObject(
 			rt.Label.Name,
-			ov.Object.file, rt.Label.Range(), ov.Object.module, nil,
+			ov.Object.File, rt.Label.Range(), ov.Object.Module, nil,
 		)
-		vr.flags |= needsSet
+		vr.Flags |= needsSet
 		_ = NewVariable(vr, LocalVar, ov.Return)
 		c.declare(ctx, vr)
 		ov.NamedReturns = append(ov.NamedReturns, vr)
@@ -350,13 +350,13 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	case !TypesEqual(ov.Return, fn.Return):
 		err := typeMismatch(fn.Return, ov.Return, retRange)
 		err.Code = klarerrs.ErrOverloadReturnMismatch
-		err.Name = fnObj.name
+		err.Name = fnObj.Name
 		err.Label = "This should return " + quoteAka(fn.Return)
 		err.AddDetail(
 			"The return type was defined with the first overload here",
-			fnObj.FilePath(), fnObj.rang,
+			fnObj.FilePath(), fnObj.Range,
 		)
-		c.fileError(err, ov.file)
+		c.fileError(err, ov.File)
 	default: // Correct return types
 	}
 
@@ -380,7 +380,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 					bodyExpr.Type, ov.Return,
 					stmt.Expression.GetRange(), retRange,
 				)
-				c.fileError(err, ov.file)
+				c.fileError(err, ov.File)
 			}
 		}, true)
 	}
@@ -400,11 +400,11 @@ func (c *Checker) checkInitReturnType(
 			changeFromResultNothing(&ret.Elem)
 		case *Result:
 			if *typ == ResultNothing {
-				ov.Return = info.receiver.typ
+				ov.Return = info.receiver.Type
 			}
 		}
 	}
-	if info.receiver.name != "List" {
+	if info.receiver.Name != "List" {
 		// Don't change the return type of List initializers
 		//	func List(...) -> [Result] should return [Result<Nothing>]
 		changeFromResultNothing(&ov.Return)
@@ -412,25 +412,25 @@ func (c *Checker) checkInitReturnType(
 
 	switch {
 	// An initializer named 'List' must return a list (or a list as an optional/result)
-	case info.receiver.name == "List":
+	case info.receiver.Name == "List":
 		if ConcreteTypeOf(ov.Return).Kind() != KindList {
 			err := klarerrs.Range(klarerrs.ErrInvalidListInitReturn, retRange)
-			c.fileError(err, ov.file)
+			c.fileError(err, ov.File)
 			ov.Return = &List{InvalidType}
 		}
 
 	// Check that the overload's concrete type is the one it initializes
-	case !TypesEqual(ConcreteTypeOf(ov.Return), info.receiver.typ):
+	case !TypesEqual(ConcreteTypeOf(ov.Return), info.receiver.Type):
 		err := klarerrs.Range(klarerrs.ErrInvalidInitReturn, retRange)
-		err.Name = ov.name
+		err.Name = ov.Name
 		// Show a hint for `func T() -> [T]`
-		if asList := (&List{info.receiver.typ}); TypesEqual(ov.Return, asList) {
+		if asList := (&List{info.receiver.Type}); TypesEqual(ov.Return, asList) {
 			err.Label = "An initializer can't return a list of " +
 				quote(asList.String())
 		}
 		err.AddHighlight("This type is being initialized", stmt.Identifier.Range())
-		c.fileError(err, ov.file)
-		ov.Return = info.receiver.typ
+		c.fileError(err, ov.File)
+		ov.Return = info.receiver.Type
 	}
 }
 
@@ -438,7 +438,7 @@ func (c *Checker) checkInitReturnType(
 func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	fn *Function, retRange ranges.Range, fctx *Context,
 ) {
-	sctx := newStmtContext(ov.InnerContext, ov.file, allowReturn)
+	sctx := newStmtContext(ov.InnerContext, ov.File, allowReturn)
 	sctx.returnHint = ov.Return
 	c.checkBlock(stmt.Body.Body, sctx)
 
@@ -458,7 +458,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 			"This function is supposed to return "+quote(ov.Return.String()),
 			retRange,
 		)
-		c.fileError(err, ov.file)
+		c.fileError(err, ov.File)
 		return
 	}
 
@@ -466,7 +466,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	for _, ret := range *sctx.returns {
 		if !Compatible(ret.expr.Type, ov.Return) && ret.expr.Type.Kind() != InvalidType {
 			err := returnTypeMismatch(ret.expr.Type, ov.Return, ret.pos, retRange)
-			c.fileError(err, ov.file)
+			c.fileError(err, ov.File)
 		}
 	}
 }
@@ -545,7 +545,7 @@ func (o *Overload) Kind() Kind { return KindFunction }
 func (o *Overload) String() string {
 	var b strings.Builder
 	writeVariadic := func(p *Variable) bool {
-		if p.Object != nil && p.Object.flags&VariadicParam != 0 {
+		if p.Object != nil && p.Object.Flags&VariadicParam != 0 {
 			b.WriteString("...")
 			b.WriteString(p.Type.(*List).Elem.String())
 			return true
@@ -560,7 +560,7 @@ func (o *Overload) String() string {
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString(g.name)
+			b.WriteString(g.Name)
 		}
 		b.WriteByte('>')
 	}
@@ -605,23 +605,23 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 		m.methodMap = make(map[string]*Object)
 	}
 	var funcAndAliasConflict bool
-	existing, ok := m.methodMap[obj.name]
+	existing, ok := m.methodMap[obj.Name]
 	if !ok {
 		return m.defineNewMethod(obj) // New method
 	}
 
-	switch old := existing.typ.(type) {
+	switch old := existing.Type.(type) {
 	case *Function:
-		if _, ok := obj.typ.(*FunctionAlias); ok {
+		if _, ok := obj.Type.(*FunctionAlias); ok {
 			funcAndAliasConflict = true
 			break
 		}
 		// Add overload to existing function
-		old.Overloads = append(old.Overloads, obj.typ.(*Overload))
+		old.Overloads = append(old.Overloads, obj.Type.(*Overload))
 		m.Methods = append(m.Methods, obj)
 		return nil
 	case *FunctionAlias:
-		if _, ok := obj.typ.(*Function); ok {
+		if _, ok := obj.Type.(*Function); ok {
 			funcAndAliasConflict = true // Just for a better error
 			break
 		}
@@ -632,11 +632,11 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 	}
 	// Report the error
 	if funcAndAliasConflict {
-		err := klarerrs.Range(klarerrs.ErrAliasAndMethodSameName, obj.rang)
-		err.Name = obj.name
+		err := klarerrs.Range(klarerrs.ErrAliasAndMethodSameName, obj.Range)
+		err.Name = obj.Name
 		err.AddDetail(
-			"Other definition of "+klarerrs.Quote(obj.name),
-			existing.FilePath(), existing.rang,
+			"Other definition of "+klarerrs.Quote(obj.Name),
+			existing.FilePath(), existing.Range,
 		)
 		err.Hint("An alias can't be used as an overload")
 		return err
@@ -646,12 +646,12 @@ func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 
 func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
 	// Wrap the possible overload in a Function
-	if ov, ok := obj.typ.(*Overload); ok {
-		obj = NewObject(obj.name, obj.file, obj.rang, obj.module, &Function{
+	if ov, ok := obj.Type.(*Overload); ok {
+		obj = NewObject(obj.Name, obj.File, obj.Range, obj.Module, &Function{
 			Overloads: []*Overload{ov},
 		})
 	}
-	m.methodMap[obj.name] = obj
+	m.methodMap[obj.Name] = obj
 	m.Methods = append(m.Methods, obj)
 
 	if m.nonMethodMap == nil {
@@ -660,13 +660,13 @@ func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
 	// Check if a method shares the same name as something else (such as a field
 	// for structs)
 	if *m.nonMethodMap != nil {
-		if existing, ok := (*m.nonMethodMap)[obj.name]; ok {
-			err := klarerrs.Range(klarerrs.ErrFieldAndMethodSameName, obj.rang)
-			err.Label = "There is also a field named " + quote(obj.name)
-			err.Name = obj.name
+		if existing, ok := (*m.nonMethodMap)[obj.Name]; ok {
+			err := klarerrs.Range(klarerrs.ErrFieldAndMethodSameName, obj.Range)
+			err.Label = "There is also a field named " + quote(obj.Name)
+			err.Name = obj.Name
 			err.AddDetail(
 				"The conflicting field was defined here",
-				existing.FilePath(), existing.rang,
+				existing.FilePath(), existing.Range,
 			)
 			return err
 		}
@@ -675,7 +675,7 @@ func (m *MethodSet) defineNewMethod(obj *Object) (err *klarerrs.Error) {
 	}
 	// Add the method to the map of both fields and methods. Structs that
 	// embed [MethodSet] will use this map for indexing.
-	(*m.nonMethodMap)[obj.name] = obj
+	(*m.nonMethodMap)[obj.Name] = obj
 	return nil
 }
 
@@ -718,11 +718,11 @@ func (c *Checker) checkOverloadAmbiguity(overloads []*Overload) []*Overload {
 		//  func isNumber(char: String) = char in '0'...'9'
 		if ok := c.checkRedeclaredOverload(ov, other); !ok {
 			// The 2nd redeclaration is the one with the error
-			err := klarerrs.Range(klarerrs.ErrRedeclaredOverload, other.rang)
+			err := klarerrs.Range(klarerrs.ErrRedeclaredOverload, other.Range)
 			err.Name = ov.String()
 			err.Label = "An overload with these same parameters already exists"
-			err.AddDetail("It was already declared here", ov.FilePath(), ov.rang)
-			c.fileError(err, other.file)
+			err.AddDetail("It was already declared here", ov.FilePath(), ov.Range)
+			c.fileError(err, other.File)
 			addError(other)
 		}
 	}

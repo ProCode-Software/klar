@@ -57,7 +57,7 @@ func (a *TypeAlias) Kind() Kind       { return a.Resolve().Kind() }
 func (a *TypeAlias) Underlying() Type { return a.Resolve() }
 
 func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
-	alias := &TypeAlias{Name: o.name}
+	alias := &TypeAlias{Name: o.Name}
 	o.TypeName().Type = alias
 	rhs := c.parseType(node.Type, o.LookupContext())
 	// Set to invalid if we couldn't typecheck the rhs
@@ -68,7 +68,7 @@ func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
 		// The target of a type alias cannot be a generic type
 		err := klarerrs.Range(klarerrs.ErrGenericTypeAlias, node.Type.GetRange())
 		err.Label = "This can't be a generic type"
-		c.fileError(err, o.file)
+		c.fileError(err, o.File)
 		rhs = InvalidType
 	}
 	alias.Type = rhs
@@ -91,7 +91,7 @@ func (c *Checker) checkFuncAlias(o *Object) {
 		case *ast.Symbol:
 		}
 	}
-	o.typ.(*FunctionAlias).Target = target
+	o.Type.(*FunctionAlias).Target = target
 }
 
 func Unalias(t Type) Type {

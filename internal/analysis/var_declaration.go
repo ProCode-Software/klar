@@ -17,7 +17,7 @@ type Variable struct {
 // o's type is set to the returned variable.
 func NewVariable(o *Object, kind VariableKind, typ Type) *Variable {
 	vr := &Variable{Object: o, VarKind: kind, Type: typ}
-	o.typ = vr
+	o.Type = vr
 	return vr
 }
 
@@ -69,7 +69,7 @@ func (c *Constant) String() string   { return fmt.Sprintf("%s (%v)", c.Type, c.V
 
 func (c *Checker) checkVarDecl(o *Object) {
 	var (
-		vr    = o.typ.(*Variable)
+		vr    = o.Type.(*Variable)
 		vinfo = o.info.varInfo
 		val   = vinfo.rhs
 		e     *Expr
@@ -92,20 +92,20 @@ func (c *Checker) checkVarDecl(o *Object) {
 	) {
 		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
 		// the types of other variables using the same rhsExpr.
-		if sym := dest.(*ast.Symbol); sym.Identifier == o.name {
+		if sym := dest.(*ast.Symbol); sym.Identifier == o.Name {
 			vr.Type = typ
 			break
 		}
 	}
 	if vr.Type == nil {
-		panic(o.name + " not yielded by followDestructure or it yielded a nil Type")
+		panic(o.Name + " not yielded by followDestructure or it yielded a nil Type")
 		// vr.Type = InvalidType
 	}
 }
 
 func (c *Checker) checkConstDecl(o *Object) {
 	var (
-		cnst  = o.typ.(*Constant)
+		cnst  = o.Type.(*Constant)
 		vinfo = o.info.varInfo
 		val   = vinfo.rhs
 		e     *Expr

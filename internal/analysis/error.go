@@ -32,16 +32,16 @@ func (c *Checker) fileError(err *klarerrs.Error, fid FileID) {
 
 func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 	// TODO
-	err := klarerrs.Range(klarerrs.ErrRedeclared, new.rang)
+	err := klarerrs.Range(klarerrs.ErrRedeclared, new.Range)
 	err.Details = append(err.Details, klarerrs.Detail{
 		File:    old.FilePath(),
-		Range:   old.Range(),
-		Message: klarerrs.Quote(old.name) + " was originally declared here",
+		Range:   old.Range,
+		Message: klarerrs.Quote(old.Name) + " was originally declared here",
 	})
-	err.Label = klarerrs.Quote(old.name) + " already exists"
-	err.SetParam("oldKind", kindOf(old.typ))
-	err.SetParam("newKind", kindOf(new.typ))
-	err.Name = old.name
+	err.Label = klarerrs.Quote(old.Name) + " already exists"
+	err.SetParam("oldKind", kindOf(old.Type))
+	err.SetParam("newKind", kindOf(new.Type))
+	err.Name = old.Name
 	return err
 }
 
@@ -71,7 +71,7 @@ func kindOf(typ ObjectKind) string {
 
 func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 	err := &klarerrs.Error{
-		Range: obj.rang,
+		Range: obj.Range,
 		File:  obj.FilePath(),
 		Code:  code,
 	}
@@ -122,16 +122,16 @@ func handlePanic() {
 // The returned Error's File is already set.
 func cycleError(cycle []*Object) *klarerrs.Error {
 	// Find the object with the earliest position in the file
-	firstInSrcI, firstPos := 0, cycle[0].rang.Start
+	firstInSrcI, firstPos := 0, cycle[0].Range.Start
 	for i, o := range cycle {
-		pos := o.rang.Start
+		pos := o.Range.Start
 		if ranges.ComparePos(pos, firstPos) < 0 {
 			firstInSrcI, firstPos = i, pos
 		}
 	}
 	o := cycle[firstInSrcI]
 	// If the object is an alias, mark it as valid to avoid later errors.
-	tn, isTypeDecl := o.typ.(*TypeName)
+	tn, isTypeDecl := o.Type.(*TypeName)
 	if isTypeDecl {
 		if alias, ok := tn.Type.(*TypeAlias); ok {
 			alias.resolved = InvalidType
@@ -139,9 +139,9 @@ func cycleError(cycle []*Object) *klarerrs.Error {
 		}
 	}
 
-	err := klarerrs.Range(klarerrs.ErrDepCycle, o.rang)
+	err := klarerrs.Range(klarerrs.ErrDepCycle, o.Range)
 	err.File = o.FilePath()
-	err.Name = o.name
+	err.Name = o.Name
 	if isTypeDecl {
 		err.SetParam("type", true)
 	}
@@ -159,8 +159,8 @@ func cycleError(cycle []*Object) *klarerrs.Error {
 			lastInCycleMsg = " in a cycle"
 		}
 		err.AddDetailf(
-			o.FilePath(), o.rang, "%s depends on %s%s",
-			klarerrs.Quote(o.name), klarerrs.Quote(nextObj.name), lastInCycleMsg,
+			o.FilePath(), o.Range, "%s depends on %s%s",
+			klarerrs.Quote(o.Name), klarerrs.Quote(nextObj.Name), lastInCycleMsg,
 		)
 		o = nextObj
 	}

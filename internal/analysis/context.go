@@ -62,14 +62,14 @@ func (ctx *Context) getAttribute(key ContextAttribute) any {
 
 func (ctx *Context) Declare(obj *Object, flag ...Flag) (existing *Object) {
 	flags := parseFlags(flag)
-	name := obj.Name()
+	name := obj.Name
 	ctx.initDecls()
 	if existing = ctx.Declarations[name]; existing != nil {
 		return
 	}
 	ctx.Declarations[name] = obj
-	if obj.context == nil { // TODO: should this be changed?
-		obj.context = ctx
+	if obj.Context == nil { // TODO: should this be changed?
+		obj.Context = ctx
 	}
 	_ = flags
 	return nil
@@ -107,13 +107,13 @@ func (ctx *Context) SortedDecls() []*Object {
 }
 
 func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
-	if obj.name == "_" {
+	if obj.Name == "_" {
 		return
 	}
 	if existing := ctx.Declare(obj, flags...); existing != nil {
 		// Declared already
 		err := redeclaredError(obj, existing, true)
-		c.fileError(err, obj.file)
+		c.fileError(err, obj.File)
 	}
 }
 
@@ -124,8 +124,8 @@ func (ctx *Context) String() string {
 	var b strings.Builder
 	var longestName int
 	for _, o := range ctx.SortedDecls() {
-		if len(o.Name()) > longestName {
-			longestName = len(o.Name())
+		if len(o.Name) > longestName {
+			longestName = len(o.Name)
 		}
 	}
 	fmt.Fprintf(&b, "Context (file %v) {\n", ctx.SortedDecls()[0].FilePath())
@@ -133,14 +133,14 @@ func (ctx *Context) String() string {
 		var typeStr any
 		switch {
 		case !o.IsTypeName():
-			typeStr = o.typ
-		case o.typ.Underlying() == nil:
+			typeStr = o.Type
+		case o.Type.Underlying() == nil:
 			typeStr = "type = <incomplete>"
 		default:
-			typeStr = fmt.Sprintf("type = %v", o.typ.Underlying())
+			typeStr = fmt.Sprintf("type = %v", o.Type.Underlying())
 		}
-		pad := strings.Repeat(" ", longestName-len(o.Name()))
-		fmt.Fprintf(&b, "  %s:%s %s (%s)\n", o.Name(), pad, typeStr, o.rang)
+		pad := strings.Repeat(" ", longestName-len(o.Name))
+		fmt.Fprintf(&b, "  %s:%s %s (%s)\n", o.Name, pad, typeStr, o.Range)
 	}
 	fmt.Fprintf(&b, "}")
 	return b.String()

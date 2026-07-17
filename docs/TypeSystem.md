@@ -33,16 +33,22 @@ Klar's type system is strongly-typed and statically-typed. All types are known a
 - `Int` - signed 64-bit integer
 - `Float` - signed 64-bit double
 - `Bool` - boolean (`true` | `false`)
-- [`Result<T, E>`](#results) - value of `T` and error type of `E`
+- `Result<T, E>` - [result](#results) value of `T` and error type of `E`
 - `T?` - [optional](#optionals) value of `T` or `nil`
 - `[T]` - list with values of type `T`
 - `#{K: V}` - map with keys of type `K` and values of type `V`
 - `A | B` - [union](#unions) type; value of either `A` or `B`
-- [`func (A, B, ...) -> T`](#functions) - function or lambda with params of type `A`, `B`, ..., and return value `T`
+- `func (A, B, ...) -> T` - [function](#functions) or lambda with params of type `A`, `B`, ..., and return value `T`
 - `Nothing` - return type of functions that don't return anything. Only valid in function return types and not as a value.
-- [`(A, B, ...)`](#tuples) - tuple with values of type `A`, `B`. Tuples can contain any amount of items (including zero)
+- `(A, B, ...)` - [tuple](#tuples) with values of type `A`, `B`. Tuples can contain any amount of items (including zero)
 
 ## User-Created Types
+
+- [Structs]
+- [Interfaces]
+- [Enums]
+- [Tags]
+- [Type Aliases]
 
 ### Structs
 
@@ -183,6 +189,8 @@ when writer.write("Hello, World!") {
 
 ```
 
+### Enums
+
 ### Tags
 
 ```klar
@@ -210,7 +218,7 @@ Types declared in another module can't mark themselves or implement the tag.
 Because tags don't require implementations to have specific fields or methods, indexing a tag is not
 allowed. In order to reference any of `MyStruct`'s fields or references, `obj` must be explicitly downcasted.
 
-## Type Aliases
+### Type Aliases
 
 Type aliases allow providing a different name for an existing type. Aliases can also reference other aliases, but cyclic aliases are not allowed.
 
@@ -293,7 +301,7 @@ volume(tuple..., 6)
 
 None of the function parameters may be labelled where the tuple is being spread.
 
-A tuple may also be spread into lists or variadic functions:
+A tuple may also be spread into lists or variadic functions, when the types of all items are compatible with each other or an explicit type.
 
 ```klar
 _ = [(1, 2, 3)...]
@@ -471,8 +479,6 @@ All generics are inferred, along with comparible operations. Each declared gener
 
 Functions may have more than one set of parameters, as long as they return the same parameter types.
 
-<!-- TODO: Should we allow Results of the same type? -->
-
 ```klar
 func greet(person: Person) -> String
 func greet(name: String) -> String
@@ -529,13 +535,16 @@ The target must only be a name of a function or method. It can be on a type or a
 
 ```klar
 func add = sum
-func Person.sayHello = Person.greet
+func Person.sayHello = .greet
 
 // Existing functions
 func sum(n1, n2: Int) = n1 + n2
 func Person.greet(name: String) -> String
 
 // Alias are called the same way and return the same type
+sum == add
+john := Person("John") // Methods are equal on the exact same object reference
+john.sayHello == john.greet
 sum(1, 2) == add(1, 2)
 Person("John").sayHello("Jane") == Person("John").greet("Jane")
 ```
@@ -596,7 +605,7 @@ b := B(a)
 
 ### Primitive Initializers
 
-Primitive, list, and map types have initializers and cast functions available. Some return `Result`.
+Primitive, list, and map types have initializers and cast functions available. Some return `Result` or optionals.
 
 ```klar
 try Int("24")
@@ -654,13 +663,14 @@ Assertions should be used carefully, especially in production. It is more useful
 
 ## Operators
 
-|         Name          |                Operator                 |                        Types                        |
-| :-------------------: | :-------------------------------------: | :-------------------------------------------------: |
-|       Addition        |                   `+`                   |         `Int`, `Float`, `String`, map, list         |
-|      Arithmetic       | `-` (infix/postfix), `*`, `/`, `^`, `%` |                   `Int`, `Float`                    |
-| String multiplication |                   `*`                   |            `String * Int` (exact order)             |
-|       Assertion       |                  `!!`                   |                 `Result`, optional                  |
-|          Try          |                  `try`                  |                      `Result`                       |
-|          In           |               `in`, `!in`               |             `K in #{K, V}`, `T in [T]`              |
-|         Range         |          `...` (infix), `..<`           | `Int`, `Float`, `String` (single A-Z/0-9 character) |
-|         Rest          |             `...` (postfix)             |                      list, map                      |
+|         Name          |                Operator                 |                Supported Types                 |
+| :-------------------: | :-------------------------------------: | :--------------------------------------------: |
+|       Addition        |                   `+`                   |      `Int`, `Float`, `String`, map, list       |
+|      Arithmetic       | `-` (infix/postfix), `*`, `/`, `^`, `%` |                 `Int`, `Float`                 |
+| String multiplication |                   `*`                   |          `String * Int` (exact order)          |
+|       Assertion       |                  `!!`                   |               `Result`, optional               |
+|          Try          |                  `try`                  |                    `Result`                    |
+|         Await         |                 `await`                 |                     `Task`                     |
+|          In           |               `in`, `!in`               |           `K in #{K, V}`, `T in [T]`           |
+|         Range         |          `...` (infix), `..<`           | `Int`, `Float`, `String` (single A-Z/0-9 char) |
+|         Rest          |             `...` (postfix)             |                   list, map                    |

@@ -137,12 +137,12 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 		// 	than the definition outside the current module.
 		// - We can use the user-declared unqualified import alias
 		obj = new(*obj)
-		obj.rang = name.Name.Range()
-		obj.file = fctx.File
-		obj.module = c.module
+		obj.Range = name.Name.Range()
+		obj.File = fctx.File
+		obj.Module = c.module
 		// TODO: Should we change obj's order, and context?
 		if !name.Label.IsZero() {
-			obj.name = name.Label.Name
+			obj.Name = name.Label.Name
 		}
 		// Declare the unqualified import
 		// TODO: Use a custom redeclared error to show "X was already imported"
@@ -236,7 +236,7 @@ func (ns *Namespace) String() string   { return "module " + ns.ImportPath }
 
 func (ns *Namespace) lookupExport(target string) (*Object, *klarerrs.Error) {
 	obj := ns.Context.Lookup(target)
-	if obj == nil || !obj.public {
+	if obj == nil || !obj.Public {
 		// Not found in the module or private
 		err := klarerrs.ReferenceError(
 			klarerrs.ErrExportUndefined, ranges.Range{}, target,
@@ -249,7 +249,7 @@ func (ns *Namespace) lookupExport(target string) (*Object, *klarerrs.Error) {
 			err.Code = klarerrs.ErrNotExported
 			err.AddDetail(
 				klarerrs.Quote(target)+" was declared here, and it isn't public",
-				obj.FilePath(), obj.Range(),
+				obj.FilePath(), obj.Range,
 			)
 		}
 		return nil, err

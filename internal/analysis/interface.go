@@ -34,7 +34,7 @@ func (c *Checker) checkInterfaceDecl(o *Object, decl *ast.InterfaceDeclaration) 
 		// Attributes
 		attrs := c.parseAttributes(
 			entry.Attributes, attrTargetKindOf(entry, true),
-			entry.Range, o.file,
+			entry.Range, o.File,
 		)
 		if attrs != nil && intf.ItemAttrs == nil {
 			intf.ItemAttrs = make(map[string]*Attributes)

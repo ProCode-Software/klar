@@ -42,12 +42,12 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 	if declareToCtx {
 		c.declare(ctx, obj)
 	} else {
-		obj.context = ctx // Still set the object's context
+		obj.Context = ctx // Still set the object's context
 	}
 	// Parse the attributes if any (top-level only)
 	if attrs != nil {
 		obj.attrs = c.parseAttributes(
-			*attrs, attrTargetKindOf(obj.info.node, obj.public), obj.rang, obj.file,
+			*attrs, attrTargetKindOf(obj.info.node, obj.Public), obj.Range, obj.File,
 		)
 		*attrs = (*attrs)[:0]
 	}
@@ -72,7 +72,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 		is recorded in objPathIndex. It's removed from the map and the stack when marked blue.
 	*/
 	if _, ok := c.objPathIndex[o]; ok {
-		switch typ := o.typ.(type) {
+		switch typ := o.Type.(type) {
 		case *Variable:
 			if !c.checkCycle(o) || typ.Type == nil {
 				typ.Type = InvalidType
@@ -90,15 +90,15 @@ func (c *Checker) checkDeclaration(o *Object) {
 		case *FunctionAlias:
 		// TODO
 		default:
-			panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
+			panic(fmt.Sprintf("unhandled declaration type: %T", o.Type))
 		}
-		if o.typ.Underlying() == nil {
+		if o.Type.Underlying() == nil {
 			panic("underlying type is still nil")
 		}
 		return
 	}
 
-	if o.typ.Underlying() != nil {
+	if o.Type.Underlying() != nil {
 		return // Blue, already checked
 	}
 
@@ -106,7 +106,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 	c.pushToPath(o)
 	defer c.popPath()
 
-	switch o.typ.(type) {
+	switch o.Type.(type) {
 	case *Variable:
 		c.checkVarDecl(o)
 	case *Constant:
@@ -120,7 +120,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 	case *FunctionAlias:
 		c.checkFuncAlias(o)
 	default:
-		panic(fmt.Sprintf("unhandled declaration type: %T", o.typ))
+		panic(fmt.Sprintf("unhandled declaration type: %T", o.Type))
 	}
 }
 
@@ -132,7 +132,7 @@ func (c *Checker) checkCycle(o *Object) bool {
 	// Number of type defs and values (const or var) in the cycle
 	var typeDefCount, valCount int
 	for _, obj := range cycle {
-		switch typ := obj.typ.(type) {
+		switch typ := obj.Type.(type) {
 		case *TypeName:
 			if _, ok := typ.Type.(*TypeAlias); !ok {
 				// Only increase the count for non-aliases
@@ -142,7 +142,7 @@ func (c *Checker) checkCycle(o *Object) bool {
 			valCount++
 		case *Function:
 		default:
-			panic(fmt.Sprintf("isValidCycle: unhandled declaration type: %T", obj.typ))
+			panic(fmt.Sprintf("isValidCycle: unhandled declaration type: %T", obj.Type))
 		}
 	}
 	switch {
@@ -176,7 +176,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 	if !c.validateReceiver(typeName, selfObj, methods, false) {
 		return
 	}
-	self := Underlying(selfObj.typ).(SupportsMethods)
+	self := Underlying(selfObj.Type).(SupportsMethods)
 	for _, meth := range methods {
 		meth.obj.info.funcKind = methodFunc
 		meth.obj.info.receiver = selfObj
@@ -184,7 +184,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 			if err.Code == klarerrs.ErrFieldAndMethodSameName {
 				err.SetParam("type", typeName)
 			}
-			c.fileError(err, meth.obj.file)
+			c.fileError(err, meth.obj.File)
 			return
 		}
 	}
@@ -212,14 +212,14 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			// Undefined
 			for _, o := range inits {
 				err := klarerrs.Undefined(typeName, identRange(o))
-				c.fileError(err, o.file)
+				c.fileError(err, o.File)
 			}
 			return
 		}
 		// Found, but in a different scope
 		det := []klarerrs.Detail{{
 			File:    selfObj.FilePath(),
-			Range:   selfObj.Range(),
+			Range:   selfObj.Range,
 			Message: klarerrs.Quote(typeName) + " was declared here",
 		}}
 		for _, o := range inits {
@@ -227,7 +227,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, node)
 			err.SetParam("initializer", true)
 			err.Details = det
-			c.fileError(err, o.file)
+			c.fileError(err, o.File)
 		}
 		return
 	}
@@ -242,7 +242,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 			err := klarerrs.Range(klarerrs.ErrAliasSelfType, identRange(o))
 			err.SetParam("initializer", true)
 			err.Label = "Initializer target can't be an alias"
-			c.fileError(err, o.file)
+			c.fileError(err, o.File)
 		}
 		return
 	default:
@@ -250,14 +250,14 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 		for _, o := range inits {
 			err := klarerrs.Range(klarerrs.ErrUnsupportedInitType, identRange(o))
 			err.Label = "Can't create initializers on this kind of type"
-			c.fileError(err, o.file)
+			c.fileError(err, o.File)
 		}
 		return
 	}
 	for _, obj := range inits {
 		obj.info.funcKind = initFunc
 		obj.info.receiver = selfObj
-		c.checkOverload(obj.typ.(*Overload), nil)
+		c.checkOverload(obj.Type.(*Overload), nil)
 	}
 }
 
@@ -283,31 +283,31 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		// Self type doesn't exist
 		for _, meth := range methods {
 			err := klarerrs.Undefined(name, selfRange(meth))
-			c.fileError(err, meth.obj.file)
+			c.fileError(err, meth.obj.File)
 		}
 	case isOtherScope:
 		// typeName was declared in a different scope from the method
 		det := []klarerrs.Detail{{
 			File:    self.FilePath(),
-			Range:   self.Range(),
+			Range:   self.Range,
 			Message: klarerrs.Quote(name) + " was declared here",
 		}}
 		for _, meth := range methods {
 			err := klarerrs.Node(klarerrs.ErrMethodInOtherScope, meth.decl)
 			err.Details = det
-			c.fileError(err, meth.obj.file)
+			c.fileError(err, meth.obj.File)
 		}
-	case self.module != methods[0].obj.module:
+	case self.Module != methods[0].obj.Module:
 		// TODO: check that receiver is not a primitive
 		return false
 	default:
-		tn, ok := self.typ.(*TypeName)
+		tn, ok := self.Type.(*TypeName)
 		if !ok {
 			// Receiver is not a type
 			for _, m := range methods {
 				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType, selfRange(m))
 				err.Label = "This isn't a type"
-				c.fileError(err, m.obj.file)
+				c.fileError(err, m.obj.File)
 			}
 			return false
 		}
@@ -317,14 +317,14 @@ func (c *Checker) validateReceiver(name string, self *Object,
 			for _, m := range methods {
 				err := klarerrs.Range(klarerrs.ErrAliasSelfType, selfRange(m))
 				err.Label = "Self type can't be an alias"
-				c.fileError(err, m.obj.file)
+				c.fileError(err, m.obj.File)
 			}
 		default:
 			// Self type doesn't support methods
 			for _, m := range methods {
 				err := klarerrs.Range(klarerrs.ErrUnsupportedSelfType, selfRange(m))
 				err.Label = "Can't declare methods on this kind of type"
-				c.fileError(err, m.obj.file)
+				c.fileError(err, m.obj.File)
 			}
 		case SupportsMethods:
 			return true

@@ -55,14 +55,14 @@ func (c *Checker) wrapBootstrapTypes() {
 }
 
 func (c *Checker) wrapBootstrappedTypeName(tn *TypeName, recv *Object) *TypeName {
-	if kind, ok := primitives[recv.name]; ok {
+	if kind, ok := primitives[recv.Name]; ok {
 		return &TypeName{Name: tn.Name, Type: &bootstrapType{
 			asDeclared: recv.TypeName().Type,
 			kind:       kind,
 			withKind:   kind,
 		}}
 	}
-	if ct, ok := compositeTypes[recv.name]; ok {
+	if ct, ok := compositeTypes[recv.Name]; ok {
 		return &TypeName{Name: tn.Name, Type: &bootstrapType{
 			asDeclared: recv.TypeName().Type,
 			kind:       ct.kind,

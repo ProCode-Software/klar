@@ -89,7 +89,7 @@ func (m *Module) String() string {
 
 func (m *Module) HasExports() bool {
 	for _, obj := range m.Context.Declarations {
-		if obj.public {
+		if obj.Public {
 			return true
 		}
 	}

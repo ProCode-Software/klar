@@ -8,17 +8,17 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-// Object represents the type of a Klar object.
+// Object represents a declared Klar object.
 type Object struct {
-	name    string
-	context *Context
-	rang    ranges.Range
-	file    FileID
-	public  bool
-	module  *Module
-	typ     ObjectKind
-	order   uint32
-	flags   Flag
+	Name    string       // Name of the object as declared in its module
+	Context *Context     // Context in which the object was declared
+	Range   ranges.Range // Position span of the object in the source code
+	File    FileID       // File ID the object was declared in
+	Public  bool         // Whether the object is exported
+	Module  *Module      // Module where the object was declared
+	Type    ObjectKind   // Type of the object
+	Order   uint32       // Order in which the object was declared in the module/block
+	Flags   Flag         // Flags applied to the object
 	attrs   *Attributes
 	info    *DeclarationInfo
 }
@@ -27,68 +27,41 @@ type Object struct {
 func NewObject(
 	name string, fid FileID, rang ranges.Range, mod *Module, typ ObjectKind,
 ) *Object {
-	return &Object{name: name, module: mod, rang: rang, file: fid, typ: typ}
+	return &Object{Name: name, Module: mod, Range: rang, File: fid, Type: typ}
 }
-
-// Name returns the name of the object as declared in its module
-func (obj *Object) Name() string { return obj.name }
-
-// Context returns the context in which the object was declared
-func (obj *Object) Context() *Context { return obj.context }
-
-// Order returns the order in which the object was declared in the module.
-func (obj *Object) Order() int { return int(obj.order) }
 
 // FileContext returns the context for the file in which the object was declared.
 // The return value is not equal to [Object.Context], but is the context where
 // imported objects (that the object could depend on) are declared.
-func (obj *Object) FileContext() *Context { return obj.module.fileContext[obj.file] }
+func (obj *Object) FileContext() *Context { return obj.Module.fileContext[obj.File] }
 
 // LookupContext returns the context in which imported objects (that the object
 // could depend on) are declared. This is the object's file context, unless
 // the object is declared in a nested scope (such as a function).
 func (obj *Object) LookupContext() *Context {
 	fctx := obj.FileContext()
-	if obj.context.File <= 0 {
+	if obj.Context.File <= 0 {
 		return fctx
 	}
-	return obj.context
+	return obj.Context
 }
 
-// Range returns the position of the object in the source code
-func (obj *Object) Range() ranges.Range { return obj.rang }
-
-// File returns the ID of the file in which the object was declared
-func (obj *Object) File() FileID { return obj.file }
-
-// Flags returns the flags applied to obj.
-func (obj *Object) Flags() Flag { return obj.flags }
-
-// Public returns whether the object is exported
-func (obj *Object) Public() bool { return obj.public }
-
-// Module returns the module in which the object was declared
-func (obj *Object) Module() *Module { return obj.module }
-
-// Type returns the type of the object
-func (obj *Object) Type() ObjectKind { return obj.typ }
-
 // Underlying is equivalent to obj.Type()
-func (obj *Object) Underlying() Type { return obj.typ }
+func (obj *Object) Underlying() Type { return obj.Type }
 
 // Kind returns the kind of the object. Kind is equivalent to obj.Type().Kind().
-func (obj *Object) Kind() Kind { return obj.typ.Kind() }
+func (obj *Object) Kind() Kind { return obj.Type.Kind() }
 
 // String returns a human-readable representation of the object's type.
-func (obj *Object) String() string { return obj.typ.String() }
+func (obj *Object) String() string { return obj.Type.String() }
 
 // ObjectString returns a human-readable representation of the object.
 func (obj *Object) ObjectString() string {
 	declKind := "object"
-	filePath := fmt.Sprintf(" (%s:%s)", obj.FilePath(), obj.rang)
-	switch typ := obj.typ.(type) {
+	filePath := fmt.Sprintf(" (%s:%s)", obj.FilePath(), obj.Range)
+	switch typ := obj.Type.(type) {
 	case *Function:
-		return typ.StringWithName(obj.name) + filePath
+		return typ.StringWithName(obj.Name) + filePath
 	case *FunctionAlias:
 	case *Variable:
 		declKind = "var"
@@ -107,39 +80,39 @@ func (obj *Object) ObjectString() string {
 		case *Interface:
 			declKind = "interface"
 		case *Tag:
-			return "type #" + obj.name + filePath
+			return "type #" + obj.Name + filePath
 		default: // Including type alias
-			return fmt.Sprintf("type %s = %s%s", obj.name, inner.String(), filePath)
+			return fmt.Sprintf("type %s = %s%s", obj.Name, inner.String(), filePath)
 		}
-		return declKind + obj.name + filePath
+		return declKind + obj.Name + filePath
 	}
-	return fmt.Sprintf("%s %s: %s%s", declKind, obj.name, obj.Type().String(), filePath)
+	return fmt.Sprintf("%s %s: %s%s", declKind, obj.Name, obj.Type.String(), filePath)
 }
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
 	// TODO: should use '/' instead?
-	return obj.Module().ImportPathString() + "/" + obj.name
+	return obj.Module.ImportPathString() + "/" + obj.Name
 }
 
 // TODO: If the object is top-level, these don't return a file. Find a solution
 
 // FileName returns the base name of the file o was declared in.
-func (o *Object) FileName() string { return o.module.ResolveFile(o.file) }
+func (o *Object) FileName() string { return o.Module.ResolveFile(o.File) }
 
 // FileName returns the full path of the file o was declared in.
-func (o *Object) FilePath() string { return o.module.ResolveFilePath(o.file) }
+func (o *Object) FilePath() string { return o.Module.ResolveFilePath(o.File) }
 
 // FileRange returns a [ranges.FileRange] representing the range of o's declaration
 // and the base name of the containing file.
 func (o *Object) FileRange() ranges.FileRange {
-	return ranges.FileRange{o.rang, o.FileName()}
+	return ranges.FileRange{o.Range, o.FileName()}
 }
 
 // FilePathRange returns a [ranges.FilePathRange] representing the range of o's
 // declaration and the full path of the containing file.
 func (o *Object) FilePathRange() ranges.FileRange {
-	return ranges.FileRange{o.rang, o.FilePath()}
+	return ranges.FileRange{o.Range, o.FilePath()}
 }
 
 // IsTypeName reports whether o represents a type declaration.
@@ -147,13 +120,13 @@ func (o *Object) IsTypeName() bool {
 	if o == nil {
 		return false
 	}
-	_, ok := o.typ.(*TypeName)
+	_, ok := o.Type.(*TypeName)
 	return ok
 }
 
 // TypeName returns o's Type() as a [*TypeName], or panics if
 // o is not a type name.
-func (o *Object) TypeName() *TypeName { return o.typ.(*TypeName) }
+func (o *Object) TypeName() *TypeName { return o.Type.(*TypeName) }
 
 type ObjectKind interface {
 	Type

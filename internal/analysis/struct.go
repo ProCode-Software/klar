@@ -55,7 +55,7 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 			typ   = c.parseType(field.Type, fctx)
 			attrs = c.parseAttributes(
 				field.Attributes, attrTargetKindOf(field, true),
-				field.Range, o.file,
+				field.Range, o.File,
 			)
 		)
 		for _, id := range field.Names {
@@ -63,12 +63,12 @@ func (c *Checker) checkStructDecl(o *Object, node *ast.StructDeclaration) {
 				Variable:   &Variable{VarKind: StructFieldVar, Type: typ},
 				Attributes: attrs,
 			}
-			obj := NewObject(id.Name, o.file, field.Range, o.module, f)
+			obj := NewObject(id.Name, o.File, field.Range, o.Module, f)
 			f.Variable.Object = obj
 			str.Fields = append(str.Fields, obj)
 			if _, ok := str.fieldMap[id.Name]; ok {
 				// Duplicate struct fields should have already been checked by the parser
-				panic("field '" + id.Name + "' already exists in struct " + o.name)
+				panic("field '" + id.Name + "' already exists in struct " + o.Name)
 			}
 			str.fieldMap[id.Name] = obj
 			c.queue(func() {

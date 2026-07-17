@@ -60,8 +60,8 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 		// show a different error
 		if ei, ok := Underlying(lhs.Type).(*EnumRef); ok {
 			err.Code = klarerrs.ErrEnumItemNoParams
-			err.Label = fmt.Sprintf("Can't pass parameters to %s.%s", ei.Enum.Name, ei.name)
-			err.Name = ei.name
+			err.Label = fmt.Sprintf("Can't pass parameters to %s.%s", ei.Enum.Name, ei.Name)
+			err.Name = ei.Name
 		} else {
 			typ := quoteAka(lhs.Type)
 			err.Label = "This callee has type " + typ + " and can't be called"

@@ -125,7 +125,7 @@ func (c *Checker) collectTopLevelObjects(
 	for _, fileName := range files {
 		fctx := fileContexts[fileName]
 		for _, imported := range fctx.SortedDecls() {
-			name := imported.name
+			name := imported.Name
 			topLevel := c.module.Context.Lookup(name)
 			if topLevel == nil {
 				continue // No error
@@ -137,18 +137,18 @@ func (c *Checker) collectTopLevelObjects(
 			var namespace string
 			if imported.Kind() == KindNamespace {
 				// Provide the import path the namespace is from
-				namespace = imported.module.ImportPathString()
+				namespace = imported.Module.ImportPathString()
 			}
-			err := klarerrs.Range(klarerrs.ErrImportShadow, imported.rang)
+			err := klarerrs.Range(klarerrs.ErrImportShadow, imported.Range)
 			err.Label = klarerrs.Quote(name) + " was already declared in the module"
 			err.Params = klarerrs.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
 			err.Details = append(err.Details, klarerrs.Detail{
 				File:    topLevel.FilePath(),
-				Range:   topLevel.rang,
+				Range:   topLevel.Range,
 				Message: "It was already declared here",
 			})
-			c.fileError(err, imported.file)
+			c.fileError(err, imported.File)
 		}
 	}
 	if len(topLevelStmts) > 0 {
@@ -169,7 +169,7 @@ func (c *Checker) checkContextDecls(
 	)
 	// 1. Check new type declarations (not aliases)
 	for _, obj := range ctx.SortedDecls() {
-		switch obj.typ.(type) {
+		switch obj.Type.(type) {
 		case *TypeName:
 			if _, ok := obj.info.node.(*ast.TypeAliasDeclaration); ok {
 				typeAliases = append(typeAliases, obj)
@@ -223,7 +223,7 @@ func (sc *stmtCollector) declareInitializer(ov *Object) {
 	if sc.inits == nil {
 		sc.inits = make(map[string][]*Object)
 	}
-	sc.inits[ov.name] = append(sc.inits[ov.name], ov)
+	sc.inits[ov.Name] = append(sc.inits[ov.Name], ov)
 }
 
 func (sc *stmtCollector) nextOrder() uint32 {
@@ -240,8 +240,8 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 ) {
 	name := stmt.Identifier.Name
 	ov := NewObject(name, sc.fid, stmt.GetRange(), c.module, &Overload{})
-	ov.typ.(*Overload).Object = ov
-	ov.public = public
+	ov.Type.(*Overload).Object = ov
+	ov.Public = public
 
 	var par *Object
 	var isInit bool
@@ -257,11 +257,11 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 		sc.declareInitializer(ov)
 	default:
 		// New overload (may be the first)
-		parFn := par.typ.(*Function)
-		parFn.Overloads = append(parFn.Overloads, ov.typ.(*Overload))
+		parFn := par.Type.(*Function)
+		parFn.Overloads = append(parFn.Overloads, ov.Type.(*Overload))
 		// If at least 1 overload is public, the entire function is public
 		if public {
-			par.public = true
+			par.Public = true
 		}
 	case par == nil:
 		// This is a method, or the object with same name isn't a function.
@@ -270,7 +270,7 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	// No kind is declared into the context. For overloads, their parent has
 	// already been declared.
 	ov.info = &DeclarationInfo{node: stmt}
-	ov.order = sc.nextOrder()
+	ov.Order = sc.nextOrder()
 	c.declareWithInfo(ov, sc.ctx, attrs, false)
 }
 
@@ -291,14 +291,14 @@ func (c *Checker) declareFuncAlias(stmt *ast.FuncAliasDeclaration, sc *stmtColle
 		stmt.Identifier.Name,
 		sc.fid, stmt.Range, c.module, &FunctionAlias{},
 	)
-	obj.public = public
+	obj.Public = public
 	if stmt.Struct != nil {
 		// Method alias
 		sc.declareMethod(stmt.Struct, methodInfo{alias: stmt, obj: obj})
 	}
 	// Both methods and normal aliases have their info recorded.
 	obj.info = &DeclarationInfo{node: stmt}
-	obj.order = sc.nextOrder()
+	obj.Order = sc.nextOrder()
 	c.declareWithInfo(obj, sc.ctx, attrs, stmt.Struct == nil)
 }
 
@@ -313,7 +313,7 @@ func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
 	var hadInit bool
 	if maybeFnObj := sc.ctx.Lookup(name); maybeFnObj != nil {
 		var fn *Function
-		if fn, hadInit = maybeFnObj.typ.(*Function); hadInit {
+		if fn, hadInit = maybeFnObj.Type.(*Function); hadInit {
 			// The initializer was declared earlier than this type.
 			// Change the object in the context to this type.
 			sc.ctx.Declarations[name] = obj
@@ -326,9 +326,9 @@ func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
 	}
 
 	obj.info = &DeclarationInfo{node: stmt}
-	obj.order = sc.nextOrder()
+	obj.Order = sc.nextOrder()
 	c.declareWithInfo(obj, sc.ctx, attrs, !hadInit)
-	obj.public = public
+	obj.Public = public
 }
 
 // getOverloadParent finds the [*Function] associated with f's name, which
@@ -347,17 +347,17 @@ func (c *Checker) getOverloadParent(
 		par = NewObject(name, sc.fid, node.GetRange(), c.module, &Function{})
 		// The parent's node and range are the first overload
 		par.info = &DeclarationInfo{node: node}
-		par.order = sc.nextOrder()
+		par.Order = sc.nextOrder()
 		c.declareWithInfo(par, sc.ctx, nil, true)
 		return par, false
 	}
-	if _, ok := par.typ.(*Function); !ok {
+	if _, ok := par.Type.(*Function); !ok {
 		if par.IsTypeName() {
 			// If the parent is a type, this is an initializer for it
 			return nil, true
 		}
 		// If the parent isn't a function, it's redeclared
-		err := redeclaredError(&Object{rang: node.GetRange()}, par, false)
+		err := redeclaredError(&Object{Range: node.GetRange()}, par, false)
 		c.fileError(err, sc.fid)
 		return nil, false
 	}
@@ -419,13 +419,13 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				continue
 			}
 			obj := NewObject(name.Identifier, sc.fid, name.Range, c.module, nil)
-			obj.public = public
+			obj.Public = public
 
 			// Check whether the variable is a const. Vars and consts can't
 			// be mixed in the same declaration.
 			oldVarKind := varKind
 			if IsConst(name.Identifier) {
-				obj.typ = &Constant{}
+				obj.Type = &Constant{}
 				varKind = 2
 			} else {
 				varObjKind := LocalVar
@@ -448,7 +448,7 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				err.Label = "This is a " + kindString[varKind]
 				err.AddHighlight(
 					"This was already declared as a "+kindString[oldVarKind],
-					lastDecl.rang,
+					lastDecl.Range,
 				)
 				// TODO: hint with diff
 				err.Hint("Declare the variables and constants in separate declarations.")
@@ -465,7 +465,7 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				rhsExpr: rhsExpr,
 				expType: explicitType,
 			}}
-			obj.order = sc.nextOrder()
+			obj.Order = sc.nextOrder()
 			c.declareWithInfo(obj, sc.ctx, attrs, true)
 		}
 	}

@@ -90,10 +90,10 @@ func (er *EnumRef) Underlying() Type {
 func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 	fctx := o.LookupContext()
 	e := &Enum{
-		Name:      o.name,
+		Name:      o.Name,
 		Items:     make([]*EnumItem, 0, len(node.Values)),
 		itemMap:   make(map[string]*EnumItem, len(node.Values)),
-		Generics:  c.parseGenerics(node.Generics, o.file, fctx),
+		Generics:  c.parseGenerics(node.Generics, o.File, fctx),
 		Inherited: c.checkInheritedTypes(node.Inherited, KindEnum, fctx),
 	}
 	o.TypeName().Type = e
@@ -104,13 +104,13 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 	var firstValue any
 	for _, entry := range node.Values {
 		ei := &EnumItem{Enum: e, Object: NewObject(
-			entry.Identifier.Name, o.file, entry.Range, o.module, nil,
+			entry.Identifier.Name, o.File, entry.Range, o.Module, nil,
 		)}
 		e.Items = append(e.Items, ei)
-		e.itemMap[ei.name] = ei // Duplicates are checked during parsing
-		ei.Object.typ = ei
+		e.itemMap[ei.Name] = ei // Duplicates are checked during parsing
+		ei.Object.Type = ei
 		ei.Object.attrs = c.parseAttributes(
-			entry.Attributes, attrTargetKindOf(entry, true), entry.Range, o.file,
+			entry.Attributes, attrTargetKindOf(entry, true), entry.Range, o.File,
 		)
 
 		// Value - must be unique for each item
@@ -139,7 +139,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 						"It was first defined here",
 						firstParamDecl(entry.Parameters.Values, key.Name).Range(),
 					)
-					c.fileError(err, o.file)
+					c.fileError(err, o.File)
 				} else {
 					ei.paramMap[key.Name] = len(ei.Params) - 1
 				}
@@ -178,7 +178,7 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 			// For strings, determine casing mode and store that in firstValue
 			if valType == StringType {
 				str := cons.ConstValue().(string)
-				*firstValue = getCasingMode(ei.name, str)
+				*firstValue = getCasingMode(ei.Name, str)
 			}
 		} else if e.ItemType != valType { // Type mismatch
 			// TODO: Untyped Int then Float is allowed
@@ -189,20 +189,20 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 					*firstRange,
 				)
 			}
-			c.fileError(err, o.file)
+			c.fileError(err, o.File)
 		}
 
 		// Check uniqueness of value
 		if otherItem, ok := valueMap[cons]; ok {
 			err := klarerrs.Node(klarerrs.ErrEnumSameValue, expr)
 			err.Label = "Enum values must be unique"
-			err.SetParam("key", ei.name)
-			err.SetParam("otherKey", otherItem.name)
+			err.SetParam("key", ei.Name)
+			err.SetParam("otherKey", otherItem.Name)
 			err.AddDetail(
-				"Item "+klarerrs.Quote(otherItem.name)+" was declared here",
-				c.module.ResolveFile(o.file), expr.GetRange(),
+				"Item "+klarerrs.Quote(otherItem.Name)+" was declared here",
+				c.module.ResolveFile(o.File), expr.GetRange(),
 			)
-			c.fileError(err, o.file)
+			c.fileError(err, o.File)
 		} else {
 			valueMap[cons] = ei
 		}
@@ -229,16 +229,16 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 			switch (*firstValue).(casingMode) {
 			case noCasePattern:
 				// Can't infer this value
-				c.fileError(klarerrs.Range(klarerrs.ErrCantInferStringEnum, r), o.file)
-				str = ei.name
+				c.fileError(klarerrs.Range(klarerrs.ErrCantInferStringEnum, r), o.File)
+				str = ei.Name
 			case nameCase:
-				str = ei.name
+				str = ei.Name
 			case lowerCasing:
-				str = strings.ToLower(ei.name)
+				str = strings.ToLower(ei.Name)
 			case upperCasing:
-				str = strings.ToUpper(ei.name)
+				str = strings.ToUpper(ei.Name)
 			case pascalCasing:
-				str = toPascalCase(ei.name)
+				str = toPascalCase(ei.Name)
 			default:
 				panic(fmt.Sprintf(
 					"invalid string casing mode: %d", (*firstValue).(casingMode),
