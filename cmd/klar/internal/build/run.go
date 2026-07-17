@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"maps"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -148,9 +146,6 @@ func Build(r *command.Runner) {
 		}
 	default:
 		// Successes, errors, and/or warnings
-		if len(res.Errors) > 0 && r.Flag("sound-on-error").Bool() {
-			playErrorSound()
-		}
 		showResult(res, c)
 	}
 }
@@ -286,21 +281,6 @@ func ParseFlags(r *command.Runner, i *build.Input) {
 		default:
 			panic("unhandled flag: " + setting)
 		}
-	}
-}
-
-func playErrorSound() {
-	// TODO: use a different path
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
-	}
-	soundPath := filepath.Join(home, "Downloads/fahh.mp3")
-
-	// TODO: make this cross-platform
-	cmd := exec.Command("pw-play", soundPath)
-	if err := cmd.Start(); err != nil {
-		return
 	}
 }
 
