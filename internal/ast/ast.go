@@ -83,3 +83,15 @@ func (p *Program) Deps(yield func(imports.ImportPath) bool) {
 		}
 	}
 }
+
+// Unparen removes consecutive parentheses from the provided expression.
+// If expr is not a [*ParenExpression], Unparen returns expr unchanged.
+func Unparen(expr Expression) Expression {
+	for {
+		paren, ok := expr.(*ParenExpression)
+		if !ok {
+			return expr
+		}
+		expr = paren.Expression
+	}
+}

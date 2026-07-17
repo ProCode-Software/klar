@@ -118,6 +118,7 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 			// When the 'when' is being used as an expression, the bodies must
 			// have the same type.
 			if t.mode&exprStmt == 0 {
+				t.Type = t.hint
 				prevBodyType := t.Type
 				c.inferCollection(e, &t.Type, body, t.hint, func(err *klarerrs.Error) {
 					if err.Code == klarerrs.ErrTypeMismatch {
@@ -188,7 +189,7 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 		}
 		pat.Kind = BinaryPattern
 		checkCompat = false
-		rhs := c.checkExprFrom(expr.Right, pat.Expr)
+		rhs := c.checkExpr(expr.Right, pat.Expr.NewChild().withHint(ws.Type))
 		pat.Type = c.checkBinaryOperation(
 			expr.Operator, ws.Type, rhs.Type,
 			ws.Node, expr.Right, expr, ws.FileID(),

@@ -99,7 +99,7 @@ func (c *Checker) parseTypeAlias(expr *ast.TypeAlias, ctx *Context, flags Flag) 
 		!c.checkGenericCount(target, expr.Range, flags, ctx.File) {
 		return InvalidType
 	}
-	return target.typ
+	return target
 }
 
 func (c *Checker) expectTypeName(o *Object, expr ast.Node, fid FileID) bool {

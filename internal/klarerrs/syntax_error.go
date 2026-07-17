@@ -71,6 +71,7 @@ const (
 	ErrMissingFuncParamType // Required function parameter type
 	ErrNonNameFuncAlias     // Function alias target is not symbol or member
 	ErrComputedFuncAlias    // Function alias target can't be a computed index
+	ErrInvalidMethodAlias   // Method alias must be '.target'
 	ErrInvalidPublic        // Public modifier applied to non-declaration
 	ErrPublicGoesFirst      // Public modifier always goes first
 	ErrDuplicateModifier    // More than 1 of the same modifier
@@ -154,6 +155,7 @@ const (
 	ErrBlockInWhenExpr        // Block bodies are only allowed in when statements
 	ErrInvalidRestExpr        // Rest expression used outside of list, call, tuple, or map
 	ErrReturnInPipelineExpr   // Return statement not allowed in pipeline expression
+	ErrOptionalOptional       // Can't nest optional types (T??)
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -524,6 +526,8 @@ func (e *Error) handleSyntaxError() string {
 		return "A block can only be used as the body of a 'when' case in a 'when' statement, not expression"
 	case ErrVariadicNotLast:
 		return "The variadic parameter must be the last parameter in the function"
+	case ErrOptionalOptional:
+		return "An optional type can't be optional"
 	case ErrWrongSubjectCount:
 		exp, got := e.IntParam("expected"), e.IntParam("got")
 		title := "Too many subjects in this case"
@@ -534,5 +538,7 @@ func (e *Error) handleSyntaxError() string {
 			"%s: Expected %s, but this case has %d",
 			title, FormatCount(exp, "subject"), got,
 		)
+	case ErrInvalidMethodAlias:
+		return "The right-hand side of a method alias must be in the format '.method'"
 	}
 }

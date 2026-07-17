@@ -10,7 +10,17 @@ import (
 )
 
 func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
-	lhs := c.checkExpr(expr.Callee, t.NewChild(callLHS))
+	lhs := t.NewChild()
+	if lhsExpr, ok := expr.Callee.(*ast.Symbol); ok {
+		// Allow types for initializers
+		c.checkSymbolExpr(lhsExpr, true, lhs)
+		if t.Type == nil {
+			t.Type = InvalidType
+		}
+		c.Info.Expressions[expr] = t
+	} else {
+		c.checkExpr(expr.Callee, lhs)
+	}
 	if lhs.Type.Kind() == InvalidType {
 		t.Type = InvalidType
 		return
@@ -20,7 +30,7 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 	case *Overload, *Lambda, *TypeName, *EnumFunction:
 	case *Function:
 		if isTODO(fn) {
-			t.mode |= todoExpr
+			t.Root.mode |= todoExpr
 		}
 		// TODO: This is temporary and will be removed when generic inference
 		// is implemented
@@ -144,13 +154,13 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 					if !Compatible(commonType, expType) {
 						c.fileError(typeMismatch(expType, commonType, rhsRang), t.FileID())
 					}
-				case len(tup.Items) == 0:
+				case tup.Len() == 0:
 					c.fileError(
 						klarerrs.Node(klarerrs.ErrSpreadEmptyTuple, rest.Expression).
 							WithLabel("This tuple is empty"),
 						t.FileID(),
 					)
-				case arity.MaxParams != -1 && i+len(tup.Items) > arity.MaxParams:
+				case arity.MaxParams != -1 && i+tup.Len() > arity.MaxParams:
 				// Tuple has more parameters than the function accepts
 
 				default:
@@ -160,7 +170,7 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 							c.fileError(typeMismatch(expType, item, rhsRang), t.FileID())
 						}
 					}
-					i += len(tup.Items)
+					i += tup.Len()
 				}
 			case KindList:
 				itemType = As[*List](rhs.Type).Elem

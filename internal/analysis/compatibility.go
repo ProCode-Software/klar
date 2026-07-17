@@ -92,12 +92,7 @@ func Compatible(a, b Type) bool {
 }
 
 // TypesEqual returns whether the underlying types of a and b are equal.
-func TypesEqual(a, b Type) (res bool) {
-	defer func() {
-		if !res {
-			fmt.Printf("\033[31m%#v\033[m | \033[32m%#v\033[m\n\n", a, b)
-		}
-	}()
+func TypesEqual(a, b Type) bool {
 	a, b = Underlying(a), Underlying(b)
 	// If one is invalid type, avoid showing many errors, so we will say
 	// they are compatible.

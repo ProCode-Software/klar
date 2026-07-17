@@ -255,18 +255,15 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		err.Label = "This should be the last unlabelled parameter"
 		// Highlight the params after this
 		after := ov.Params[slices.Index(ov.Params, restParam)+1:]
-		r := ranges.Range{after[0].Object.rang.Start, after[len(after)-1].Object.rang.End}
-		err.AddHighlight("It should go after these", r)
+		err.AddHighlight("It should go after these", ranges.Range{
+			after[0].Object.rang.Start, after[len(after)-1].Object.rang.End,
+		})
 		c.fileError(err, restParam.Object.file)
 	}
 
-	// 4. Body expression, which may be used to infer return type
 	var bodyExpr *Expr
-	if !c.Options.IgnoreFuncBodies && stmt.Expression != nil {
-		bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx, 0))
-	}
 
-	// 5. Return type
+	// 4. Return type
 	var retRange ranges.Range
 	switch rt := stmt.ReturnType.(type) {
 	default:
@@ -274,8 +271,11 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		retRange = stmt.ReturnType.GetRange()
 	case nil:
 		switch {
-		case bodyExpr != nil:
-			// Inferred from body expression
+		case stmt.Expression != nil:
+			// Inferred return type from body expression. If there is a body
+			// expression but also an explicit return type, the expression
+			// will be checked later.
+			bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx))
 			ov.Return, retRange = bodyExpr.Type, stmt.Expression.GetRange()
 		case isInit:
 			// `func Int()` implicitly returns Int
@@ -344,48 +344,7 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	//  func x() -> Impl
 	switch {
 	case isInit:
-		// Change return type of `Result` (exact syntax) or `Result?` to
-		// `Result<T>` from `Result<Nothing>`. We're intentionally
-		// checking for equality by reference.
-		var changeFromResultNothing func(*Type)
-		changeFromResultNothing = func(typ *Type) {
-			switch ret := ov.Return.(type) {
-			case *Optional:
-				changeFromResultNothing(&ret.Elem)
-			case *Result:
-				if *typ == ResultNothing {
-					ov.Return = info.receiver.typ
-				}
-			}
-		}
-		if info.receiver.name != "List" {
-			// Don't change the return type of List initializers
-			//	func List(...) -> [Result] should return [Result<Nothing>]
-			changeFromResultNothing(&ov.Return)
-		}
-
-		switch {
-		// An initializer named 'List' must return a list (or a list as an optional/result)
-		case info.receiver.name == "List":
-			if ConcreteTypeOf(ov.Return).Kind() != KindList {
-				err := klarerrs.Range(klarerrs.ErrInvalidListInitReturn, retRange)
-				c.fileError(err, ov.file)
-				ov.Return = &List{InvalidType}
-			}
-
-		// Check that the overload's concrete type is the one it initializes
-		case !TypesEqual(ConcreteTypeOf(ov.Return), info.receiver.typ):
-			err := klarerrs.Range(klarerrs.ErrInvalidInitReturn, retRange)
-			err.Name = ov.name
-			// Show a hint for `func T() -> [T]`
-			if asList := (&List{info.receiver.typ}); TypesEqual(ov.Return, asList) {
-				err.Label = "An initializer can't return a list of " +
-					quote(asList.String())
-			}
-			err.AddHighlight("This type is being initialized", stmt.Identifier.Range())
-			c.fileError(err, ov.file)
-			ov.Return = info.receiver.typ
-		}
+		c.checkInitReturnType(ov, stmt, retRange)
 	case fn.Return == nil:
 		fn.Return = ov.Return
 	case !TypesEqual(ov.Return, fn.Return):
@@ -401,13 +360,20 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	default: // Correct return types
 	}
 
-	// 6. Body
+	// 5. Body
 	if !c.Options.IgnoreFuncBodies && stmt.Body != nil {
 		c.queue(func() { c.checkFuncBody(stmt, ov, fn, retRange, fctx) }, true)
-	} else if bodyExpr != nil {
+	} else if stmt.Expression != nil {
 		// This is queued because a function body's returns are also queued.
 		// TODO: This is for consistency, but is this needed?
 		c.queue(func() {
+			// If there is an explicit return type, check the expression now with a hint
+			if bodyExpr == nil && (!c.Options.IgnoreFuncBodies || ov.Return == nil) {
+				bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx).withHint(ov.Return))
+				if ov.Return == nil {
+					ov.Return = bodyExpr.Type
+				}
+			}
 			if !Compatible(bodyExpr.Type, ov.Return) &&
 				bodyExpr.Type.Kind() != InvalidType && bodyExpr.mode&todoExpr == 0 {
 				err := returnTypeMismatch(
@@ -417,6 +383,54 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 				c.fileError(err, ov.file)
 			}
 		}, true)
+	}
+}
+
+func (c *Checker) checkInitReturnType(
+	ov *Overload, stmt *ast.FunctionDeclaration, retRange ranges.Range,
+) {
+	info := ov.Object.info
+	// Change return type of `Result` (exact syntax) or `Result?` to
+	// `Result<T>` from `Result<Nothing>`. We're intentionally
+	// checking for equality by reference.
+	var changeFromResultNothing func(*Type)
+	changeFromResultNothing = func(typ *Type) {
+		switch ret := ov.Return.(type) {
+		case *Optional:
+			changeFromResultNothing(&ret.Elem)
+		case *Result:
+			if *typ == ResultNothing {
+				ov.Return = info.receiver.typ
+			}
+		}
+	}
+	if info.receiver.name != "List" {
+		// Don't change the return type of List initializers
+		//	func List(...) -> [Result] should return [Result<Nothing>]
+		changeFromResultNothing(&ov.Return)
+	}
+
+	switch {
+	// An initializer named 'List' must return a list (or a list as an optional/result)
+	case info.receiver.name == "List":
+		if ConcreteTypeOf(ov.Return).Kind() != KindList {
+			err := klarerrs.Range(klarerrs.ErrInvalidListInitReturn, retRange)
+			c.fileError(err, ov.file)
+			ov.Return = &List{InvalidType}
+		}
+
+	// Check that the overload's concrete type is the one it initializes
+	case !TypesEqual(ConcreteTypeOf(ov.Return), info.receiver.typ):
+		err := klarerrs.Range(klarerrs.ErrInvalidInitReturn, retRange)
+		err.Name = ov.name
+		// Show a hint for `func T() -> [T]`
+		if asList := (&List{info.receiver.typ}); TypesEqual(ov.Return, asList) {
+			err.Label = "An initializer can't return a list of " +
+				quote(asList.String())
+		}
+		err.AddHighlight("This type is being initialized", stmt.Identifier.Range())
+		c.fileError(err, ov.file)
+		ov.Return = info.receiver.typ
 	}
 }
 
@@ -748,5 +762,7 @@ func (c *Checker) checkRedeclaredOverload(a, b *Overload) (ok bool) {
 func (c *Checker) resolveOverload(overloads []*Overload,
 	params []Type, labelledParams map[string]Type,
 ) (*Overload, *klarerrs.Error) {
+	scores := make(map[*Overload]int)
+	_ = scores
 	return overloads[0], nil
 }

@@ -165,7 +165,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	fid := sctx.ctx.File
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
-		expr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, exprStmt))
+		expr := c.checkExpr(stmt.Expression, sctx.newExpr(exprStmt))
 		switch {
 		case (sctx.flags & braceless) != 0:
 		// TODO: find a way to return the value type
@@ -228,8 +228,7 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 		err.Label = "This 'return' statement is outside of a function"
 		c.fileError(err, sctx.ctx.File)
 	}
-	e := newExprFromStmtCtx(sctx, 0)
-	e.hint = sctx.returnHint
+	e := sctx.newExpr().withHint(sctx.returnHint)
 	var pos ranges.Range
 	if stmt.Value == nil {
 		e.Type = NothingType
@@ -244,7 +243,7 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 	if stmt.Condition != nil {
-		cond := c.checkExpr(stmt.Condition, newExprFromStmtCtx(sctx, 0))
+		cond := c.checkExpr(stmt.Condition, sctx.newExpr())
 		if typ := cond.Type; typ.Kind() != BoolType && typ.Kind() != InvalidType {
 			gotType := typ.String()
 			err := klarerrs.TypeError(
@@ -278,7 +277,7 @@ func (c *Checker) checkControlStmt(stmt ast.Statement,
 	if label != nil {
 		labelDef, ok := sctx.loopLabels[label.Name]
 		if !ok {
-			err := klarerrs.Node(klarerrs.ErrLabelUndefined, label)
+			err := klarerrs.Node(klarerrs.ErrLoopLabelUndefined, label)
 			err.Label = "Label :" + label.Name + " doesn't exist"
 			if sctx.ctx.index > 0 {
 				err.SetParam("isFunc", true)
@@ -309,7 +308,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 	numVars = min(numVars, MaxLoopVars) // Will always be in range [0, MaxLoopVars]
 
 	// TODO: Convert iterExpr to a typed value
-	iterExpr := c.checkExpr(stmt.Expression, newExprFromStmtCtx(sctx, 0))
+	iterExpr := c.checkExpr(stmt.Expression, sctx.newExpr())
 	iterExpr.Type = c.toTyped(iterExpr.Type, nil, stmt.Expression, fid)
 	varTypes, err := c.isIterable(iterExpr.Type, numVars)
 	if err != nil {
@@ -317,6 +316,7 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 		c.fileError(err, fid)
 		// The loop variables will still be declared with types [InvalidType]
 	}
+	// When iterating over Int, only 1 variable is allowed (for i in 2)
 	if iterExpr.Type.Kind() == IntType && numVars > 1 {
 		err := klarerrs.Slice(klarerrs.ErrMultipleIntIterVars, stmt.Variables)
 		err.AddHighlight("The iterator has type Int", stmt.Expression.GetRange())
@@ -325,20 +325,25 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 	}
 	var i int
 	bodyCtx := NewContext(sctx.ctx, fid)
-	outer:
+outer:
 	for _, pair := range stmt.Variables {
-		var typ Type = InvalidType
 		// Use the user-provided type annotation, if any.
 		//
 		// TODO: Should we keep allowing users to declare explicit types for
 		// loop variables? They are completely known without them, and an error
 		// is raised if the annotation is incompatible. Annotations will only
 		// be useful for downcasting `for i: Animal in [Cat](...)`
+		var explicitType Type = InvalidType
 		if pair.Type != nil {
-			typ = c.parseType(pair.Type, sctx.ctx)
-			// TODO: Check that the annotation is compatible with the actual loop type
-			if i < MaxLoopVars && !Compatible(typ, varTypes[i]) {
-				c.fileError(typeMismatch(varTypes[i], typ, pair.Type.GetRange()), fid)
+			explicitType = c.parseType(pair.Type, sctx.ctx)
+			// Check that the the actual loop type is compatible with the annotation.
+			// We're doing it this way because an annotation is supposed to be a downcast.
+			if i < MaxLoopVars && !Compatible(varTypes[i], explicitType) {
+				// TODO: Show a "not compatible" error? What order should this be?
+				c.fileError(
+					typeMismatch(varTypes[i], explicitType, pair.Type.GetRange()),
+					fid,
+				)
 			}
 		}
 		for _, key := range pair.Keys {
@@ -349,8 +354,9 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 				c.fileError(klarerrs.Node(klarerrs.ErrOver2LoopVars, key), fid)
 				break outer
 			}
-			if typ == InvalidType {
-				typ = varTypes[i] // Default type from the loop expression
+			typ := varTypes[i] // Default type from the loop expression
+			if explicitType != InvalidType {
+				typ = explicitType
 			}
 			for sym, typ := range c.followDestructure(
 				key, typ, sctx.ctx.File, stmt.Expression.GetRange(), true,
@@ -456,20 +462,20 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 	var singleRHS *Expr
 	var singleRHSNode ast.Expression
 	if stmt.IsSingleRHS() {
-		singleRHS = c.checkExpr(stmt.Values[0], newExprFromStmtCtx(sctx, 0))
+		singleRHS = c.checkExpr(stmt.Values[0], sctx.newExpr())
 		singleRHSNode = stmt.Values[0]
 	}
 	uc := stmt.Operator.Uncompound()
 	for i, dest := range stmt.Assignee {
 		rhs, rhsNode := singleRHS, singleRHSNode
 		if singleRHS == nil {
-			rhs = c.checkExpr(stmt.Values[i], newExprFromStmtCtx(sctx, 0))
+			rhs = c.checkExpr(stmt.Values[i], sctx.newExpr())
 			rhsNode = stmt.Values[i]
 		}
 		for dest, typ := range c.followDestructure(
 			dest, rhs.Type, sctx.ctx.File, rhsNode.GetRange(), false,
 		) {
-			lhs := c.checkExpr(dest, newExprFromStmtCtx(sctx, 0))
+			lhs := c.checkExpr(dest, sctx.newExpr())
 			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
 				continue
 			}

@@ -99,7 +99,7 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 		if hasHint {
 			valHint = mp.Key
 		}
-		v := c.checkExprFrom(entry.Value, t)
+		v := c.checkExpr(entry.Value, t.NewChild().withHint(valHint))
 		prev := mp.Value
 		c.inferCollection(v, &mp.Value, entry.Value, valHint, func(err *klarerrs.Error) {
 			if err.Code == klarerrs.ErrTypeMismatch {
@@ -122,7 +122,7 @@ func (c *Checker) checkMapLiteral(expr *ast.MapLiteral, t *Expr) {
 			if _, ok := key.(*ast.Symbol); ok {
 				k.Type = StringType
 			} else {
-				c.checkExpr(key, t)
+				c.checkExpr(key, k.withHint(keyHint))
 			}
 			prev := mp.Key
 			c.inferCollection(k, &mp.Key, key, keyHint, func(err *klarerrs.Error) {

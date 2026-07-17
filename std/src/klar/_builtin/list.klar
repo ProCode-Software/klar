@@ -5,8 +5,6 @@ public type List {
     length: Int
 }
 
-type #T
-
 /*
 
 ```

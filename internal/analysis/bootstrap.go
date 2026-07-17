@@ -83,13 +83,22 @@ func (bt *bootstrapType) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 }
 
 func (bt *bootstrapType) Index(i string, t *Expr) *klarerrs.Error {
-	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
+	indexer, ok := bt.withKind.(Indexer)
+	if !ok {
+		return nil
+	}
+	return indexer.Index(i, t)
+	/* 	if indexer, ok := Underlying(bt.asDeclared).(Indexer); ok {
 		return indexer.Index(i, t)
 	}
-	return nil
+	return nil */
 }
 
 func (bt *bootstrapType) CanIndex() bool {
 	_, ok := Underlying(bt.asDeclared).(Indexer)
 	return ok
+}
+
+func lookupBootstrap(name string) *Object {
+	return builtinModule.Context.Lookup(name)
 }

@@ -484,7 +484,7 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 		p.Error(klarerrs.Node(klarerrs.ErrSelfLabelInFuncAlias, f.Identifier))
 	}
 	if f.SelfType != nil {
-		p.Expect(lexer.Dot) // TODO: better error message
+		p.Expect(lexer.Dot, expectErrorCode(klarerrs.ErrInvalidMethodAlias))
 	}
 	target := p.ParseExpression(ExpressionBindingPower)
 	switch target := target.(type) {
@@ -492,6 +492,9 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	case *ast.IndexExpression:
 		if target.Computed {
 			p.Error(klarerrs.Node(klarerrs.ErrComputedFuncAlias, target))
+		}
+		if f.SelfName != nil {
+			p.Error(klarerrs.Node(klarerrs.ErrInvalidMethodAlias, target))
 		}
 		// LHS checked at analysis-time
 	default:

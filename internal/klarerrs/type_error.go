@@ -108,6 +108,7 @@ const (
 	ErrOperandTypeMismatch   // Operands of and/or must have the same type
 
 	// When ====
+
 	ErrInvalidStrMatchType // Type not allowed in string pattern match type
 	ErrNestedTupleStrMatch // Nested tuples not allowed in
 	ErrRedundantStrMatch   // Explicit type of String provided in string pattern match
@@ -115,6 +116,7 @@ const (
 	ErrWhenSubjectRequired
 
 	// Call ====
+
 	ErrWrongParamCount // Wrong number of parameters passed to a function
 )
 

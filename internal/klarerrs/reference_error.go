@@ -8,11 +8,12 @@ const (
 	_ Code = ReferenceErrorPrefix + iota
 
 	ErrUndefined
-	ErrEnumUndefined   // Enum item doesn't exist
-	ErrEnumCycle       // Enum items refer to each other
-	ErrExportUndefined // Item doesn't exist in module
-	ErrNotExported     // Can't import an exported object
-	ErrLabelUndefined  // Loop label isn't defined
+	ErrEnumUndefined       // Enum item doesn't exist
+	ErrEnumCycle           // Enum items refer to each other
+	ErrExportUndefined     // Item doesn't exist in module
+	ErrNotExported         // Can't import an exported object
+	ErrLoopLabelUndefined  // Loop label isn't defined
+	ErrParamLabelUndefined // Param with label doesn't exist
 )
 
 func (e *Error) handleReferenceError() string {
@@ -34,7 +35,7 @@ func (e *Error) handleReferenceError() string {
 	case ErrExportUndefined:
 		module := e.StringParam("module")
 		return fmt.Sprintf("Can't find %s in module %s", name, Quote(module))
-	case ErrLabelUndefined:
+	case ErrLoopLabelUndefined:
 		isFunc := e.BoolParam("isFunc")
 		msg := fmt.Sprintf("Can't find a label named ':%s'", e.Name)
 		if isFunc {

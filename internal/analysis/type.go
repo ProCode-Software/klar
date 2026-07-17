@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"iter"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -44,9 +45,9 @@ func As[T Type](t Type) T { return Underlying(t).(T) }
 func UnderlyingTypeName(t Type) Type {
 	for {
 		if tn, ok := t.(*TypeName); ok {
-			if _, ok := tn.Underlying().(Underlyer); !ok {
+			if u, ok := tn.Underlying().(Underlyer); !ok || u.Underlying() == t {
 				return tn
-			}  
+			}
 		}
 		oldT := t
 		if u, ok := t.(Underlyer); ok {
@@ -179,17 +180,159 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 	}
 }
 
-func Walk(t Type, visit func(Type) ast.StopCode) {
-	walkInternal(t, visit)
+func Walk(t Type, visit func(*Type) ast.StopCode, flags ...walkFlags) Type {
+	walkInternal(&t, visit, parseFlags(flags))
+	return t
 }
 
-func walkInternal(t Type, visit func(Type) ast.StopCode) bool {
-	_ = visit(t)
-	switch t := t.(type) {
-	case Kind:
-
-	default:
-		panic(fmt.Sprintf("Walk: unhandled type: %T", t))
+func WalkIter(t *Type, flags ...walkFlags) iter.Seq[*Type] {
+	return func(yield func(*Type) bool) {
+		walkInternal(t, func(t *Type) ast.StopCode {
+			if !yield(t) {
+				return ast.StopWalk
+			}
+			return ast.ContinueWalk
+		}, parseFlags(flags))
 	}
-	return true
+}
+
+type walkFlags uint8
+
+const (
+	walkFunction walkFlags = 1 << iota
+)
+
+func walkInternal(t *Type, visit func(*Type) ast.StopCode, flags walkFlags) ast.StopCode {
+	switch code := visit(t); code {
+	case ast.ContinueWalk:
+	case ast.SkipParent:
+		return ast.SkipChildren
+	case ast.SkipList:
+		return ast.SkipList
+	case ast.SkipChildren:
+		return ast.ContinueWalk
+	case ast.StopWalk:
+		return ast.StopWalk
+	}
+	walkGroup := func(types ...*Type) (code ast.StopCode, stop bool) {
+		for _, t := range types {
+			switch code := walkInternal(t, visit, flags); code {
+			case ast.SkipList:
+				return ast.SkipList, true
+			case ast.SkipParent:
+				return ast.ContinueWalk, true
+			case ast.StopWalk:
+				return ast.StopWalk, true
+			}
+		}
+		return ast.ContinueWalk, false
+	}
+	switch t := (*t).(type) {
+	case *Map:
+		if code, stop := walkGroup(&t.Key, &t.Value); stop {
+			return code
+		}
+	case *List:
+		if code, stop := walkGroup(&t.Elem); stop {
+			return code
+		}
+	case *Optional:
+		if code, stop := walkGroup(&t.Elem); stop {
+			return code
+		}
+	case *Result:
+		if code, stop := walkGroup(&t.Success, &t.Error); stop {
+			return code
+		}
+	case *Union:
+		for i := range t.Types {
+			switch code := walkInternal(&t.Types[i], visit, flags); code {
+			case ast.SkipList:
+				return ast.ContinueWalk
+			case ast.SkipParent:
+				return ast.ContinueWalk
+			case ast.StopWalk:
+				return ast.StopWalk
+			}
+		}
+	case *Tuple:
+		for i := range t.Items {
+			switch code := walkInternal(&t.Items[i], visit, flags); code {
+			case ast.SkipList:
+				return ast.ContinueWalk
+			case ast.SkipParent:
+				return ast.ContinueWalk
+			case ast.StopWalk:
+				return ast.StopWalk
+			}
+		}
+	case *Overload:
+		if (flags & walkFunction) == 0 {
+			return ast.ContinueWalk
+		}
+	paramLoop:
+		for i := range t.Params {
+			code := walkInternal(&t.Params[i].Type, visit, flags)
+			switch code {
+			case ast.SkipList:
+				break paramLoop
+			case ast.SkipParent:
+				return ast.ContinueWalk
+			case ast.StopWalk:
+				return ast.StopWalk
+			}
+		}
+	labelledParamLoop:
+		for name := range t.labelMap {
+			code := walkInternal(&t.labelMap[name].Type, visit, flags)
+			switch code {
+			case ast.SkipList:
+				break labelledParamLoop
+			case ast.SkipParent:
+				return ast.ContinueWalk
+			case ast.StopWalk:
+				return ast.StopWalk
+			}
+		}
+		if code, stop := walkGroup(&t.Return); stop {
+			return code
+		}
+	case *Function:
+		if (flags & walkFunction) == 0 {
+			return ast.ContinueWalk
+		}
+	overloadLoop:
+		for i := range t.Overloads {
+			otype := Type(t.Overloads[i])
+			code := walkInternal(&otype, visit, flags)
+			if otype, ok := otype.(*Overload); ok {
+				t.Overloads[i] = otype
+			}
+			switch code {
+			case ast.SkipList:
+				break overloadLoop
+			case ast.SkipParent:
+				return ast.ContinueWalk
+			case ast.StopWalk:
+				return ast.StopWalk
+			}
+		}
+		if code, stop := walkGroup(&t.Return); stop {
+			return code
+		}
+	}
+	return ast.ContinueWalk
+}
+
+func Substitute(t Type, subMap map[Type]Type) Type {
+	if subMap == nil {
+		return t
+	}
+	t = Walk(t, func(t *Type) ast.StopCode {
+		if rep, ok := subMap[*t]; ok {
+			*t = rep
+		}
+		return ast.ContinueWalk
+	}, walkFunction)
+	return t
 }

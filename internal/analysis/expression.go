@@ -14,24 +14,31 @@ type Expr struct {
 	hint    Type
 	mode    exprMode // Input mode
 	gotMode exprMode // Output mode
+	Root    *Expr
 	Context *Context
 	stmtCtx *stmtContext
 }
 
 func NewExpr(ctx *Context, flags ...exprMode) *Expr {
-	return &Expr{Context: ctx, mode: parseFlags(flags)}
+	e := &Expr{Context: ctx, mode: parseFlags(flags)}
+	e.Root = e
+	return e
 }
 
 func (e *Expr) NewChild(flags ...exprMode) *Expr {
+	const noInherit = 0
 	return &Expr{
 		Context: e.Context,
-		mode:    e.mode | parseFlags(flags),
+		mode:    (e.mode &^ noInherit) | parseFlags(flags),
 		stmtCtx: e.stmtCtx,
+		Root:    e.Root,
 	}
 }
 
-func newExprFromStmtCtx(sctx *stmtContext, flags ...exprMode) *Expr {
-	return &Expr{Context: sctx.ctx, mode: parseFlags(flags), stmtCtx: sctx}
+func (sctx *stmtContext) newExpr(flags ...exprMode) *Expr {
+	e := &Expr{Context: sctx.ctx, mode: parseFlags(flags), stmtCtx: sctx}
+	e.Root = e
+	return e
 }
 
 // hint can be nil
@@ -44,9 +51,8 @@ type exprMode uint16
 
 const (
 	// Input modes
-	typeInit exprMode = 1 << iota
-	callLHS
-	constExpr // Can also be output
+	typeInit  exprMode = 1 << iota
+	constExpr          // Can also be output
 	exprStmt
 	patternMatch
 	indexLHS
@@ -96,7 +102,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.BooleanLiteral:
 		t.Type = BoolType
 	case *ast.Symbol:
-		c.checkSymbolExpr(expr, t)
+		c.checkSymbolExpr(expr, false, t)
 	case *ast.MapLiteral:
 		c.checkMapLiteral(expr, t)
 	case *ast.TupleLiteral:
@@ -165,11 +171,6 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	if t.Type == nil {
 		t.Type = InvalidType
 	}
-	// If a hint is provided, ensure the expression's type is compatible with it
-	if t.hint != nil && t.Type != InvalidType && !Compatible(t.Type, t.hint) {
-		c.fileError(typeMismatch(t.hint, t.Type, expr.GetRange()), t.FileID())
-		t.Type = t.hint
-	}
 	// Ensure a function that returns Nothing isn't being used as a value
 	// TODO: Should we move this to function/pipeline/try/await checking?
 	if t.Type.Kind() == NothingType && t.mode&exprStmt == 0 {
@@ -197,7 +198,7 @@ func (e *Expr) IsFiltered(expr ast.Expression) (filtered bool, node string) {
 	return
 }
 
-func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
+func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 	t.Type = InvalidType
 	var (
 		name = s.Identifier
@@ -215,14 +216,15 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, t *Expr) {
 	t.Type = obj
 	switch {
 	case !obj.IsTypeName():
-	case (t.mode & callLHS) != 0:
-		t.mode |= typeInit
 	case t.hint != nil && t.hint.Kind() == KindFunction:
+		// Allowed if t.hint is a function (making the expression an initializer)
+		// 	parseInt: func(String) -> Result<Int> := Int
+		//
+		// Find the overload of the initializer this is referring to
+	case allowType:
 	case t.mode&indexLHS != 0 && obj.Kind() == KindEnum:
-	// Allowed if t.hint is a function (making the expression an initializer)
-	// 	parseInt: func(String) -> Result<Int> := Int
-	//
-	// Find the overload of the initializer this is referring to
+		// EnumType.item
+		// Note that enum literals also have kind KindEnum
 	default:
 		// Type used as expression
 		err := klarerrs.Range(klarerrs.ErrTypeAsValue, s.Range).
@@ -468,7 +470,7 @@ func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
 
 func (c *Checker) checkBinaryExpr(expr *ast.BinaryExpression, t *Expr) {
 	lhs := c.checkExprFrom(expr.Left, t)
-	rhs := c.checkExprFrom(expr.Right, t)
+	rhs := c.checkExpr(expr.Right, t.NewChild().withHint(lhs.Type))
 	t.Type = c.checkBinaryOperation(
 		expr.Operator, lhs.Type, rhs.Type,
 		expr.Left, expr.Right, expr, t.FileID(),
@@ -512,7 +514,6 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 			c.fileError(mismatchedOperandsError(), fid)
 			return InvalidType
 		}
-		// TODO: Implement
 		switch result.Kind() {
 		case IntType, StringType, FloatType, KindList, KindMap:
 		default:
@@ -522,7 +523,7 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 			err.Name = result.Kind().String()
 			if result.Kind() == KindTuple {
 				// Hint on tuple + tuple to use (tuple1..., tuple2...) instead
-				// TODO: Can we use a line diff instead? (old line - new line
+				// TODO: Can we use a line diff instead? (old line - new line)
 				// Do this after we're able to print AST nodes
 				err.HintWithDiff(
 					"To concatenate tuples, spread them into a single tuple", klarerrs.NewDiff(
@@ -677,7 +678,8 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 func (c *Checker) checkRelationalExpr(expr *ast.RelationalExpression, t *Expr) {
 	for i, op := range expr.Operators {
 		lhsNode, rhsNode := expr.Expressions[i], expr.Expressions[i+1]
-		lhs, rhs := c.checkExprFrom(lhsNode, t), c.checkExprFrom(rhsNode, t)
+		lhs := c.checkExprFrom(lhsNode, t)
+		rhs := c.checkExpr(rhsNode, t.NewChild().withHint(lhs.Type))
 		c.checkBinaryOperation(op, lhs.Type, rhs.Type, lhsNode, rhsNode, nil, t.FileID())
 	}
 	t.Type = BoolType

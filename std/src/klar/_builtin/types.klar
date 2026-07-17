@@ -1,0 +1,8 @@
+type #T
+
+type Result {}
+
+type Error {
+    message: String
+    code: Any // TODO
+}

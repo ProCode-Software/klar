@@ -227,6 +227,6 @@ public func Map.randomItem() -> (K, V) {
     when self.length {
         0 -> crashout("Map is empty")
     }
-    key := Map.keys().randomItem()
+    key := self.keys().randomItem()
     return (key, self[key]!!)
 }

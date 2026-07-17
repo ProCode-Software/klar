@@ -123,11 +123,11 @@ func (c *Checker) walkTupleDestructure(dest *ast.TupleLiteral,
 	}
 	rhs := Underlying(t).(*Tuple)
 	for i, item := range dest.Values {
-		if i >= len(rhs.Items) {
+		if i >= rhs.Len() {
 			// More variables on the left than items on the right.
 			// 	(a, b, c) := (1, 2)
 			err := makeMismatchTupleDestructError(
-				dest.Values[i:], len(rhs.Items), dc.rhsRange,
+				dest.Values[i:], rhs.Len(), dc.rhsRange,
 			)
 			c.fileError(err, dc.fid)
 			return true
@@ -136,17 +136,17 @@ func (c *Checker) walkTupleDestructure(dest *ast.TupleLiteral,
 			// Rest item in destructure
 			// 	(a, b...) := (1, 2, 3, 4)
 			// 'b' gets (2, 3, 4)
-			restTuple := rhs.Items[i:]
-			if len(restTuple) < 2 {
+			restTuple := &Tuple{rhs.Items[i:]}
+			if restTuple.Len() < 2 {
 				// The rest item must have at least 2 items, so the rest in the
 				// example above is invalid if the RHS is (1, 2) or (1, 2, 3).
 				err := makeTupleRestDestructError(
-					rest, len(restTuple), len(rhs.Items), dc.rhsRange,
+					rest, restTuple.Len(), rhs.Len(), dc.rhsRange,
 				)
 				c.fileError(err, dc.fid)
 				continue
 			}
-			if !dc.walk(rest.Expression, &Tuple{restTuple}) {
+			if !dc.walk(rest.Expression, restTuple) {
 				return false
 			}
 		} else if !dc.walk(item, rhs.Items[i]) { // Non-rest item on LHS

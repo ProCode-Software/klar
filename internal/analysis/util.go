@@ -54,7 +54,11 @@ func indexBuiltin(builtin, f string, t *Expr) *klarerrs.Error {
 	}
 	if builtinObj.IsTypeName() {
 		if bt, ok := builtinObj.TypeName().Type.(*bootstrapType); ok {
-			return bt.Index(f, t)
+			indexer, ok := bt.asDeclared.(Indexer)
+			if !ok {
+				panic("builtin " + builtin + " does not implement Indexer")
+			}
+			return indexer.Index(f, t)
 		}
 	}
 	// TODO: Is this reachable?

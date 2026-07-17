@@ -304,7 +304,7 @@ type ObjectPipeline struct {
 	Object Expression
 	// [CallExpression] or [AssignmentStatement]. No LHS is computed. For
 	// [AssignmentStatement] there is always exactly 1 assignee.
-	Steps  []Node
+	Steps []Node
 }
 
 // A ForExpression is a [ForStatement] used as an expression.

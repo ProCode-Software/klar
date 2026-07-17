@@ -79,7 +79,7 @@ func (t *Tuple) String() string {
 	b.WriteByte(')')
 	return b.String()
 }
-
+func (tup *Tuple) Len() int { return len(tup.Items) }
 func (tup *Tuple) IndexComputed(index Type, t *Expr) *klarerrs.Error {
 	if index.Kind() != IntType {
 		return indexTypeMismatchError(
@@ -107,6 +107,9 @@ func (l *List) Index(f string, t *Expr) *klarerrs.Error {
 	// Add a hint to use `list += [item]` instead of `list.append(item)`
 	if err != nil && f == "append" {
 		err.Hint("Use += to append to a list.")
+	}
+	if err == nil {
+		t.Type = Substitute(t.Type, map[Type]Type{lookupBootstrap("T"): l.Elem})
 	}
 	return err
 }
@@ -149,6 +152,10 @@ func (m *Map) IndexComputed(i Type, t *Expr) *klarerrs.Error {
 func (m *Map) Index(i string, t *Expr) *klarerrs.Error {
 	builtinErr := indexBuiltin("Map", i, t)
 	if builtinErr == nil {
+		t.Type = Substitute(t.Type, map[Type]Type{
+			lookupBootstrap("K"): m.Key,
+			lookupBootstrap("V"): m.Value,
+		})
 		return nil
 	}
 	// For maps, `m.key` is the same as `m['key']`. Builtin fields have
@@ -194,7 +201,13 @@ func (t *Task) String() string {
 	return "Task<" + t.Result.String() + ">"
 }
 
-func (*Task) Index(f string, e *Expr) *klarerrs.Error { return indexBuiltin("Task", f, e) }
+func (t *Task) Index(f string, e *Expr) *klarerrs.Error {
+	err := indexBuiltin("Task", f, e)
+	if err == nil {
+		e.Type = Substitute(e.Type, map[Type]Type{lookupBootstrap("T"): t.Result})
+	}
+	return err
+}
 
 // Loading
 // ==========
