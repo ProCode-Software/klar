@@ -93,6 +93,14 @@ func (c *Checker) checkVarDecl(o *Object) {
 		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
 		// the types of other variables using the same rhsExpr.
 		if sym := dest.(*ast.Symbol); sym.Identifier == o.Name {
+			if vinfo.expType != nil && !Compatible(typ, vinfo.expType) {
+				err := typeMismatch(vinfo.expType, typ, val.GetRange())
+				err.AddHighlight(
+					"An explicit type of "+vinfo.expType.String()+" was declared",
+					o.info.node.(*ast.VariableDeclaration).ExplicitType.GetRange(),
+				)
+				typ = vinfo.expType
+			}
 			vr.Type = typ
 			break
 		}

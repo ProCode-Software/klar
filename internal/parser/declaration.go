@@ -502,8 +502,8 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 		err.HintWithDiff(
 			"Or, did you mean to define a new function? Add parentheses after the function name.",
 			&klarerrs.Diff{Edits: []klarerrs.DiffEdit{klarerrs.AddedString{
-				Position: p.Tokens[beforeEqual].End(),
-				String:   "()",
+				Pos:    p.Tokens[beforeEqual].End(),
+				String: "()",
 			}}},
 		)
 		p.Error(err)

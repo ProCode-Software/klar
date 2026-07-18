@@ -197,7 +197,7 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 				isVariadic && Compatible(list.Elem, expType) {
 				hintWithDiff(
 					err, "Did you mean to spread this list?",
-					klarerrs.AddedString{Position: arg.Range.End, String: "..."},
+					klarerrs.AddedString{Pos: arg.Range.End, String: "..."},
 				)
 			}
 			c.fileError(err, t.FileID())

@@ -126,8 +126,8 @@ func (c *Checker) collectTopLevelObjects(
 		fctx := fileContexts[fileName]
 		for _, imported := range fctx.SortedDecls() {
 			name := imported.Name
-			topLevel := c.module.Context.Lookup(name)
-			if topLevel == nil {
+			topLevelObj := c.module.Context.Lookup(name)
+			if topLevelObj == nil {
 				continue // No error
 			}
 			// Only imports are in the file scope. One of these could possibly share a name:
@@ -144,8 +144,8 @@ func (c *Checker) collectTopLevelObjects(
 			err.Params = klarerrs.ErrorParams{"name": name, "import": namespace}
 			// Provide a detail from where the module object was declared
 			err.Details = append(err.Details, klarerrs.Detail{
-				File:    topLevel.FilePath(),
-				Range:   topLevel.Range,
+				File:    topLevelObj.FilePath(),
+				Range:   topLevelObj.Range,
 				Message: "It was already declared here",
 			})
 			c.fileError(err, imported.File)

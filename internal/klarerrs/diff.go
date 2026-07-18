@@ -48,7 +48,7 @@ func (r AddedTokens) EndLine() uint32 {
 }
 
 type AddedString struct {
-	Position lexer.Position
+	Pos      lexer.Position
 	String   string
 	Line     bool
 	NumLines uint32
@@ -56,7 +56,7 @@ type AddedString struct {
 
 func (r AddedString) Operation() bool       { return true }
 func (r AddedString) FullLine() bool        { return r.Line }
-func (r AddedString) Start() lexer.Position { return r.Position }
+func (r AddedString) Start() lexer.Position { return r.Pos }
 func (r AddedString) EndLine() uint32 {
-	return r.Position.Line + max(1, r.NumLines) - 1
+	return r.Pos.Line + max(1, r.NumLines) - 1
 }

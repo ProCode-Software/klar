@@ -260,7 +260,8 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 	item = p.ParseExpression(ExpressionBindingPower)
 	p.Expect(lexer.RightBracket)
 
-	if rang, ok := item.(*ast.RangeExpression); ok {
+	switch rang := item.(type) {
+	case *ast.RangeExpression:
 		if rang.Step != nil {
 			p.ErrorLabelled(
 				klarerrs.Node(klarerrs.ErrStepInListSlice, rang.Step),
@@ -272,6 +273,12 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 			From:     rang.From,
 			To:       rang.To,
 			Operator: rang.Operator,
+		}
+	case *ast.RestExpression:
+		return &ast.SliceExpression{
+			Object:   left,
+			From:     rang.Expression,
+			Operator: ast.Operator{lexer.Ellipsis, rang.Range.End.Sub(0, 3)},
 		}
 	}
 	return &ast.IndexExpression{

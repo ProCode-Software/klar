@@ -1231,6 +1231,12 @@ func (a *StructField) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
+	if !equalSlice(a.Attributes, b.Attributes) {
+		return false
+	}
+	if a.Readonly != b.Readonly {
+		return false
+	}
 	if !equalSlice(a.Names, b.Names) {
 		return false
 	}
@@ -1238,9 +1244,6 @@ func (a *StructField) Equal(b2 Node) bool {
 		return false
 	}
 	if a.Value != nil && b.Value != nil && !a.Value.Equal(b.Value) {
-		return false
-	}
-	if !equalSlice(a.Attributes, b.Attributes) {
 		return false
 	}
 	return true

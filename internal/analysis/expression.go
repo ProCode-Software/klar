@@ -57,11 +57,14 @@ const (
 	patternMatch
 	indexLHS
 	stringInterpolation
+	allowNothingValue
 
 	// Output modes
 	todoExpr
 	intfField
 )
+
+func (mode exprMode) has(opt exprMode) bool { return (mode & opt) != 0 }
 
 func (e *Expr) ConstValue() ConstValue {
 	return UnknownConst{}
@@ -173,7 +176,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	}
 	// Ensure a function that returns Nothing isn't being used as a value
 	// TODO: Should we move this to function/pipeline/try/await checking?
-	if t.Type.Kind() == NothingType && t.mode&exprStmt == 0 {
+	if t.Type.Kind() == NothingType && !t.mode.has(exprStmt|allowNothingValue) {
 		err := klarerrs.Node(klarerrs.ErrNothingAsValue, expr)
 		err.Label = "This expression returns 'Nothing'"
 		c.fileError(err, t.Context.File)
@@ -222,7 +225,7 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 		//
 		// Find the overload of the initializer this is referring to
 	case allowType:
-	case t.mode&indexLHS != 0 && obj.Kind() == KindEnum:
+	case t.mode.has(indexLHS) && obj.Kind() == KindEnum:
 		// EnumType.item
 		// Note that enum literals also have kind KindEnum
 	default:
@@ -330,10 +333,10 @@ func (c *Checker) checkAwaitExpr(expr *ast.AwaitExpression, t *Expr) {
 	}
 	switch typ := arg.Type; typ.Kind() {
 	case KindTask:
-		t.Type = Underlying(typ).(*Task).Result
+		t.Type = As[*Task](typ).Result
 	case KindTuple:
 		// If `a: Task<A>` and `b: Task<B>`, `await (a, b)` is `(A, B)`
-		tupleArg := Underlying(typ).(*Tuple)
+		tupleArg := As[*Tuple](typ)
 		tupleRes := &Tuple{Items: make([]Type, len(tupleArg.Items))}
 		for i, elem := range tupleArg.Items {
 			// TODO:
@@ -455,8 +458,8 @@ func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
 					err, "To check for non-nilness, use 'expr != none'",
 					&klarerrs.DeletedRange{Range: expr.Operator.Range()},
 					&klarerrs.AddedString{
-						Position: expr.Right.GetRange().End.Add(0, 1),
-						String:   "!= none",
+						Pos:    expr.Right.GetRange().End.Add(0, 1),
+						String: "!= none",
 					},
 				)
 			}
@@ -525,14 +528,14 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 				// Hint on tuple + tuple to use (tuple1..., tuple2...) instead
 				// TODO: Can we use a line diff instead? (old line - new line)
 				// Do this after we're able to print AST nodes
-				err.HintWithDiff(
-					"To concatenate tuples, spread them into a single tuple", klarerrs.NewDiff(
-						"",
-						klarerrs.AddedString{Position: lhsNode.GetRange().Start, String: "("},
-						klarerrs.AddedString{Position: lhsNode.GetRange().End, String: "...,"},
-						klarerrs.DeletedRange{ranges.Range{op.Range().Start, op.Range().End.Add(0, 1)}},
-						klarerrs.AddedString{Position: rhsNode.GetRange().End, String: "...)"},
-					),
+				hintWithDiff(
+					err, "To concatenate tuples, spread them into a single tuple",
+					klarerrs.AddedString{Pos: lhsNode.GetRange().Start, String: "("},
+					klarerrs.AddedString{Pos: lhsNode.GetRange().End, String: "...,"},
+					klarerrs.DeletedRange{
+						ranges.Range{op.Range().Start, op.Range().End.Add(0, 1)},
+					},
+					klarerrs.AddedString{Pos: rhsNode.GetRange().End, String: "...)"},
 				)
 			}
 			c.fileError(err, fid)
@@ -693,15 +696,16 @@ func (c *Checker) checkSliceExpr(expr *ast.SliceExpression, t *Expr) {
 		}
 		e := c.checkExprFrom(part, t)
 		if e.Kind() != IntType {
-			err := klarerrs.Node(klarerrs.ErrNonNumericIndex, part)
+			err := klarerrs.Node(klarerrs.ErrNonNumericIndex, part).SetParam("op", "slice")
 			err.Label = "Can't slice a list using type " + quoteAka(e.Type)
-			err.Info = klarerrs.TypeErrorInfo{IntType.String(), e.Type.String()}
+			err.Info = klarerrs.TypeErrorInfo{lhs.Type.Kind().String(), e.Type.String()}
 			c.fileError(err, t.FileID())
 		}
 	}
 	switch lhs.Type.Kind() {
-	case KindList:
-		t.Type = lhs.Type
+	case KindList, StringType:
+		// TODO: If index is `...0`, don't make the type optional
+		t.Type = &Optional{lhs.Type}
 	case KindTuple:
 		// TODO: Check constants and slice
 		t.Type = lhs.Type
@@ -727,9 +731,9 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 	lhs := c.checkExprFrom(expr.Expression, t)
 	switch lhs.Kind() {
 	case KindOptional:
-		t.Type = Underlying(lhs.Type).(*Optional).Elem
+		t.Type = As[*Optional](lhs.Type).Elem
 	case KindResult:
-		t.Type = Underlying(lhs.Type).(*Result).Success
+		t.Type = As[*Result](lhs.Type).Success
 	default:
 		err := klarerrs.Node(klarerrs.ErrInvalidAssertType, expr.Expression)
 		err.Label = "This has type " + quote(lhs.Type.String())
@@ -824,7 +828,7 @@ func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
 	)
 	for i, step := range expr.Steps {
 		if ret, ok := step.(*ast.ReturnStatement); ok {
-			if (t.mode & exprStmt) != 0 {
+			if t.mode.has(exprStmt) {
 				// A `return` in a pipeline is only allowed in expresion statements.
 				// Not allowed:
 				// 	_ = a() |> b |> return

@@ -24,7 +24,10 @@ func (p *Parser) ParseVarTypeAnnotation(left []ast.Assignable) ast.Statement {
 	case lexer.Equal, lexer.PlusEqual, lexer.MinusEqual:
 		err := klarerrs.Node(klarerrs.ErrInvalidTypeAnnotation, typ)
 		if curr.Kind == lexer.Equal {
-			err.Hint("Did you mean to use ':='?")
+			err.HintWithDiff("Did you mean to use ':=' instead of '='?", klarerrs.NewDiff(
+				"",
+				klarerrs.AddedString{Pos: curr.Position, String: ":"},
+			))
 		}
 		p.Error(err)
 		fallthrough

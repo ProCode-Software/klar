@@ -470,14 +470,19 @@ func (c *Checker) parseTypeOrVariadic(t ast.Type, ctx *Context) (typ Type, varia
 func (fn *Function) Kind() Kind     { return KindFunction }
 func (fn *Function) String() string { return fn.StringWithName("") }
 func (fn *Function) StringWithName(name string) string {
+	if len(fn.Overloads) == 1 {
+		return fn.Overloads[0].StringWithName(name)
+	}
 	var b strings.Builder
 	b.WriteString("func")
 	if name != "" {
 		b.WriteByte(' ')
 		b.WriteString(name)
 	}
-	if len(fn.Overloads) == 1 {
-		b.WriteString(fn.Overloads[0].String())
+	b.WriteString("(...)")
+	if fn.Return != nil && fn.Return.Kind() != NothingType && fn.Return.Kind() != InvalidType {
+		b.WriteString(" -> ")
+		b.WriteString(fn.Return.String())
 	}
 	return b.String()
 }
@@ -500,7 +505,12 @@ func (o *Overload) Underlying() Type {
 func (o *Overload) Kind() Kind { return KindFunction }
 
 func (o *Overload) String() string {
-	var b strings.Builder
+	sig := &strings.Builder{}
+	o.stringSignature(sig)
+	return "func" + sig.String()
+}
+
+func (o *Overload) stringSignature(b *strings.Builder) {
 	writeVariadic := func(p *Variable) bool {
 		if p.Object != nil && p.Object.Flags&VariadicParam != 0 {
 			b.WriteString("...")
@@ -550,7 +560,12 @@ func (o *Overload) String() string {
 		b.WriteString(" -> ")
 		b.WriteString(o.Return.String())
 	}
-	return b.String()
+}
+
+func (o *Overload) StringWithName(name string) string {
+	sig := &strings.Builder{}
+	o.stringSignature(sig)
+	return "func " + name + sig.String()
 }
 
 func (g *Generic) Kind() Kind { return KindGeneric }
@@ -676,7 +691,7 @@ func (c *Checker) checkOverloadAmbiguity(overloads []*Overload) []*Overload {
 		if ok := c.checkRedeclaredOverload(ov, other); !ok {
 			// The 2nd redeclaration is the one with the error
 			err := klarerrs.Range(klarerrs.ErrRedeclaredOverload, other.Range)
-			err.Name = ov.String()
+			err.Name = ov.StringWithName(ov.Name)
 			err.Label = "An overload with these same parameters already exists"
 			err.AddDetail("It was already declared here", ov.FilePath(), ov.Range)
 			c.fileError(err, other.File)

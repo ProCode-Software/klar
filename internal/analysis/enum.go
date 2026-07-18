@@ -18,6 +18,7 @@ type Enum struct {
 	itemMap      map[string]*EnumItem
 	Union        *EnumItem // Params in common with all items. Can be nil
 	Generics     []*Generic
+	origin       *Enum     // Without initialized generics
 	Methods      []*Object // Type [*Function]
 	Initializers []*Object // Type [*Overload]
 	MethodSet
@@ -322,6 +323,24 @@ func (e *Enum) Index(name string, t *Expr) *klarerrs.Error {
 				Name:  name,
 			}
 			return err
+		}
+	}
+	return fieldNotFound(name)
+}
+
+func (er *EnumRef) Index(name string, t *Expr) *klarerrs.Error {
+	switch name {
+	case "name":
+		t.Type = StringType // TODO: Use constant value
+		return nil
+	case "value":
+		t.Type = er.Enum.ItemType
+		return nil
+	}
+	if mm := er.Enum.methodMap; mm != nil {
+		if obj, ok := mm[name]; ok {
+			t.Type = obj
+			return nil
 		}
 	}
 	return fieldNotFound(name)

@@ -94,7 +94,7 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 		// Blocks aren't allowed, and the only statements allowed are control statements
 		switch body := cs.Body.(type) {
 		case *ast.Block:
-			if t.mode&exprStmt == 0 {
+			if !t.mode.has(exprStmt) {
 				err := klarerrs.Node(klarerrs.ErrBlockInWhenExpr, body)
 				err.AddHighlight("This 'when' is being used as an expression", expr.Range)
 				err.Label = "This is only allowed in a 'when' statement"
@@ -107,20 +107,21 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 			sctx := newChildStmtContext(t.stmtCtx, bodyCtx, stmtFlags|braceless)
 			c.checkStmt(body, sctx)
 		case ast.Expression:
-			e := NewExpr(bodyCtx).withHint(t.hint)
+			bodyExpr := NewExpr(bodyCtx, allowNothingValue).withHint(t.hint)
 			// Allow functions that return Nothing to be used as bodies in
 			// 'when' statements
-			if t.mode&exprStmt != 0 {
-				e.mode |= exprStmt
+			if t.mode.has(exprStmt) {
+				bodyExpr.mode |= exprStmt
 			}
-			e.stmtCtx = t.stmtCtx
-			c.checkExpr(body, e)
-			// When the 'when' is being used as an expression, the bodies must
-			// have the same type.
-			if t.mode&exprStmt == 0 {
+			bodyExpr.stmtCtx = t.stmtCtx
+			c.checkExpr(body, bodyExpr)
+			if bodyExpr.Kind() == NothingType {
+			} else if !t.mode.has(exprStmt) {
+				// When the 'when' is being used as an expression, the bodies must
+				// have the same type.
 				t.Type = t.hint
 				prevBodyType := t.Type
-				c.inferCollection(e, &t.Type, body, t.hint, func(err *klarerrs.Error) {
+				c.inferCollection(bodyExpr, &t.Type, body, t.hint, func(err *klarerrs.Error) {
 					if err.Code == klarerrs.ErrTypeMismatch {
 						return
 					}
@@ -227,7 +228,39 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 			}
 		}
 	case *ast.CallExpression:
-	// Type, enum, or literal pattern
+		// Type, enum, or literal pattern. Actual function calls aren't
+		// allowed in when patterns
+		switch lhs := expr.Callee.(type) {
+		case *ast.EnumLiteral:
+		case *ast.Symbol:
+			e := pat.Expr.NewChild()
+			c.checkSymbolExpr(lhs, true, e)
+			typ := UnderlyingTypeName(e.Type)
+			if _, ok := typ.(*TypeName); !ok {
+				// Function call
+				c.fileError(
+					klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+						SetParam("kind", "a function call").SetParam("location", "pattern"),
+					ws.FileID(),
+				)
+				break
+			}
+			typ = Underlying(typ)
+			switch typ := typ.(type) {
+			case *Enum:
+			case *Struct:
+				_ = typ.Fields
+			default:
+				// Type can't be initialized
+			}
+		default:
+			// Syntactically a function call
+			c.fileError(
+				klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+					SetParam("kind", "a function call").SetParam("location", "pattern"),
+				ws.FileID(),
+			)
+		}
 	case *ast.StructDotInit:
 	case *ast.ListLiteral:
 		c.checkListWhenPattern(ws, expr, pat)

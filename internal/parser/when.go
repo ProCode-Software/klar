@@ -148,7 +148,7 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 	// Relational operators don't need explicit LHS
 	// 	when x {
 	// 		< 5 -> ...
-	// }
+	//  }
 	case lexer.EqualEqual, lexer.NotEqual, lexer.In, lexer.NotIn:
 		res = p.ParseBinaryExpression(nil, bpOf(tok.Kind))
 	case lexer.LessThan, lexer.LessEqualTo, lexer.GreaterEqualTo, lexer.GreaterThan:
@@ -159,7 +159,7 @@ func (p *Parser) parseCaseSubExpr() ast.Expression {
 	default:
 		res = p.ParseExpressionFilter(func(tt lexer.TokenType) bool {
 			return tt == lexer.Stroke || tt == lexer.As
-		}, WhenAsBindingPower, 0)
+		}, bpOf(lexer.Stroke), 0)
 	}
 	return markStartEndPos(p, res, tok.Position)
 }

@@ -33,7 +33,6 @@ const (
 	ErrInvalidListInitReturn  // Initializer for List must return a list (List | List? | Result<List>)
 	ErrMissingReturn          // Function doesn't return Nothing but contains no return statements
 	ErrPrivateAttributes      // @deprecated and @added attributes aren't allowed on private declarations
-	ErrNamedReturnNotSet      // Named returns must be set before use or return
 
 	// Type expression ====
 
@@ -224,7 +223,10 @@ func (e *Error) handleTypeError() string {
 	case ErrInvalidIndexType:
 		return "Can't index type " + Quote(info.GotType)
 	case ErrNonNumericIndex:
-		return "Type " + Quote(info.ExpectedType) + " must be indexed with Int"
+		if e.BoolParam("slice") {
+			return "A " + info.ExpectedType + " must be sliced with Int indices"
+		}
+		return "A " + info.ExpectedType + " must be indexed with an Int"
 	case ErrInvalidMapIndex:
 		return "Map with type " + Quote(e.Name) +
 			" must be indexed with the same type as its keys, which is " +
@@ -284,7 +286,7 @@ func (e *Error) handleTypeError() string {
 		}
 		return "All " + items + " in a " + e.StringParam("kind") + " must have the same type"
 	case ErrIntTimesString:
-		return "In string multiplication, the String operand must be on the left"
+		return "In string multiplication, the String operand must be on the left-hand side"
 	case ErrInvalidStrMatchType:
 		return "Can't pattern-match " + WithA(e.Name) + " inside a string"
 	case ErrRedundantStrMatch:

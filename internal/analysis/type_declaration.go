@@ -64,6 +64,7 @@ func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
 	if rhs == nil {
 		rhs = InvalidType
 	}
+	// TODO: What if the generic is in a union?
 	if rhs.Kind() == KindGeneric {
 		// The target of a type alias cannot be a generic type
 		err := klarerrs.Range(klarerrs.ErrGenericTypeAlias, node.Type.GetRange())

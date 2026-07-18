@@ -91,7 +91,6 @@ func (obj *Object) ObjectString() string {
 
 // Path returns the name of the object with the full import path.
 func (obj *Object) Path() string {
-	// TODO: should use '/' instead?
 	return obj.Module.ImportPathString() + "/" + obj.Name
 }
 

@@ -158,6 +158,18 @@ func (c *Checker) inferCollection(e *Expr, inferred *Type,
 	} else if hint == nil && *inferred != InvalidType {
 		prev := *inferred
 		if *inferred = commonTypeOptional(*inferred, e.Type); *inferred == nil {
+			// If we have 'none' and then a non-optional T (or vice versa), allow
+			// inferring as an optional T?.
+			if prev != nil && prev.Kind() != e.Type.Kind() {
+				if Underlying(e.Type) == Untyped(KindOptional) {
+					*inferred = &Optional{prev}
+					return
+				} else if Underlying(prev) == Untyped(KindOptional) {
+					*inferred = &Optional{e.Type}
+					return
+				}
+			}
+
 			// List items must have the same type
 			err := typeMismatch(prev, e.Type, node.GetRange())
 			err.Code = klarerrs.ErrInvalidCollectionType

@@ -105,10 +105,12 @@ func (l *List) String() string { return "[" + l.Elem.String() + "]" }
 func (l *List) Index(f string, t *Expr) *klarerrs.Error {
 	err := indexBuiltin("List", f, t)
 	// Add a hint to use `list += [item]` instead of `list.append(item)`
+	// TODO: Line diff
 	if err != nil && f == "append" {
 		err.Hint("Use += to append to a list.")
 	}
 	if err == nil {
+		// TODO: This may actually mutate the original signature
 		t.Type = Substitute(t.Type, map[Type]Type{lookupBootstrap("T"): l.Elem})
 	}
 	return err

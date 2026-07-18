@@ -198,7 +198,7 @@ func (e *Error) handleSyntaxError() string {
 		if endType, ok := endTypeMap[expToken]; ok {
 			return fmt.Sprintf("Missing closing %s %s", endType, expected)
 		}
-		if msg, ok := e.Params["msg"].(string); ok {
+		if msg := e.StringParam("msg"); msg != "" {
 			return fmt.Sprintf("Expected %s %s", expected, msg)
 		}
 		return fmt.Sprintf("I expected %s, but found %s instead", expected, NameToken(tok))
@@ -300,7 +300,8 @@ func (e *Error) handleSyntaxError() string {
 	case ErrInvalidDecimalPoint:
 		return "A decimal can only be used in base 10 numbers"
 	case ErrNotAllowedInWhen:
-		return "A 'when' case can't contain 'when' expressions or lambdas"
+		// location: pattern or guard
+		return "A 'when' " + e.StringParam("location") + " can't contain " + e.StringParam("expr")
 	case ErrUnterminatedComment:
 		return "The comment starting at " + e.Range.Start.String() + " was left open"
 	case ErrMisplacedShebang:
@@ -317,19 +318,18 @@ func (e *Error) handleSyntaxError() string {
 		e.Hint("If you're trying to assign a default value to the last parameter, separate the parameter from the other chained parameters.")
 		return "A default value can't be specified with chained variables"
 	case ErrInvalidLabelShorthand:
-		if e.Params["computed"] == true {
+		if e.BoolParam("computed") {
 			return "A parameter label shorthand can't be a computed property"
 		}
 		return "Only a variable or property can be used as a label shorthand"
 	case ErrMethodInOtherScope:
-		if e.Params["initializer"] == true {
+		if e.BoolParam("initializer") {
 			return "An initializer must be declared in the same scope as the type"
 		}
 		return "A method must be declared in the same scope as its self type"
 	case ErrInvalidVersion:
 		return fmt.Sprintf(
-			"'%s' isn't a valid version",
-			e.Node.(*ast.VersionLiteral).Version,
+			"'%s' isn't a valid version", e.Node.(*ast.VersionLiteral).Version,
 		)
 	case ErrSelfExecFunc:
 		return "Self-executing functions aren't allowed in Klar"
@@ -387,12 +387,12 @@ func (e *Error) handleSyntaxError() string {
 	case ErrIntfMultiKeyMethod:
 		return "Function declarations cannot appear in comma-separated keys; split the function into its own entry"
 	case ErrMismatchedAssignment:
-		exp, got := e.Params["left"].(int), e.Params["right"].(int)
-		s := fmt.Sprintf("left has %d, but right has %d", exp, got)
+		exp, got := e.IntParam("left"), e.IntParam("right")
+		detail := fmt.Sprintf("left has %d, but right has %d", exp, got)
 		if got < exp {
-			return "Not enough values on the right-hand side of this assignment: " + s
+			return "Not enough values on the right-hand side of this assignment: " + detail
 		}
-		return "Too many values on the right-hand side of this assignment: " + s
+		return "Too many values on the right-hand side of this assignment: " + detail
 	case ErrFuncDotAfterSelf:
 		return "Expected a '.' between ')' and the name in function declaration"
 	case ErrMultiDirectionCompareChain:
@@ -509,7 +509,8 @@ func (e *Error) handleSyntaxError() string {
 		if _, ok := e.Node.(*ast.StopStatement); ok {
 			kind = "stop"
 		}
-		return "A " + Quote(kind) + " statement can only be used within a 'for', 'when', or 'while' loop"
+		return "A " + Quote(kind) +
+			" statement can only be used within a 'for', 'when', or 'while' statement"
 	case ErrRedeclaredOverload:
 		return "Overload " + Quote(e.Name) + " was already declared"
 	case ErrVariadicDefault:

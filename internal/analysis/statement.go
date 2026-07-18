@@ -39,6 +39,7 @@ const (
 	unreachableStmt // After an expr/stmt that doesn't return (return/stop/next/crashout)
 	braceless       // Body of a braceless 'when' case
 	allowForwardDecl
+	whenStmt
 )
 
 func newStmtContext(ctx *Context, fid FileID, flags stmtFlags) *stmtContext {
@@ -120,16 +121,18 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 		// Ensure there is no code after a return (always unreachable). We will
 		// continue typechecking those unreachable statements, but don't report
 		// another error. Never reported after TODO calls.
-		if sctx.flags&unreachableStmt != 0 && !unreachableReported && i < len(normalStmts)-1 {
-			err := klarerrs.Slice(klarerrs.ErrAlwaysUnreachable, normalStmts[i:])
+		if sctx.flags&unreachableStmt != 0 && !unreachableReported &&
+			i < len(normalStmts)-1 {
+			err := klarerrs.Slice(klarerrs.ErrAlwaysUnreachable, normalStmts[i+1:])
 			err.SetParam("kind", terminatingStmtKind(stmt))
-			if len(normalStmts[i:]) == 1 {
+			if len(normalStmts[i+1:]) == 1 {
 				err.Label = "This statement is unreachable"
 			} else {
 				err.Label = "These statements are unreachable"
 			}
 			c.fileError(err, sctx.ctx.File)
 			unreachableReported = true
+			// Remaining statements will still be checked
 		}
 	}
 }
@@ -224,6 +227,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 
 func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) {
 	if sctx == nil || sctx.flags&allowReturn == 0 {
+		// TODO: hint if func () = when {...}
 		err := klarerrs.Node(klarerrs.ErrReturnOutsideFunc, stmt)
 		err.Label = "This 'return' statement is outside of a function"
 		c.fileError(err, sctx.ctx.File)

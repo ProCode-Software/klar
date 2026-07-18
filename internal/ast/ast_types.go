@@ -527,10 +527,11 @@ type StructDeclaration struct {
 }
 
 type StructField struct {
+	Attributes []*Attribute
+	Readonly   bool
 	Names      []Identifier
 	Type       Type
 	Value      Expression
-	Attributes []*Attribute
 	BaseNode
 }
 

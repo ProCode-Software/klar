@@ -126,8 +126,8 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 
 			diff2 := klarerrs.NewDiff(
 				c.module.ResolveFilePath(fid),
-				klarerrs.AddedString{Position: node.GetRange().Start, String: "[T]("},
-				klarerrs.AddedString{Position: node.GetRange().End, String: ")"},
+				klarerrs.AddedString{Pos: node.GetRange().Start, String: "[T]("},
+				klarerrs.AddedString{Pos: node.GetRange().End, String: ")"},
 			)
 			err.HintWithDiff(
 				"Otherwise, initialize an empty list with a specific type. (Replace 'T' with the intended item type)",
@@ -151,7 +151,7 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			err.Label = "I don't know the type of this enum"
 			diff := klarerrs.NewDiff(
 				c.module.ResolveFilePath(fid),
-				klarerrs.AddedString{Position: enum.Range.Start, String: "T"},
+				klarerrs.AddedString{Pos: enum.Range.Start, String: "T"},
 			)
 			err.HintWithDiff(
 				"Add an explicit type before the enum item. (Replace 'T' with the intended type)",
@@ -166,7 +166,7 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 		diff := klarerrs.NewDiff(
 			c.module.ResolveFilePath(fid),
 			klarerrs.DeletedRange{ranges.SingleChar(ut.Node.GetRange().Start)}, // '.'
-			klarerrs.AddedString{Position: ut.Node.GetRange().Start, String: "T"},
+			klarerrs.AddedString{Pos: ut.Node.GetRange().Start, String: "T"},
 		)
 		err.HintWithDiff(
 			"Add an explicit type before the parameters. (Replace 'T' with the intended type)",
@@ -318,6 +318,15 @@ func walkInternal(t *Type, visit func(*Type) ast.StopCode, flags walkFlags) ast.
 			}
 		}
 		if code, stop := walkGroup(&t.Return); stop {
+			return code
+		}
+	case Underlyer:
+		und := t.Underlying()
+		if und == t {
+			break
+		}
+		// TODO: This doesn't actually mutate the underlying type
+		if code, stop := walkGroup(&und); stop {
 			return code
 		}
 	}
