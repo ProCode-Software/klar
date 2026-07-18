@@ -275,14 +275,6 @@ func (e *Error) handleTypeError() string {
 		return "Type " + e.Name + " isn't a function and can't be called"
 	case ErrIndexEnumMethod:
 		return "Method " + Quote(e.Name) + " can only be accessed on each of the enum's items, not the enum itself"
-	case ErrNamedReturnNotSet:
-		var op string
-		if e.StringParam("op") == "return" { // return | use
-			op = "the function returns"
-		} else {
-			op = "it can be used"
-		}
-		return "Named return variable " + Quote(e.Name) + " must be set before " + op
 	case ErrNotOptionalType:
 		return "'none' can only be used as a value of an optional type"
 	case ErrInvalidCollectionType:

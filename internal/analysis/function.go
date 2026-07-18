@@ -32,8 +32,7 @@ type Overload struct {
 	labelMap       map[string]*Variable
 	Arity          Arity
 	InnerContext   *Context
-	Return         Type      // Same as [Function.Return] unless this is an initializer
-	NamedReturns   []*Object // Type [*Variable]
+	Return         Type // Same as [Function.Return] unless this is an initializer
 }
 
 func (*Overload) objKind() {}
@@ -265,69 +264,27 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 
 	// 4. Return type
 	var retRange ranges.Range
-	switch rt := stmt.ReturnType.(type) {
-	default:
+	var implicitNothing bool
+	switch {
+	case stmt.ReturnType != nil:
 		ov.Return = c.parseType(stmt.ReturnType, ctx)
 		retRange = stmt.ReturnType.GetRange()
-	case nil:
-		switch {
-		case stmt.Expression != nil:
-			// Inferred return type from body expression. If there is a body
-			// expression but also an explicit return type, the expression
-			// will be checked later.
-			bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx))
-			ov.Return, retRange = bodyExpr.Type, stmt.Expression.GetRange()
-		case isInit:
-			// `func Int()` implicitly returns Int
-			ov.Return, retRange = info.receiver.TypeName(), stmt.Identifier.Range()
-		default:
-			ov.Return, retRange = NothingType, stmt.Range
-		}
-	case *ast.TupleType:
-		// Named returns: -> (a, b: Int)
-		// Declare each key as a variable. If any are present, an explicit 'return'
-		// statement is optional within the body (unlike Go).
-		//
-		// Discard keys don't count as named, so if the return type is a tuple
-		// with all discard keys, there are no named returns, and an explicit
-		// 'return' statement is required.
-		retTuple := &Tuple{make([]Type, 0, len(rt.Values))}
-		for _, pair := range rt.Values {
-			typ := c.parseType(pair.Value, ctx)
-			for _, key := range pair.Keys {
-				retTuple.Items = append(retTuple.Items, typ)
-				if key.IsZero() || key.IsDiscard() {
-					continue
-				}
-				vr := NewObject(
-					key.Name,
-					ov.Object.File, key.Range(), ov.Object.Module, nil,
-				)
-				vr.Flags |= needsSet
-				_ = NewVariable(vr, LocalVar, typ)
-				c.declare(ctx, vr)
-				ov.NamedReturns = append(ov.NamedReturns, vr)
-			}
-			if len(pair.Keys) == 0 {
-				// Otherwise the type won't be appended if there are no keys
-				retTuple.Items = append(retTuple.Items, typ)
-			}
-		}
-		ov.Return, retRange = retTuple, rt.Range
-	case *ast.ParenType:
-		// Similar to tuple, but has only 1 item
-		ov.Return, retRange = c.parseType(rt.Type, ctx), rt.Range
-		if rt.Label.IsZero() || rt.Label.IsDiscard() {
-			return
-		}
-		vr := NewObject(
-			rt.Label.Name,
-			ov.Object.File, rt.Label.Range(), ov.Object.Module, nil,
-		)
-		vr.Flags |= needsSet
-		_ = NewVariable(vr, LocalVar, ov.Return)
-		c.declare(ctx, vr)
-		ov.NamedReturns = append(ov.NamedReturns, vr)
+
+	// No explicit return type
+	case stmt.Expression != nil:
+		// Inferred return type from body expression. If there is a body
+		// expression but also an explicit return type, the expression
+		// will be checked later.
+		bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx))
+		ov.Return, retRange = bodyExpr.Type, stmt.Expression.GetRange()
+	case isInit:
+		// `func Int()` implicitly returns Int
+		ov.Return, retRange = info.receiver.TypeName(), stmt.Identifier.Range()
+	default:
+		// No explicit return type means Nothing is returned
+		ov.Return, retRange = NothingType, stmt.Range
+		implicitNothing = true
+		_ = implicitNothing
 	}
 
 	// Ensure the return type is the same across all overloads. This
@@ -444,13 +401,11 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 
 	// Ensure return statements are present. They aren't needed if:
 	// - The return type is Nothing
-	// - The function declares named returns
 	// - The function crashouts or has a TODO, or
 	// - The function is an initializer (TODO: warn about a missing return
 	// if 'self' isn't mutated)
 	if len(*sctx.returns) == 0 && ov.Return.Kind() != NothingType &&
-		len(ov.NamedReturns) == 0 && sctx.flags&unreachableStmt == 0 &&
-		ov.info.funcKind != initFunc {
+		sctx.flags&unreachableStmt == 0 && ov.info.funcKind != initFunc {
 		err := klarerrs.Position(klarerrs.ErrMissingReturn, stmt.Body.Range.End)
 		err.Label = "No 'return' statements in the body"
 		err.Name = ov.Return.String()
@@ -465,6 +420,8 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 	// Check that all returned values are compatible with the expected type
 	for _, ret := range *sctx.returns {
 		if !Compatible(ret.expr.Type, ov.Return) && ret.expr.Type.Kind() != InvalidType {
+			// TODO: If implicitNothing, show a more helpful message that explicit
+			// returns are needed
 			err := returnTypeMismatch(ret.expr.Type, ov.Return, ret.pos, retRange)
 			c.fileError(err, ov.File)
 		}
