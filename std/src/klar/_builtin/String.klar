@@ -10,6 +10,10 @@ public type String {
 // `sub` starts, or `nil` if it isn't found in the string, or the string is empty.
 public func String.index(of sub: String) -> Int?
 
+// Returns the index in the string where the last occurence of substring
+// `sub` starts, or `nil` if it isn't found in the string, or the string is empty.
+public func String.index(ofLast sub: String) -> Int?
+
 // Returns all the indices where the substring `sub` starts in the string. It
 // does not count overlapping occurences, and if `sub` isn't found in the string,
 // or the string is empty, an empty list is returned.
@@ -72,15 +76,54 @@ public func String.firstChar() -> String?
 public func String.lastChar() -> String?
 
 // Returns the first word in the string, or `none` if the string is empty.
-public func String.firstWord() -> String?
+public func String.firstWord() -> String? = when self {
+    '' -> none
+    // TODO: Make this Unicode-aware (use any Unicode whitespace)
+    ..."{word} "... | "{word}\n"... -> word
+    _ -> self
+}
 
 // Returns the last word in the string, or `none` if the string is empty.
 public func String.lastWord() -> String?
 
 // Splits the string around the first occurence of the substring, returning
-// the parts before and after it. If the substring isn't present in the string,
-// the `before` will contain the entire string, and `after` will be empty.
-public func String.cut(around sub: String) -> (before, after: String)
+// the parts before and after it. Neither `before` nor `after` will contain
+// `sub`. If the substring isn't present in the string, `before` will contain
+// the entire string, and `after` will be empty.
+public func String.cutAround(sub: String) -> (before, after: String) {
+    i := self.index(of: sub)
+    when i {
+        nil -> return (self, '')
+        _ -> return (self[..<i]!!, self[i + 1...]!!)
+    }
+}
+
+// Removes the last occurence of `sub` and everything after it in the current
+// string. If the string doesn't contain `sub`, the string is unchanged.
+public func String.cutAfterLast(sub: String) -> String {
+    lastIndex := self.index(ofLast: sub)
+    when lastIndex {
+        none -> return self
+        _ -> return self[..<lastIndex]!!
+    }
+    /*
+    More idiomatic version:
+    when self {
+        "{before}{(sub)}" -> return before
+        _ -> return self
+    }
+    */
+}
+
+// Removes the first occurence of `sub` and everything before it in the current
+// string. If the string doesn't contain `sub`, the string is unchanged.
+public func String.cutBeforeFirst(sub: String) -> String {
+    index := self.index(of: sub)
+    when index {
+        none -> return self
+        _ -> return self[index + 1...]!!
+    }
+}
 
 public func String.split(by separator: String) -> [String]
 public func String.split(afterEach delimiter: String) -> [String]
@@ -92,9 +135,9 @@ public func String.split(afterEach delimiter: String, limit limit: Int) -> [Stri
 // Grapheme clusters
 public func String.splitChars() -> [String]
 public func String.splitLines() -> [String]
+public func String.splitLines(trim: Bool) -> [String]
 public func String.splitSpaces() -> [String]
 public func String.splitWords = .splitSpaces
-
 
 public func String.padStart(untilLength targetLen: Int, with char: String = " ") -> String
 public func String.padEnd(untilLength targetLen: Int, with char: String = " ") -> String
@@ -130,29 +173,34 @@ public func String.replace(all match: String, with getRep: func() -> String) -> 
 
 // Returns an empty string if `count` is 0. Crashouts if `count` is negative.
 //
-// If you wish to not use a separator, multiply this string by `count`.
-public func String.repeat(count: Int, separator sep: Int) -> String
+// If you wish to not use a separator, multiply this string by `count` (`str * count`).
+public func String.repeat(count: Int, separator sep: String) -> String = when {
+    count < 0 -> crashout("Repeat count can't be negative ({count})")
+    sep == '' | self == '' | count == 1 -> self
+    count == 0 -> ''
+    // We can just prepend the separator, repeat, then cut it off
+    _ -> ((sep + self) * count)[sep.length...]!!
+}
 
-public func String.codepoints() -> [Int]
 
-// Returns `none` if the string is empty, otherwise the original string.
-public func String.toOptional() -> String?
+// Returns a list of Unicode code point numbers. Each codepoint is UTF-32
+// and no less than 0.
+public func String.codePoints() -> [Int]
 
-// 
+// Returns a list of the bytes in the string. Each number is UTF-8 and in the
+// range `0...255`.
+public func String.bytes() -> [Int]
+
+// Returns a string from a single Unicode code point. If the code point is
+// invalid, the returned string will be the replacement character `U+FFFD`.
 public func String(codePoint char: Int)
 
-// Returns a string from the provided Unicode codepoints. The length of the string
-// may be different from `codepoints.length`
+// Returns a string from the provided Unicode codepoints. The length of the
+// string may be different from `codepoints.length`. Any invalid code point
+// will be replaced with the replacement character `U+FFFD` in the final string.
 public func String(codePoints codepoints: [Int])
 
-// 
-public func List(str: String) -> [Int]
+// Returns a list of Unicode code point numbers. Each codepoint is UTF-32.
+public func List(str: String) -> [Int] = str.codePoints()
 
-/*
-Returns a string from combining the provided strings, optionally separated
-by `sep`.
-```
-String(combining: 'never', 'the', 'less') // 'nevertheless'
-```
-*/
-public func String(combining strings: ...String, by sep: String?)
+// TODO: Keep either this, or [String.codePoints]

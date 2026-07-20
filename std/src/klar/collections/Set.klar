@@ -1,0 +1,28 @@
+public type Set {
+    _map: #{Any: Bool}
+}
+
+// Returns a new set from the items in the list. Duplicates are removed.
+// When converting the Set back to a list, order isn't preserved. If
+// you convert to a Set and back solely for removing duplicate items,
+// consider using [List.dedupe].
+public func Set(list: [Any]) {
+    self._map = for item in list -> (item, true)
+}
+
+public func List(set: Set) -> [Any] = set.items()
+public func Set.items() -> [Any] = for item in set._map -> item
+
+public func Set.add(items: ...Any) {
+    for item in items {
+        self._map[item] = true
+    }
+}
+
+public func Set.remove(items: ...Any) {
+    for item in items {
+        self._map[item] = none
+    }
+}
+
+public func Set.contains(item: Any) = item in self._map

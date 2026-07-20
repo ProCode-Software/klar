@@ -52,5 +52,18 @@ public func List.randomized() -> [T]
 public func List.join(with separator: String = ',') -> String
 
 public func List.clear() {
-    self = self[...0]
+    // TODO: Should clear() be removed in favour of `list = []`
+    self = self[...0]!!
 }
+
+// Removes all occurences of `item` from the list.
+public func List.removeAll(of item: T)
+// Removes all items from the list that satisfy `pred`.
+public func List.removeAll(satisfying pred: func(T) -> Bool)
+// Returns a new list from the current one, but with all occurences
+// of `item` removed.
+public func List.withoutAll(of item: T) -> [T]
+// Returns a new list from the current one, but without the items
+// that satisfy `pred`.
+public func List.withoutAll(satisfying pred: func(T) -> Bool) -> [T]
+

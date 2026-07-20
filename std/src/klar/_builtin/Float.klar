@@ -33,9 +33,7 @@ public func Float.isNaN() -> Bool
 // Special cases:
 // - `NaN.splitDecimal()` returns `(0.0, NaN)`
 // - `±Infinity.splitDecimal()` returns `(0.0, ±Infinity)`
-public func Float.splitDecimal() -> (whole, decimal: Float) {
-    
-}
+public func Float.splitDecimal() -> (whole, decimal: Float)
 
 // Converts the float to a string representation. The result will use the least
 // number of decimal places necessary to represent the number exactly. A whole
