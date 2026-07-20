@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"cmp"
 	"fmt"
 	"io"
@@ -161,8 +162,15 @@ func newTemplate(name, t string) *template.Template {
 }
 
 func execTemplate(t *template.Template, wr io.Writer, v any) {
-	if err := t.Execute(wr, v); err != nil {
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, v); err != nil {
 		panic(err)
+	}
+	endsInNewline := bytes.HasSuffix(buf.Bytes(), []byte{'\n'})
+	// Trim trailing newlines
+	wr.Write(bytes.TrimSpace(buf.Bytes()))
+	if endsInNewline {
+		wr.Write([]byte{'\n'})
 	}
 }
 

@@ -71,9 +71,9 @@ func ReportErrors(c *build.ProjectCompiler, res *build.Result, err error, isMaxE
 		const prefix = "<**><r!>Error</r!><dim>:</dim> "
 		if ie, ok := err.(*build.InterfaceError); ok {
 			main, det := ie.PrettyError()
-			ansi.Fprintfln(&buf, prefix+"%s</**>%s", main, det)
+			ansi.TagFprintfln(&buf, prefix+"%s</**>%s", main, det)
 		} else {
-			ansi.Fprintfln(&buf, prefix+"%s</**>", err)
+			ansi.TagFprintfln(&buf, prefix+"%s</**>", err)
 		}
 	}
 	return buf.String()

@@ -47,16 +47,25 @@ function build_binaries() {
 
     for os in "${OSES[@]}"; do
         for arch in ${ARCHES[$os]}; do
+            os_arch_pair=${OS_NAMES[$os]}-${ARCH_NAMES[$arch]}
+            results=()
             for product in "${PRODUCTS[@]}"; do
                 echo "Compiling $product for $os/$arch..."
-                out_path="$KLAR_ROOT/bin/$product-$ver_name-${OS_NAMES[$os]}-${ARCH_NAMES[$arch]}"
+                name=$product-$os_arch_pair
                 if [[ $os == "windows" ]]; then
-                    out_path+=".exe"
+                    name+=".exe"
                 fi
                 GOOS=$os GOARCH=$arch go build --trimpath -ldflags="${LDFLAGS[*]}" \
-                    -o "$out_path" \
+                    -o "$KLAR_ROOT/bin/$name" \
                     "$KLAR_ROOT/cmd/$product"
+                results+=("$name")
             done
+            (
+                cd "$KLAR_ROOT/bin"
+                zip -r "$KLAR_ROOT/bin/klar-$ver_name-$os_arch_pair.zip" \
+                    "${results[@]}" > /dev/null
+                rm -f "${results[@]}"
+            )
         done
     done
 }
