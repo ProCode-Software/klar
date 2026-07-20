@@ -164,7 +164,7 @@ func numGenerics(t Type) (min, max int) {
 	case KindResult:
 		return 0, 2
 	case KindEnum:
-		n := len(Underlying(t).(*Enum).Generics)
+		n := len(As[*Enum](t).Generics)
 		return n, n
 	case KindTask:
 		return 1, 1
@@ -228,7 +228,7 @@ func (c *Checker) parseGenericType(expr *ast.GenericType, ctx *Context) Type {
 			panic(fmt.Sprintf("invalid generic param count for Result: %d", len(params)))
 		}
 	case KindEnum:
-		return lhs // TODO: Substitute generic params
+		return c.instantiateType(lhs, params)
 	case KindTask:
 		return &Task{params[0]}
 	default:

@@ -24,6 +24,10 @@ type Enum struct {
 	MethodSet
 }
 
+func (*Enum) Kind() Kind                  { return KindEnum }
+func (e *Enum) String() string            { return e.Name }
+func (e *Enum) GenericParams() []*Generic { return e.Generics }
+
 // Not a value.
 type EnumItem struct {
 	*Object  // Type is [*EnumItem]
@@ -33,13 +37,10 @@ type EnumItem struct {
 	Enum     *Enum // For access to value type and methods
 }
 
-func (ei *EnumItem) Underlying() Type { return ei }
 func (*EnumItem) Kind() Kind          { return KindEnum }
 func (*EnumItem) objKind()            {}
+func (ei *EnumItem) Underlying() Type { return ei }
 func (ei *EnumItem) String() string   { return ei.Enum.Name }
-
-func (*Enum) Kind() Kind       { return KindEnum }
-func (e *Enum) String() string { return e.Name }
 
 // Can be used as a value. An EnumRef can be indexed by the enum's methods,
 // the item's param names, and the builtin `name` and `value` fields.

@@ -35,7 +35,8 @@ type Overload struct {
 	Return         Type // Same as [Function.Return] unless this is an initializer
 }
 
-func (*Overload) objKind() {}
+func (*Overload) objKind()                     {}
+func (ov *Overload) GenericParams() []*Generic { return ov.Generics }
 
 // LabelledParam represents a labelled function parameter, e.g. `label: string`.
 type LabelledParam struct {

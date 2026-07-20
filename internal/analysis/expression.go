@@ -75,7 +75,7 @@ func (e *Expr) FileID() FileID { return e.Context.File }
 
 func (c *Checker) checkExprFrom(
 	expr ast.Expression, parent *Expr, flags ...exprMode,
-) (t *Expr) {
+) *Expr {
 	return c.checkExpr(expr, parent.NewChild(flags...))
 }
 
@@ -624,7 +624,7 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 		// 	Allowed: a and b > 5
 		// 	Not allowed: _ = a and b
 	case lexer.In, lexer.NotIn:
-		// T in [T], K in #{K: V}
+		// T in [T], K in #{K: V}, "s" in "str"
 		result = BoolType
 		switch rhsKind {
 		case KindMap:
@@ -667,6 +667,10 @@ func (c *Checker) checkBinaryOperation(op ast.Operator, lhs, rhs Type,
 					rhsNode.GetRange(),
 				)
 				c.fileError(err, fid)
+			}
+		case StringType:
+			if !Compatible(lhs, StringType) {
+				c.fileError(typeMismatch(StringType, lhs, lhsNode.GetRange()), fid)
 			}
 		default:
 			err := klarerrs.Node(klarerrs.ErrInvalidInOperand, rhsNode)

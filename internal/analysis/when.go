@@ -12,8 +12,8 @@ type whenSubject struct {
 }
 
 type WhenPattern struct {
-	Kind WhenPatternKind
-	Vars map[string]WhenVar // Variables unwrapped in the pattern
+	PatternKind WhenPatternKind
+	Vars        map[string]WhenVar // Variables unwrapped in the pattern
 	*Expr
 }
 
@@ -33,6 +33,9 @@ const (
 	EnumPattern        // Enum
 )
 
+func (pat *WhenPattern) Kind() Kind     { return pat.Type.Kind() }
+func (pat *WhenPattern) String() string { return pat.Type.String() }
+
 type WhenVar struct {
 	Value     ast.Expression
 	DeclRange ranges.Range
@@ -49,6 +52,12 @@ func (s *whenSubject) IsImplicitTrue() bool { return s.Expr.Type == nil }
 
 func newImplicitTrueSubject(ctx *Context) *whenSubject {
 	return &whenSubject{Expr: NewExpr(ctx)}
+}
+
+type patternChecker struct {
+	*Checker
+	pat  *WhenPattern
+	subj *whenSubject
 }
 
 // TODO: Implement. For now, subjects and bodies are checked
@@ -72,7 +81,11 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 				} else {
 					ws = &whenSubject{Expr: subjects[subjI], Node: expr.Subjects[subjI]}
 				}
-				c.checkWhenPattern(ws, patExpr)
+				pat := c.checkWhenPattern(ws, patExpr)
+				// Record the type of the pattern expression as a [*WhenPattern]
+				e := ws.NewChild()
+				e.Type = pat
+				c.Info.Expressions[patExpr] = e
 			}
 		}
 
@@ -136,6 +149,176 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 	}
 }
 
+func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPattern {
+	pat := &WhenPattern{
+		PatternKind: LiteralExprPattern,
+		Expr:        ws.Expr.NewChild(patternMatch).withHint(ws.Type),
+	}
+	pat.Type = ws.Type
+	// If the when has no subjects, each case must evaluate to Bool. Pattern
+	// matching will be disabled.
+	if ws.IsImplicitTrue() {
+		c.checkImplicitTrueWhenPattern(expr, pat)
+		return pat
+	}
+	pc := &patternChecker{Checker: c, pat: pat, subj: ws}
+
+	switch expr := expr.(type) {
+	case *ast.Discard:
+		pat.PatternKind, pat.Type = DefaultPattern, ws.Type
+	case *ast.BinaryExpression:
+		if expr.Left != nil {
+			// Literal expression pattern
+			c.checkExpr(expr, pat.Expr)
+			pat.PatternKind = LiteralExprPattern
+			break
+		}
+		rhs := c.checkExpr(expr.Right, pat.Expr.NewChild().withHint(ws.Type))
+		// Bool, because this is parsed for relational operators only
+		c.checkBinaryOperation(
+			expr.Operator, ws.Type, rhs.Type,
+			ws.Node, expr.Right, expr, ws.FileID(),
+		)
+		// pat.Type will be set to the operand's type so variables declared with
+		// `as` will be the subject, rather than a Bool that is always `true`.
+		pat.PatternKind, pat.Type = BinaryPattern, ws.Type
+	case *ast.RelationalExpression:
+		if expr.Expressions[0] != nil {
+			break
+		}
+		// Just to pass to [Checker.checkRelationalExpr]
+		vnode := new(*expr)
+		vnode.Expressions[0] = ws.Node
+		c.checkRelationalExpr(vnode, pat.Expr)
+		// Type is set for same reason as BinaryExpression
+		pat.PatternKind, pat.Type = BinaryPattern, ws.Type
+	case *ast.StringLiteral:
+		pc.checkString(expr)
+	case *ast.RangeExpression:
+		switch ws.Type.Kind() {
+		default:
+			fallthrough // Type mismatch. Will be reported later
+		case KindList:
+			// Normal list equality check
+			// 	when [1, 2, 3] { 1...3 -> ... }
+			pat.PatternKind = LiteralExprPattern
+			c.checkExpr(expr, pat.Expr)
+		case IntType, FloatType, StringType: // when 'a' { 'a'...'z' -> ... }
+			pat.PatternKind = RangePattern
+			// Checking expr will yield a list because it's a range, but
+			// the subject isn't a list
+			c.checkRangeExpr(expr, pat.Expr.withHint(&List{ws.Type}))
+			// Set the pattern's type to the Int/Float/String so we can
+			// check for compatibility later.
+			if list, ok := Underlying(pat.Type).(*List); ok {
+				pat.Type = list.Elem
+			}
+		}
+	case *ast.CallExpression:
+		// Type, enum, or literal pattern. Actual function calls aren't
+		// allowed in when patterns
+		switch lhs := expr.Callee.(type) {
+		case *ast.EnumLiteral:
+			pat.PatternKind = EnumPattern
+		case *ast.Symbol:
+			pat.PatternKind = TypePattern
+			c.checkSymbolExpr(lhs, true, pat.Expr)
+			switch pat.Expr.Kind() {
+			case KindStruct:
+				pc.checkStruct(expr.Args)
+			case KindInterface:
+			case ErrorType:
+			default:
+				pat.PatternKind = InvalidPattern
+				if o, ok := pat.Type.(*Object); ok && o.IsTypeName() {
+					// Type can't be initialized
+					break
+				}
+				// Function call
+				c.fileError(
+					klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+						SetParam("kind", "a function call").SetParam("location", "pattern"),
+					ws.FileID(),
+				)
+			}
+		default:
+			// Syntactically a function call
+			c.fileError(
+				klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+					SetParam("kind", "a function call").SetParam("location", "pattern"),
+				ws.FileID(),
+			)
+		}
+	case *ast.StructDotInit:
+
+	case *ast.ListLiteral:
+		pc.checkList(expr)
+	case *ast.MapLiteral:
+	case *ast.EnumLiteral:
+	case *ast.RestExpression:
+		// Could be used in a string or range pattern
+	case *ast.Symbol:
+		// Could be a type
+		obj := ws.Context.LookupRecursive(expr.Identifier)
+		switch {
+		case obj == nil:
+			c.fileError(klarerrs.Undefined(expr.Identifier, expr.Range), ws.FileID())
+			pat.PatternKind, pat.Type = InvalidPattern, InvalidType
+			return pat
+		case obj.IsTypeName():
+			pat.PatternKind, pat.Type = TypePattern, obj
+			// This pattern is only allowed on non-concrete types.
+		default:
+			pat.PatternKind, pat.Type = LiteralExprPattern, obj
+		}
+	default: // Including parentheses
+		c.checkExpr(expr, pat.Expr)
+	}
+	if pat.PatternKind != DefaultPattern && !Compatible(pat.Type, ws.Type) {
+		err := typeMismatch(ws.Type, pat.Type, expr.GetRange())
+		err.AddHighlight("The subject has type "+quoteAka(ws.Type), ws.Node.GetRange())
+		c.fileError(err, pat.FileID())
+		pat.PatternKind = InvalidPattern
+		return pat
+	}
+	return pat
+}
+
+// For 'when' expressions without subjects, all cases must be boolean. Optionals
+// are allowed too.
+//
+//	when {
+//	  !optional -> {}
+//	  x == 1 -> {}
+//	}
+func (c *Checker) checkImplicitTrueWhenPattern(expr ast.Expression, pat *WhenPattern) {
+	switch expr := expr.(type) {
+	case *ast.Discard:
+		pat.PatternKind = DefaultPattern
+		return
+	case *ast.BinaryExpression:
+		if expr.Left == nil {
+			// TODO: Report a different error
+			break
+		}
+		c.checkExpr(expr, pat.Expr)
+	case *ast.RelationalExpression:
+		if expr.Expressions[0] == nil {
+			// TODO: Report a different error
+			break
+		}
+		c.checkExpr(expr, pat.Expr)
+	default:
+		c.checkExpr(expr, pat.Expr)
+	}
+	pat.PatternKind = LiteralExprPattern
+	if !Compatible(pat.Type, BoolType) && pat.Type.Kind() != KindOptional {
+		err := klarerrs.Node(klarerrs.ErrWhenTrueMismatch, expr)
+		err.Label = "This should have type Bool"
+		c.fileError(err, pat.FileID())
+	}
+}
+
 func (pat *WhenPattern) declareVar(
 	ident ast.Identifier, typ Type, valNode ast.Expression,
 ) *klarerrs.Error {
@@ -161,178 +344,8 @@ func (pat *WhenPattern) declareVar(
 	return nil
 }
 
-func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPattern {
-	pat := &WhenPattern{
-		Kind: LiteralExprPattern,
-		Expr: ws.Expr.NewChild(patternMatch).withHint(ws.Type),
-	}
-	pat.Type = ws.Type
-	// If the when has no subjects, each case must evaluate to Bool. Pattern
-	// matching will be disabled.
-	if ws.IsImplicitTrue() {
-		c.checkImplicitTrueWhenPattern(expr, pat)
-		return pat
-	}
-	// Some cases such as relational pattern matching will be stored with type
-	// Bool. In those cases, we shouldn't check for compatibility.
-	checkCompat := true
-
-	switch expr := expr.(type) {
-	case *ast.Discard:
-		pat.Kind, pat.Type = DefaultPattern, ws.Type
-		checkCompat = false
-	case *ast.BinaryExpression:
-		if expr.Left != nil {
-			// Literal expression pattern
-			c.checkExpr(expr, pat.Expr)
-			pat.Kind = LiteralExprPattern
-			break
-		}
-		pat.Kind = BinaryPattern
-		checkCompat = false
-		rhs := c.checkExpr(expr.Right, pat.Expr.NewChild().withHint(ws.Type))
-		pat.Type = c.checkBinaryOperation(
-			expr.Operator, ws.Type, rhs.Type,
-			ws.Node, expr.Right, expr, ws.FileID(),
-		) // Bool, because this is parsed for relational operators only
-	case *ast.RelationalExpression:
-		if expr.Expressions[0] != nil {
-			break
-		}
-		pat.Kind = BinaryPattern
-		checkCompat = false
-		// Just to pass to [Checker.checkRelationalExpr]
-		expr2 := new(*expr)
-		expr2.Expressions[0] = ws.Node
-		c.checkRelationalExpr(expr2, pat.Expr)
-	case *ast.StringLiteral:
-		c.checkStringWhenPattern(expr, ws, pat)
-	case *ast.RangeExpression:
-		switch ws.Type.Kind() {
-		default:
-			fallthrough // Type mismatch. Will be reported later
-		case KindList:
-			// Normal list equality check
-			// 	when [1, 2, 3] { 1...3 -> ... }
-			pat.Kind = LiteralExprPattern
-			c.checkExpr(expr, pat.Expr)
-		case IntType, FloatType, StringType: // when 'a' { 'a'...'z' -> ... }
-			pat.Kind = RangePattern
-			// Checking expr will yield a list because it's a range, but
-			// the subject isn't a list
-			c.checkRangeExpr(expr, pat.Expr.withHint(&List{ws.Type}))
-			// Set the pattern's type to the Int/Float/String so we can
-			// check for compatibility later.
-			if list, ok := Underlying(pat.Type).(*List); ok {
-				pat.Type = list.Elem
-			}
-		}
-	case *ast.CallExpression:
-		// Type, enum, or literal pattern. Actual function calls aren't
-		// allowed in when patterns
-		switch lhs := expr.Callee.(type) {
-		case *ast.EnumLiteral:
-		case *ast.Symbol:
-			e := pat.Expr.NewChild()
-			c.checkSymbolExpr(lhs, true, e)
-			typ := UnderlyingTypeName(e.Type)
-			if _, ok := typ.(*TypeName); !ok {
-				// Function call
-				c.fileError(
-					klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
-						SetParam("kind", "a function call").SetParam("location", "pattern"),
-					ws.FileID(),
-				)
-				break
-			}
-			typ = Underlying(typ)
-			switch typ := typ.(type) {
-			case *Enum:
-			case *Struct:
-				_ = typ.Fields
-			default:
-				// Type can't be initialized
-			}
-		default:
-			// Syntactically a function call
-			c.fileError(
-				klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
-					SetParam("kind", "a function call").SetParam("location", "pattern"),
-				ws.FileID(),
-			)
-		}
-	case *ast.StructDotInit:
-	case *ast.ListLiteral:
-		c.checkListWhenPattern(ws, expr, pat)
-	case *ast.MapLiteral:
-	case *ast.EnumLiteral:
-	case *ast.RestExpression:
-		// Could be used in a string or range pattern
-	case *ast.Symbol:
-		// Could be a type
-		obj := ws.Context.LookupRecursive(expr.Identifier)
-		switch {
-		case obj == nil:
-			c.fileError(klarerrs.Undefined(expr.Identifier, expr.Range), ws.FileID())
-			pat.Kind, pat.Type = InvalidPattern, InvalidType
-			return pat
-		case obj.IsTypeName():
-			pat.Kind, pat.Type = TypePattern, obj
-			checkCompat = false
-			// This pattern is only allowed on non-concrete types.
-		default:
-			pat.Kind, pat.Type = LiteralExprPattern, obj
-		}
-	default: // Including parentheses
-		c.checkExpr(expr, pat.Expr)
-	}
-	if checkCompat && !Compatible(pat.Type, ws.Type) {
-		err := typeMismatch(ws.Type, pat.Type, expr.GetRange())
-		err.AddHighlight("The subject has type "+quoteAka(ws.Type), ws.Node.GetRange())
-		c.fileError(err, pat.FileID())
-		pat.Kind = InvalidPattern
-		return pat
-	}
-	return pat
-}
-
-// For 'when' expressions without subjects, all cases must be boolean. Optionals
-// are allowed too.
-//
-//	when {
-//	  !optional -> {}
-//	  x == 1 -> {}
-//	}
-func (c *Checker) checkImplicitTrueWhenPattern(expr ast.Expression, pat *WhenPattern) {
-	switch expr := expr.(type) {
-	case *ast.Discard:
-		pat.Kind = DefaultPattern
-		return
-	case *ast.BinaryExpression:
-		if expr.Left == nil {
-			// TODO: Report a different error
-			break
-		}
-		c.checkExpr(expr, pat.Expr)
-	case *ast.RelationalExpression:
-		if expr.Expressions[0] == nil {
-			// TODO: Report a different error
-			break
-		}
-		c.checkExpr(expr, pat.Expr)
-	default:
-		c.checkExpr(expr, pat.Expr)
-	}
-	pat.Kind = LiteralExprPattern
-	if !Compatible(pat.Type, BoolType) && pat.Type.Kind() != KindOptional {
-		err := klarerrs.Node(klarerrs.ErrWhenTrueMismatch, expr)
-		err.Label = "This should have type Bool"
-		c.fileError(err, pat.FileID())
-	}
-}
-
-func (c *Checker) checkStringWhenPattern(lit *ast.StringLiteral, ws *whenSubject, pat *WhenPattern) {
-	pat.Type = StringType
+func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
+	pc.pat.Type = StringType
 	var hasDiscard bool
 	for _, frag := range lit.Fragments {
 		interp, ok := frag.(*ast.InterpolationFragment)
@@ -348,27 +361,36 @@ func (c *Checker) checkStringWhenPattern(lit *ast.StringLiteral, ws *whenSubject
 		case *ast.Discard: // No variables to declare
 			hasDiscard = true
 		case *ast.StringTypeMatch:
-			t := ws.NewChild()
-			c.checkStringTypeMatch(inner, t) // *Expr value isn't needed
+			t := pc.subj.NewChild()
+			pc.checkStringTypeMatch(inner, t) // *Expr value isn't needed
 			name, varType = inner.Name, t.Type
 		default:
 			// Normal interpolation
-			c.checkStringInterpolation(inner, ws.NewChild())
+			pc.checkStringInterpolation(inner, pc.subj.NewChild())
 		}
 		if !name.IsZero() {
-			if err := pat.declareVar(name, varType, interp.Expression); err != nil {
-				c.fileError(err, ws.FileID())
+			if err := pc.pat.declareVar(name, varType, interp.Expression); err != nil {
+				pc.fileError(err, pc.subj.FileID())
 			}
 		}
 	}
 	// The pattern will only be set to [StringPattern] if there is at
 	// least 1 thing being matched. String with no variables or discards
 	// declared will be just a literal expression.
-	if len(pat.Vars) > 0 || hasDiscard {
-		pat.Kind = StringPattern
+	if len(pc.pat.Vars) > 0 || hasDiscard {
+		pc.pat.PatternKind = StringPattern
 	} else {
-		pat.Kind = LiteralExprPattern
+		pc.pat.PatternKind = LiteralExprPattern
 	}
+}
+
+func (pc *patternChecker) checkList(list *ast.ListLiteral) {
+}
+
+func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
+}
+
+func (pc *patternChecker) checkStruct(params []*ast.CallParam) {
 }
 
 func (c *Checker) checkStringTypeMatch(tm *ast.StringTypeMatch, t *Expr) {
@@ -420,7 +442,4 @@ func (c *Checker) checkStringTypeMatch(tm *ast.StringTypeMatch, t *Expr) {
 		c.fileError(err, t.FileID())
 	}
 	t.Type = typ // Not needed
-}
-
-func (c *Checker) checkListWhenPattern(ws *whenSubject, list *ast.ListLiteral, pat *WhenPattern) {
 }
