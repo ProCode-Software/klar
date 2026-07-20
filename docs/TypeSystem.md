@@ -13,17 +13,25 @@ Klar's type system is strongly-typed and statically-typed. All types are known a
 1. **Compatible type** - Compatibility can be either one-way or two-way.
     - **One-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted. This may not mean that _type `B` is compatible with `A`_.
 
-    ```klar
-    x: B := A()
-    y: A := B() // May not be true
-    ```
+        ```klar
+        x: B := A()
+        y: A := B() // May not be true
+        ```
+
+        Examples in the Klar language:
+        - Type `[Int]` is compatible with `[Int | String]`
+        - Type `Bool` is compatible with `Result<Bool>`
+        - Type `String` is compatible with `Any`
 
     - **Two-way compatibility** - For types `A` and `B`, if _type `A` is compatible with `B`_, type `A` can be assigned wherever type `B` is accepted, AND vice versa.
 
-    ```klar
-    x: B := A()
-    y: A := B() // True
-    ```
+        ```klar
+        x: B := A()
+        y: A := B() // True
+        ```
+
+        Examples in the Klar language:
+        - Type `Int | String` and `String | Int` are compatible with each other (unions in different orders)
 
 2. **Concrete type** - A type whose structure is fully known at compile-time, and can be directly initialized. Primitives such as `Int`, `String`, `Error`, and lists, maps, structs, functions, and enums are concrete types. `Result`s, unions, optionals, tags, and interfaces aren't concrete types.
 
@@ -44,11 +52,11 @@ Klar's type system is strongly-typed and statically-typed. All types are known a
 
 ## User-Created Types
 
-- [Structs]
-- [Interfaces]
-- [Enums]
-- [Tags]
-- [Type Aliases]
+- [Structs](#structs)
+- [Interfaces](#structs)
+- [Enums](#enums)
+- [Tags](#tags)
+- [Type Aliases](#type-aliases)
 
 ### Structs
 
@@ -95,7 +103,7 @@ type Person {
 jane := Person("Jane", 31)
 ```
 
-A default value may reference a struct field via the `self` object. A default value may not contain a function call, though they may contain initializers for other types.
+A default value may reference a struct field via the `self` object. They must be compile-time constants, but they may contain initializers for other types.
 
 #### Methods
 
@@ -183,7 +191,7 @@ writer: Writable := myWritable
 
 when writer.write("Hello, World!") {
     Nothing -> {...}
-    Error -> {...}
+    Error as err -> { print("Error while writing: {err}") }
     Int as n -> { print("Bytes written: {n}") }
 }
 
@@ -250,8 +258,10 @@ See [attributes.klar](/std/src/klar/_builtin/attributes/attributes.klar) for the
 While most of the other attributes are for documentation purposes, the `@external` attribute affects compilation. The `@external` attribute marks that a function or method is implemented outside of Klar, such as in JavaScript.
 
 ```klar
-type Date {
-    ...
+type #Date {
+    getFullYear() -> Int
+    getMonth() -> Int
+    // ...
 }
 
 @external(.js, global: "new Date")
@@ -392,7 +402,7 @@ func add(n1, n2: Int) = n1 + n2
 
 Function parameter and return types always stay the same, however, they may be set to a union.
 
-All functions must have bodies, either using `=` or in curly braces, unless the function is annotated as [external]().
+All functions must have bodies, either using `=` or in curly braces, unless the function is annotated as [external](#external-attribute).
 
 Functions with generics or parameters that are labelled or have defaults cannot be type-annotated.
 
@@ -400,7 +410,11 @@ Functions with generics or parameters that are labelled or have defaults cannot 
 
 The `Nothing` type indicates that the function doesn't return any value. `return` statements don't have expressions after them or are not present in the function body.
 
-The `Nothing` type cannot be used in any union type (except in interface method return types).
+The `Nothing` type cannot be used in any union type (except in interface method return types). Function calls that return `Nothing` can't be used as values. In type annotations, `Nothing` is only allowed as:
+
+- The return type of functions (`T` in `func( ) -> T`)
+- The success type of `Result` (`T` in `Result<T, E>`)
+- The return type of `Task` (`T` in `Task<T>`)
 
 ### Labelled Parameters
 
@@ -465,15 +479,33 @@ print()
 
 ### Parameters with Default Values
 
+```klar
+func root(of num: Int, base base: Int = 2)
+root(8, base: 3)
+root(8)
+```
+
+Like struct fields, function parameters may also declare default values. They share the same rules; they must be compile-time constants, but initializers are allowed. When calling the function, parameters with default values, like optional parameters, that are the last parameters can be omitted.
+
 ### Generics
 
 Functions may declare generics, which are type parameters. One or more generics can be defined in angle brackets, and used in parameter types and the return type.
 
 ```klar
 func first<T>(of list: [T]) -> T
+
+first(of: [1, 2, 3, 4])
+first(of: ['a', 'b', 'c'])
+first(of: [Any](of: false, 'a', true, 2, 5.4, [1, 2]))
 ```
 
-All generics are inferred, along with comparible operations. Each declared generic must be used in function parameters.
+All generics are inferred, along with comparible operations. Each declared generic must be used in function parameters, as there is no syntax for explicitly declaring types for each generic (e.g. `first<Int>(...)`). The following is not allowed:
+
+```klar
+func first<T>(of list: [Any]) -> T
+```
+
+<!-- TODO: Provide details on whether Nothing can be inferred as a generic -->
 
 ### Function Overloads
 
@@ -528,6 +560,29 @@ func readAmount(reader: Readable, n: Int) -> Result<String>
 func readAmount(reader: File, n: Int) -> Result<String>
 ```
 
+Functions with more than one overload can't be used as a value without being called.
+
+```klar
+func replace(old: String, with new: String) -> String
+func replace(old: regex.Regex, with new: String) -> String
+
+replaceFunc := replace // Error
+```
+
+However, with an explicit type, a specific overload can be resolved and the function can be used as a value. Again, the overload may not have labelled parameters.
+
+```klar
+func hash(input: String) -> String
+func hash(input: Int) -> String
+
+func reverseStringHash(hasher: func (String) -> String, input: String)
+    = hasher(input).reverse()
+
+// Allowed
+hasher: func (String) -> String := hash
+reverseStringHash(hash, "Hello, World!")
+```
+
 ## Function Aliases
 
 A function alias can alias another function or method. Parameters and generics cannot be declared on an alias.
@@ -555,7 +610,7 @@ An error is raised if the target of an alias isn't a function or method, or if i
 
 An initializer takes zero or more parameters and returns a new instance of a given type.
 
-[Type casts]() are initializers that take a single, unlabelled value to convert it to the target type.
+Type casts are initializers that take a single, unlabelled value to convert it to the target type.
 
 ### Struct Initializers
 
@@ -585,7 +640,7 @@ last fields, they can be skipped.
 
 #### Inferred Initializers
 
-Similar to [enums](), if the expected type is known (a concrete type), the type's name can be substituted with a dot.
+Similar to [enums](#enums), if the expected type is known (a concrete type), the type's name can be substituted with a dot.
 
 ```klar
 person: Person := .("John", 32)
@@ -653,7 +708,11 @@ A union type can be two or more types. They may only access common fields, metho
 
 ## Results
 
-`Result<T, E>` is a union between `T` and error type `E`.
+`Result<T, E>` is a union between `T` and error type `E`. Differences between a result `Result<T, E>` and a union `T | E`:
+
+- For results, the compiler can give hints about handling results
+- `Nothing` is allowed in results, but not as a union element
+- Results are allowed to be used with the [assertion operator (`!!`)](#assertions) because the success type is known
 
 ## Assertions
 
@@ -674,3 +733,5 @@ Assertions should be used carefully, especially in production. It is more useful
 |          In           |               `in`, `!in`               |           `K in #{K, V}`, `T in [T]`           |
 |         Range         |          `...` (infix), `..<`           | `Int`, `Float`, `String` (single A-Z/0-9 char) |
 |         Rest          |             `...` (postfix)             |                   list, map                    |
+
+## Compile-Time Constants
