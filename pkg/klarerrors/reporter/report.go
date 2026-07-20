@@ -104,17 +104,15 @@ func (r *Reporter) getBoxRanges(start, end uint32) (from, to uint32) {
 // printMessage prints the error message and error code.
 func (r *Reporter) printMessage(e Error, hlc string) {
 	var b strings.Builder
-	msgParts := strings.SplitAfterN(e.Message(), ": ", 2)
+	// Error title and message
 	if r.UseColor {
 		b.WriteString(ansi.Color(hlc, e.Title()))
 		b.WriteString(ansi.BoldDim(": "))
-		b.WriteString(ansi.Bold(msgParts[0]))
+		b.WriteString(ansi.Bold(e.Message()))
 	} else {
-		fmt.Fprintf(&b, "%s: %s", e.Title(), msgParts[0])
+		fmt.Fprintf(&b, "%s: %s", e.Title(), e.Message())
 	}
-	if len(msgParts) > 1 {
-		b.WriteString(msgParts[1])
-	}
+	// Error code
 	if e.ErrorCode() != "" {
 		code := " (" + e.ErrorCode() + ")"
 		if r.UseColor {
