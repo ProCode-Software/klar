@@ -130,8 +130,18 @@ func ColorSprintf(color, format string, a ...any) string {
 	return fmt.Sprintf(color+new, a...) + CodeReset
 }
 
-func ColorPrintln(color, format string, a ...any) {
+func ColorPrintfln(color, format string, a ...any) {
 	fmt.Println(ColorSprintf(color, format, a...))
+}
+
+func ColorPrintln(color string, v ...any) {
+	if DisableColor {
+		fmt.Println(v...)
+		return
+	}
+	fmt.Print(color)
+	fmt.Print(v...)
+	fmt.Println(CodeReset)
 }
 
 func ColorFprintln(file io.Writer, color, format string, a ...any) {

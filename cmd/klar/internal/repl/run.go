@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -59,7 +60,7 @@ func NewSession() (*Session, error) {
 
 func Run(*command.Runner) {
 	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+cli.KlarVersionAndCommit))
-	ansi.ColorPrintln(
+	ansi.ColorPrintfln(
 		ansi.CodeGray,
 		"Type %s for more information. Press %s or type %s to exit.",
 		ansi.Cyan("help"), ansi.Cyan("Ctrl+D"), ansi.Cyan("exit"),
@@ -79,6 +80,10 @@ func HistoryFile() (string, error) {
 		return "", err
 	}
 	hist := filepath.Join(module.SystemDirs.Cache, "replHistory.txt")
+	// Create the cache directory if missing
+	if err := os.MkdirAll(module.SystemDirs.Cache, 0o755); err != nil {
+		return hist, err
+	}
 	return hist, nil
 }
 
@@ -122,7 +127,7 @@ func (s *Session) Prompt() {
 }
 
 func (s *Session) Error(msg string, err error) {
-	ansi.Fprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v\n", msg, err)
+	ansi.TagFprintf(s.Stderr(), "<r! **>Error</><**>: %s:</**> %v\n", msg, err)
 }
 
 func (s *Session) send() {

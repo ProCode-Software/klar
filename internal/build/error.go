@@ -165,7 +165,7 @@ func PrintInterfaceError(err *InterfaceError) {
 		cli.Error(strings.TrimSuffix(main, " "), detail)
 		return
 	}
-	cli.Error(ansi.Sprintf("<**>%s</**>%s", main, detail))
+	cli.Error(ansi.Colorizef("<**>%s</**>%s", main, detail))
 }
 
 // PrintInterfaceOrKlonError is [PrintInterfaceError], but uses b's [Reporter] to
@@ -183,7 +183,7 @@ func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
 	if filepath.Base(ierr.Value) == module.ManifestFile {
 		kind = "manifest"
 	}
-	cli.Error(ansi.Sprintf("<**>Failed to parse %s:</**>\n", kind))
+	cli.Error(ansi.Colorizef("<**>Failed to parse %s:</**>\n", kind))
 
 	if err := c.printKlonDiagnostic(ierr.Err.(*klon.Error), ierr.Value, ""); err != nil {
 		PrintInterfaceError(ierr)

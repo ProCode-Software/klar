@@ -15,7 +15,7 @@ import (
 
 func (c *Command) handleFlagError(err error) {
 	forMoreHelp := func() {
-		ansi.Fprintfln(os.Stderr, "\nUse <c!>--help</c!> for more information.")
+		ansi.TagFprintfln(os.Stderr, "\nUse <c!>--help</c!> for more information.")
 	}
 	formatOpts := func(opts []string) string {
 		return ansi.BrightYellow(strings.Join(
@@ -48,8 +48,9 @@ func (c *Command) handleFlagError(err error) {
 	case *argparse.ExtraArgsError:
 		cli.ColorErrorfln(
 			"<**>Too many arguments provided:</**> <c!>%s</c!>\n"+
-				"Expected %d arguments, but %d were provided.\n\n%s",
-			strings.Join(err.Extra, " "), 0, len(err.Extra), c.ArgUsage(),
+				"Expected %s arguments, but %d were provided.\n\n%s",
+			strings.Join(err.Extra, " "), klarerrs.FormatCount(len(c.Usage), "argument"),
+			len(err.Extra), c.ArgUsage(),
 		)
 		forMoreHelp()
 	case *argparse.RepeatedFlagError:

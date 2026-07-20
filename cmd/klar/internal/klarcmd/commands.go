@@ -57,6 +57,7 @@ var KlarCommands = map[string]*command.Command{
 		LongDescription:  clean.LongDescription,
 		SeeAlso:          s{"build", "upgrade"},
 		Run:              clean.Run,
+		Flags:            clean.Flags,
 	},
 	"zen": {
 		ShortDescription: "Show the Zen of Klar",

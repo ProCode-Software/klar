@@ -73,7 +73,9 @@ func Load(cacheDir, modulePath string) (*Module, error) {
 func Save(cacheDir string, m *Module) error {
 	hashPath := HashPath(m.Path)
 	path := filepath.Join(cacheDir, dirFor(hashPath), nameOf(m.Path))
-	os.MkdirAll(filepath.Dir(path), 0o755)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err

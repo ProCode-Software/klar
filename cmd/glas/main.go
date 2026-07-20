@@ -63,7 +63,7 @@ func main() {
 		cli.ColorErrorfln("<**>Can't find Glas command <c>%s</c></**>", cmdName)
 		klarCmd := klarcmd.LookupKlarCmd(cmdName)
 		if klarCmd == nil {
-			ansi.Println("\n<y>Run <c>glas help</c> to see available commands.</>")
+			ansi.TagPrintln("\n<y>Run <c>glas help</c> to see available commands.</>")
 		} else {
 			promptKlarRun(klarCmd, cmdName)
 		}
@@ -72,7 +72,7 @@ func main() {
 }
 
 func promptKlarRun(cmd *command.Command, providedName string) {
-	shouldRun := cli.Confirm(ansi.Sprintf(
+	shouldRun := cli.Confirm(ansi.Colorizef(
 		"\n<b!>Hint</b!><dim>:</dim> I found the command <m>klar %s</m>. Do you want to run it?",
 		providedName,
 	), true)

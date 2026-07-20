@@ -64,7 +64,7 @@ func Eprintf(format string, a ...any) {
 }
 
 func ColorErrorfln(format string, a ...any) {
-	ansi.Fprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
+	ansi.TagFprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
 }
 
 func ErrNoManifest(dir string) {

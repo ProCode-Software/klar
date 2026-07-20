@@ -173,8 +173,7 @@ loop:
 	}
 	last, n := len(p.ArgDefs)-1, len(p.Args)
 	switch {
-	case last < 0:
-	case n < len(p.ArgDefs) && !p.ArgDefs[last].Optional:
+	case last >= 0 && n < len(p.ArgDefs) && !p.ArgDefs[last].Optional:
 		// Not enough arguments
 		var b strings.Builder
 		for i := n; i < len(p.ArgDefs); i++ {

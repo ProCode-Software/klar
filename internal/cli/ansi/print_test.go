@@ -141,7 +141,7 @@ func TestColorize(t *testing.T) {
 
 func TestFprintf(t *testing.T) {
 	buf := &bytes.Buffer{}
-	n, err := Fprintf(buf, "Hello <r bold>%s</>", "world")
+	n, err := TagFprintf(buf, "Hello <r bold>%s</>", "world")
 	if err != nil {
 		t.Fatalf("Fprintf failed: %v", err)
 	}

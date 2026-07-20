@@ -193,24 +193,24 @@ func Decolorize(v string) string {
 	return s
 }
 
-func Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
+func TagFprintf(w io.Writer, format string, a ...any) (n int, err error) {
 	return fmt.Fprintf(w, Colorize(format), a...)
 }
 
-func Fprintfln(w io.Writer, format string, a ...any) (n int, err error) {
+func TagFprintfln(w io.Writer, format string, a ...any) (n int, err error) {
 	return fmt.Fprintf(w, Colorize(format)+"\n", a...)
 }
 
-func Sprintf(format string, a ...any) string {
+func Colorizef(format string, a ...any) string {
 	return Colorize(fmt.Sprintf(format, a...))
 }
 
-func Sprint(v string) string {
-	return Colorize(v)
+func TagPrintln(v string) (n int, err error) {
+	return fmt.Println(Colorize(v))
 }
 
-func Println(v string) (n int, err error) {
-	return fmt.Println(Colorize(v))
+func TagPrintfln(format string, a ...any) (n int, err error) {
+	return fmt.Println(Colorizef(format, a...))
 }
 
 // color is an color code. v is the raw ANSI string. every time v has an ansi reset,
