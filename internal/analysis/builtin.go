@@ -177,6 +177,14 @@ func (m *Map) Index(i string, t *Expr) *klarerrs.Error {
 
 type Optional struct{ Elem Type }
 
+func NewOptional(elem Type) *Optional {
+	if elem.Kind() == KindOptional {
+		// Note: Aliases aren't preserved
+		return As[*Optional](elem)
+	}
+	return &Optional{elem}
+}
+
 func (*Optional) Kind() Kind       { return KindOptional }
 func (o *Optional) String() string { return o.Elem.String() + "?" }
 

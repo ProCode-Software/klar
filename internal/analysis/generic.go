@@ -7,7 +7,7 @@ func (c *Checker) instantiateType(typ Type, params []Type) Type {
 	res := typ
 	switch typ := Underlying(typ).(type) {
 	case *Enum:
-	
+
 	case *Overload:
 	// TODO: Add Result and Task?
 	default:

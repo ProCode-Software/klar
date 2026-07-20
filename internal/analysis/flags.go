@@ -12,6 +12,7 @@ const (
 	ConstExpr
 	// When parsing types, only types declared in this module are allowed
 	LocalOnly
+	ImplicitVar
 	// Passed to [Checker.parseType] to avoid errors for a generic without params
 	genericLHS
 )

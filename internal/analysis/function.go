@@ -350,7 +350,7 @@ func (c *Checker) checkInitReturnType(
 	info := ov.Object.info
 	// Change return type of `Result` (exact syntax) or `Result?` to
 	// `Result<T>` from `Result<Nothing>`. We're intentionally
-	// checking for equality by reference.
+	// checking for equality by reference and not using underlying types.
 	var changeFromResultNothing func(*Type)
 	changeFromResultNothing = func(typ *Type) {
 		switch ret := ov.Return.(type) {

@@ -32,7 +32,8 @@ func Compatible(a, b Type) bool {
 	}
 	switch {
 	case bKind == AnyType:
-		return aKind != KindOptional // A => Any if A != nil
+		// A => Any if A != nil. All non-optional types are compatible with Any
+		return aKind != KindOptional
 	case aKind == KindList && bKind == KindList:
 		// [A] => [B] if A => B
 		a = Underlying(a).(*List).Elem
@@ -87,6 +88,8 @@ func Compatible(a, b Type) bool {
 			}
 		}
 		return true
+	case bKind == KindMap && aKind == KindMap:
+		// #{KA: VA} => #{KB: VB} if KA => KB and VA => VB
 	}
 	return TypesEqual(a, b) // TODO
 }
