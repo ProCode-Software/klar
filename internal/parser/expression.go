@@ -404,7 +404,7 @@ func (p *Parser) ParseLeftRest() *ast.RestExpression {
 	return &ast.RestExpression{Left: true, Expression: expr}
 }
 
-func (p *Parser) ParseRange(left ast.Expression, bp BindingPower) ast.Expression {
+func (p *Parser) ParseRangeOrRest(left ast.Expression, bp BindingPower) ast.Expression {
 	op := p.Advance() // ... or ..<
 	if right, handled := p.handleNUD(p.CurrKind()); handled {
 		// Range operator

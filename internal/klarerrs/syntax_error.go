@@ -156,6 +156,7 @@ const (
 	ErrInvalidRestExpr        // Rest expression used outside of list, call, tuple, or map
 	ErrReturnInPipelineExpr   // Return statement not allowed in pipeline expression
 	ErrOptionalOptional       // Can't nest optional types (T??)
+	ErrMultipleDefault        // Multiple default ('_') 'when' cases
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -541,5 +542,11 @@ func (e *Error) handleSyntaxError() string {
 		)
 	case ErrInvalidMethodAlias:
 		return "The right-hand side of a method alias must be in the format '.method'"
+	case ErrMultipleDefault:
+		msg := "The 'when' block already has a '_' case"
+		if e.BoolParam("multiSubject") {
+			msg = " for this subject"
+		}
+		return msg
 	}
 }

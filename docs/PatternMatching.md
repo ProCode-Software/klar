@@ -221,12 +221,11 @@ when tuple {
     (_) -> {}
     // This is valid when the subject isn't a concrete tuple. This matches any tuple
     (...) -> {}
-    // But this is not, because the length of tuples must be known at compile-time
-    // and are part of the type. The type is `rest` is unknown at compile-time.
+    // This is allowed when the subject isn't a concrete type. `rest` will be a list of `Any`
     (rest...) -> {}
     // Compile-time error when the subject is a concrete tuple, because it always matches
     (_, ...) -> {}
-    // Invalid when the subject is a concrete tuple, without a guard. You could\
+    // Invalid when the subject is a concrete tuple, without a guard. You could
     // just assign (via `(first) := tuple`)
     (first, ...) -> {}
     // Invalid the same way

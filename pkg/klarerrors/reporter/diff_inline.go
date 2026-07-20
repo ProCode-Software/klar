@@ -150,7 +150,7 @@ func addedStringToToken(e klarerrs.AddedString) lexer.Token {
 	return lexer.Token{
 		Kind:       addedToken,
 		Source:     e.String,
-		Position:   e.Position,
+		Position:   e.Pos,
 		Attributes: map[string]any{"length": uint32(utf8.RuneCountInString(e.String))},
 	}
 }

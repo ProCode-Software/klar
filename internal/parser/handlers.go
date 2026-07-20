@@ -112,7 +112,7 @@ func (p *Parser) handleLED(
 		res = p.ParseCallExpression(left, bp)
 	// Spread or range
 	case lexer.Ellipsis, lexer.DotDotLessThan:
-		res = p.ParseRange(left, bp)
+		res = p.ParseRangeOrRest(left, bp)
 	// Function pipeline
 	case lexer.Pipeline:
 		res = p.ParsePipeline(left, bp)
