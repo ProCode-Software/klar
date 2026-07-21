@@ -48,14 +48,14 @@ irm https://raw.githubusercontent.com/ProCode-Software/klar/main/install.ps1 | i
 The installer gives you two options on how to install Klar:
 
 1. **Build from source**, which builds Klar directly from the latest commits on the main branch. This requires Git and the [Go](https://go.dev/) toolchain to be installed.
-2. **Download a prebuilt binary**, which doesn't require Go or Git to be installed. Note that prebuilt binaries are built occasionally and won't have the latest features and bug fixes. The installer will automatically download the appropriate binary from the [releases page](https://github.com/ProCode-Software/klar/releases).
+2. **Download a prebuilt binary**, which doesn't require Go or Git to be installed. Note that prebuilt binaries are built occasionally and won't have the latest features and bug fixes. They are more stable than the main branch. The installer will automatically download the appropriate binary from the [releases page](https://github.com/ProCode-Software/klar/releases).
 
 <details>
     <summary><b>Manual prebuild installation</b></summary>
 
-1. Download the Klar and Glas prebuilds for your platform from the [releases page](https://github.com/ProCode-Software/klar/releases).
+1. Download the prebuild bundle (starts with _klar_) for your platform from the [releases page](https://github.com/ProCode-Software/klar/releases).
 2. From the same page, download a copy of the standard library (`stdlib.zip`).
-3. Extract the standard library to any directory
+3. Extract the prebuild bundle and standard library to any directory
 4. Set the `$KLAR_STD` environment variable to that path. It should point to the unzipped directory named `std` (not `stdlib` or `std/src/std`).
 5. When you're done, you can run the downloaded Klar and Glas binaries from the command line.
 

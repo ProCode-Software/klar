@@ -116,16 +116,15 @@ function Invoke-DownloadPrebuild {
     $release = $releases[0]
     $tagName = $release.tag_name
 
-    $klarAsset = $release.assets | Where-Object { $_.name -match "^klar-.*windows-$archName" } | Select-Object -First 1
-    if (-not $klarAsset) {
+    $klarBundle = $release.assets | Where-Object { $_.name -match "^klar-.*windows-$archName" } | Select-Object -First 1
+    if (-not $klarBundle) {
         Write-Red "Unfortunately, we couldn't find a prebuilt binary for windows-$archName in release $tagName.`nPlease build from source instead by rerunning without '-Prebuild'."
         throw 'KlarInstallAborted'
     }
-    $glasUrl = $klarAsset.browser_download_url -replace 'klar-', 'glas-'
-
-    # Download Klar and Glas
-    Invoke-WebRequest -Uri $klarAsset.browser_download_url -OutFile (Join-Path $buildDir $klarExec) -UseBasicParsing
-    Invoke-WebRequest -Uri $glasUrl -OutFile (Join-Path $buildDir $glasExec) -UseBasicParsing
+    # Download zip with Klar and Glas binaries
+    $binariesZip = Join-Path $buildDir 'binaries.zip'
+    Invoke-WebRequest -Uri $klarBundle.browser_download_url -OutFile $binariesZip -UseBasicParsing
+    Expand-Archive -Path $binariesZip -DestinationPath $buildDir -Force
 
     # Download the standard library
     Write-Status '📚 Downloading the standard library...'

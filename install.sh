@@ -113,20 +113,19 @@ Please build from source instead by rerunning without the '--prebuild' flag" && 
     fi
 
     progress "📦 Downloading prebuilt Klar and Glas binaries..."
-    products=(klar glas)
     release_json=$(curl -s "https://api.github.com/repos/ProCode-Software/klar/releases?per_page=1")
     if ! command -v jq &> /dev/null; then
         # Alternative for Windows (Git Bash) users without jq
         tag_name=$(echo "$release_json" | grep -oE '"tag_name":[ ]*"[^"]+"' |
             head -n 1 | sed -E 's/"tag_name":[ ]*"([^"]+)"/\1/')
-        binary_name=$(echo "$release_json" |
+        bundle_name=$(echo "$release_json" |
             grep -oE '"browser_download_url":[ ]*"[^"]+"' |
             sed -E 's/"browser_download_url":[ ]*"([^"]+)"/\1/' |
             grep -E 'klar-.*'"$prebuild_os_name"'-'"$prebuild_arch_name"'.*' |
             head -n 1)
     else
         tag_name=$(echo "$release_json" | jq -r '.[0].tag_name')
-        binary_name=$(echo "$release_json" |
+        bundle_name=$(echo "$release_json" |
             jq -r '.[0].assets[] | select(.name | test("^klar-.*'"$prebuild_os_name"'-'"$prebuild_arch_name"'")) | .browser_download_url')
     fi
 
@@ -135,18 +134,15 @@ Please build from source instead by rerunning without the '--prebuild' flag" && 
   Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
     fi
 
-    if [[ -z $binary_name ]]; then
+    if [[ -z $bundle_name ]]; then
         red "Unfortunately, we couldn't find a prebuilt binary for $prebuild_os_name-$prebuild_arch_name in release $tag_name.
   Please build from source instead by rerunning without the '--prebuild' flag" && exit 1
     fi
 
     # Download Klar and Glas
     get_exec "$prebuild_os_name"
-    for product in "${products[@]}"; do
-        product_url=${binary_name//klar-/$product-}
-        product_exec=${product}_exec
-        curl -fsSL -o "$build_dir/${!product_exec}" "$product_url"
-    done
+    curl -fsSL -o "$build_dir/binaries.zip" "$bundle_name"
+    unzip -o "$build_dir/binaries.zip" -d "$build_dir" &> /dev/null
 
     # Download the standard library
     progress "📚 Downloading the standard library..."
