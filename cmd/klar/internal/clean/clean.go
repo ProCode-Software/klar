@@ -24,37 +24,8 @@ func Run(c *command.Runner) {
 			"'--project' and '--global' can't both be disabled, otherwise there's no work to do!",
 		)
 	}
+	globalCacheSize, projCacheSize := ClearCache(clearGlobalCache, clearProjCache)
 
-	// Delete global cache
-	var globalCacheSize int64
-	if clearGlobalCache {
-		if _, err := os.Stat(module.SystemDirs.Cache); err == nil {
-			if globalCacheSize, err = deleteDir(module.SystemDirs.Cache); err != nil {
-				cli.Failure("Failed to delete cache directory:", err)
-			}
-			_ = os.Mkdir(module.SystemDirs.Cache, 0o755)
-		}
-	}
-
-	// Delete project cache
-	var projCacheSize int64
-	if clearProjCache {
-		cwd, err := os.Getwd()
-		if err != nil {
-			cli.Warn("Skipped deleting the project cache due to an error:", err)
-			goto report
-		}
-		_, projDir := module.PackageRoot(cwd)
-		projCache := filepath.Join(projDir, module.LocalDataDir, "cache")
-		if _, err := os.Stat(projCache); err == nil {
-			if projCacheSize, err = deleteDir(projCache); err != nil {
-				cli.Failure("Failed to delete project cache directory:", err)
-			}
-			// We won't recreate the project cache folder
-		}
-	}
-
-report:
 	// Display the total size of the cleared cache
 	totalSize := projCacheSize + globalCacheSize
 	if totalSize == 0 {
@@ -73,6 +44,36 @@ report:
 	ansi.TagPrintfln(
 		"<g!>Successfully cleaned <**>%s</**> of build cache!</g>", formattedSize,
 	)
+}
+
+func ClearCache(clearGlobalCache, clearProjCache bool) (globalCacheSize, projCacheSize int64) {
+	// Delete global cache
+	if clearGlobalCache {
+		if _, err := os.Stat(module.SystemDirs.Cache); err == nil {
+			if globalCacheSize, err = deleteDir(module.SystemDirs.Cache); err != nil {
+				cli.Failure("Failed to delete cache directory:", err)
+			}
+			_ = os.Mkdir(module.SystemDirs.Cache, 0o755)
+		}
+	}
+
+	// Delete project cache
+	if clearProjCache {
+		cwd, err := os.Getwd()
+		if err != nil {
+			cli.Warn("Skipped deleting the project cache due to an error:", err)
+			return
+		}
+		_, projDir := module.PackageRoot(cwd)
+		projCache := filepath.Join(projDir, module.LocalDataDir, "cache")
+		if _, err := os.Stat(projCache); err == nil {
+			if projCacheSize, err = deleteDir(projCache); err != nil {
+				cli.Failure("Failed to delete project cache directory:", err)
+			}
+			// We won't recreate the project cache folder
+		}
+	}
+	return
 }
 
 const LongDescription = `When building a project, Klar caches each built module to avoid recompiling everything, including unmodified modules, every time you build, making following builds faster. However, this takes up disk space, and deleted modules may still remain in cache.

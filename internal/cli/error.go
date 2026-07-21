@@ -42,9 +42,16 @@ func FailureError(err error) {
 	Failure(err.Error())
 }
 
-func Failuref(msg, detail string, v ...any) {
+func Failuref(msg string, v ...any) {
+	f := errorPrefix + ansi.Bold(msg) + "\n"
+	fmt.Fprintf(os.Stderr, f, v...)
+	Exit(1)
+}
+
+func FailureDetailf(msg, detail string, v ...any) {
 	f := errorPrefix + ansi.Bold(msg) + detail + "\n"
 	fmt.Fprintf(os.Stderr, f, v...)
+	Exit(1)
 }
 
 func InternalError(detail ...any) {

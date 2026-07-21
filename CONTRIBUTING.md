@@ -9,7 +9,7 @@ Here are some topics you may have been directed to this file about. Click on a l
 - [Issues & Bug Reports](#bug--crash-reports)
 - [Pull Requests](#pull-requests)
 - [Discussions vs. Issues vs. PRs](#discussions-vs-issues-vs-prs)
-- [Repo Development Guide](#development-guide)
+- [Repo Development Guide / Building from Source](#development-guide)
 - [Project Structure](#project-structure) & [Common Go Packages](#common-packagesdirectories)
 - [Using AI](#using-ai)
 
@@ -104,7 +104,7 @@ If there's a typo in a Markdown file or documentation in the repo, you're welcom
 
 ## Discussions vs. Issues vs. PRs
 
-| Post in Discussions           | Create an issue                            | Start a PR               |
+| Post in discussions           | Create an issue                            | Start a PR               |
 | ----------------------------- | ------------------------------------------ | ------------------------ |
 | Feature requests              | Specification/implementation discrepancies | Items on the roadmap     |
 | Language proposals            | Potential bugs                             | Typo/grammar corrections |
@@ -114,7 +114,7 @@ If there's a typo in a Markdown file or documentation in the repo, you're welcom
 
 ## Using AI
 
-You may use AI to write code and tests. However, **you may not use AI to write issues, PRs, or discussions in this project.** We want thoughts of, and interactions and collaboration, between humans in the Klar project. Remember that this programming language is targeted to humans and beginners, not computers and AI agents. Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly.
+You may use AI to write code and tests, including those submitted in PRs. However, **you may not use AI to write the _text_ of issues, PRs, or discussions in this project.** We want thoughts from, and interactions and collaboration between, humans in the Klar project. Remember that this programming language is targeted to humans and beginners, not computers and AI agents. Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly. Violators may be banned from contributing in the Klar project at the discretion of the maintainers.
 
 ### Writing Code with AI
 

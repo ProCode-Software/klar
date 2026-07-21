@@ -5,7 +5,8 @@ KLAR_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 export KLAR_STD=$KLAR_DIR/std
 
 VERSION="0.0.1"
-LDFLAGS="-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$VERSION'"
+COMMIT=$(git rev-parse --short HEAD)
+LDFLAGS=("-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")
 # ldflags: separate with another -X ...
 
 # Generate files
@@ -23,14 +24,14 @@ export GOEXPERIMENT=jsonv2 # Enable JSON v2
 # Build binary if '-build' passed
 case "$1" in
 "-build")
-    go build -ldflags="$LDFLAGS" -o klar "$KLAR_DIR/cmd/klar"
+    go build -ldflags="${LDFLAGS[*]}" -o klar "$KLAR_DIR/cmd/klar"
     ;;
 "-time")
     shift
-    time go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" "$@"
+    time go run -ldflags="${LDFLAGS[*]}" "$KLAR_DIR/cmd/klar" "$@"
     ;;
 *)
-    go run -ldflags="$LDFLAGS" "$KLAR_DIR/cmd/klar" "$@"
+    go run -ldflags="${LDFLAGS[*]}" "$KLAR_DIR/cmd/klar" "$@"
     ;;
 esac
 exit $?

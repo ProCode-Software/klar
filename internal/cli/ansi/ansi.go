@@ -155,3 +155,7 @@ term := os.Getenv("TERM")
 noColor := os.Getenv("NO_COLOR") != "" || os.Getenv("NO_COLOR") == "1"
 useColor := isattyOut && term != "" && term != "dumb" && !noColor
 */
+
+func Hyperlink(label, url string) string {
+	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, label)
+}
