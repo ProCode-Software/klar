@@ -77,9 +77,9 @@ public func String.lastChar() -> String?
 
 // Returns the first word in the string, or `none` if the string is empty.
 public func String.firstWord() -> String? = when self {
-    '' -> none
+    '' -> none,
     // TODO: Make this Unicode-aware (use any Unicode whitespace)
-    ..."{word} "... | "{word}\n"... -> word
+    ..."{word} " | "{word}\n"... -> word
     _ -> self
 }
 

@@ -157,6 +157,7 @@ const (
 	ErrReturnInPipelineExpr   // Return statement not allowed in pipeline expression
 	ErrOptionalOptional       // Can't nest optional types (T??)
 	ErrMultipleDefault        // Multiple default ('_') 'when' cases
+	ErrStringInSegmentMatch   // Expression in '...expr' when pattern must be a string
 )
 
 func (e *Error) handleSyntaxError() string {

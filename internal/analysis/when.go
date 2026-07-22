@@ -6,7 +6,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
-	"github.com/sanity-io/litter"
 )
 
 type whenSubject struct {
@@ -373,8 +372,28 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 	case *ast.MapLiteral:
 	case *ast.EnumLiteral:
 	case *ast.RestExpression:
-		// Could be used in a string or range pattern
-		litter.D(expr)
+		// String match
+		//   ..."{word} " | "{word}\n"... | ..."{word}"... -> word
+		errMustBeString := func(expr ast.Expression) {
+			err := klarerrs.Node(klarerrs.ErrStringInSegmentMatch, expr)
+			c.fileError(err, ws.FileID())
+			pat.PatternKind, pat.Type = InvalidPattern, InvalidType
+		}
+		switch inner := expr.Expression.(type) {
+		case *ast.StringLiteral:
+			pc.checkString(inner)
+			pat.PatternKind = StringPattern
+		case *ast.RestExpression:
+			if str, ok := inner.Expression.(*ast.StringLiteral); ok {
+				pc.checkString(str)
+				pat.PatternKind = StringPattern
+			} else {
+				errMustBeString(inner.Expression)
+			}
+		default:
+			// TODO: Allow literal expressions that have type String
+			errMustBeString(inner)
+		}
 	case *ast.Symbol:
 		// Could be a type
 		obj := ws.Context.LookupRecursive(expr.Identifier)
@@ -523,7 +542,7 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 	pc.pat.Type = StringType
 	var hasDiscard bool
 	for _, frag := range lit.Fragments {
-		interp, ok := frag.(*ast.InterpolationFragment)
+		interp, ok := frag.(ast.InterpolationFragment)
 		if !ok {
 			continue
 		}
@@ -535,13 +554,15 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 			name, varType = inner.ToIdentifier(), StringType
 		case *ast.Discard: // No variables to declare
 			hasDiscard = true
+			continue
 		case *ast.StringTypeMatch:
 			name, varType = inner.Name, pc.checkStringTypeMatch(inner)
 		default:
 			// Normal interpolation
 			pc.checkStringInterpolation(inner, pc.subj.NewChild())
+			continue
 		}
-		if !name.IsZero() {
+		if !name.IsDiscard() {
 			if err := pc.pat.declareVar(name, varType, interp.Expression); err != nil {
 				pc.fileError(err, pc.subj.FileID())
 			}
