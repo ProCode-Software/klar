@@ -2,10 +2,10 @@ package klarcmd
 
 import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/build"
-	"github.com/ProCode-Software/klar/cmd/klar/internal/check"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/clean"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/format"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/help"
+	"github.com/ProCode-Software/klar/cmd/klar/internal/lint"
 	klarnew "github.com/ProCode-Software/klar/cmd/klar/internal/new"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/repl"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
@@ -79,18 +79,15 @@ var KlarCommands = map[string]*command.Command{
 			{"new", nil, s{"--type", "library", "--add-tests"}, "Create a new library in the current folder, with template tests"},
 		},
 	},
-	"check": {
-		ShortDescription: "Typecheck a Klar project",
-		Run:              check.Run,
-		LongDescription:  format.LongDescription,
-	},
 	"format": {
 		ShortDescription: "Format source code",
 		Run:              format.Run,
 		LongDescription:  format.LongDescription,
 	},
 	"lint": {
-		ShortDescription: "Lint source code",
+		ShortDescription: "Check your code for correctness",
+		Run:              lint.Run,
+		LongDescription:  lint.LongDescription,
 	},
 	"test": {
 		ShortDescription: "Run tests for a Klar project",

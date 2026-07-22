@@ -45,9 +45,8 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Split(ansi.BrightBlue)
 	hb.Command("build", "Compile a Klar project")
 	hb.Command("new", "Create a new Klar project")
-	hb.Command("check", "Typecheck a Klar project")
 	hb.Command("format", "Format source code")
-	hb.Command("lint", "Lint source code")
+	hb.Command("lint", "Check your code for correctness")
 	hb.Command("test", "Run tests for a Klar project")
 
 	hb.Split(ansi.Cyan)
