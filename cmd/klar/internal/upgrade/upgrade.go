@@ -78,6 +78,7 @@ func Run(c *command.Runner) {
 				"Release notes: <m>https://github.com/ProCode-Software/klar/releases</m>",
 			cli.KlarVersion,
 		)
+		ok = true
 		cli.Exit(0)
 	}
 
