@@ -38,6 +38,7 @@ var KlarCommands = map[string]*command.Command{
 	"run": {
 		ShortDescription: "Run a Klar project, file, or module",
 		LongDescription:  run.LongDescription,
+		Flags:            run.Flags,
 		Run:              run.Run,
 		SeeAlso:          s{"build", "test"},
 	},

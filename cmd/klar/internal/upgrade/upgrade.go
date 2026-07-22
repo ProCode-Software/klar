@@ -63,7 +63,10 @@ func Run(c *command.Runner) {
 			installCmd = windowsInstallCmd
 		}
 		// If there's an error, tell the user how to update manually
-		fmt.Printf("\nPlease update Klar manually by running:\n\n    %s\n", installCmd)
+		cli.ColorErrorfln(
+			"\n<**>Please update Klar manually by running:</**>\n\n    <m!>%s</m>\n",
+			installCmd,
+		)
 	}()
 	startTime := time.Now()
 
@@ -72,10 +75,10 @@ func Run(c *command.Runner) {
 	isNewer, latestVer := isNewer(rel)
 	if !isNewer {
 		ansi.TagPrintfln(
-			"<** g!>Congrats!</> You're already on the latest version of Klar (<c>v%s</c>)\n\n"+
+			"<**><g!>Congrats!</g!> You're already on the latest version of Klar</> (<c>v%s</c>)\n\n"+
 				// TODO: Uncomment once we have numbered versions, and also add link to docs
 				// "Release notes: <m>https://github.com/ProCode-Software/klar/releases/tag/%[1]s</m>"
-				"Release notes: <m>https://github.com/ProCode-Software/klar/releases</m>",
+				"<y>Release notes:</> <m>https://github.com/ProCode-Software/klar/releases</m>",
 			cli.KlarVersion,
 		)
 		ok = true
@@ -164,12 +167,12 @@ const upgradeMessage = `<** g!>Welcome to <c>Klar build %s</c>!</> Upgraded in <
 func getLatestRelease() *githubRelease {
 	res, err := http.Get(ReleasesURL)
 	if err != nil {
-		cli.Failure("Couldn't get Klar releases from GitHub", err)
+		cli.Failure("Couldn't get Klar releases from GitHub:", err)
 	}
 	defer res.Body.Close()
 	var releases []*githubRelease
 	if err := json.UnmarshalRead(res.Body, &releases); err != nil {
-		cli.Failure("Couldn't decode Klar release list", err)
+		cli.Failure("Couldn't decode Klar release list:", err)
 	}
 
 	if len(releases) == 0 {
@@ -239,8 +242,8 @@ func downloadBinaries(rel *githubRelease, dir string) (zipPath string) {
 	osName, archName := goosToName[runtime.GOOS], goarchToName[runtime.GOARCH]
 	if osName == "" || archName == "" {
 		displayManualUpdate = false
-		cli.Failuref(
-			"Sorry, we don't provide prebuilds for the %s/%s Go platform. Please %s.",
+		cli.FailureDetailf(
+			"Sorry, we don't provide prebuilds for the %s/%s Go platform. ", "Please %s.",
 			runtime.GOOS, runtime.GOARCH,
 			ansi.Hyperlink("build Klar from source", buildFromSourceDocs),
 		)
@@ -254,7 +257,10 @@ func downloadBinaries(rel *githubRelease, dir string) (zipPath string) {
 		displayManualUpdate = false
 		// TODO: This shows the tag (prebuild-*) rather than the commit number. Once
 		// we have numbered releases, this won't be an issue. But change "build" to "v"
-		cli.Failuref("Klar build %s is out, but not for your platform yet", rel.TagName)
+		cli.ColorErrorfln(
+			"<y!>Klar build <c!>%s</c!> is out, but not for your platform yet</>",
+			rel.TagName,
+		)
 	}
 	asset := rel.Assets[i]
 	res, err := http.Get(asset.BrowserDownloadURL)
@@ -357,7 +363,7 @@ func writeFileFromZip(f *zip.File, zipPath, target string, oldRenamed bool) {
 
 Your Klar installation now is corrupt. Please reinstall by running:
 
-    irm https://raw.githubusercontent.com/ProCode-Software/klar/main/install.ps1 | iex
+    ` + ansi.BrightMagenta(windowsInstallCmd) + `
 
 We apologise for the inconvenience.`
 	}
