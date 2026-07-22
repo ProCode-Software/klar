@@ -3,6 +3,8 @@
 // Functionality is closely related to the [Klar install.sh script] and should be
 // kept in sync with it.
 //
+// Based on: https://github.com/oven-sh/bun/blob/e643d7b085dfd29f675ade275197daedc2cdfc9c/src/cli/upgrade_command.zig
+//
 // [Klar install.sh script]: https://github.com/ProCode-Software/klar/tree/main/install.sh
 package upgrade
 
@@ -44,8 +46,7 @@ var BinaryAssetRegex = regexp.MustCompile(
 )
 
 var (
-	// For development purposes
-	dryRun              = os.Getenv("KLAR_DRY_RUN") == "1"
+	dryRun              = os.Getenv("KLAR_DRY_RUN") == "1" // For development purposes
 	displayManualUpdate = true
 )
 
@@ -83,19 +84,16 @@ func Run(c *command.Runner) {
 	ansi.TagFprintf(
 		os.Stderr,
 		// TODO: Once we have numbered releases, switch "build" for "v"
-		"<** m!>Upgrading Klar to build <c>%s</c></> - You're currently on <y>v%s</y>\r",
+		"<** m!>Upgrading Klar to build <c!>%s</c!></> <d>•</d> You're currently on <y>v%s</y>...\r",
 		latestVer, cli.KlarVersionAndCommit,
 	)
 
 	// 1. Create temp dir to download zips to
-	var tempDir string
-	if !dryRun {
-		var err error
-		if tempDir, err = os.MkdirTemp("", "klar-upgrade"); err != nil {
-			cli.Failure("Couldn't create temporary directory for upgrade", err)
-		}
-		defer os.RemoveAll(tempDir) // The error doesn't really matter
+	tempDir, err := os.MkdirTemp("", "klar-upgrade")
+	if err != nil {
+		cli.Failure("Couldn't create temporary directory for upgrade", err)
 	}
+	defer os.RemoveAll(tempDir) // The error doesn't really matter
 
 	// 2. Download binaries for the appropriate platform to temp dir
 	binariesZip := downloadBinaries(rel, tempDir)
@@ -125,12 +123,25 @@ func Run(c *command.Runner) {
 		// TODO: Does the current approach leave the user without a working
 		// executable if writing fails?
 		extractZip(binariesZip, binDir, runtime.GOOS == "windows")
-		// Delete old standard library
-		if err := os.RemoveAll(stdDir); err != nil {
-			cli.Failure("Failed to delete the previous version of the standard library:", err)
+
+		// Preserve permissions of the old standard library directory
+		var stdDirPerm os.FileMode
+		if stat, err := os.Stat(stdDir); err == nil {
+			if stat.IsDir() {
+				stdDirPerm = stat.Mode().Perm()
+			}
+			// Delete old standard library
+			if err := os.RemoveAll(stdDir); err != nil {
+				cli.Failure("Failed to delete the previous version of the standard library:", err)
+			}
 		}
 		// Stdlib is in 'stdlib.zip/std'
 		extractZip(stdlibZip, filepath.Dir(stdDir), false)
+		if stdDirPerm != 0 {
+			if err := os.Chmod(stdDir, stdDirPerm); err != nil {
+				cli.Failure("Failed to restore permissions of standard library directory:", err)
+			}
+		}
 
 		// 6. Clear old cache, as the cache format in the new version may have changed
 		clean.ClearCache(true, true)
@@ -159,6 +170,7 @@ func getLatestRelease() *githubRelease {
 	if err := json.UnmarshalRead(res.Body, &releases); err != nil {
 		cli.Failure("Couldn't decode Klar release list", err)
 	}
+
 	if len(releases) == 0 {
 		cli.Failure("The GitHub API responded with no releases (this shouldn't happen)")
 	}
@@ -199,7 +211,9 @@ func isNewer(rel *githubRelease) (newer bool, versionOrCommit string) {
 	}
 	if commit := groups["commit"]; commit != "" {
 		// For the Klar prebuild stage (before numbered releases), this is all we
-		// will rely on.
+		// will rely on. Note that if the current Klar executable was built from
+		// source, `klar upgrade` may downgrade to an older commit.
+		//
 		// TODO: After the first numbered release of Klar, remove the commit group
 		// from the regex, and only use versions.
 		return commit != cli.KlarCommit, commit
@@ -248,10 +262,7 @@ func downloadBinaries(rel *githubRelease, dir string) (zipPath string) {
 	}
 	defer res.Body.Close()
 
-	if dryRun {
-		return ""
-	}
-	// Temporary file
+	// Download binaries to binaries.zip in temp folder
 	zipPath = filepath.Join(dir, "binaries.zip")
 	file, err := os.Create(zipPath)
 	if err != nil {
@@ -279,7 +290,7 @@ func downloadStdlib(rel *githubRelease, dir string) (stdlibPath string) {
 	}
 	defer res.Body.Close()
 
-	// Temporary file
+	// stdlib.zip in temp folder
 	stdlibPath = filepath.Join(dir, "stdlib.zip")
 	file, err := os.Create(stdlibPath)
 	if err != nil {
@@ -364,6 +375,7 @@ We apologise for the inconvenience.`
 		cli.FailureDetailf("Failed to create %s: %v", reinstallMsg, target, err)
 	}
 
+	//nolint:gosec // G110 - Trusted download source
 	_, writeErr := io.Copy(outFile, zipReader)
 	defer func() {
 		closeErr := outFile.Close()
