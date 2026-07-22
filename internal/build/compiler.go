@@ -175,7 +175,7 @@ func SetLogger(b *Compiler, verbose, json bool) error {
 	)
 	switch {
 	case logFile != "":
-		file, err := os.Create(logFile)
+		file, err := os.Create(logFile) //nolint:gosec // G703 - internal env var only
 		if err != nil {
 			return &FilesystemError{"create", "KLAR_LOG_FILE", err}
 		}

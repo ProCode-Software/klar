@@ -1,7 +1,6 @@
 version: '2'
 formatters:
-  enable:
-    - gofumpt
+  enable: []
 
 run:
   build-tags:
@@ -9,10 +8,18 @@ run:
 
 linters:
   enable: [
-    misspell, asasalint, bidichk, copyloopvar, exptostd,
-    gosec, unconvert
-    # errname, dupword, cyclop, exhaustive
-  ]
+      misspell,
+      asasalint,
+      bidichk,
+      copyloopvar,
+      exptostd,
+      gosec,
+      unconvert,
+      usestdlibvars,
+      usetesting,
+      forbidigo,
+      # errname, dupword, cyclop, exhaustive
+    ]
   disable:
     - errcheck
     - unused
@@ -33,6 +40,18 @@ linters:
         - G115
         - G104
         - G304
+        - G305
+        - G301
+        - G302
+        - G306
+        - G307
+        - G404
+    forbidigo:
+      exclude-godoc-examples: true
+      analyze-types: true
+      forbid:
+        - pattern: ^fmt\.Print
+          pkg: github.com/ProCode-Software/klar/internal/(lexer|parser|analysis)
     staticcheck:
       checks:
         - '-ST1005'

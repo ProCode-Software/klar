@@ -21,7 +21,7 @@ func startProf() {
 	default:
 		path = v
 	}
-	file, err := os.Create(path)
+	file, err := os.Create(path) //nolint:gosec // G703 - internal env var only
 	if err != nil {
 		panic(err)
 	}

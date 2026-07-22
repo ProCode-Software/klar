@@ -49,11 +49,12 @@ func Run(c *command.Runner) {
 func ClearCache(clearGlobalCache, clearProjCache bool) (globalCacheSize, projCacheSize int64) {
 	// Delete global cache
 	if clearGlobalCache {
-		if _, err := os.Stat(module.SystemDirs.Cache); err == nil {
+		if stat, err := os.Stat(module.SystemDirs.Cache); err == nil {
 			if globalCacheSize, err = deleteDir(module.SystemDirs.Cache); err != nil {
 				cli.Failure("Failed to delete cache directory:", err)
 			}
-			_ = os.Mkdir(module.SystemDirs.Cache, 0o755)
+			// Preserve previous permissions
+			_ = os.Mkdir(module.SystemDirs.Cache, stat.Mode().Perm())
 		}
 	}
 
@@ -90,9 +91,12 @@ func deleteDir(dir string) (size int64, err error) {
 			return err
 		}
 		size += info.Size()
-		return os.Remove(path)
+		return os.Remove(path) // #nosec G122 - Cache is user-owned
 	})
-	return
+	if err != nil {
+		return size, err
+	}
+	return size, os.RemoveAll(dir) // Delete empty directories
 }
 
 var Flags = argparse.NewParser().
