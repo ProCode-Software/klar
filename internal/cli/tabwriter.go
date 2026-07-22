@@ -295,8 +295,8 @@ func (tw *TabWriter) readCell(b []byte, isEscape, breakAfter bool) {
 			if isEscape {
 				continue
 			}
-			content := append(tw.rem, b[cellStart:i]...) // Add previous bytes
-			line = append(line, cell{content: content})
+			tw.rem = append(tw.rem, b[cellStart:i]...) // Add previous bytes
+			line = append(line, cell{content: tw.rem})
 			tw.evalLastCellWidth(line, exclude+tw.remExclude)
 			tw.rem, tw.remExclude = nil, 0
 			cellStart, exclude = i+1, 0
@@ -304,8 +304,8 @@ func (tw *TabWriter) readCell(b []byte, isEscape, breakAfter bool) {
 			if isEscape {
 				continue
 			}
-			content := append(tw.rem, b[cellStart:i]...) // Add previous bytes
-			line = append(line, cell{content: content})  // Exclude \n
+			tw.rem = append(tw.rem, b[cellStart:i]...) // Add previous bytes
+			line = append(line, cell{content: tw.rem}) // Exclude \n
 			tw.evalLastCellWidth(line, exclude+tw.remExclude)
 			tw.rem, tw.remExclude = nil, 0
 			cellStart, exclude = i+1, 0
