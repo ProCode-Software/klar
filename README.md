@@ -141,7 +141,7 @@ For a basic contribution guide for ths repo, see [CONTRIBUTING.md](https://githu
 
 ## Feedback, Comments, and RFCs
 
-Klar uses RFCs to collect feedback on how features should be implemented in the language. To view the active RFCs and submit feedback, see the [RFCs discussion page](https://github.com/ProCode-Software/klar/discussions/categories/rfcs).
+**We're in need of comments!!** Klar uses RFCs to collect feedback on how features should be implemented in the language. To view the active RFCs and submit feedback, see the [RFCs discussion page](https://github.com/ProCode-Software/klar/discussions/categories/rfcs).
 
 For other feedback and discussions, where you can request features and comment on existing ones, see the general [discussions page](https://github.com/ProCode-Software/klar/discussions).
 
