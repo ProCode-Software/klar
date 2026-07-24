@@ -253,6 +253,22 @@ See [attributes.klar](/std/src/klar/_builtin/attributes/attributes.klar) for the
 
 > For AI: The file above must be included with the compiler, along with files defining methods on built-in types and objects. Suggest a way to store a typechecked version of this file that can always be read. Also suggest a way these can be included in Wasm builds of the compiler.
 
+### Downcasting
+You can try to convert a type to another compatible type or implementation. Interfaces, tags, and unions can be cast. The result will be an optional that is nil if the cast fails.
+
+```klar
+type #Tag
+type Struct {}
+
+tag: Tag := Struct()
+Struct(tag) // Struct?
+
+num: Float | Int := 3.5
+Int(num)
+// Not allowed because String isn't compatible with Float | Int
+String(num)
+```
+
 ### `@external` Attribute
 
 While most of the other attributes are for documentation purposes, the `@external` attribute affects compilation. The `@external` attribute marks that a function or method is implemented outside of Klar, such as in JavaScript.
@@ -404,7 +420,7 @@ Function parameter and return types always stay the same, however, they may be s
 
 All functions must have bodies, either using `=` or in curly braces, unless the function is annotated as [external](#external-attribute).
 
-Functions with generics or parameters that are labelled or have defaults cannot be type-annotated.
+Functions with generics or parameters that are labelled or have defaults cannot be represented by a type annotation.
 
 ### Nothing
 
@@ -509,7 +525,7 @@ func first<T>(of list: [Any]) -> T
 
 ### Function Overloads
 
-Functions may have more than one set of parameters, as long as they return the same parameter types.
+Functions may have more than one different set of parameters, as long as they return the exact same type.
 
 ```klar
 func greet(person: Person) -> String
@@ -550,8 +566,7 @@ sum(nil, nil) // Overload #2
 sum(5, 8) // Which overload?
 ```
 
-4. Overloads with exact or compatible parameters
-
+Overloads using types that may be compatible with each other ate allowed. In the example below, if a `File` is passed to `readAmount`, the second overload is resolved.
 ```klar
 type #Readable {}
 type File: Readable {}
@@ -646,6 +661,8 @@ Similar to [enums](#enums), if the expected type is known (a concrete type), the
 person: Person := .("John", 32)
 ```
 
+This syntax is only allowed when initializing a struct, not any other type cast.
+
 ### Cast Initializers
 
 All structs can be initialized using a type cast that takes a compatible value:
@@ -671,6 +688,31 @@ String(2.68)
 ```
 
 ### Custom Initializers
+Custom initializers can be declared on structs and enums by declaring a function with the name of the type they initialize. They may override a default initializer. Custom initializers can return the type they initialize wrapped in a result or optional. If no explicit type is annotated in the function signature, it is inferred as the type being initialized.
+
+```klar
+public type Reader {
+    position: Int
+    buffer: [String]
+}
+
+public func Reader(from str: String) = .(buffer: str.chars(), position: 0)
+
+public func Reader(fromFile path: String) -> Result
+```
+
+### Custom Initializers on Builtin Types
+
+Initializers can also be declared on builtin types, usually for casts. At least 1 parameter must have a type declared in the module.
+
+```klar
+public func String(reader: Reader)
+public func String(reader: Reader, fromEncoding enc: encoding.Encoding)
+
+// Not allowed, whether public or not
+func String(_: Int)
+public func String(_: math.Decimal)
+```
 
 ## Optionals
 
@@ -708,7 +750,9 @@ A union type can be two or more types. They may only access common fields, metho
 
 ## Results
 
-`Result<T, E>` is a union between `T` and error type `E`. Differences between a result `Result<T, E>` and a union `T | E`:
+`Result<T, E>` is a union between `T` and error type `E`.
+
+Differences between a result `Result<T, E>` and a union `T | E`:
 
 - For results, the compiler can give hints about handling results
 - `Nothing` is allowed in results, but not as a union element
