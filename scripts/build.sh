@@ -2,7 +2,6 @@
 set -e -o pipefail
 
 KLAR_ROOT=$(realpath "$(dirname "$0")/..")
-PRODUCTS=(klar glas)
 
 # GOOS and GOARCH names
 OSES=(linux darwin windows)
@@ -50,16 +49,26 @@ function build_binaries() {
             os_arch_pair=${OS_NAMES[$os]}-${ARCH_NAMES[$arch]}
             out_dir=$KLAR_ROOT/bin/$os_arch_pair
             mkdir "$out_dir"
-            for product in "${PRODUCTS[@]}"; do
-                echo "Compiling $product for $os/$arch..."
-                name=$product
-                if [[ $os == "windows" ]]; then
-                    name+=".exe"
-                fi
-                GOOS=$os GOARCH=$arch go build --trimpath -ldflags="${LDFLAGS[*]}" \
-                    -o "$out_dir/$name" \
-                    "$KLAR_ROOT/cmd/$product"
-            done
+
+            # Build the klar binary
+            echo "Compiling klar for $os/$arch..."
+            name=klar
+            if [[ $os == "windows" ]]; then
+                name+=".exe"
+            fi
+            GOOS=$os GOARCH=$arch go build --trimpath -ldflags="${LDFLAGS[*]}" \
+                -o "$out_dir/$name" \
+                "$KLAR_ROOT/cmd/klar"
+                
+            # Add the glas alias
+            if [[ $os == "windows" ]]; then
+                echo -e '@echo off\n"%~dp0klar.exe" glas %*\nexit /b %errorlevel%' > "$out_dir/glas.cmd"
+            else
+                # shellcheck disable=SC2016
+                echo -e '#!/usr/bin/env sh\n$(dirname "$0")/klar glas $@\nexit $?' > "$out_dir/glas"
+                chmod "$(stat --format='%a' "$out_dir/$name")" "$out_dir/glas"
+            fi
+
             (
                 cd "$out_dir"
                 zip -r "$KLAR_ROOT/bin/klar-$ver_name-$os_arch_pair.zip" ./* > /dev/null

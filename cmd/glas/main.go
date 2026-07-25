@@ -1,14 +1,14 @@
-package main
+package glas
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/ProCode-Software/klar/cmd/glas/internal/glascmd"
-	"github.com/ProCode-Software/klar/cmd/klar/klarcmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
+	"github.com/ProCode-Software/klar/internal/util"
 )
 
 var (
@@ -17,8 +17,7 @@ var (
 	Version  = cli.KlarVersion
 )
 
-func main() {
-	defer cli.HandleSignalExit()
+func Main(lookupKlarCmd func(string) *command.Command) {
 	args := os.Args
 	if len(args) < 2 {
 		ShowHelp(os.Stderr)
@@ -28,8 +27,8 @@ func main() {
 	switch cmdName {
 	case "--help", "-h":
 		ShowHelp(os.Stdout)
-	case "-v", "--version":
-		fmt.Printf("Glas/Klar %s (%s)\n", Version, cli.KlarCommit)
+	case "-v", "--version", "version":
+		fmt.Printf("Klar %s (%s)\n", cli.KlarVersion, cli.KlarCommit)
 	case "": // TODO
 		cli.Failure(ansi.ColorSprintf(
 			ansi.CodeBold,
@@ -52,6 +51,7 @@ func main() {
 	default:
 		if args[1][0] == '-' {
 			// Expected a command
+			cli.ColorErrorfln("<**>I don't understand the <c>%s</c> flag</**>", args[1])
 			cli.Exit(2)
 		}
 		cmd := command.Lookup(cmdName, commands, aliases)
@@ -60,24 +60,25 @@ func main() {
 			break
 		}
 		// Unknown command
-		cli.ColorErrorfln("<**>Can't find Glas command <c>%s</c></**>", cmdName)
-		klarCmd := klarcmd.LookupKlarCmd(cmdName)
-		if klarCmd == nil {
-			ansi.TagPrintln("\n<y>Run <c>glas help</c> to see available commands.</>")
-		} else {
+		cli.ColorErrorfln("<**>Can't find a Glas command named <c!>%s</c!></**>", cmdName)
+		ansi.TagPrintln("\nRun <c!>glas help</c!> to see available commands.")
+		if klarCmd := lookupKlarCmd(cmdName); klarCmd != nil {
+			// If the command exists with 'klar' (ex. 'klar build'), prompt the
+			// user to run it instead
 			promptKlarRun(klarCmd, cmdName)
 		}
 		cli.Exit(2)
 	}
 }
 
-func promptKlarRun(cmd *command.Command, providedName string) {
-	shouldRun := cli.Confirm(ansi.Colorizef(
+func promptKlarRun(klarCmd *command.Command, providedName string) {
+	yes := cli.Confirm(ansi.Colorizef(
 		"\n<b!>Hint</b!><dim>:</dim> I found the command <m>klar %s</m>. Do you want to run it?",
 		providedName,
 	), true)
-	if !shouldRun {
-		return
+	if yes {
+		util.ClearScreen()
+		command.Run(klarCmd)
+		cli.Exit(0)
 	}
-	cli.Exit(0)
 }

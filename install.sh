@@ -78,7 +78,7 @@ get_exec() {
     glas_exec="glas"
     if [[ $GOOS == "windows" ]]; then
         klar_exec+=".exe"
-        glas_exec+=".exe"
+        glas_exec+=".cmd"
     fi
 }
 
@@ -194,10 +194,17 @@ build_from_source() {
     LDFLAGS=("-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")
 
     get_exec "$GOOS"
-    progress "🏗️ Building Klar and Glas binaries..."
+    progress "🏗️ Building Klar binary..."
     go generate ./...
     go build -ldflags="${LDFLAGS[*]}" -o "$klar_exec" ./cmd/klar
-    go build -ldflags="${LDFLAGS[*]}" -o "$glas_exec" ./cmd/glas
+    # Glas alias
+    if [[ $os == "windows" ]]; then
+        echo -e '@echo off\n"%~dp0klar.exe" glas %*\nexit /b %errorlevel%' > $glas_exec
+    else
+        # shellcheck disable=SC2016
+        echo -e '#!/usr/bin/env sh\n$(dirname "$0")/klar glas $@\nexit $?' > $glas_exec
+        chmod +x "$glas_exec"
+    fi
 }
 
 if [[ $use_prebuild -eq 1 ]]; then

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ProCode-Software/klar/cmd/glas"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/klarcmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
@@ -47,15 +48,21 @@ func main() {
 		}
 	case "--help", "-h":
 		ShowHelp(os.Stdout, true)
-	case "-v", "--version":
+	case "-v", "--version", "version":
 		fmt.Printf("Klar %s (%s)\n", cli.KlarVersion, cli.KlarCommit)
-	case "test", "glas", "docs", "lint", "generate":
+	case "test", "lint", "generate":
 		// Unimplemented command
 		cli.Failure(ansi.ColorSprintf(
 			ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
+	case "glas":
+		os.Args = os.Args[1:] // Strip 'klar' from 'klar glas'
+		glas.Main(func(cmdName string) *command.Command {
+			return command.Lookup(cmdName, commands, aliases)
+		})
 	case "help":
+		// klar help | klar help klar
 		if len(args) < 3 || args[2] == "" || args[2] == "klar" {
 			ShowHelp(os.Stdout, true)
 			cli.Exit(0)

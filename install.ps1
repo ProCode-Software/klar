@@ -84,7 +84,7 @@ if (-not $prebuildExplicit) {
 Write-Host ''
 
 $klarExec = 'klar.exe'
-$glasExec = 'glas.exe'
+$glasExec = 'glas.cmd'
 
 function Get-PrebuildArch {
     $arch = $env:PROCESSOR_ARCHITECTURE
@@ -172,13 +172,12 @@ function Invoke-BuildFromSource {
     $commit = (& git rev-parse --short HEAD).Trim()
     $ldflags = "-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=$version' -X 'github.com/ProCode-Software/klar/internal/cli.KlarCommit=$commit'"
 
-    Write-Status '🏗️ Building Klar and Glas binaries...'
+    Write-Status '🏗️ Building Klar binary...'
     & go generate ./...
     if ($LASTEXITCODE -ne 0) { Write-Red 'go generate failed.'; throw 'KlarInstallAborted' }
     & go build -ldflags $ldflags -o $klarExec ./cmd/klar
     if ($LASTEXITCODE -ne 0) { Write-Red 'Failed to build klar.'; throw 'KlarInstallAborted' }
-    & go build -ldflags $ldflags -o $glasExec ./cmd/glas
-    if ($LASTEXITCODE -ne 0) { Write-Red 'Failed to build glas.'; throw 'KlarInstallAborted' }
+    "@echo off`n`"%~dp0klar.exe`" glas %*`nexit /b %errorlevel%" | Out-File -FilePath $glas_exec
 }
 
 $buildDir = Join-Path $env:TEMP ('klar-install-' + [guid]::NewGuid().ToString('N'))
