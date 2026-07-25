@@ -1,7 +1,6 @@
 package klarnew
 
 import (
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
@@ -21,7 +20,7 @@ type createInfo struct {
 	flags       flags
 }
 
-func Run(c *command.Runner) {}
+func Run(c *argparse.Parser) {}
 
 var Flags = argparse.NewParser("[dir]").
 	EnumFlag("type", "The type of package to create", "", map[string]any{

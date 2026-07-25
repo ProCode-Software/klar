@@ -7,13 +7,12 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
-func Run(c *command.Runner) {
+func Run(c *argparse.Parser) {
 	if err := module.LoadSystemDirs(); err != nil {
 		cli.Failure("Failed to resolve cache directory:", err)
 	}

@@ -4,12 +4,11 @@ package help
 import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
 // Existing CLI commands already handled in main.go
-func Run(c *command.Runner) {
+func Run(c *argparse.Parser) {
 	if len(c.Args) < 1 {
 		cli.Failure("Expected a command or topic name when '-d' flag is used")
 	}

@@ -12,18 +12,18 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/icons"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs/jsonerrors"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/util"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ProCode-Software/klar/pkg/klon"
 )
 
 // Build executes the "klar build" command.
-func Build(r *command.Runner) {
-	inputArgs := r.Parser.VarArgByName("inputs")
+func Build(r *argparse.Parser) {
+	inputArgs := r.VarArgByName("inputs")
 	cwd, err := build.Cwd()
 	if err != nil {
 		cli.FailureError(err)
@@ -174,7 +174,7 @@ func showResult(res *build.Result, c *build.Compiler) {
 	case errCount == 0 && warnCount > 0:
 		// Succeeded with warnings
 		icon, format = formatIcon(icons.Warning, 'y'),
-			"<y!>succeeded</y!> with <g!>"+formatCount(warnCount, "warning")+"</g!>"
+			"<y!>succeeded</y!> with <y!>"+formatCount(warnCount, "warning")+"</y!>"
 	case errCount > 0 && warnCount == 0:
 		// Failed
 		icon = formatIcon(icons.ThinXLarge, 'r')
@@ -208,7 +208,7 @@ func showResult(res *build.Result, c *build.Compiler) {
 }
 
 // ParseFlags parses flags from r into o.
-func ParseFlags(r *command.Runner, i *build.Input) {
+func ParseFlags(r *argparse.Parser, i *build.Input) {
 	for _, setting := range klarBuildFlags {
 		flag, ok := r.Flags[setting]
 		if !ok || !flag.Set {

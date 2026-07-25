@@ -81,7 +81,7 @@ func main() {
 			break
 		}
 		// Equivalent to `klar run [file]`
-		os.Args = append([]string{"klar", "run"}, os.Args[1:]...)
+		os.Args = append([]string{"klar", ""}, os.Args[1:]...)
 		command.Run(commands["run"])
 	}
 }

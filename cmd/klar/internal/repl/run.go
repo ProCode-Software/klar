@@ -11,11 +11,11 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/module"
 	astParser "github.com/ProCode-Software/klar/internal/parser"
 	"github.com/ProCode-Software/klar/internal/run"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"github.com/ergochat/readline"
 	"github.com/sanity-io/litter"
 )
@@ -58,7 +58,7 @@ func NewSession() (*Session, error) {
 	return s, nil
 }
 
-func Run(*command.Runner) {
+func Run(*argparse.Parser) {
 	fmt.Println(ansi.Bold("Welcome to Klar"), ansi.Gray("v"+cli.KlarVersionAndCommit))
 	ansi.ColorPrintfln(
 		ansi.CodeGray,

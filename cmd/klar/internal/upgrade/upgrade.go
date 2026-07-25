@@ -25,10 +25,10 @@ import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/clean"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
 	klarver "github.com/ProCode-Software/klar/internal/version"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
 // The URL to the GitHub API endpoint used for querying Klar releases.
@@ -50,7 +50,7 @@ var (
 	displayManualUpdate = true
 )
 
-func Run(c *command.Runner) {
+func Run(c *argparse.Parser) {
 	var ok bool
 	defer func() {
 		// Hidden if there are no prebuilds for the current platform

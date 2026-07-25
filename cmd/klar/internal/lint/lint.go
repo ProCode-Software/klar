@@ -1,8 +1,8 @@
 package lint
 
-import "github.com/ProCode-Software/klar/internal/command"
+import "github.com/ProCode-Software/klar/pkg/argparse"
 
-func Run(r *command.Runner) {
+func Run(r *argparse.Parser) {
 }
 
 const LongDescription = ""

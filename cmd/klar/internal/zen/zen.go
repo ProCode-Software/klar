@@ -8,8 +8,8 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
-	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/util"
+	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
 
@@ -18,7 +18,7 @@ const Zen = ``
 
 var width = 80
 
-func Run(c *command.Runner) {
+func Run(c *argparse.Parser) {
 	// Wrap the text around the terminal's width
 	var err error
 	if width, _, err = term.GetSize(int(os.Stdout.Fd())); err != nil {

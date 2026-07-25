@@ -21,7 +21,7 @@ var KlarCommands = map[string]*command.Command{
 		SeeAlso:          s{"run", "test", "check"},
 		Flags:            build.Flags,
 		Run:              build.Build,
-		Examples: ex{
+		Examples: []command.ExampleCmd{
 			// TODO: Give these example projects creative names
 			{"build", nil, nil, "Build the current project to the default output directory"},
 			{"build", s{"./src/foo"}, s{"-t", "node"}, "Build the module at src/foo for Node with default settings"},
@@ -47,7 +47,7 @@ var KlarCommands = map[string]*command.Command{
 		LongDescription:  help.LongDescription,
 		Run:              help.Run,
 		Flags:            help.Flags,
-		Examples: ex{
+		Examples: []command.ExampleCmd{
 			{"help", s{"help"}, nil, "Show a description and usage for the 'klar help' command"},
 			{"help", s{"build"}, nil, "Get help on the 'build' command"},
 			{"help", s{"js"}, nil, "Not just commands are supported (show info about JavaScript compilation)"},
@@ -72,7 +72,7 @@ var KlarCommands = map[string]*command.Command{
 		Flags:            klarnew.Flags,
 		Run:              klarnew.Run,
 		SeeAlso:          s{"run", "new", "repl"},
-		Examples: ex{
+		Examples: []command.ExampleCmd{
 			{"new", nil, nil, "Interactively create a new project in the current folder"},
 			{"new", s{"myProject"}, nil, "Create a new project in the 'myProject' folder"},
 			{"new", s{"pkg/foo"}, nil, "Add a new package in the current project"},
@@ -99,10 +99,7 @@ var KlarCommands = map[string]*command.Command{
 	},
 }
 
-type (
-	s  = []string
-	ex = []command.ExampleCmd
-)
+type s = []string
 
 // Set command names
 func init() {
