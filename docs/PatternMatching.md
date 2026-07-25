@@ -102,7 +102,7 @@ when msg {
     ..."3 {'cats' | 'dogs' as animal}" -> {}
     // Match the name of the person if they have 3 cats and 1 dog
     "{person} has 3 cats and 1 dog." -> {}
-    // Equivalent
+    // Invalid. Interpolations must be used instead
     person + ' has 3 cats and 1 dog.' -> {}
     // Match the string with any number of dogs or cats, matching if they are
     // valid numbers, and unwrapping them as variables. Note that this is

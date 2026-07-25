@@ -47,6 +47,11 @@ func (e *Expr) withHint(hint Type) *Expr {
 	return e
 }
 
+func (e *Expr) withContext(ctx *Context) *Expr {
+	e.Context = ctx
+	return e
+}
+
 type exprMode uint16
 
 const (
@@ -58,6 +63,7 @@ const (
 	indexLHS
 	stringInterpolation
 	allowNothingValue
+	attributeFunc
 
 	// Output modes
 	todoExpr
@@ -149,7 +155,12 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkRegexLiteral(expr, t)
 	case *ast.VersionLiteral:
 		// These are only parsed within attributes.
-		// TODO: Find a way to read these when applying attributes
+		if !t.mode.has(attributeFunc) {
+			panic("found version literal outside of attribute")
+		}
+		// klar._builtin.attributes defines tag Version.
+		// TODO: Make this a ConstValue because attributes params require constants
+		t.Type = t.Context.LookupRecursive("Version")
 	case *ast.ListCastExpression:
 		c.checkListCastExpr(expr, t)
 	case *ast.MapCastExpression:
@@ -157,7 +168,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	case *ast.ObjectPipeline:
 		c.checkObjectPipeline(expr, t)
 	case *ast.ForExpression:
-	// TODO: Factor logic from [Checker.checkForStmt] to use in checkForExpr
+		c.checkForExpr(expr, t)
 	case *ast.StructDotInit:
 		c.checkStructDotInitExpr(expr, t)
 	case *ast.GoExpression:
@@ -168,6 +179,10 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkAssertExpr(expr, t)
 	case *ast.TryExpression:
 		c.checkTryExpr(expr, t)
+	// TODO: Report errors for these misplaced when-pattern syntax
+	// case *ast.Discard:
+	// case *ast.AsExpression:
+	// case *ast.SubOptions:
 	default:
 		panic(fmt.Sprintf("unhandled expression node type: %T", expr))
 	}
@@ -198,6 +213,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 // such as 'when' expressions in string interpolations. A human-friendly
 // name of the node is returned if filtered is false.
 func (e *Expr) IsFiltered(expr ast.Expression) (filtered bool, node string) {
+	// TODO: Only literals should be allowed in [attributeFunc] mode
 	return
 }
 
@@ -779,16 +795,13 @@ func (c *Checker) checkTryExpr(expr *ast.TryExpression, t *Expr) {
 
 func (c *Checker) checkListCastExpr(expr *ast.ListCastExpression, t *Expr) {
 	elem := c.parseType(expr.Type, t.Context)
-	// TODO: Check params
-	t.Type = &List{elem}
+	c.checkCallArgs(&List{elem}, expr.Args, t)
 }
 
 func (c *Checker) checkMapCastExpr(expr *ast.MapCastExpression, t *Expr) {
 	key := c.parseType(expr.KeyType, t.Context)
 	val := c.parseType(expr.ValueType, t.Context)
-	// TODO: Check params
-	mp := &Map{key, val}
-	c.checkCallArgs(mp, expr.Args, t)
+	c.checkCallArgs(&Map{key, val}, expr.Args, t)
 }
 
 func (c *Checker) checkLambdaExpr(expr *ast.LambdaExpression, t *Expr) {
@@ -897,6 +910,34 @@ func (c *Checker) checkObjectPipeline(expr *ast.ObjectPipeline, t *Expr) {
 		default:
 			panic(fmt.Sprintf("invalid step in object pipeline: %T", step))
 		}
+	}
+}
+
+func (c *Checker) checkForExpr(expr *ast.ForExpression, t *Expr) {
+	bodyCtx, kind := c.checkForVars(expr.Variables, expr.Iterator, t.Context, t.NewChild)
+	res := c.checkExpr(expr.Value, t.NewChild().withContext(bodyCtx))
+	switch kind {
+	case InvalidType:
+		t.Type = InvalidType
+	case KindList, IntType, StringType:
+		// Any type is valid. It will be put into a list
+		//
+		// TODO: Should we reconsider allowing loops over String and Int?
+		// Or, should a loop over a String return a String?
+		t.Type = &List{res.Type}
+	case KindMap:
+		// For expression over map must yield a pair (K, V)
+		tup, ok := Underlying(res.Type).(*Tuple)
+		if !ok || tup.Len() != 2 {
+			err := klarerrs.Node(klarerrs.ErrForExprResMismatch, expr.Value).
+				SetParam("required", "a pair (K, V)").SetParam("iterKind", "a map")
+			c.fileError(err, t.FileID())
+			t.Type = &Map{InvalidType, InvalidType}
+			return
+		}
+		t.Type = &Map{tup.Items[0], tup.Items[1]}
+	default:
+		panic("unhandled kind returned from checkForVars: " + kind.String())
 	}
 }
 

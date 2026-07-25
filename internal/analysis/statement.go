@@ -67,6 +67,8 @@ func newChildStmtContext(parentSctx *stmtContext,
 	}
 }
 
+func (sctx *stmtContext) fid() FileID { return sctx.ctx.File }
+
 // Reports an error if the label already exists
 //
 // Redeclared labels in the same function (not just block/context) defeat the entire
@@ -165,26 +167,12 @@ func terminatingStmtKind(stmt ast.Statement) string {
 func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	defer c.runDelayed(len(c.delayed))
 
-	fid := sctx.ctx.File
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
 		expr := c.checkExpr(stmt.Expression, sctx.newExpr(exprStmt))
-		switch {
-		case (sctx.flags & braceless) != 0:
-		// TODO: find a way to return the value type
-		case !isAllowedAsStmt(stmt.Expression):
-			// Unused expression value
-			c.fileError(klarerrs.Node(klarerrs.ErrUnusedValue, stmt), fid)
-		// TODO: exclude InvalidType from these errors?
-		case c.Options.UseAllValues && expr.Type.Kind() != NothingType:
-		// Expression returns something and isn't used
-		case c.Options.CheckAllResults && expr.Type.Kind() == KindResult:
-		// Unchecked result
-		default:
-			return
-		}
+		c.reportUnusedExprError(stmt, expr)
 	case *ast.BadExpression:
-		return
+		panic("checking invalid AST")
 
 	// Declarations
 	case ast.TypeDeclaration:
@@ -219,9 +207,62 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	}
 	// If we're checking a single statement, forward declarations aren't
 	// allowed, so we need to typecheck declarations immediately.
-	if canForwardDeclareInFunc(stmt) && sctx.flags&allowForwardDecl == 0 {
+	if sctx.flags&allowForwardDecl == 0 && canForwardDeclareInFunc(stmt) {
 		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
 		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
+	}
+}
+
+func (c *Checker) reportUnusedExprError(stmt *ast.ExpressionStatement, expr *Expr) {
+	sctx, fid := expr.stmtCtx, expr.FileID()
+	addHints := func(err *klarerrs.Error) {
+		// If we have something like `func x() -> Int { 2 }`, recommend
+		// returning it if it's compatible
+		if sctx.returnHint != nil && Compatible(expr.Type, sctx.returnHint) {
+			hintWithDiff(
+				err, "Did you mean to return this value?", klarerrs.AddedString{
+					Pos:    stmt.Range.Start,
+					String: lexer.Return.String() + " ",
+				},
+			)
+		}
+		hintWithDiff(
+			err, "If you don't need this value, assign it to '_'",
+			klarerrs.AddedString{Pos: stmt.Range.Start, String: "_ ="},
+		)
+	}
+	switch {
+	case (sctx.flags & braceless) != 0:
+	// TODO: find a way to return the value type
+	case !isAllowedAsStmt(stmt.Expression):
+		// Unused expression value
+		err := klarerrs.Node(klarerrs.ErrUnusedValue, stmt)
+		addHints(err)
+		c.fileError(err, fid)
+	case c.Options.CheckAllResults && expr.Kind() == KindResult:
+		// Unchecked result. With CheckAllResults enabled, expressions
+		// returning results can't be used as a statement or discarded.
+		err := klarerrs.Node(klarerrs.ErrResultMustBeChecked, stmt)
+		err.Name = quoteAka(expr.Type)
+		c.fileError(err, fid)
+	case c.Options.UseAllValues && expr.Kind() != NothingType &&
+		expr.Kind() != InvalidType:
+		// Expression returns something and isn't used. With the
+		// UseAllValues build option enabled, there are no exceptions
+		// for when expressions or functions unless they return Nothing.
+		if expr.Kind() == KindTask {
+			// Task<Nothing> is an exception
+			task := As[*Task](expr.Type)
+			if task.Result.Kind() == NothingType {
+				break
+			}
+		}
+		err := klarerrs.Node(klarerrs.ErrUnusedValue, stmt).
+			SetParam("useAllValues", true)
+		addHints(err)
+		c.fileError(err, fid)
+	default:
+		return
 	}
 }
 
@@ -324,40 +365,53 @@ func (c *Checker) checkControlStmt(stmt ast.Statement,
 
 const MaxLoopVars = 2
 
-// TODO: Factor out this function so it can be used for 'for' expressions.
 func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
-	fid := sctx.ctx.File
+	bodyCtx, _ := c.checkForVars(stmt.Variables, stmt.Iterator, sctx.ctx, sctx.newExpr)
+	// Optional loop label
+	if lb := stmt.Label; lb != nil {
+		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
+			c.fileError(err, sctx.ctx.File)
+		}
+	}
+	// Body
+	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
+}
+
+func (c *Checker) checkForVars(vars []*ast.AssignableTypePair, iter ast.Expression,
+	ctx *Context, newExpr func(...exprMode) *Expr,
+) (bodyCtx *Context, iterKind Kind) {
+	fid := ctx.File
 	// For now, we don't actually care how many there actually are. We just need
 	// to know whether there are 2 vs 1. We will report errors when there are more
 	// than 2 when we declare the vars.
 	var numVars int // Can be 0
-	if numPairs := len(stmt.Variables); numPairs > 1 {
+	if numPairs := len(vars); numPairs > 1 {
 		numVars = numPairs
 	} else if numPairs > 0 {
-		numVars = len(stmt.Variables[0].Keys) + numPairs - 1
+		numVars = len(vars[0].Keys) + numPairs - 1
 	}
 	numVars = min(numVars, MaxLoopVars) // Will always be in range [0, MaxLoopVars]
 
-	// TODO: Convert iterExpr to a typed value
-	iterExpr := c.checkExpr(stmt.Expression, sctx.newExpr())
-	iterExpr.Type = c.toTyped(iterExpr.Type, nil, stmt.Expression, fid)
+	iterExpr := c.checkExpr(iter, newExpr())
+	iterExpr.Type = c.toTyped(iterExpr.Type, nil, iter, fid)
 	varTypes, err := c.isIterable(iterExpr.Type, numVars)
 	if err != nil {
-		err.Range = stmt.Expression.GetRange()
+		err.Range = iter.GetRange()
 		c.fileError(err, fid)
+		iterKind = InvalidType
 		// The loop variables will still be declared with types [InvalidType]
 	}
 	// When iterating over Int, only 1 variable is allowed (for i in 2)
 	if iterExpr.Type.Kind() == IntType && numVars > 1 {
-		err := klarerrs.Slice(klarerrs.ErrMultipleIntIterVars, stmt.Variables)
-		err.AddHighlight("The iterator has type Int", stmt.Expression.GetRange())
+		err := klarerrs.Slice(klarerrs.ErrMultipleIntIterVars, vars)
+		err.AddHighlight("The iterator has type Int", iter.GetRange())
 		err.Label = "Multiple loop variables aren't allowed"
 		c.fileError(err, fid)
 	}
 	var i int
-	bodyCtx := NewContext(sctx.ctx, fid)
+	bodyCtx = NewContext(ctx, fid)
 outer:
-	for _, pair := range stmt.Variables {
+	for _, pair := range vars {
 		// Use the user-provided type annotation, if any.
 		//
 		// TODO: Should we keep allowing users to declare explicit types for
@@ -366,7 +420,7 @@ outer:
 		// be useful for downcasting `for i: Animal in [Cat](...)`
 		var explicitType Type = InvalidType
 		if pair.Type != nil {
-			explicitType = c.parseType(pair.Type, sctx.ctx)
+			explicitType = c.parseType(pair.Type, ctx)
 			// Check that the the actual loop type is compatible with the annotation.
 			// We're doing it this way because an annotation is supposed to be a downcast.
 			if i < MaxLoopVars && !Compatible(varTypes[i], explicitType) {
@@ -390,9 +444,12 @@ outer:
 				typ = explicitType
 			}
 			for sym, typ := range c.followDestructure(
-				key, typ, sctx.ctx.File, stmt.Expression.GetRange(), true,
+				key, typ, ctx.File, iter.GetRange(), true,
 			) {
-				sym := sym.(*ast.Symbol)
+				sym, ok := sym.(*ast.Symbol)
+				if !ok {
+					continue // Discard
+				}
 				vr := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
 				_ = NewVariable(vr, LocalVar, typ)
 				c.declare(bodyCtx, vr)
@@ -400,14 +457,7 @@ outer:
 			i++
 		}
 	}
-	// Optional loop label
-	if lb := stmt.Label; lb != nil {
-		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
-			c.fileError(err, fid)
-		}
-	}
-	// Body
-	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
+	return bodyCtx, iterKind
 }
 
 func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerrs.Error) {

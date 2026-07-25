@@ -106,7 +106,7 @@ func (c *Checker) checkVarDecl(o *Object) {
 	) {
 		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
 		// the types of other variables using the same rhsExpr.
-		if sym := dest.(*ast.Symbol); sym.Identifier == o.Name {
+		if sym, ok := dest.(*ast.Symbol); ok && sym.Identifier == o.Name {
 			vr.Type = typ
 			break
 		}

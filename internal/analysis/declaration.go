@@ -51,12 +51,13 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 		)
 		*attrs = (*attrs)[:0]
 	}
-	/* if obj.name == "_" {
+	if obj.Name == "_" {
 		// Since the object won't be added to the context, it won't be checked.
 		// For discarded idents, it's guaranteed there are no dependencies
+		obj.Context = ctx
+		obj.Order = uint32(len(ctx.Declarations))
 		c.checkDeclaration(obj)
-	} */
-	// obj.order = uint32(len(ctx.declInfo))
+	}
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
@@ -92,13 +93,13 @@ func (c *Checker) checkDeclaration(o *Object) {
 		default:
 			panic(fmt.Sprintf("unhandled declaration type: %T", o.Type))
 		}
-		if o.Type.Underlying() == nil {
+		if Underlying(o.Type) == nil {
 			panic("underlying type is still nil")
 		}
 		return
 	}
 
-	if o.Type.Underlying() != nil {
+	if Underlying(o.Type) != nil {
 		return // Blue, already checked
 	}
 

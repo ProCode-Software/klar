@@ -145,6 +145,8 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 		_ = ov
 	case *Overload:
 		t.Type = fn.Return
+	case *UntypedInit: // Not resolved yet
+		t.Type = InvalidType
 	default:
 		panic(fmt.Sprintf(
 			"checkCallArgs: unhandled LHS type after being handled by checkCallExpr: %T (underlying: %T)",
@@ -158,6 +160,12 @@ func (c *Checker) checkArity(args []*ast.CallParam, arity Arity, got int, fid Fi
 	if arity.InRange(got) {
 		return true
 	}
+	err := arityError(args, arity, got)
+	c.fileError(err, fid)
+	return false
+}
+
+func arityError(args []*ast.CallParam, arity Arity, got int) *klarerrs.Error {
 	err := klarerrs.Slice(klarerrs.ErrWrongParamCount, args)
 	err.SetParam("got", got)
 	if got < arity.MinParams {
@@ -171,8 +179,7 @@ func (c *Checker) checkArity(args []*ast.CallParam, arity Arity, got int, fid Fi
 	default:
 		err.Label = strconv.Itoa(got) + " parameters were provided"
 	}
-	c.fileError(err, fid)
-	return false
+	return err
 }
 
 func (c *Checker) checkLambdaParams(fn *Lambda, args []*ast.CallParam, t *Expr) {

@@ -190,6 +190,7 @@ func (o *Optional) String() string { return o.Elem.String() + "?" }
 
 type Result struct{ Success, Error Type }
 
+// Equivalent to `Result<Nothing, Error>`, `Result<Nothing>`, and `Result` in Klar.
 var ResultNothing = &Result{Success: NothingType, Error: ErrorType}
 
 func (*Result) Kind() Kind { return KindResult }

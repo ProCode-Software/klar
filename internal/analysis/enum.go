@@ -27,6 +27,17 @@ type Enum struct {
 func (*Enum) Kind() Kind                  { return KindEnum }
 func (e *Enum) String() string            { return e.Name }
 func (e *Enum) GenericParams() []*Generic { return e.Generics }
+func (e *Enum) EnumParent() *Enum         { return e }
+
+// For types with kind [KindEnum], EnumParent should be used rather than
+// [Underlying](t).([*Enum]). All types with kind [KindEnum] implement
+// this interface.
+type EnumParenter interface {
+	Type
+	EnumParent() *Enum
+}
+
+var _ = [...]EnumParenter{&Enum{}, &EnumItem{}, &EnumRef{}, &EnumFunction{}}
 
 // Not a value.
 type EnumItem struct {
@@ -37,10 +48,11 @@ type EnumItem struct {
 	Enum     *Enum // For access to value type and methods
 }
 
-func (*EnumItem) Kind() Kind          { return KindEnum }
-func (*EnumItem) objKind()            {}
-func (ei *EnumItem) Underlying() Type { return ei }
-func (ei *EnumItem) String() string   { return ei.Enum.Name }
+func (*EnumItem) Kind() Kind           { return KindEnum }
+func (*EnumItem) objKind()             {}
+func (ei *EnumItem) Underlying() Type  { return ei }
+func (ei *EnumItem) String() string    { return ei.Enum.Name }
+func (ei *EnumItem) EnumParent() *Enum { return ei.Enum }
 
 // Can be used as a value. An EnumRef can be indexed by the enum's methods,
 // the item's param names, and the builtin `name` and `value` fields.
@@ -55,14 +67,25 @@ func NewEnumRef(ei *EnumItem) *EnumRef {
 	return &EnumRef{EnumItem: ei, Called: len(ei.Params) == 0}
 }
 
+func (er *EnumRef) Kind() Kind        { return KindEnum }
+func (er *EnumRef) String() string    { return er.Enum.Name }
+func (er *EnumRef) EnumParent() *Enum { return er.Enum }
+func (er *EnumRef) Underlying() Type {
+	if er.Called {
+		return er
+	}
+	return newEnumFunction(er.EnumItem)
+}
+
 type EnumFunction struct {
 	*Lambda
 	*EnumItem
 }
 
-func (ef *EnumFunction) String() string   { return ef.Enum.Name }
-func (ef *EnumFunction) Kind() Kind       { return KindFunction }
-func (ef *EnumFunction) Underlying() Type { return ef }
+func (ef *EnumFunction) String() string    { return ef.Enum.Name }
+func (ef *EnumFunction) Kind() Kind        { return KindFunction }
+func (ef *EnumFunction) Underlying() Type  { return ef }
+func (ef *EnumFunction) EnumParent() *Enum { return ef.Enum }
 
 func newEnumFunction(ei *EnumItem) *EnumFunction {
 	return &EnumFunction{
@@ -73,20 +96,6 @@ func newEnumFunction(ei *EnumItem) *EnumFunction {
 		},
 		EnumItem: ei,
 	}
-}
-
-func (er *EnumRef) Kind() Kind {
-	if er.Called {
-		return KindEnum
-	}
-	return KindFunction
-}
-func (er *EnumRef) String() string { return er.Enum.Name }
-func (er *EnumRef) Underlying() Type {
-	if er.Called {
-		return er
-	}
-	return newEnumFunction(er.EnumItem)
 }
 
 func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
@@ -336,6 +345,9 @@ func (er *EnumRef) Index(name string, t *Expr) *klarerrs.Error {
 		return nil
 	case "value":
 		t.Type = er.Enum.ItemType
+		return nil
+	}
+	if t.Type = er.ParamByName(name); t.Type != nil {
 		return nil
 	}
 	if mm := er.Enum.methodMap; mm != nil {

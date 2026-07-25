@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"fmt"
+
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/target"
@@ -220,11 +222,16 @@ func (c *Checker) inferCollection(e *Expr, inferred *Type,
 	}
 }
 
+// Flags that are allowed on regular expression literals for each target.
+// Flags in [target.Unknown] are shared among all platforms. For JavaScript
+// flags, see [MDN].
+//
 // TODO: Should we replace struct{}{} with human-friendly names
+//
+// [MDN]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions#regex_flags
 var RegexFlags = map[target.Target]map[byte]struct{}{
 	target.JavaScript: {
-		'u': struct{}{}, 'v': struct{}{},
-		// TODO
+		'u': struct{}{}, 'v': struct{}{}, 'd': struct{}{}, 's': struct{}{}, 'y': struct{}{},
 	},
 	target.KlarVM: {},
 	target.Unknown: { // Shared among all platforms
@@ -279,10 +286,33 @@ func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {
 }
 
 func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
+	checkEnumName := func() {
+		ep, ok := Underlying(t.Type).(EnumParenter)
+		if !ok {
+			// Either:
+			// 1. Type not assigned yet. TODO
+			// 2. Not an enum - type mismatch will be reported later
+			t.Type = &UntypedInit{kind: KindEnum, Node: expr}
+			return 
+		}
+		enum := ep.EnumParent()
+		ei, ok := enum.itemMap[expr.Name.Name]
+		if !ok {
+			err := klarerrs.Node(klarerrs.ErrEnumUndefined, expr.Name)
+			err.Label = fmt.Sprintf(
+				"Can't find an item named %s on enum %s", expr.Name, t.Type,
+			)
+			c.fileError(err, t.FileID())
+			t.Type = NewEnumRef(enum.Items[0])
+			return
+		}
+		t.Type = NewEnumRef(ei)
+	}
 	if t.hint != nil && t.hint.Kind() == KindEnum {
 		t.Type = t.hint
+		checkEnumName()
 		return
 	}
 	t.Type = &UntypedInit{kind: KindEnum, Node: expr}
-	c.queue(func() {}, false)
+	c.queue(checkEnumName, false)
 }

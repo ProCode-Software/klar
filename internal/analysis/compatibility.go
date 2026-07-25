@@ -9,26 +9,26 @@ import (
 // Compatible returns whether type a is compatible with b.
 func Compatible(a, b Type) bool {
 	// Allow checking for compatibility with kinds
-	// Example: Compatible(t, KindStuct) = true if t is a struct
+	// Example: Compatible(t, KindStruct) = true if t is a struct
 	if b, ok := b.(Kind); ok && !b.IsPrimitive() {
 		return a.Kind() == b
 	}
 	aKind, bKind := a.Kind(), b.Kind()
 	switch a := Underlying(a).(type) {
 	case Untyped:
-		if a == Untyped(IntType) && (bKind == IntType || bKind == FloatType) {
-			return true
-		}
-		// Untyped nil, empty list, map, etc.
-		if Kind(a) == bKind {
-			return true
-		}
+		// Untyped Int is compatible with Int and Float. For other untyped
+		// types, they're compatible if they have the same Kind.
+		return aKind == bKind || (a == Untyped(IntType) && bKind == FloatType)
 	case *UntypedInit:
-		return a.kind == bKind
+		return aKind == bKind
 	case *NoReturn:
 		if a.Type == nil { // Always true for *NoReturn to be an underlying type
 			return true // This is a TODO function and is compatible with any type
 		}
+	}
+	// If the target is a TODO, it will be assigned to Any?
+	if nrb, ok := b.(*NoReturn); ok && nrb.Type == nil {
+		b = &Optional{AnyType}
 	}
 	switch {
 	case bKind == AnyType:
@@ -41,12 +41,11 @@ func Compatible(a, b Type) bool {
 		return Compatible(a, b)
 	case bKind == KindOptional && aKind != KindOptional:
 		// A => B? if A => B
-		if b, ok := Underlying(b).(*Optional); ok {
-			return Compatible(a, b.Elem)
+		if b == Untyped(KindOptional) {
+			return true // Non-optional to untyped nil
 		}
-		// Non-optional to untyped nil
-		// TODO: Should this be allowed?
-		return true
+		b := Underlying(b).(*Optional)
+		return Compatible(a, b.Elem)
 	case bKind == KindOptional && aKind == KindOptional:
 		// A? => B? if A => B | nil
 		a = Underlying(a).(*Optional).Elem
@@ -74,16 +73,15 @@ func Compatible(a, b Type) bool {
 		}
 	case bKind == KindUnion && aKind != KindUnion:
 		// A => B | C if A => B or A => C
-		union := Underlying(b).(*Union)
-		return slices.ContainsFunc(union.Types, func(opt Type) bool {
+		ub := As[*Union](b)
+		return slices.ContainsFunc(ub.Types, func(opt Type) bool {
 			return Compatible(a, opt)
 		})
 	case bKind == KindUnion && aKind == KindUnion:
 		// AA | AB => BA | BB if (AA => BA | BB) and (AB => BA | BB)
 		//
 		// Check that each type in union A is compatible with the entire union B
-		ua := Underlying(a).(*Union)
-		ub := Underlying(b).(*Union)
+		ua, ub := As[*Union](a), As[*Union](b)
 		for _, ta := range ua.Types {
 			if !slices.ContainsFunc(ub.Types, func(tb Type) bool {
 				return Compatible(ta, tb)
@@ -94,6 +92,12 @@ func Compatible(a, b Type) bool {
 		return true
 	case bKind == KindMap && aKind == KindMap:
 		// #{KA: VA} => #{KB: VB} if KA => KB and VA => VB
+		ma, mb := As[*Map](a), As[*Map](b)
+		return Compatible(ma.Key, mb.Key) && Compatible(ma.Value, mb.Value)
+	case bKind == KindEnum && aKind == KindEnum:
+		ea := Underlying(a).(EnumParenter)
+		eb := Underlying(b).(EnumParenter)
+		return ea.EnumParent() == eb.EnumParent()
 	}
 	return TypesEqual(a, b) // TODO
 }

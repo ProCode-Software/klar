@@ -2,6 +2,9 @@ package analysis
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -64,6 +67,8 @@ type patternChecker struct {
 	pat  *WhenPattern
 	subj *whenSubject
 }
+
+func (pc *patternChecker) fid() FileID { return pc.pat.FileID() }
 
 func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 	fid := t.FileID()
@@ -135,7 +140,7 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 				}
 				types[i] = opt.Type
 			}
-			union := NewUnion(types...)
+			union := NewUnion(types)
 			switch orig := orig.Type.(type) {
 			case *Variable:
 				NewVariable(casted, orig.VarKind, union)
@@ -197,11 +202,10 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 
 		// Guard
 		if cs.Guard != nil {
-			guard := t.NewChild()
-			t.Context = bodyCtx
-			c.checkExpr(cs.Guard, guard)
+			guard := c.checkExpr(cs.Guard, t.NewChild().withContext(bodyCtx))
 			// Guard must be a Bool. Like implicit true patterns, optionals are
-			// allowed. TODO: Allow negated !optional in both places (via a mode flag)
+			// allowed.
+			// TODO: Allow negated !optional in both places (via a mode flag)
 			if !Compatible(guard.Type, BoolType) && guard.Kind() != KindOptional {
 				c.fileError(
 					typeMismatch(BoolType, guard.Type, cs.Guard.GetRange()), fid,
@@ -270,7 +274,6 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 		PatternKind: LiteralExprPattern,
 		Expr:        ws.Expr.NewChild(patternMatch).withHint(ws.Type),
 	}
-	pat.Type = ws.Type
 	// If the when has no subjects, each case must evaluate to Bool. Pattern
 	// matching will be disabled.
 	if ws.IsImplicitTrue() {
@@ -300,6 +303,7 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 		pat.PatternKind, pat.Type = BinaryPattern, ws.Type
 	case *ast.RelationalExpression:
 		if expr.Expressions[0] != nil {
+			c.checkExpr(expr, pat.Expr)
 			break
 		}
 		// Just to pass to [Checker.checkRelationalExpr]
@@ -335,27 +339,35 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 		// allowed in when patterns
 		switch lhs := expr.Callee.(type) {
 		case *ast.EnumLiteral:
-			pat.PatternKind = EnumPattern
+			pc.checkEnum(expr)
+		case *ast.IndexExpression:
+			// May be referencing an enum when matching on an interface. TODO
+			pat.Type = InvalidType
 		case *ast.Symbol:
 			pat.PatternKind = TypePattern
 			c.checkSymbolExpr(lhs, true, pat.Expr)
-			switch pat.Expr.Kind() {
-			case KindStruct:
-				pc.checkStruct(expr.Args)
-			case KindInterface:
-			case ErrorType:
-			default:
-				pat.PatternKind = InvalidPattern
-				if o, ok := pat.Type.(*Object); ok && o.IsTypeName() {
-					// Type can't be initialized
-					break
-				}
+			kind := pat.Expr.Kind()
+			switch {
+			case !isTypeName(pat.Type):
 				// Function call
 				c.fileError(
 					klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
 						SetParam("kind", "a function call").SetParam("location", "pattern"),
 					ws.FileID(),
 				)
+				pat.PatternKind = InvalidPattern
+			case kind == KindStruct:
+				pc.checkStruct(expr.Args)
+			case kind == KindInterface:
+			//  Interface(field1, field2)
+			// TODO: Should this be allowed? Unlike the other LHS types, there's no
+			// valid syntax outside of when patterns.
+			case kind == ErrorType:
+			default:
+				// Type can't be initialized (though it may be outside of a when pattern)
+				pat.PatternKind = InvalidPattern
+				// Don't set the type to InvalidType so we can still report
+				// incompatibility errors
 			}
 		default:
 			// Syntactically a function call
@@ -366,11 +378,16 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 			)
 		}
 	case *ast.StructDotInit:
-
+		pc.checkStruct(expr.Params)
 	case *ast.ListLiteral:
 		pc.checkList(expr)
 	case *ast.MapLiteral:
+		pc.checkMap(expr)
 	case *ast.EnumLiteral:
+		// Hint was already set for pat.Expr. This ensures the item exists. If
+		// the subject isn't an enum, checkEnumLiteral also handles that and the
+		// mismatch will be reported later.
+		c.checkEnumLiteral(expr, pat.Expr)
 	case *ast.RestExpression:
 		// String match
 		//   ..."{word} " | "{word}\n"... | ..."{word}"... -> word
@@ -411,7 +428,8 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 	default: // Including parentheses
 		c.checkExpr(expr, pat.Expr)
 	}
-	if pat.PatternKind != DefaultPattern && !Compatible(pat.Type, ws.Type) {
+	if pat.PatternKind != DefaultPattern && pat.Type != InvalidType &&
+		!Compatible(pat.Type, ws.Type) {
 		err := typeMismatch(ws.Type, pat.Type, expr.GetRange())
 		err.AddHighlight("The subject has type "+quoteAka(ws.Type), ws.Node.GetRange())
 		c.fileError(err, pat.FileID())
@@ -499,24 +517,24 @@ func (c *Checker) checkCommonPatternVars(opts []*WhenPattern) (vars map[string]W
 }
 
 func (pat *WhenPattern) declareVar(
-	ident ast.Identifier, typ Type, valNode ast.Expression,
+	id ast.Identifier, typ Type, valNode ast.Expression,
 ) *klarerrs.Error {
-	if ident.IsDiscard() {
+	if id.IsDiscard() {
 		return nil
 	} else if pat.Vars == nil {
 		pat.Vars = make(map[string]WhenVar)
-	} else if existing, ok := pat.Vars[ident.Name]; ok {
-		err := klarerrs.Node(klarerrs.ErrRedeclared, ident)
+	} else if existing, ok := pat.Vars[id.Name]; ok {
+		err := klarerrs.Node(klarerrs.ErrRedeclared, id)
 		err.Details = append(err.Details, klarerrs.Detail{
 			Range:   existing.DeclRange,
-			Message: klarerrs.Quote(ident.Name) + " was originally declared here",
+			Message: klarerrs.Quote(id.Name) + " was originally declared here",
 		})
-		err.Label = klarerrs.Quote(ident.Name) + " was already declared in this pattern"
-		err.Name = ident.Name
+		err.Label = klarerrs.Quote(id.Name) + " was already declared in this pattern"
+		err.Name = id.Name
 		return err
 	}
-	pat.Vars[ident.Name] = WhenVar{
-		DeclRange: ident.Range(),
+	pat.Vars[id.Name] = WhenVar{
+		DeclRange: id.Range(),
 		Type:      typ,
 		Value:     valNode,
 	}
@@ -557,6 +575,13 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 			continue
 		case *ast.StringTypeMatch:
 			name, varType = inner.Name, pc.checkStringTypeMatch(inner)
+		case *ast.SubOptions:
+			un := pc.checkOptions(inner)
+			// TODO: Check that all options can be converted to String
+			if !Compatible(un, StringType) {
+				pc.fileError(typeMismatch(StringType, un, inner.Range), pc.fid())
+			}
+			continue
 		default:
 			// Normal interpolation
 			pc.checkStringInterpolation(inner, pc.subj.NewChild())
@@ -578,10 +603,125 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 	}
 }
 
+// Allows sub-options and as-declarations
+func (pc *patternChecker) checkExprAdvanced(expr ast.Expression) *Expr {
+	t := pc.pat.NewChild()
+	switch expr := expr.(type) {
+	case *ast.SubOptions:
+		t.Type = pc.checkOptions(expr)
+		pc.Info.Expressions[expr] = t
+	case *ast.AsExpression:
+		t = pc.checkExprAdvanced(expr.Expression)
+		pc.pat.declareVar(expr.Name, t.Type, expr.Expression)
+		pc.Info.Expressions[expr] = t
+	default:
+		pc.checkExpr(expr, t)
+	}
+	return t
+}
+
+func (pc *patternChecker) checkOptions(opts *ast.SubOptions) Type {
+	types := make([]Type, 0, len(opts.Options))
+	for _, opt := range opts.Options {
+		types = append(types, pc.checkExprFrom(opt, pc.pat.Expr).Type)
+	}
+	return NewUnion(types)
+}
+
 func (pc *patternChecker) checkList(list *ast.ListLiteral) {
+	pc.pat.PatternKind = ListPattern
+	// We want to use checkListLiteral because it handles literal expression rests
+	// and inference. So, special pattern matching syntax must be removed
+	// (unwrapping, unwrap rests, discards, or-options, and 'as'). To ensure
+	// inference is still correct, literals from the latter 2 will be added to
+	// the cleaned list (because they may be the largest types in the list).
+	//
+	// Before: [a, 1, [1, 2]..., 2, _, rest...]
+	// After: [1, [1, 2]..., 2]
+	cleanList := &ast.ListLiteral{
+		BaseNode: list.BaseNode,
+		Items:    make([]ast.Expression, 0, len(list.Items)),
+	}
+	pc.checkListLiteral(cleanList, pc.pat.Expr)
+	pc.pat.Type = InvalidType // TODO
+}
+
+func (pc *patternChecker) checkMap(mp *ast.MapLiteral) {
+	pc.pat.PatternKind = MapPattern
+	pc.pat.Type = InvalidType // TODO
 }
 
 func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
+	pc.pat.PatternKind = EnumPattern
+	pc.checkEnumLiteral(expr.Callee.(*ast.EnumLiteral), pc.pat.Expr)
+	e, ok := pc.pat.Type.(*EnumRef)
+	if !ok {
+		return // Type mismatch. Will be reported later
+	}
+	if e.Called {
+		// User is unwrapping an enum that doesn't have parameters
+		err := klarerrs.Node(klarerrs.ErrEnumItemNoParams, expr)
+		err.Label = fmt.Sprintf(
+			"Can't pass parameters to %s.%s", e.Enum.Name, e.Name,
+		)
+		err.Name = e.Name
+		return
+	}
+	var hadLabelled bool
+	for i, param := range expr.Args {
+		if dot, ok := param.Value.(*ast.RestExpression); ok && dot.Expression == nil {
+			// Skip: .withParams3(5, ...) | .withParams4(5, ..., 3, 4)
+			continue // TODO
+		}
+		var actualType Type
+		if param.Label != nil {
+			// Labelled: .withParams(a: 5) | .withParams(:b)
+			hadLabelled = true
+			if param.Label.IsDiscard() {
+				continue // .withParams(:_)
+			}
+			if actualType = e.ParamByName(param.Label.Name); actualType == nil {
+				err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, param.Label)
+				err.Desc = "These params are defined: " + strings.Join(
+					slices.Sorted(maps.Keys(e.paramMap)), ", ",
+				)
+				pc.fileError(err, pc.fid())
+				actualType = InvalidType
+			}
+			// withParams(:a)
+			if param.Shorthand {
+				pc.pat.declareVar(*param.Label, actualType, param.Value)
+				continue
+			}
+		} else if sym, ok := param.Value.(*ast.Symbol); hadLabelled &&
+			(!ok || sym.Identifier != "_") {
+			// Discarded positional params are allowed anywhere
+			err := klarerrs.Node(klarerrs.ErrLabelledParamLast, expr)
+			err.Label = "Labelled parameters must go after positional parameters"
+			pc.fileError(err, pc.fid())
+		}
+		// Positional param
+		if actualType == nil {
+			if i >= len(e.Params) {
+				// TODO: Error
+				break
+			}
+			actualType = e.Params[i]
+		}
+
+		switch expr := param.Value.(type) {
+		case *ast.Symbol:
+			// .withParams(x, _)
+			pc.pat.declareVar(expr.ToIdentifier(), actualType, param.Value)
+		case *ast.Discard: // .withParams(_) - Nothing to do
+		default:
+			// Has literal value (may or may not be labelled)
+			// 	.withParams(5) | .withParams(a: 5)
+			if val := pc.checkExprAdvanced(expr); !Compatible(val.Type, actualType) {
+				pc.fileError(typeMismatch(actualType, val.Type, expr.GetRange()), pc.fid())
+			}
+		}
+	}
 }
 
 func (pc *patternChecker) checkStruct(params []*ast.CallParam) {

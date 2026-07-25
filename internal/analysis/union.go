@@ -17,7 +17,7 @@ type Union struct {
 	fmset *FieldMethodSet
 }
 
-func NewUnion(types ...Type) Type {
+func NewUnion(types []Type) Type {
 	if len(types) == 1 {
 		return types[0]
 	}
