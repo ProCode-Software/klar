@@ -158,6 +158,8 @@ const (
 	ErrOptionalOptional       // Can't nest optional types (T??)
 	ErrMultipleDefault        // Multiple default ('_') 'when' cases
 	ErrStringInSegmentMatch   // Expression in '...expr' when pattern must be a string
+	ErrLabelledParamLast      // Positional params must go before labelled params
+	ErrInvalidWhenPattern     // Invalid when pattern syntax used
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -438,7 +440,10 @@ func (e *Error) handleSyntaxError() string {
 	case ErrInvalidArrow:
 		return "'->' can only be used in an enum declaration"
 	case ErrUnusedValue:
-		return "This value is never used"
+		if e.BoolParam("useAllValues") {
+			return "All expressions with a value must be used"
+		}
+		return "This value must be used"
 	case ErrDiscardIntfField:
 		e.Hint("Remove the field")
 		return "An interface field can't be '_'"
@@ -551,5 +556,7 @@ func (e *Error) handleSyntaxError() string {
 		return msg
 	case ErrMisplacedRest:
 		return "A rest can only be used in a call or collection"
+	case ErrInvalidWhenPattern:
+		return e.StringParam("msg") // Message defined by sender
 	}
 }

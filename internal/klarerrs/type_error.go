@@ -56,6 +56,7 @@ const (
 	ErrAssignToIntfField   // Can't assign to an interface field
 	ErrUncommonReturnType  // Returns in a function must have a type in common
 	ErrInvalidNothingRet   // A function can't return Nothing if its return type isn't Nothing
+	ErrResultMustBeChecked // Result must be checked
 
 	// Literal ====
 
@@ -93,6 +94,7 @@ const (
 	ErrMisplacedMapRest     // Map used in rest outside map literal
 	ErrMisplacedListRest    // Can't rest a list or string outside variadic parameter
 	ErrRestUncommonTuple    // Tuples can only be spread into lists if all their item's types are common
+	ErrForExprResMismatch   // For expression yields the wrong type
 
 	// Binary/unary operation ====
 
@@ -339,5 +341,13 @@ func (e *Error) handleTypeError() string {
 		return "A map can only be rested within a map literal"
 	case ErrInvalidRestValue:
 		return "The value being rested must be a list, tuple, or string"
+	case ErrResultMustBeChecked:
+		if e.BoolParam("discarded") {
+			return "Can't discard this result value with type " + e.Name
+		}
+		return "Can't use this value with type " + e.Name + " as a statement"
+	case ErrForExprResMismatch:
+		return "The right-hand side of a 'for' expression must return " +
+			e.StringParam("required") + " when iterating over " + e.StringParam("iterKind")
 	}
 }
