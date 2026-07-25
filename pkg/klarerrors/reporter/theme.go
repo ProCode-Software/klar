@@ -163,16 +163,17 @@ func makeDefaultTokenColors() map[lexer.TokenType]string {
 		colorIllegal  = ansi.CodeReset
 	)
 	colors := map[lexer.TokenType]string{
-		lexer.Type:    colorKeyword,
-		lexer.Func:    colorKeyword,
-		lexer.String:  colorString,
-		lexer.Regex:   colorString,
-		lexer.Numeric: colorNumber,
-		lexer.Boolean: colorBoolean,
-		lexer.Nil:     colorBoolean,
-		lexer.Illegal: colorIllegal,
-		lexer.And:     colorOperator,
-		lexer.Or:      colorOperator,
+		lexer.Type:       colorKeyword,
+		lexer.Func:       colorKeyword,
+		lexer.String:     colorString,
+		lexer.Regex:      colorString,
+		lexer.Numeric:    colorNumber,
+		lexer.Boolean:    colorBoolean,
+		lexer.Nil:        colorBoolean,
+		lexer.Illegal:    colorIllegal,
+		lexer.And:        colorOperator,
+		lexer.Or:         colorOperator,
+		lexer.Underscore: "",
 		// Comments
 		lexer.BlockComment: colorComment,
 		lexer.LineComment:  colorComment,
