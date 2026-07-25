@@ -3,7 +3,7 @@
 Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with no hidden behavior.
 
 > [!WARNING]
-> This project is a **work in progress**. The language can (will) change at any time and is not recommended for production use yet. We would greatly appreciate feedback and contributions!
+> This project is a **work in progress**. The language can (will) change at any time and is not recommended for production use yet. We would greatly appreciate feedback and contributions! More documentation and guides will be added soon.
 
 ## Goals
 
@@ -80,6 +80,17 @@ glas --help  # Use Glas, the Klar package manager
 > While the typechecker is in active development, you may set the `NO_TYPECHECK=1` environment variable to disable typechecking. When disabled, only syntax is checked. Otherwise, you can see what we're working on, but you may see type errors for unimplemented functionality.
 
 ## Examples
+
+Many examples are available in the [samples](https://github.com/ProCode-Software/klar/tree/main/samples) folder. To compile them, run `klar build <file/folder>`
+
+- The [`mylang`](https://github.com/ProCode-Software/klar/tree/main/samples/mylang) subfolder contains a full Klar project and a simple programming language written in Klar. This is the reference we use to test the compiler.
+- [`samples/basic/all.klar`](https://github.com/ProCode-Software/klar/blob/main/samples/basic/all.klar) shows all syntax features in the language.
+- [`samples/basic/main.klar`](https://github.com/ProCode-Software/klar/blob/main/samples/basic/main.klar) is an invalid program that will display errors from the typechecker.
+- [`samples/basic/all.klon`](https://github.com/ProCode-Software/klar/blob/main/samples/basic/all.klon) shows all the syntax features in Klon (_**Kl**ar **O**bject **N**otation_), Klar's homegrown markup format. The Glas manifest `glas.pack` and the Klar build file `klar.build` are also written in Klon.
+- [`samples/basic/Person.klar`](https://github.com/ProCode-Software/klar/blob/main/samples/basic/Person.klar) compares the Klar syntax to Swift's in `samples/basic/Person.swift`.
+- [`samples/basic/theOG.klar`](https://github.com/ProCode-Software/klar/blob/main/samples/basic/theOG.klar) shows the original program when Klar was first planned. The syntax used in the file has changed since Klar was originally planned, but the changes are documented in the file.
+
+The `mylang` folder can be passed to `klar build` directly, but files in `basic` must be passed individually (don't pass the folder itself). You can still pass multiple files (e.g. `klar build ./samples/basic/all.klar ./samples/basic/Person.klar` or `klar build ./samples/basic/*.klar`). Some example files have errors, but you'll get to experience Klar's detailed error reporting!
 
 ### Factorial
 

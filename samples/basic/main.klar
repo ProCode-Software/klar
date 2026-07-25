@@ -1,3 +1,4 @@
+/// Note: This file is invalid and is here to test compiler errors.
 import klar.io
 import klar.doesntExist
 type #X
