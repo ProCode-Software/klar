@@ -80,7 +80,7 @@ func Run(c *argparse.Parser) {
 				// TODO: Uncomment once we have numbered versions, and also add link to docs
 				// "Release notes: <m>https://github.com/ProCode-Software/klar/releases/tag/%[1]s</m>"
 				"<y>Release notes:</> <m>https://github.com/ProCode-Software/klar/releases</m>",
-			cli.KlarVersion,
+			cli.KlarVersionAndCommit,
 		)
 		ok = true
 		cli.Exit(0)
