@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"golang.org/x/term"
 )
 
 func FormatDuration(dur time.Duration) string {
@@ -49,6 +53,27 @@ type AllWriter interface {
 	io.Writer
 	io.StringWriter
 	io.ByteWriter
+}
+
+type allWriter struct {
+	w io.Writer
+}
+
+func WrapAllWriter(w io.Writer) AllWriter {
+	return &allWriter{w}
+}
+
+func (aw *allWriter) Write(p []byte) (int, error) {
+	return aw.w.Write(p)
+}
+
+func (aw *allWriter) WriteString(s string) (int, error) {
+	return aw.w.Write([]byte(s))
+}
+
+func (aw *allWriter) WriteByte(c byte) error {
+	_, err := aw.w.Write([]byte{c})
+	return err
 }
 
 func RelPath(basePath, targPath string) string {
@@ -102,4 +127,18 @@ func DigitLen(x int) int {
 		return 3
 	}
 	return len(strconv.FormatInt(int64(x), 10))
+}
+
+func ClearScreen() (ok bool) {
+	var cmd *exec.Cmd
+	switch {
+	case !term.IsTerminal(int(os.Stdout.Fd())):
+		return false
+	case runtime.GOOS == "windows":
+		cmd = exec.Command("cls")
+	default:
+		cmd = exec.Command("clear")
+	}
+	cmd.Stdout = os.Stdout
+	return cmd.Run() == nil
 }

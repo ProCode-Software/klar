@@ -1,12 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
+	"golang.org/x/term"
 )
 
 var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
@@ -127,17 +128,25 @@ func Confirm(msg string, defaultRes bool) bool {
 	}
 
 	fmt.Printf("%s %s: ", msg, defaultStr) // Prompt
+	defer fmt.Println()                    // Final newline
 
-	var res string
-	fmt.Scanln(&res) // Response
-	switch strings.ToLower(strings.TrimSpace(res)) {
-	case "":
-		return defaultRes
-	case "y", "yes", "true":
-		return true
-	case "n", "no", "false":
-		return false
-	default:
-		return defaultRes
+	// The terminal has to be made raw so we can read a single character without
+	// the user pressing Enter
+	if oldState, err := term.MakeRaw(int(os.Stdin.Fd())); err == nil {
+		defer term.Restore(int(os.Stdin.Fd()), oldState)
+	}
+	for {
+		res := make([]byte, 1)
+		os.Stdin.Read(res)
+		switch bytes.ToLower(res)[0] {
+		case ' ', '\n', '\t', 'r':
+			continue
+		case 'y', 't', '1':
+			return true
+		case 'n', 'f', '0':
+			return false
+		default:
+			return defaultRes
+		}
 	}
 }

@@ -262,7 +262,7 @@ func downloadBinaries(rel *githubRelease, dir string) (zipPath string) {
 		// TODO: This shows the tag (prebuild-*) rather than the commit number. Once
 		// we have numbered releases, this won't be an issue. But change "build" to "v"
 		cli.ColorErrorfln(
-			"<y!>Klar build <c!>%s</c!> is out, but not for your platform yet</>",
+			"<y!>Klar build <c!>%s</c!> is out, but not for your platform yet.</>",
 			rel.TagName,
 		)
 	}

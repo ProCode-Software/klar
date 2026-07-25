@@ -146,11 +146,11 @@ func Build(r *argparse.Parser) {
 		}
 	default:
 		// Successes, errors, and/or warnings
-		showResult(res, c)
+		ShowResult(res, c)
 	}
 }
 
-func showResult(res *build.Result, c *build.Compiler) {
+func ShowResult(res *build.Result, c *build.Compiler) {
 	var (
 		warnCount, errCount = len(res.Warnings), len(res.Errors)
 		icon, format        string

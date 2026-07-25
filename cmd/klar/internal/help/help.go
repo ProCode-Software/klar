@@ -2,9 +2,14 @@
 package help
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/argparse"
+	"golang.org/x/term"
 )
 
 // Existing CLI commands already handled in main.go
@@ -29,7 +34,25 @@ func Run(c *argparse.Parser) {
 		)
 		cli.Exit(1)
 	}
-	_ = topic
+	DisplayTopic(topic)
+}
+
+func DisplayTopic(t Topic) {
+	termWidth, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		termWidth = 0
+	}
+	ansi.ColorPrintln(ansi.CodeBold, t.Title)
+	fmt.Println()
+	util.Wrap(t.Description, util.WrapAllWriter(os.Stdout), termWidth, termWidth, 0)
+	fmt.Println()
+	if len(t.SeeAlso) > 0 {
+		ansi.ColorPrintln(ansi.CodeBold, "\nSee also:")
+		for _, name := range t.SeeAlso {
+			fmt.Println("    ", ansi.Cyan(name))
+		}
+		ansi.TagPrintln("Learn more by running 'klar help <topic>'")
+	}
 }
 
 var Flags = argparse.NewParser("[command]").
