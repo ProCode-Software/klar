@@ -63,8 +63,9 @@ func Run(c *argparse.Parser) {
 			installCmd = windowsInstallCmd
 		}
 		// If there's an error, tell the user how to update manually
-		cli.ColorErrorfln(
-			"\n<**>Please update Klar manually by running:</**>\n\n    <m!>%s</m>\n",
+		ansi.TagFprintfln(
+			os.Stderr,
+			"\n<**>Please update Klar manually by running:</**>\n\n    <m!>%s</m>",
 			installCmd,
 		)
 	}()
@@ -111,6 +112,9 @@ func Run(c *argparse.Parser) {
 	}
 	stdDir := module.SystemDirs.Std
 	exec, err := os.Executable()
+	if err == nil {
+		exec, err = filepath.EvalSymlinks(exec)
+	}
 	if err != nil {
 		cli.Failure("Failed to get path of 'klar' binary:", err)
 	}
@@ -126,7 +130,7 @@ func Run(c *argparse.Parser) {
 		// On other platforms, don't delete the old executable before overwriting.
 		// TODO: Does the current approach leave the user without a working
 		// executable if writing fails?
-		extractZip(binariesZip, binDir, runtime.GOOS == "windows")
+		extractZip(binariesZip, binDir, true, runtime.GOOS == "windows")
 
 		// Preserve permissions of the old standard library directory
 		var stdDirPerm os.FileMode
@@ -140,7 +144,7 @@ func Run(c *argparse.Parser) {
 			}
 		}
 		// Stdlib is in 'stdlib.zip/std'
-		extractZip(stdlibZip, filepath.Dir(stdDir), false)
+		extractZip(stdlibZip, filepath.Dir(stdDir), false, false)
 		if stdDirPerm != 0 {
 			if err := os.Chmod(stdDir, stdDirPerm); err != nil {
 				cli.Failure("Failed to restore permissions of standard library directory:", err)
@@ -311,7 +315,7 @@ func downloadStdlib(rel *githubRelease, dir string) (stdlibPath string) {
 	return stdlibPath
 }
 
-func extractZip(zipPath, dir string, shouldRenameOld bool) {
+func extractZip(zipPath, dir string, isExec, shouldRenameOld bool) {
 	r, err := zip.OpenReader(zipPath)
 	if err != nil {
 		cli.Failuref("Failed to open '%s': %v", filepath.Base(zipPath), err)
@@ -352,11 +356,11 @@ func extractZip(zipPath, dir string, shouldRenameOld bool) {
 				parentDir, filepath.Base(zipPath), err,
 			)
 		}
-		writeFileFromZip(f, zipPath, target, shouldRenameOld)
+		writeFileFromZip(f, zipPath, target, isExec, shouldRenameOld)
 	}
 }
 
-func writeFileFromZip(f *zip.File, zipPath, target string, oldRenamed bool) {
+func writeFileFromZip(f *zip.File, zipPath, target string, isExec, oldRenamed bool) {
 	var reinstallMsg string
 	if oldRenamed {
 		reinstallMsg = `
@@ -369,16 +373,23 @@ We apologise for the inconvenience.`
 	}
 	zipReader, err := f.Open()
 	if err != nil {
-		displayManualUpdate = false
+		displayManualUpdate = !oldRenamed
 		cli.FailureDetailf(
 			"Failed to open %s/%s for reading: %v", reinstallMsg,
 			filepath.Base(zipPath), f.Name,
 		)
 	}
 	defer zipReader.Close()
+	if isExec && !oldRenamed {
+		// On Unix, we can't overwrite the running executable. So we instead
+		// write to a temp file and rename it to the target (overwriting it)
+		writeExecFromZip(zipReader, target)
+		return
+	}
+
 	outFile, err := os.Create(target)
 	if err != nil {
-		displayManualUpdate = false
+		displayManualUpdate = !oldRenamed
 		cli.FailureDetailf("Failed to create %s: %v", reinstallMsg, target, err)
 	}
 
@@ -387,12 +398,41 @@ We apologise for the inconvenience.`
 	defer func() {
 		closeErr := outFile.Close()
 		if writeErr != nil || closeErr != nil {
-			displayManualUpdate = false
+			displayManualUpdate = !oldRenamed
 			cli.FailureDetailf(
 				"Failed to write %s: %v", reinstallMsg, target, cmp.Or(writeErr, closeErr),
 			)
 		}
 	}()
+}
+
+func writeExecFromZip(zipReader io.ReadCloser, target string) {
+	dir := filepath.Dir(target)
+	tmp, err := os.CreateTemp(dir, filepath.Base(target)+"-upgrade*")
+	if err != nil {
+		cli.Failuref("Couldn't create temp file for %q: %v", target, err)
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := io.Copy(tmp, zipReader); err != nil {
+		tmp.Close()
+		cli.Failuref("Failed to write %s: %v", tmp.Name(), err)
+	}
+
+	// Try to preserve current permissions
+	var perms os.FileMode = 0o755
+	if stat, err := os.Stat(target); err == nil {
+		perms = stat.Mode().Perm()
+	}
+	if err := tmp.Chmod(perms); err != nil {
+		tmp.Close()
+		cli.Failuref("Failed to set permissions for %s: %v", tmp.Name(), err)
+	}
+	if err := tmp.Close(); err != nil {
+		cli.Failuref("Failed to write %s: %v", tmp.Name(), err)
+	}
+	if err := os.Rename(tmp.Name(), target); err != nil {
+		cli.Failuref("Failed to write %s: %v", target, err)
+	}
 }
 
 // A nil map means no matches.
