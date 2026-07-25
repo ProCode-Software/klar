@@ -53,7 +53,12 @@ func (obj *Object) Underlying() Type { return obj.Type }
 func (obj *Object) Kind() Kind { return obj.Type.Kind() }
 
 // String returns a human-readable representation of the object's type.
-func (obj *Object) String() string { return obj.Type.String() }
+func (obj *Object) String() string {
+	if obj.IsTypeName() {
+		return obj.Name
+	}
+	return obj.Type.String()
+}
 
 // ObjectString returns a human-readable representation of the object.
 func (obj *Object) ObjectString() string {

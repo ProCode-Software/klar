@@ -150,7 +150,7 @@ public func Map.delete(where pred: func(K, V) -> Bool) {
 }
 
 // Returns a new map with all of the keys from this map except the ones specified.
-public func Map.without(keys keys: ...K) -> #{K: V} = clone(self) |. delete(keys...)
+public func Map.without(keys keys: ...K) -> #{K: V} = clone(self) |. delete(:keys...)
 
 // Returns a new map without the keys that have the same value as those in the provided map.
 public func Map.without(valuesFrom map: #{K: V}) -> #{K: V} {

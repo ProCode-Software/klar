@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
 func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
@@ -21,12 +22,12 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 	} else {
 		c.checkExpr(expr.Callee, lhs)
 	}
-	if lhs.Type.Kind() == InvalidType {
+	if lhs.Kind() == InvalidType {
 		t.Type = InvalidType
 		return
 	}
 	canCall := true
-	switch fn := UnderlyingTypeName(lhs.Type).(type) {
+	switch fn := UnderlyingTypeName(lhs.Type, true).(type) {
 	case *Overload, *Lambda, *TypeName, *EnumFunction:
 	case *Function:
 		if isTODO(fn) {
@@ -52,6 +53,16 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 		canCall = false
 	default:
 		canCall = false
+		if obj, ok := lhs.Type.(*Object); ok && obj.IsTypeName() {
+			if _, ok := obj.TypeName().Type.(*TypeAlias); ok {
+				// Allow all type aliases to be called for type casts. There isn't
+				// always an expression syntax for every type (such as unions), so
+				// if the user aliases them, they can cast.
+				// 	type MyUnion = String | Int
+				// 	union := MyUnion("hello")
+				canCall = true
+			}
+		}
 	}
 	if !canCall {
 		// Not a function (or initializer)
@@ -70,41 +81,84 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
 	}
-	c.checkCallArgs(lhs.Type, expr, t)
+	c.checkCallArgs(lhs.Type, expr.Args, t)
 }
 
-func (c *Checker) checkCallArgs(lhs Type, expr *ast.CallExpression, t *Expr) {
-	oldLHS := lhs
-	switch fn := Underlying(lhs).(type) {
-	case *Struct:
-		t.Type = lhs // TODO
-	case *Enum:
+func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overload Type) {
+	var name string
+	if obj, ok := lhs.(*Object); ok {
+		name = obj.Name
+	}
+	switch fn := UnderlyingTypeName(lhs, true).(type) {
+	case *TypeName, *Map, *List: // List/map cast
 		t.Type = lhs
-	case *Interface:
-		t.Type = lhs
-	case *Tag:
-		t.Type = lhs
+		// For type casts `T(v)`, `v` must be compatible with `T`.
+		//
+		// Or, if `v` is an implementation of `T` - `V(t)`, `V?` is returned.
+		// `t` must be a union, tag, or interface. If `t` is an optional or Result,
+		// show a hint that there's a more idiomatic way to check.
+		//
+		// If we have `T(t)`, show an error that the cast is redundant.
+		typ := fn
+		if tn, ok := fn.(*TypeName); ok {
+			typ = tn.Type
+		}
+
+		// Primitive initializer
+		var isPrimitive bool
+		switch und := typ.(type) {
+		case Kind:
+			isPrimitive = true
+			typ = builtinModule.Context.Lookup(und.String()).TypeName().
+				Type.(*bootstrapType).asDeclared
+		case *bootstrapType:
+			isPrimitive = true
+			typ = und.asDeclared
+		}
+		_ = isPrimitive
+
+		var firstArg Type
+		if typ, ok := Underlying(typ).(*Struct); ok {
+			// Structs can be initialized in other ways, not just casts
+			// TODO: Disallow using default initializers for builtins
+			res, isCast := c.checkStructInitializer(typ, name, args)
+			if !isCast {
+				t.Type = lhs // Preserve type name
+				// TODO: res may be an optional. Make it return a kind instead?
+				return
+			}
+			firstArg = res
+		}
+		c.checkTypeCast(typ, name, args, firstArg, t)
 	case *EnumRef:
 		t.Type = lhs
 	case *Lambda:
-		c.checkLambdaParams(fn, expr, t)
+		c.checkLambdaParams(fn, args, t)
 	case *Function:
 		t.Type = fn.Return
+		pset := c.inferCallParams(args, t)
+		ov, err := c.resolveOverload(fn.Overloads, pset)
+		if err != nil {
+			err.Range = ranges.FromSlice(args)
+			c.fileError(err, t.FileID())
+		}
+		_ = ov
 	case *Overload:
 		t.Type = fn.Return
 	default:
 		panic(fmt.Sprintf(
-			"checkCallArgs: unhandled LHS type after being handled by checkCallExpr: %T",
-			oldLHS,
+			"checkCallArgs: unhandled LHS type after being handled by checkCallExpr: %T (underlying: %T)",
+			lhs, fn,
 		))
 	}
+	return lhs // TODO
 }
 
-func (c *Checker) checkArity(call *ast.CallExpression, arity Arity, got int, fid FileID) bool {
+func (c *Checker) checkArity(args []*ast.CallParam, arity Arity, got int, fid FileID) bool {
 	if arity.InRange(got) {
 		return true
 	}
-	err := klarerrs.Slice(klarerrs.ErrWrongParamCount, call.Args)
+	err := klarerrs.Slice(klarerrs.ErrWrongParamCount, args)
 	err.SetParam("got", got)
 	if got < arity.MinParams {
 		err.SetParam("notEnough", true)
@@ -121,18 +175,21 @@ func (c *Checker) checkArity(call *ast.CallExpression, arity Arity, got int, fid
 	return false
 }
 
-func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Expr) {
+func (c *Checker) checkLambdaParams(fn *Lambda, args []*ast.CallParam, t *Expr) {
 	t.Type = fn.Return
 	arity := fn.Arity()
-	if !c.checkArity(expr, arity, len(expr.Args), t.FileID()) {
+	if !c.checkArity(args, arity, len(args), t.FileID()) {
 		return
 	}
-	for i := 0; i < len(expr.Args); i++ {
+	for i := 0; i < len(args); i++ {
 		var (
-			arg        = expr.Args[i]
-			isVariadic = i > len(fn.Params)
+			arg        = args[i]
+			isVariadic = fn.Variadic && i >= len(fn.Params)
 			expType    = fn.Params[min(i, len(fn.Params)-1)]
 		)
+		if isVariadic {
+			expType = expType.(*List).Elem
+		}
 		// Allowed if tuple or in variadic param
 		if rest, ok := arg.Value.(*ast.RestExpression); ok {
 			var (
@@ -144,8 +201,10 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 			case KindTuple:
 				tup := As[*Tuple](rhs.Type)
 				switch {
+				case tup.Len() < 2:
+					c.fileError(makeTupleSpreadCountError(rest, tup.Len(), false), t.FileID())
 				case isVariadic:
-					commonType, err := canSpreadTuple(tup)
+					commonType, err := canSpreadTupleIntoList(tup)
 					if err != nil {
 						err.Range = rhsRang
 						c.fileError(err, t.FileID())
@@ -154,15 +213,9 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 					if !Compatible(commonType, expType) {
 						c.fileError(typeMismatch(expType, commonType, rhsRang), t.FileID())
 					}
-				case tup.Len() == 0:
-					c.fileError(
-						klarerrs.Node(klarerrs.ErrSpreadEmptyTuple, rest.Expression).
-							WithLabel("This tuple is empty"),
-						t.FileID(),
-					)
 				case arity.MaxParams != -1 && i+tup.Len() > arity.MaxParams:
 				// Tuple has more parameters than the function accepts
-
+				// TODO: Error
 				default:
 					for j, item := range tup.Items {
 						expType := fn.Params[min(i+j, len(fn.Params)-1)]
@@ -177,7 +230,7 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 				fallthrough
 			case StringType:
 				if !isVariadic {
-					c.fileError(dynamicRestError(rhs.Kind(), rest), t.FileID())
+					c.fileError(misplacedListRestError(rhs.Kind(), rest), t.FileID())
 				}
 				itemType = cmp.Or[Type](itemType, StringType)
 				if !Compatible(itemType, expType) {
@@ -205,8 +258,46 @@ func (c *Checker) checkLambdaParams(fn *Lambda, expr *ast.CallExpression, t *Exp
 	}
 }
 
-func (c *Checker) checkStructDotInitParams(expr *ast.StructDotInit, t *Expr) {
+func (c *Checker) checkEnumParams(expr *ast.CallExpression, t *Expr) {
 }
 
-func (c *Checker) checkEnumParams(expr *ast.CallExpression, t *Expr) {
+func (c *Checker) checkTypeCast(
+	typ Type, name string, args []*ast.CallParam, firstArg Type, t *Expr) {
+}
+
+// Returned parameters are untyped
+func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet) {
+	for _, arg := range params {
+		var typ Type
+		if rest, ok := arg.Value.(*ast.RestExpression); ok {
+			inner := c.checkExprFrom(rest.Expression, t)
+			switch inner.Kind() {
+			case KindTuple:
+				tup := As[*Tuple](inner.Type)
+				ps.params = append(ps.params, tup.Items...)
+				continue
+			case KindList:
+				typ = As[*List](inner.Type).Elem
+			case StringType:
+				typ = StringType
+			default:
+				c.fileError(invalidRestTypeError(inner.Type, rest.Expression), t.FileID())
+				typ = inner.Type
+			}
+		} else {
+			typ = c.checkExprFrom(arg.Value, t).Type
+		}
+		if arg.Label != nil {
+			if ps.labelled == nil {
+				ps.labelled = make(map[string]Type)
+			}
+			ps.labelled[arg.Label.Name] = typ
+		} else {
+			ps.params = append(ps.params, typ)
+		}
+	}
+	return
+}
+
+func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.CallParam, t *Expr) {
 }

@@ -36,6 +36,7 @@ var primitives = map[string]Kind{
 	"Float":   FloatType,
 	"Any":     AnyType,
 	"Nothing": NothingType,
+	"Error":   ErrorType,
 }
 
 // Composite types
@@ -55,7 +56,6 @@ var compositeTypes = map[string]struct {
 	"Optional": {KindOptional, func(ctx *Context) Type {
 		return &Optional{ctx.Lookup("T").Type}
 	}},
-	"Error": {ErrorType, func(*Context) Type { return ErrorType }},
 }
 
 // Builtin functions
@@ -250,7 +250,19 @@ func declareBuiltinTypes() {
 	for name, kind := range primitives {
 		BuiltInContext.Declare(&Object{
 			Name: name,
-			Type: &TypeName{Type: kind},
+			Type: &TypeName{Type: kind, Name: name},
+			File: BuiltInContext.File,
+		})
+	}
+	// Composite types that should be available (ex. for initializers)
+	for _, name := range [...]string{"Result", "Task"} {
+		obj := builtinModule.Context.Lookup(name)
+		if obj == nil {
+			panic(fmt.Sprintf("builtin type %s not found", name))
+		}
+		BuiltInContext.Declare(&Object{
+			Name: name,
+			Type: obj.Type, // [*TypeName] -> [*bootstrapType]
 			File: BuiltInContext.File,
 		})
 	}

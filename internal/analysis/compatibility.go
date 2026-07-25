@@ -41,8 +41,12 @@ func Compatible(a, b Type) bool {
 		return Compatible(a, b)
 	case bKind == KindOptional && aKind != KindOptional:
 		// A => B? if A => B
-		b = Underlying(b).(*Optional).Elem
-		return Compatible(a, b)
+		if b, ok := Underlying(b).(*Optional); ok {
+			return Compatible(a, b.Elem)
+		}
+		// Non-optional to untyped nil
+		// TODO: Should this be allowed?
+		return true
 	case bKind == KindOptional && aKind == KindOptional:
 		// A? => B? if A => B | nil
 		a = Underlying(a).(*Optional).Elem
@@ -144,6 +148,14 @@ func ConcreteTypeOf(t Type) Type {
 	}
 }
 
+func IsConcreteType(t Type) bool {
+	switch t.Kind() {
+	case KindUnion, KindInterface, KindTag, KindResult, KindOptional:
+		return false
+	}
+	return true
+}
+
 // Implements returns whether type a implements b.
 func Implements(a, b Type) bool {
 	a = Underlying(a)
@@ -152,19 +164,24 @@ func Implements(a, b Type) bool {
 		return false
 	}
 	b = Underlying(b).(*Tag)
+	var inherited map[Type]struct{}
 	switch a := Underlying(a).(type) {
 	case *Enum:
-		_, ok := a.Inherited[b]
-		return ok
+		inherited = a.Inherited
 	case *Struct:
-		_, ok := a.Inherited[b]
-		return ok
+		inherited = a.Inherited
 	case *Interface:
-		_, ok := a.Inherited[b]
-		return ok
+		inherited = a.Inherited
 	case *Tag:
-		_, ok := a.Implements[b]
-		return ok
+		if a == b {
+			return true
+		}
+		inherited = a.Implements
+	}
+	for a := range inherited {
+		if Compatible(a, b) {
+			return true
+		}
 	}
 	return false
 }

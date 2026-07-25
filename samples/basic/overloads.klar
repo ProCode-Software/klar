@@ -1,0 +1,26 @@
+type #Node
+type #Statement: Node
+type #Declaration: Statement
+
+type VarDecl: Declaration {}
+type TypeDecl: Declaration {}
+
+func check(node: Node, _: Statement) -> Bool
+func check(stmt: Statement, _: Statement) -> Bool
+func check(decl: Declaration, _: TypeDecl) -> Bool
+func check(typ: TypeDecl, _: Statement) -> Bool
+
+func check2(node: Node, _: Int) -> Bool
+func check2(stmt: Statement, _: Int) -> Bool
+func check2(decl: Declaration, _: Int) -> Bool
+//func check2(typ: TypeDecl, _: Int) -> Bool
+//func check2(typ: VarDecl, _: Int) -> Bool
+
+var := VarDecl()
+typ := TypeDecl()
+check(var, var)
+check(typ, typ)
+check(nil, var)
+
+check2(var, 1)
+check2(typ, 1)

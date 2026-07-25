@@ -7,9 +7,20 @@ import (
 )
 
 func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
-	tup := &Tuple{make([]Type, len(expr.Values))}
-	for i, expr := range expr.Values {
-		tup.Items[i] = c.checkExprFrom(expr, t).Type
+	tup := &Tuple{make([]Type, 0, len(expr.Values))}
+	for _, expr := range expr.Values {
+		if rest, ok := expr.(*ast.RestExpression); ok {
+			rhs := c.checkExprFrom(rest.Expression, t)
+			if rhs.Kind() != KindTuple {
+				err := typeMismatch(KindTuple, rhs.Type, rest.Expression.GetRange())
+				c.fileError(err, t.FileID())
+				continue
+			}
+			restTuple := As[*Tuple](rhs.Type)
+			tup.Items = append(tup.Items, restTuple.Items...)
+			continue
+		}
+		tup.Items = append(tup.Items, c.checkExprFrom(expr, t).Type)
 	}
 	t.Type = tup
 }
@@ -28,7 +39,33 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	list := &List{hint}
 	t.Type = list
 	for i, item := range expr.Items {
-		e := c.checkExprFrom(item, t)
+		e := t.NewChild()
+		if rest, ok := item.(*ast.RestExpression); ok {
+			coll := c.checkExprFrom(rest.Expression, t)
+			switch coll.Kind() {
+			case KindTuple:
+				tup := As[*Tuple](coll.Type)
+				// A tuple can be spread into a list if all items have a type in common
+				// Ex: (Int, Int), (Int | String, String), (Intf, Impl)
+				common, err := canSpreadTupleIntoList(tup)
+				if err != nil {
+					c.fileError(err, t.FileID())
+					continue
+				}
+				e.Type = common
+			case KindList:
+				e.Type = As[*List](coll.Type).Elem
+			case StringType:
+				e.Type = StringType
+			case InvalidType:
+				continue
+			default:
+				c.fileError(invalidRestTypeError(coll.Type, rest.Expression), t.FileID())
+				continue
+			}
+		} else {
+			c.checkExpr(item, e)
+		}
 		prev := list.Elem
 		c.inferCollection(e, &list.Elem, item, hint, func(err *klarerrs.Error) {
 			if err.Code == klarerrs.ErrTypeMismatch {

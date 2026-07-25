@@ -1,8 +1,12 @@
 type #T
 
-type Result {}
+public type Result {}
 
-type Error {
+public type Error {
     message: String
     code: Any // TODO
 }
+
+public type Task {}
+
+public type Bool {}

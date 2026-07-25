@@ -40,16 +40,26 @@ func (p *Parser) lastTokEnd() lexer.Position {
 func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 	var ok, isComputed bool
 	sym := p.ParseExpression(ExpressionBindingPower)
-	as, _ := sym.(*ast.AsExpression)
-	if as != nil {
-		sym = as.Expression
+
+	// Allowed if the expression inside is an index or symbol
+	var old ast.Expression
+	var inner *ast.Expression
+	switch expr := sym.(type) {
+	case *ast.AsExpression:
+		old, inner = expr, &expr.Expression
+		sym = expr.Expression
+	case *ast.RestExpression:
+		old, inner = expr, &expr.Expression
+		sym = expr.Expression
 	}
+
 	switch sym := sym.(type) {
 	case *ast.Symbol:
 		key, value = sym, sym
 		ok = true
 	case *ast.IndexExpression:
 		if sym.Computed {
+			isComputed = true
 			break
 		}
 		if prop, ok2 := sym.Property.(*ast.Symbol); ok2 {
@@ -66,8 +76,9 @@ func (p *Parser) expectShorthand() (key *ast.Symbol, value ast.Expression) {
 		p.Error(err)
 		return &ast.Symbol{}, &ast.BadExpression{}
 	}
-	if as != nil {
-		value = &ast.AsExpression{Expression: value, Name: as.Name}
+	if old != nil {
+		*inner = value
+		value = old
 	}
 	return key, value
 }

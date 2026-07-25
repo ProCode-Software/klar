@@ -153,7 +153,7 @@ const (
 	ErrRedeclaredOverload     // Overload redeclared with same params
 	ErrVariadicDefault        // Variadic parameter can't a default value
 	ErrBlockInWhenExpr        // Block bodies are only allowed in when statements
-	ErrInvalidRestExpr        // Rest expression used outside of list, call, tuple, or map
+	ErrMisplacedRest          // Rest expression used outside of list, call, tuple, or map
 	ErrReturnInPipelineExpr   // Return statement not allowed in pipeline expression
 	ErrOptionalOptional       // Can't nest optional types (T??)
 	ErrMultipleDefault        // Multiple default ('_') 'when' cases
@@ -549,5 +549,7 @@ func (e *Error) handleSyntaxError() string {
 			msg = " for this subject"
 		}
 		return msg
+	case ErrMisplacedRest:
+		return "A rest can only be used in a call or collection"
 	}
 }

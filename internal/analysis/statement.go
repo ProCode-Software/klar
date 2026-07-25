@@ -245,6 +245,33 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 	*sctx.returns = append(*sctx.returns, returnStmt{expr: e, pos: pos})
 }
 
+func (c *Checker) inferReturnType(returns []returnStmt) Type {
+	if len(returns) == 0 {
+		return NothingType
+	}
+	common := returns[0].expr.Type
+	for i := 1; i < len(returns); i++ {
+		ret := returns[i]
+		prev := common
+		if common = CommonType(common, ret.expr.Type); common == nil {
+			err := klarerrs.Range(klarerrs.ErrUncommonReturnType, ret.pos)
+			// Example: return 1; return;
+			if prev.Kind() == NothingType || ret.expr.Kind() == NothingType {
+				err.Code = klarerrs.ErrInvalidNothingRet
+				err.Label = "A function must consistently return 'Nothing'"
+			} else {
+				err.Label = "This returned value has type " + quoteAka(ret.expr.Type)
+			}
+			err.AddHighlight(
+				"The previous one returns "+quoteAka(ret.expr.Type), returns[i-1].pos,
+			)
+			c.fileError(err, ret.expr.FileID())
+			common = prev
+		}
+	}
+	return common
+}
+
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 	if stmt.Condition != nil {
 		cond := c.checkExpr(stmt.Condition, sctx.newExpr())
@@ -479,6 +506,9 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 		for dest, typ := range c.followDestructure(
 			dest, rhs.Type, sctx.ctx.File, rhsNode.GetRange(), false,
 		) {
+			if _, ok := dest.(*ast.Discard); ok {
+				continue // All operators and RHS types are allowed with discards
+			}
 			lhs := c.checkExpr(dest, sctx.newExpr())
 			if typ.Kind() == InvalidType || lhs.Kind() == InvalidType {
 				continue
@@ -489,7 +519,7 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 }
 
 func (c *Checker) checkAssignment(
-	lhs, typ Type, lhsNode, rhsNode ast.Expression,
+	lhs, rhs Type, lhsNode, rhsNode ast.Expression,
 	uc ast.Operator, fid FileID,
 ) {
 	switch lhs.(type) {
@@ -505,8 +535,10 @@ func (c *Checker) checkAssignment(
 	case *StructField:
 		// Ensure it isn't readonly
 	}
-	if !Compatible(typ, lhs) {
-		err := typeMismatch(lhs, typ, rhsNode.GetRange())
+	// String multiplication (`String * Int`) will be checked by checkBinaryOperation
+	isStringMult := uc.Kind == lexer.Asterisk && lhs.Kind() == StringType
+	if !Compatible(rhs, lhs) && !isStringMult {
+		err := typeMismatch(lhs, rhs, rhsNode.GetRange())
 		err.AddHighlight(
 			"The assignee has type "+quote(lhs.String()),
 			lhsNode.GetRange(),
@@ -518,7 +550,7 @@ func (c *Checker) checkAssignment(
 	// For compound assign operators (like '+='), check if `LHS + RHS` is supported
 	if uc.Kind != lexer.Equal {
 		c.checkBinaryOperation(
-			uc, lhs, typ,
+			uc, lhs, rhs,
 			lhsNode, rhsNode, nil, fid,
 		)
 	}

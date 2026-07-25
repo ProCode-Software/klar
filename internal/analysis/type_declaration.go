@@ -192,7 +192,7 @@ func (c *Checker) validateInheritedType(n ast.Type, t Type,
 	newError := func(currType, allowedTypes string) {
 		err := klarerrs.Range(klarerrs.ErrInvalidInheritedType, n.GetRange())
 		err.Params = klarerrs.ErrorParams{"kind": currType, "allowedTypes": allowedTypes}
-		err.Label = "Can't inherit from this kind of type"
+		err.Label = currType + " can't inherit from " + klarerrs.WithA(typeKind.String())
 		c.fileError(err, fid)
 	}
 	if targetKind == typeKind || typeKind == InvalidType {
@@ -216,8 +216,8 @@ func (c *Checker) validateInheritedType(n ast.Type, t Type,
 			return false
 		}
 	case KindInterface:
-		if typeKind != KindStruct {
-			newError("An interface", "a struct or another interface")
+		if typeKind != KindStruct && typeKind != KindTag {
+			newError("An interface", "a struct, tag, or another interface")
 			return false
 		}
 	case KindEnum:

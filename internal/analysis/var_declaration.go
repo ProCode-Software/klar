@@ -69,38 +69,44 @@ func (c *Constant) String() string   { return fmt.Sprintf("%s (%v)", c.Type, c.V
 
 func (c *Checker) checkVarDecl(o *Object) {
 	var (
-		vr    = o.Type.(*Variable)
-		vinfo = o.info.varInfo
-		val   = vinfo.rhs
-		e     *Expr
+		vr      = o.Type.(*Variable)
+		vinfo   = o.info.varInfo
+		rhsExpr = vinfo.rhs
+		rhs     *Expr
 	)
 	vr.Type = InvalidType
 	// Use the cached expression or check the RHS
 	if *vinfo.rhsExpr != nil {
-		e = *vinfo.rhsExpr
+		rhs = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExpr(o.LookupContext()).withHint(vinfo.expType))
-		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
-		*vinfo.rhsExpr = e
+		rhs = c.checkExpr(rhsExpr, NewExpr(o.LookupContext()).withHint(vinfo.expType))
+		rhs.Type = c.toTyped(rhs.Type, vinfo.expType, rhsExpr, rhs.Context.File)
+		*vinfo.rhsExpr = rhs
 	}
 	// TODO: Go calls check.initVar, which checks if the expression is untyped
 	// nil, sets untyped values to typed types, and calls check.assignment.
 
+	// Check compatibility with the explicit type annotation
+	if vinfo.expType != nil {
+		if !Compatible(rhs.Type, vinfo.expType) {
+			err := typeMismatch(vinfo.expType, rhs.Type, rhsExpr.GetRange())
+			err.AddHighlight(
+				"An explicit type of "+quote(vinfo.expType.String())+" was declared",
+				o.info.node.(*ast.VariableDeclaration).ExplicitType.GetRange(),
+			)
+			c.fileError(err, o.File)
+		}
+		// Always set the RHS type to the explicit type if provided
+		rhs.Type = vinfo.expType
+	}
+
 	// Destructure the RHS
 	for dest, typ := range c.followDestructure(
-		vinfo.lhs, e.Type, e.Context.File, val.GetRange(), true,
+		vinfo.lhs, rhs.Type, rhs.Context.File, rhsExpr.GetRange(), true,
 	) {
 		// TODO: Evaluate followDestructure only once per vinfo.rhsExpr, and cache
 		// the types of other variables using the same rhsExpr.
 		if sym := dest.(*ast.Symbol); sym.Identifier == o.Name {
-			if vinfo.expType != nil && !Compatible(typ, vinfo.expType) {
-				err := typeMismatch(vinfo.expType, typ, val.GetRange())
-				err.AddHighlight(
-					"An explicit type of "+vinfo.expType.String()+" was declared",
-					o.info.node.(*ast.VariableDeclaration).ExplicitType.GetRange(),
-				)
-				typ = vinfo.expType
-			}
 			vr.Type = typ
 			break
 		}

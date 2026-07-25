@@ -71,7 +71,7 @@ func indexBuiltin(builtin, f string, t *Expr) *klarerrs.Error {
 
 func quoteAka(t Type) string {
 	ts := t.String()
-	if und := UnderlyingTypeName(t).String(); und != ts {
+	if und := UnderlyingTypeName(t, false).String(); und != ts {
 		return fmt.Sprintf("%s (aka %s)", quote(ts), quote(und))
 	}
 	return quote(ts)

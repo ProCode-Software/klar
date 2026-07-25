@@ -54,6 +54,8 @@ const (
 	ErrAssignToConst       // Attempted reassignment to constant reference
 	ErrInvalidAssignType   // Can't reassign a module item, enum item, or function
 	ErrAssignToIntfField   // Can't assign to an interface field
+	ErrUncommonReturnType  // Returns in a function must have a type in common
+	ErrInvalidNothingRet   // A function can't return Nothing if its return type isn't Nothing
 
 	// Literal ====
 
@@ -89,9 +91,8 @@ const (
 	ErrEnumItemNoParams     // Can't call an enum item that doesn't take parameters
 	ErrInvalidRestValue     // Can't use this value in a rest
 	ErrMisplacedMapRest     // Map used in rest outside map literal
-	ErrDynamicRest          // Can't rest a list or string outside variadic parameter
+	ErrMisplacedListRest    // Can't rest a list or string outside variadic parameter
 	ErrRestUncommonTuple    // Tuples can only be spread into lists if all their item's types are common
-	ErrSpreadEmptyTuple     // Can't spread an empty tuple
 
 	// Binary/unary operation ====
 
@@ -128,7 +129,7 @@ func (e *Error) handleTypeError() string {
 		return ""
 
 	case ErrTypeMismatch:
-		return "Type mismatch: expected type " + Quote(info.ExpectedType) +
+		return "Type mismatch: Expected type " + Quote(info.ExpectedType) +
 			", but this has type " + Quote(info.GotType)
 	case ErrAliasSelfType:
 		if e.BoolParam("initializer") {
@@ -218,6 +219,7 @@ func (e *Error) handleTypeError() string {
 	case ErrTupleRestDestruct:
 		name := "the target" /* Quote(e.Name) */
 		return "A rest in a tuple destructure must give " + name + " at least 2 items"
+
 	case ErrNegateNonNumeric:
 		return "The expression after '-' must be a number"
 	case ErrInvalidIndexType:
@@ -333,5 +335,9 @@ func (e *Error) handleTypeError() string {
 			gotString = strconv.Itoa(got)
 		}
 		return fmt.Sprintf("%s: %s, but you passed %s", title, expString, gotString)
+	case ErrMisplacedMapRest:
+		return "A map can only be rested within a map literal"
+	case ErrInvalidRestValue:
+		return "The value being rested must be a list, tuple, or string"
 	}
 }

@@ -176,7 +176,7 @@ func (e *Error) SetTitle(title string) *Error {
 func (e *Error) Error() string { return e.Message() }
 
 // IsWarning returns whether the diagnostic is a warning rather than an error.
-func (e *Error) IsWarning() bool { return e.Warning || e.Prefix() == WarningPrefix }
+func (e *Error) IsWarning() bool { return e.Warning }
 
 func (e *Error) Description() string { return e.Desc }
 
@@ -248,6 +248,11 @@ func (e *Error) TokenTypeParam(key string) lexer.TokenType {
 		return v.(lexer.TokenType)
 	}
 	return 0
+}
+
+func (e *Error) MarkWarning() *Error {
+	e.Warning = true
+	return e
 }
 
 func (e *Error) noMessage() {

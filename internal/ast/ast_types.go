@@ -294,7 +294,8 @@ type LambdaExpression struct {
 }
 
 type PipelineExpression struct {
-	Steps []Node // [Expression] or [*ReturnStatement]
+	// [Expression] or [*ReturnStatement]. At least 2. First must be Expression.
+	Steps []Node
 	BaseNode
 }
 

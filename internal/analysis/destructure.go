@@ -140,8 +140,10 @@ func (c *Checker) walkTupleDestructure(dest *ast.TupleLiteral,
 			if restTuple.Len() < 2 {
 				// The rest item must have at least 2 items, so the rest in the
 				// example above is invalid if the RHS is (1, 2) or (1, 2, 3).
-				err := makeTupleRestDestructError(
-					rest, restTuple.Len(), rhs.Len(), dc.rhsRange,
+				err := makeTupleSpreadCountError(rest, restTuple.Len(), true)
+				err.AddHighlight(
+					"This tuple has "+klarerrs.FormatCount(rhs.Len(), "item"),
+					dc.rhsRange,
 				)
 				c.fileError(err, dc.fid)
 				continue
@@ -177,21 +179,29 @@ func makeMismatchTupleDestructError(remaining []ast.Expression,
 	return err
 }
 
-// The rest in the tuple destructure will get less than 2 items.
-func makeTupleRestDestructError(rest *ast.RestExpression,
-	willGet, tupleLen int, rhsRange ranges.Range,
-) *klarerrs.Error {
+// The tuple being spread has less than 2 items.
+func makeTupleSpreadCountError(rest *ast.RestExpression, willGet int, destruct bool) *klarerrs.Error {
 	// TODO: Convert rest.Expression to a string and store in err.Name
 	err := klarerrs.Node(klarerrs.ErrTupleRestDestruct, rest)
+	err.SetParam("n", willGet)
 	targetRange := rest.Expression.GetRange()
 	switch willGet {
 	case 0:
 		err.AddHighlight("This variable will have no items", targetRange)
+		if !destruct {
+			err.Hint("Remove the spread")
+		}
 	case 1:
 		err.AddHighlight("This variable will have only 1 item", targetRange)
+		hintWithDiff(
+			err, "Take the individual item from the tuple",
+			klarerrs.DeletedRange{
+				ranges.Range{rest.Range.Start, rest.Expression.GetRange().Start},
+			},
+			klarerrs.AddedString{Pos: rest.Range.End, String: "[0]"},
+		)
 	default:
 		panic(fmt.Sprintf("unreachable: %d", willGet))
 	}
-	err.AddHighlight("This tuple has "+klarerrs.FormatCount(tupleLen, "item"), rhsRange)
 	return err
 }

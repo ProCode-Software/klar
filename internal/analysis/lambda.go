@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -9,7 +10,7 @@ import (
 )
 
 type Lambda struct {
-	Params []Type // Variadic param isn't a List
+	Params []Type // Variadic param is a List
 	// Arity can be calculated lazily, but if the declaration contains
 	// params with default values, this should be provided manually.
 	arity    Arity
@@ -28,6 +29,8 @@ func (l *Lambda) String() string {
 		}
 		if i == len(l.Params)-1 && l.Variadic {
 			b.WriteString("...")
+			b.WriteString(param.(*List).Elem.String())
+			continue
 		}
 		b.WriteString(param.String())
 	}
@@ -43,15 +46,23 @@ func (l *Lambda) Arity() Arity {
 	if l.arity != (Arity{0, 0}) {
 		return l.arity
 	}
-	a := Arity{}
-	for _, par := range l.Params {
-		if par.Kind() != KindOptional {
-			a.MinParams++
-		}
-		a.MaxParams++
-	}
+	a := Arity{len(l.Params), len(l.Params)}
 	if l.Variadic {
 		a.MaxParams = -1
+	}
+	// Decrease if the params end in consecutive options or params with default values
+	if a.MinParams > 0 {
+		for _, param := range slices.Backward(l.Params) {
+			if param.Kind() == KindOptional {
+				a.MinParams--
+				continue
+			}
+			if vr, ok := param.(*Variable); ok && vr.Object.Flags.Has(HasDefault) {
+				a.MinParams--
+				continue
+			}
+			break
+		}
 	}
 	l.arity = a
 	return a

@@ -42,9 +42,12 @@ func Underlying(t Type) Type {
 
 func As[T Type](t Type) T { return Underlying(t).(T) }
 
-func UnderlyingTypeName(t Type) Type {
+func UnderlyingTypeName(t Type, stopAtFirst bool) Type {
 	for {
 		if tn, ok := t.(*TypeName); ok {
+			if stopAtFirst {
+				return tn
+			}
 			if u, ok := tn.Underlying().(Underlyer); !ok || u.Underlying() == t {
 				return tn
 			}
@@ -101,11 +104,11 @@ func (i *UntypedInit) Kind() Kind     { return i.kind }
 func (i *UntypedInit) String() string { return i.kind.String() }
 
 func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type {
-	if hint != nil {
-		return hint
-	}
 	switch ut := typ.(type) {
 	case Untyped:
+		if hint != nil && hint.Kind() == ut.Kind() {
+			return hint
+		}
 		switch ut.Kind() {
 		case KindOptional:
 			// Untyped nil
@@ -114,6 +117,9 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			c.fileError(err, fid)
 			return InvalidType
 		case IntType:
+			if hint != nil && hint.Kind() == FloatType {
+				return hint
+			}
 			// If untyped, then it's an Int by default
 			return IntType
 		case KindList:
@@ -146,6 +152,9 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			panic(fmt.Sprintf("unhandled Untyped type: Untyped(%s)", ut.Kind()))
 		}
 	case *UntypedInit:
+		if hint != nil && hint.Kind() == ut.kind {
+			return hint
+		}
 		if enum, ok := ut.Node.(*ast.EnumLiteral); ok {
 			err := klarerrs.Node(klarerrs.ErrUntypedEnum, enum)
 			err.Label = "I don't know the type of this enum"

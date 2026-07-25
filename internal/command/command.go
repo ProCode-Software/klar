@@ -35,11 +35,7 @@ type Command struct {
 
 // TODO: documentation URL
 
-type RunFunc func(r *Runner)
-
-type Runner struct {
-	*argparse.Parser
-}
+type RunFunc func(r *argparse.Parser)
 
 func Lookup(
 	name string, commands map[string]*Command, aliases map[string]string,
@@ -69,5 +65,5 @@ func Run(cmd *Command) {
 		cmd.handleFlagError(err)
 		return
 	}
-	cmd.Run(&Runner{Parser: cmd.Flags})
+	cmd.Run(cmd.Flags)
 }

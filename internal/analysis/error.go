@@ -206,8 +206,8 @@ func invalidRestTypeError(typ Type, expr ast.Expression) *klarerrs.Error {
 	return err
 }
 
-func dynamicRestError(kind Kind, expr ast.Expression) *klarerrs.Error {
-	err := klarerrs.Node(klarerrs.ErrDynamicRest, expr)
+func misplacedListRestError(kind Kind, expr ast.Expression) *klarerrs.Error {
+	err := klarerrs.Node(klarerrs.ErrMisplacedListRest, expr)
 	err.Name = kind.String()
 	err.Label = "The parameter isn't variadic"
 	return err

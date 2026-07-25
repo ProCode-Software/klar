@@ -96,7 +96,12 @@ func (s *Struct) Index(f string, t *Expr) *klarerrs.Error {
 	return err
 }
 
-// makeDefaultInitializers creates the default initializers for the
-// underlying struct type in o.
-func (c *Checker) makeDefaultInitializers(o *Object) {
+// If the initialization represents a type cast, the type of the first argument is
+// returned, and cast is true. Otherwise, typ is returned, possibly wrapped in an optional
+// or result, following the rules of custom initializers.
+func (c *Checker) checkStructInitializer(
+	s *Struct, name string, args []*ast.CallParam,
+) (res Type, cast bool) {
+	// var i int // Index of unlabelled params
+	return s, false
 }

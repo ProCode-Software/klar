@@ -27,14 +27,16 @@ var5, var6: Int := 4, 5
 var7, var8: Int := 6
 var9, var10, var11 := 7
 
+type ReturnType = Nothing
+
 func function() {}
 func function(param: Int) -> ReturnType {}
-func function(label param: Int) = 1 + param
-func function(label1 param1, label2 param2: Int) -> Int {}
+func function2(label param: Int) = 1 + param
+func function3(label1 param1, label2 param2: Int) -> Int {}
 func withResult() -> Result<Int> {}
 
 func alias = function
-func Struct.alias = .function
+func Struct.alias = .method
 
 // Assignment
 basicVar += ", World!"
@@ -53,6 +55,7 @@ _ %= 1
 
 // Type Declarations
 type #Tag
+type #Inherited
 type #Tag2: Inherited
 type Struct {
     field: Int
@@ -169,6 +172,7 @@ relational := (
     1 >= 2 >= 3,
     1 < 2 == 2 < 3,
 )
+x := 1
 distributive := (
     x == 3 or 4,
     x != 1 and 5,
@@ -178,13 +182,19 @@ list := [1, 2, 3, 4, 5]
 contains2 := 2 in list
 excludes6 := 6 !in list
 
+type Object { name: String }
+object := Object(name: "John")
+object = Object("John")
+object = .("John")
+
 // Index
 object.name = "John"
+map := #{'key1': #{'key2': 2, 'key3': 3}, 'key4': #{}}
 _ = (
     object.name.length,
-    map['key1']['key2'],
+    map['key1']!!['key2'],
     map.key1["key2"],
-    map['key1'].key2,
+    map['key1']!!.key2,
 )
 
 // List slicing
@@ -224,6 +234,7 @@ _: func(Int, Int) -> Int := func x, y -> x + y
 _: (Enum, Enum) := (Enum.some, .some)
 
 // Go/Await
+func fn() = 1
 task := go fn()
 task2 := go { print("Running in parallel") }
 go {}
