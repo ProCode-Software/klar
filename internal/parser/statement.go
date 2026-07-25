@@ -183,7 +183,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		p.Error(klarerrs.Token(klarerrs.ErrNoForIterator, p.Curr()))
 	} else {
-		f.Variables, f.Expression = p.parseForVariables()
+		f.Variables, f.Iterator = p.parseForVariables()
 	}
 	f.Label = p.tryParseLoopLabel()
 	f.Body = p.ParseBlock()
@@ -201,7 +201,11 @@ func (p *Parser) parseForVariables() (
 			return nil, first
 		}
 	}
-	p.parseAssignableTypePairs(&vars, p.validateAssignable(first), true)
+	var assg ast.Assignable
+	if first != nil {
+		assg = p.validateAssignable(first)
+	}
+	p.parseAssignableTypePairs(&vars, assg, true)
 	p.Expect(lexer.In)
 	return vars, p.ParseExpression(ExpressionBindingPower)
 }

@@ -3,6 +3,7 @@ package parser
 import (
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -44,19 +45,16 @@ func (p *Parser) newIdentifier(t lexer.Token) ast.Identifier {
 // ValidateIdentName reports an error if i's Name does not contain any letters.
 // Examples of invalid identifiers: '_123', '__'
 func (p *Parser) ValidateIdentName(s string, node ast.Node) {
-	if s == "_" {
-		return // No error
-	}
-	withoutUnderscore := strings.Trim(s, "_")
 	var label string
-	if withoutUnderscore == "" {
+	switch {
+	case s == "_", strings.ContainsFunc(s, unicode.IsLetter):
+		return // No error
+	case strings.Trim(s, "_") == "":
 		// Allow discards. '___' is not allowed.
 		label = "This name has only underscores"
-	} else if strings.TrimFunc(withoutUnderscore, lexer.IsDigit) == "" {
-		// '_123'
+	default:
+		// '_123', '_1_2', only digits (in any language) and underscores
 		label = "Identifiers should contain at least 1 letter"
-	} else {
-		return
 	}
 	err := klarerrs.Node(klarerrs.ErrIdentMustHaveLetter, node)
 	err.Name = s

@@ -172,6 +172,6 @@ func (p *Parser) ParseAs(left ast.Expression) *ast.AsExpression {
 func (p *Parser) ParseSubOptions(first ast.Expression) *ast.SubOptions {
 	opts := &ast.SubOptions{Options: []ast.Expression{first}}
 	p.Advance() // |
-	parseExprSeries(p, &opts.Options, ExpressionBindingPower, 0, lexer.Stroke)
+	parseExprSeries(p, &opts.Options, WhenAsBindingPower, 0, lexer.Stroke)
 	return opts
 }

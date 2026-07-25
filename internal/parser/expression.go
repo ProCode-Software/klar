@@ -400,6 +400,13 @@ func (p *Parser) ParseLeftRest() *ast.RestExpression {
 	var expr ast.Expression
 	if nud, ok := p.handleNUD(p.CurrKind()); ok {
 		expr = p.ParseLED(nud, UnaryBindingPower)
+		if _, ok := expr.(*ast.Discard); ok {
+			// _... not allowed
+			p.ErrorLabelled(
+				klarerrs.Node(klarerrs.ErrUnderscoreWithRest, expr),
+				"Remove this discard",
+			)
+		}
 	}
 	return &ast.RestExpression{Left: true, Expression: expr}
 }
