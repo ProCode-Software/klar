@@ -309,12 +309,6 @@ type ObjectPipeline struct {
 }
 
 // A ForExpression is a [ForStatement] used as an expression.
-// It may reduce when the +=, -=, or = operator is used,
-// filter when a block is used, or map when -> is used.
-//
-//	sum := for i in items += i
-//	for [variables] in [iterator] [-> | = | += | -=] [value]
-//	for [variables] in [iterator] { block... }
 type ForExpression struct {
 	BaseNode
 	Variables []*AssignableTypePair
@@ -323,6 +317,14 @@ type ForExpression struct {
 	Value     Expression
 	Block     *Block
 }
+
+// Old docs for ForExpression:
+// It may reduce when the +=, -=, or = operator is used,
+// filter when a block is used, or map when -> is used.
+//
+//	sum := for i in items += i
+//	for [variables] in [iterator] [-> | = | += | -=] [value]
+//	for [variables] in [iterator] { block... }
 
 // Waits for one or more tasks to complete
 //
@@ -398,10 +400,10 @@ type StopStatement struct {
 //	for 5 { ...repeat 5 times }
 type ForStatement struct {
 	BaseNode
-	Variables  []*AssignableTypePair // Pairs don't have default values
-	Label      *Identifier
-	Expression Expression // When used as while loop or repeat
-	Body       *Block
+	Variables []*AssignableTypePair // Pairs don't have default values
+	Label     *Identifier
+	Iterator  Expression
+	Body      *Block
 }
 
 // A WhileStatement executes Body while Condition is true

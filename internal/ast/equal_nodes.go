@@ -384,7 +384,7 @@ func (a *ForStatement) Equal(b2 Node) bool {
 	if !a.Label.Equal(b.Label) {
 		return false
 	}
-	if a.Expression != nil && b.Expression != nil && !a.Expression.Equal(b.Expression) {
+	if a.Iterator != nil && b.Iterator != nil && !a.Iterator.Equal(b.Iterator) {
 		return false
 	}
 	if a.Body != nil && b.Body != nil && !a.Body.Equal(b.Body) {

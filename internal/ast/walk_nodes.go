@@ -86,7 +86,7 @@ func (n *ForExpression) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *ForStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Label}, walkNode{3, n.Expression}, walkNode{4, n.Body})
+	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Label}, walkNode{3, n.Iterator}, walkNode{4, n.Body})
 }
 
 func (n *FuncAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
