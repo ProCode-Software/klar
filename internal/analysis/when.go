@@ -82,77 +82,17 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 	for caseI, cs := range expr.Cases {
 		bodyCtx := NewContext(t.Context, fid)
 
-		for _, opt := range cs.Options { // Separated by '|'
-			for subjI, patExpr := range opt { // Separated by ','
-				var ws *whenSubject
-				if len(subjects) == 0 {
-					// Implicit `when true` (see docs for [*whenSubject.IsImplicitTrue])
-					ws = newImplicitTrueSubject(t.Context) // Not bodyCtx
-				} else {
-					ws = subjects[subjI]
-				}
-				pat := c.checkWhenPattern(ws, patExpr)
-				ws.Options = append(ws.Options, pat)
-				// Record the type of the pattern expression as a [*WhenPattern]
-				e := ws.NewChild()
-				e.Type = pat
-				c.Info.Expressions[patExpr] = e
-				// If the pattern is a nil literal, record the nil check
-				if _, ok := patExpr.(*ast.NilLiteral); ok {
-					nilChecks[subjI] = caseI
-				}
+		// 1. Check patterns and options for each subject
+		c.checkWhenOptions(expr, subjects, caseI, nilChecks, t)
 
-				// Ensure there is only 1 default case per subject
-				switch {
-				case pat.PatternKind != DefaultPattern:
-				case ws.Default != nil:
-					firstDefault := c.findWhenPattern(expr, ws.Default).GetRange()
-					err := klarerrs.Node(klarerrs.ErrMultipleDefault, patExpr)
-					err.Label = "A '_' case was already defined"
-					err.SetParam("multiSubject", len(subjects) > 1)
-					err.AddDetail("The first one was here", "", firstDefault)
-					err.Hint("This pattern is unreachable anyways, so it's safe to remove this.")
-				default:
-					ws.Default = pat // First '_' pattern
-				}
-			}
-		}
-
-		// Smart casts: If this case matches types (only), redeclare the subject
-		// with a union of each pattern's type.
+		// 2. Smart casts: If this case matches types (only), redeclare the subject
+		// with a union of each pattern's type. Perform them now so 'as' aliases
+		// have a specific type, and so guards can use them.
 		//
 		// TODO: MAJOR LIMITATION - If the subject is an index (e.g. `obj.value`),
 		// we can't declare it as a variable. So this smart cast only supports
 		// subjects that are variables (e.g. `value`).
-		for subjI, subj := range subjects {
-			orig, ok := subj.Type.(*Object)
-			if !ok {
-				continue
-			}
-			casted := new(*orig)
-			types := make([]Type, len(subj.Options))
-			for i, opt := range subj.Options {
-				// Another smart cast: If one case checks if a subject is nil,
-				// the other cases won't be an optional.
-				if nilCase, ok := nilChecks[subjI]; ok && nilCase != caseI &&
-					opt.Type.Kind() == KindOptional {
-					opt.Type = As[*Optional](opt.Type).Elem
-				}
-				types[i] = opt.Type
-			}
-			union := NewUnion(types)
-			switch orig := orig.Type.(type) {
-			case *Variable:
-				NewVariable(casted, orig.VarKind, union)
-			case *Constant:
-				casted.Type = &Constant{Type: union, Value: orig.Value}
-			default: // Unsupported
-			}
-			// Use [Context.Declare] to avoid reporting redeclared errors
-			if orig = bodyCtx.Declare(casted); orig != nil {
-				panic(fmt.Sprintf("%q redeclared in body context: %#v", orig.Name, orig))
-			}
-		}
+		c.performWhenSmartCasts(subjects, nilChecks, caseI, bodyCtx)
 
 		// Ensure all unwrapped variables are declared within all cases for each
 		// subject, with the same types. If we have:
@@ -174,31 +114,8 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 			subj.Options = subj.Options[:0]
 		}
 
-		// As
-		for i, name := range cs.As {
-			if len(subjects) == 0 {
-				// Implicit `when true` can't declare variables because they
-				// will always be `true`. TODO: Error
-				break
-			}
-			subj := subjects[i]
-			if name.IsDiscard() {
-				continue
-			}
-			obj := NewObject(name.Name, fid, name.Range(), c.module, nil)
-			// TODO: Use type of pattern, and ensure the variable will have the
-			// same type across options
-			NewVariable(obj, LocalVar, subj.Type)
-			// Variable may have been declared through a smart cast. If the alias
-			// has the same name as the subject, also show a warning because
-			// it is redundant. TODO
-			if casted := bodyCtx.Declarations[name.Name]; casted != nil &&
-				casted.Flags.Has(ImplicitVar) {
-				delete(bodyCtx.Declarations, name.Name)
-				bodyCtx.sortedDecls = nil
-			}
-			c.declare(bodyCtx, obj)
-		}
+		// Direct pattern aliases. Declare them now so the guard can use them.
+		c.declareWhenPatternAliases(subjects, cs.As, bodyCtx)
 
 		// Guard
 		if cs.Guard != nil {
@@ -215,6 +132,108 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 
 		// Body
 		c.checkWhenBody(expr, caseI, bodyCtx, t)
+	}
+}
+
+func (c *Checker) checkWhenOptions(expr *ast.WhenExpression, subjects []*whenSubject,
+	caseI int, nilChecks map[int]int, t *Expr,
+) {
+	cs := expr.Cases[caseI]
+	for _, opt := range cs.Options { // Separated by '|'
+		for subjI, patExpr := range opt { // Separated by ','
+			var ws *whenSubject
+			if len(subjects) == 0 {
+				// Implicit `when true` (see docs for [*whenSubject.IsImplicitTrue])
+				ws = newImplicitTrueSubject(t.Context) // Not bodyCtx
+			} else {
+				ws = subjects[subjI]
+			}
+			pat := c.checkWhenPattern(ws, patExpr)
+			ws.Options = append(ws.Options, pat)
+			// Record the type of the pattern expression as a [*WhenPattern]
+			e := ws.NewChild()
+			e.Type = pat
+			c.Info.Expressions[patExpr] = e
+			// If the pattern is a nil literal, record the nil check
+			if _, ok := patExpr.(*ast.NilLiteral); ok {
+				nilChecks[subjI] = caseI
+			}
+
+			// Ensure there is only 1 default case per subject
+			switch {
+			case pat.PatternKind != DefaultPattern:
+			case ws.Default != nil:
+				firstDefault := c.findWhenPattern(expr, ws.Default).GetRange()
+				err := klarerrs.Node(klarerrs.ErrMultipleDefault, patExpr)
+				err.Label = "A '_' case was already defined"
+				err.SetParam("multiSubject", len(subjects) > 1)
+				err.AddDetail("The first one was here", "", firstDefault)
+				err.Hint("This pattern is unreachable anyways, so it's safe to remove this.")
+			default:
+				ws.Default = pat // First '_' pattern
+			}
+		}
+	}
+}
+
+func (c *Checker) performWhenSmartCasts(
+	subjects []*whenSubject, nilChecks map[int]int, caseI int, bodyCtx *Context,
+) {
+	for subjI, subj := range subjects {
+		orig, ok := subj.Type.(*Object)
+		if !ok {
+			continue
+		}
+		casted := new(*orig)
+		types := make([]Type, len(subj.Options))
+		for i, opt := range subj.Options {
+			// Another smart cast: If one case checks if a subject is nil,
+			// the other cases won't be an optional.
+			if nilCase, ok := nilChecks[subjI]; ok && nilCase != caseI &&
+				opt.Type.Kind() == KindOptional {
+				opt.Type = As[*Optional](opt.Type).Elem
+			}
+			types[i] = opt.Type
+		}
+		union := NewUnion(types)
+		switch orig := orig.Type.(type) {
+		case *Variable:
+			NewVariable(casted, orig.VarKind, union)
+		case *Constant:
+			casted.Type = &Constant{Type: union, Value: orig.Value}
+		default: // Unsupported
+		}
+		// Use [Context.Declare] to avoid reporting redeclared errors
+		if orig = bodyCtx.Declare(casted); orig != nil {
+			panic(fmt.Sprintf("%q redeclared in body context: %#v", orig.Name, orig))
+		}
+	}
+}
+
+func (c *Checker) declareWhenPatternAliases(subjects []*whenSubject, vars []ast.Identifier, bodyCtx *Context) {
+	for i, name := range vars {
+		if len(subjects) == 0 {
+			// Implicit `when true` can't declare variables because they
+			// will always be `true`. TODO: Error
+			break
+		}
+		subj := subjects[i]
+		if name.IsDiscard() {
+			continue
+		}
+		obj := NewObject(name.Name, bodyCtx.File, name.Range(), c.module, nil)
+		// TODO: Use type of pattern, and ensure the variable will have the
+		// same type across options
+		NewVariable(obj, LocalVar, subj.Type)
+		// Variable may have been declared through a smart cast. If the alias
+		// has the same name as the subject, also show a warning because
+		// it is redundant. TODO
+		if casted := bodyCtx.Declarations[name.Name]; casted != nil &&
+			casted.Flags.Has(ImplicitVar) {
+			delete(bodyCtx.Declarations, name.Name)
+			bodyCtx.sortedDecls = nil
+		}
+		c.declare(bodyCtx, obj)
 	}
 }
 
@@ -337,46 +356,7 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 	case *ast.CallExpression:
 		// Type, enum, or literal pattern. Actual function calls aren't
 		// allowed in when patterns
-		switch lhs := expr.Callee.(type) {
-		case *ast.EnumLiteral:
-			pc.checkEnum(expr)
-		case *ast.IndexExpression:
-			// May be referencing an enum when matching on an interface. TODO
-			pat.Type = InvalidType
-		case *ast.Symbol:
-			pat.PatternKind = TypePattern
-			c.checkSymbolExpr(lhs, true, pat.Expr)
-			kind := pat.Expr.Kind()
-			switch {
-			case !isTypeName(pat.Type):
-				// Function call
-				c.fileError(
-					klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
-						SetParam("kind", "a function call").SetParam("location", "pattern"),
-					ws.FileID(),
-				)
-				pat.PatternKind = InvalidPattern
-			case kind == KindStruct:
-				pc.checkStruct(expr.Args)
-			case kind == KindInterface:
-			//  Interface(field1, field2)
-			// TODO: Should this be allowed? Unlike the other LHS types, there's no
-			// valid syntax outside of when patterns.
-			case kind == ErrorType:
-			default:
-				// Type can't be initialized (though it may be outside of a when pattern)
-				pat.PatternKind = InvalidPattern
-				// Don't set the type to InvalidType so we can still report
-				// incompatibility errors
-			}
-		default:
-			// Syntactically a function call
-			c.fileError(
-				klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
-					SetParam("kind", "a function call").SetParam("location", "pattern"),
-				ws.FileID(),
-			)
-		}
+		pc.checkUnwrap(expr)
 	case *ast.StructDotInit:
 		pc.checkStruct(expr.Params)
 	case *ast.ListLiteral:
@@ -556,6 +536,33 @@ func (c *Checker) findWhenPattern(
 	return nil
 }
 
+// Allows sub-options and as-declarations
+func (pc *patternChecker) checkExprAdvanced(expr ast.Expression) *Expr {
+	t := pc.pat.NewChild()
+	switch expr := expr.(type) {
+	case *ast.SubOptions:
+		t.Type = pc.checkOptions(expr)
+		pc.Info.Expressions[expr] = t
+	case *ast.AsExpression:
+		t = pc.checkExprAdvanced(expr.Expression) // Could be sub-options
+		if err := pc.pat.declareVar(expr.Name, t.Type, expr.Expression); err != nil {
+			pc.fileError(err, pc.fid())
+		}
+		pc.Info.Expressions[expr] = t
+	default:
+		pc.checkExpr(expr, t)
+	}
+	return t
+}
+
+func (pc *patternChecker) checkOptions(opts *ast.SubOptions) Type {
+	types := make([]Type, 0, len(opts.Options))
+	for _, opt := range opts.Options {
+		types = append(types, pc.checkExprFrom(opt, pc.pat.Expr).Type)
+	}
+	return NewUnion(types)
+}
+
 func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 	pc.pat.Type = StringType
 	var hasDiscard bool
@@ -603,52 +610,129 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 	}
 }
 
-// Allows sub-options and as-declarations
-func (pc *patternChecker) checkExprAdvanced(expr ast.Expression) *Expr {
-	t := pc.pat.NewChild()
-	switch expr := expr.(type) {
-	case *ast.SubOptions:
-		t.Type = pc.checkOptions(expr)
-		pc.Info.Expressions[expr] = t
-	case *ast.AsExpression:
-		t = pc.checkExprAdvanced(expr.Expression)
-		pc.pat.declareVar(expr.Name, t.Type, expr.Expression)
-		pc.Info.Expressions[expr] = t
-	default:
-		pc.checkExpr(expr, t)
-	}
-	return t
-}
-
-func (pc *patternChecker) checkOptions(opts *ast.SubOptions) Type {
-	types := make([]Type, 0, len(opts.Options))
-	for _, opt := range opts.Options {
-		types = append(types, pc.checkExprFrom(opt, pc.pat.Expr).Type)
-	}
-	return NewUnion(types)
-}
-
 func (pc *patternChecker) checkList(list *ast.ListLiteral) {
 	pc.pat.PatternKind = ListPattern
-	// We want to use checkListLiteral because it handles literal expression rests
-	// and inference. So, special pattern matching syntax must be removed
-	// (unwrapping, unwrap rests, discards, or-options, and 'as'). To ensure
-	// inference is still correct, literals from the latter 2 will be added to
-	// the cleaned list (because they may be the largest types in the list).
-	//
-	// Before: [a, 1, [1, 2]..., 2, _, rest...]
-	// After: [1, [1, 2]..., 2]
-	cleanList := &ast.ListLiteral{
-		BaseNode: list.BaseNode,
-		Items:    make([]ast.Expression, 0, len(list.Items)),
+	var hint Type
+	switch {
+	case len(list.Items) == 0 && pc.subj.Kind() == KindList:
+		pc.pat.Type = pc.subj.Type
+		return
+	case len(list.Items) == 0:
+		pc.pat.Type = Untyped(KindList)
+		return
+	case pc.subj.Kind() == KindList:
+		hint = As[*List](pc.subj.Type).Elem
 	}
-	pc.checkListLiteral(cleanList, pc.pat.Expr)
-	pc.pat.Type = InvalidType // TODO
+	listType := &List{hint}
+	pc.pat.Type = listType
+	// We can't declare variables as soon as we see them, because the list type may
+	// not be fully inferred. Items in vars are either symbols or symbol rests.
+	var vars []ast.Expression
+
+	for i, item := range list.Items {
+		var e *Expr
+		switch item := item.(type) {
+		case *ast.RestExpression:
+			switch item.Expression.(type) {
+			case *ast.Symbol: // [items...]
+				vars = append(vars, item)
+				continue
+			case nil: // [x, y, ...]
+				continue
+			case *ast.Discard:
+				panic("'..._' or '_...' rest not rejected")
+			default:
+				e = pc.pat.NewChild()
+				if ok := pc.checkListRest(item, e); !ok {
+					continue
+				}
+			}
+		case *ast.Symbol:
+			vars = append(vars, item)
+			continue
+		case *ast.Discard:
+			continue
+		default:
+			// TODO: Redeclared errors will be raised out of order. If a symbol
+			// is declared first, then an as-expression with the same name, the error
+			// will be on the symbol even though it was declared first.
+			e = pc.checkExprAdvanced(item)
+		}
+		prev := listType.Elem
+		// Same as [Checker.checkListLiteral]
+		pc.inferCollection(e, &listType.Elem, item, hint, func(err *klarerrs.Error) {
+			if err.Code == klarerrs.ErrTypeMismatch {
+				return
+			}
+			err.SetParam("kind", "list")
+			err.AddHighlight(
+				"The previous item has type "+quoteAka(prev), list.Items[i-1].GetRange(),
+			)
+		})
+	}
+	for _, vr := range vars {
+		var err *klarerrs.Error
+		switch vr := vr.(type) {
+		case *ast.Symbol:
+			err = pc.pat.declareVar(vr.ToIdentifier(), listType.Elem, vr)
+		case *ast.RestExpression:
+			err = pc.pat.declareVar(
+				vr.Expression.(*ast.Symbol).ToIdentifier(),
+				listType, vr,
+			)
+		}
+		if err != nil {
+			pc.fileError(err, pc.fid())
+		}
+	}
 }
 
 func (pc *patternChecker) checkMap(mp *ast.MapLiteral) {
 	pc.pat.PatternKind = MapPattern
 	pc.pat.Type = InvalidType // TODO
+}
+
+func (pc *patternChecker) checkUnwrap(expr *ast.CallExpression) {
+	switch lhs := expr.Callee.(type) {
+	case *ast.EnumLiteral:
+		pc.checkEnum(expr)
+	case *ast.IndexExpression:
+		// May be referencing an enum when matching on an interface. TODO
+		pc.pat.Type = InvalidType
+	case *ast.Symbol:
+		pc.pat.PatternKind = TypePattern
+		pc.checkSymbolExpr(lhs, true, pc.pat.Expr)
+		kind := pc.pat.Expr.Kind()
+		switch {
+		case !isTypeName(pc.pat.Type):
+			// Function call
+			pc.fileError(
+				klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+					SetParam("kind", "a function call").SetParam("location", "pattern"),
+				pc.subj.FileID(),
+			)
+			pc.pat.PatternKind = InvalidPattern
+		case kind == KindStruct:
+			pc.checkStruct(expr.Args)
+		case kind == KindInterface:
+		//  Interface(field1, field2)
+		// TODO: Should this be allowed? Unlike the other LHS types, there's no
+		// valid syntax outside of when patterns.
+		case kind == ErrorType:
+		default:
+			// Type can't be initialized (though it may be outside of a when pattern)
+			pc.pat.PatternKind = InvalidPattern
+			// Don't set the type to InvalidType so we can still report
+			// incompatibility errors
+		}
+	default:
+		// Syntactically a function call
+		pc.fileError(
+			klarerrs.Node(klarerrs.ErrNotAllowedInWhen, expr).
+				SetParam("kind", "a function call").SetParam("location", "pattern"),
+			pc.subj.FileID(),
+		)
+	}
 }
 
 func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
@@ -690,7 +774,9 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 			}
 			// withParams(:a)
 			if param.Shorthand {
-				pc.pat.declareVar(*param.Label, actualType, param.Value)
+				if err := pc.pat.declareVar(*param.Label, actualType, param.Value); err != nil {
+					pc.fileError(err, pc.fid())
+				}
 				continue
 			}
 		} else if sym, ok := param.Value.(*ast.Symbol); hadLabelled &&
@@ -712,13 +798,19 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 		switch expr := param.Value.(type) {
 		case *ast.Symbol:
 			// .withParams(x, _)
-			pc.pat.declareVar(expr.ToIdentifier(), actualType, param.Value)
+			if err := pc.pat.declareVar(
+				expr.ToIdentifier(), actualType, param.Value,
+			); err != nil {
+				pc.fileError(err, pc.fid())
+			}
 		case *ast.Discard: // .withParams(_) - Nothing to do
 		default:
 			// Has literal value (may or may not be labelled)
 			// 	.withParams(5) | .withParams(a: 5)
-			if val := pc.checkExprAdvanced(expr); !Compatible(val.Type, actualType) {
-				pc.fileError(typeMismatch(actualType, val.Type, expr.GetRange()), pc.fid())
+			if val := pc.checkExprAdvanced(expr).Type; !Compatible(val, actualType) {
+				pc.fileError(
+					typeMismatch(actualType, val, expr.GetRange()), pc.fid(),
+				)
 			}
 		}
 	}

@@ -43,26 +43,7 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 	for i, item := range expr.Items {
 		e := t.NewChild()
 		if rest, ok := item.(*ast.RestExpression); ok {
-			coll := c.checkExprFrom(rest.Expression, t)
-			switch coll.Kind() {
-			case KindTuple:
-				tup := As[*Tuple](coll.Type)
-				// A tuple can be spread into a list if all items have a type in common
-				// Ex: (Int, Int), (Int | String, String), (Intf, Impl)
-				common, err := canSpreadTupleIntoList(tup)
-				if err != nil {
-					c.fileError(err, t.FileID())
-					continue
-				}
-				e.Type = common
-			case KindList:
-				e.Type = As[*List](coll.Type).Elem
-			case StringType:
-				e.Type = StringType
-			case InvalidType:
-				continue
-			default:
-				c.fileError(invalidRestTypeError(coll.Type, rest.Expression), t.FileID())
+			if !c.checkListRest(rest, e) {
 				continue
 			}
 		} else {
@@ -79,6 +60,32 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 			)
 		})
 	}
+}
+
+func (c *Checker) checkListRest(rest *ast.RestExpression, e *Expr) (ok bool) {
+	coll := c.checkExprFrom(rest.Expression, e)
+	switch coll.Kind() {
+	case KindTuple:
+		tup := As[*Tuple](coll.Type)
+		// A tuple can be spread into a list if all items have a type in common
+		// Ex: (Int, Int), (Int | String, String), (Intf, Impl)
+		common, err := canSpreadTupleIntoList(tup)
+		if err != nil {
+			c.fileError(err, e.FileID())
+			return false
+		}
+		e.Type = common
+	case KindList:
+		e.Type = As[*List](coll.Type).Elem
+	case StringType:
+		e.Type = StringType
+	case InvalidType:
+		return false
+	default:
+		c.fileError(invalidRestTypeError(coll.Type, rest.Expression), e.FileID())
+		return false
+	}
+	return true
 }
 
 func (c *Checker) checkNilLiteral(expr *ast.NilLiteral, t *Expr) {
@@ -293,7 +300,7 @@ func (c *Checker) checkEnumLiteral(expr *ast.EnumLiteral, t *Expr) {
 			// 1. Type not assigned yet. TODO
 			// 2. Not an enum - type mismatch will be reported later
 			t.Type = &UntypedInit{kind: KindEnum, Node: expr}
-			return 
+			return
 		}
 		enum := ep.EnumParent()
 		ei, ok := enum.itemMap[expr.Name.Name]
