@@ -42,6 +42,7 @@ const (
 	_
 	WarningPrefix
 	TypeErrorPrefix
+	_
 	ReferenceErrorPrefix
 	ModuleErrorPrefix
 	ImplementationErrorPrefix
@@ -50,9 +51,11 @@ const (
 // Prefix returns the prefix of the error code.
 func (e *Error) Prefix() Code {
 	prefix := e.Code / 100
-	// Convert 200 to 100
-	if prefix == (SyntaxErrorPrefix/100)+1 {
-		return SyntaxErrorPrefix
+	switch prefix {
+	case (SyntaxErrorPrefix / 100) + 1:
+		return SyntaxErrorPrefix // Convert 200 to 100
+	case (TypeErrorPrefix / 100) + 1:
+		return TypeErrorPrefix // Convert 500 to 400
 	}
 	return prefix * 100
 }
@@ -257,4 +260,13 @@ func (e *Error) MarkWarning() *Error {
 
 func (e *Error) noMessage() {
 	panic(fmt.Sprintf("error %s doesn't have a message", e.Code))
+}
+
+func ErrorCount(errs []*Error) (n int) {
+	for _, e := range errs {
+		if !e.IsWarning() {
+			n++
+		}
+	}
+	return
 }

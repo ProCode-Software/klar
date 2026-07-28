@@ -65,6 +65,7 @@ const (
 	ErrUntypedEmptyList      // Can't infer type of empty list
 	ErrUntypedEmptyMap       // Can't infer type of empty map
 	ErrUntypedNil            // 'nil' requires a type (explicit type at assignment)
+	ErrUntypedLambda         // Can't infer parameter types for lambda
 	ErrUnknownRegexFlag      // Unknown regex flag on current target
 	ErrNotOptionalType       // 'nil' is only valid for optional types
 	ErrInvalidCollectionType // Items in a list or map must have the same type
@@ -119,7 +120,7 @@ const (
 
 	// Call ====
 
-	ErrWrongParamCount // Wrong number of parameters passed to a function
+	ErrWrongParamCount   // Wrong number of parameters passed to a function
 	ErrMissingParamLabel // Positional parameter should be labelled
 )
 
@@ -351,6 +352,8 @@ func (e *Error) handleTypeError() string {
 		return "The right-hand side of a 'for' expression must return " +
 			e.StringParam("required") + " when iterating over " + e.StringParam("iterKind")
 	case ErrMissingParamLabel:
-	return "This parameter needs to be labelled '" + e.Name + ":'"
+		return "This parameter needs to be labelled '" + e.Name + ":'"
+	case ErrUntypedLambda:
+		return "The parameters of this lambda need explicit types"
 	}
 }

@@ -90,8 +90,8 @@ func (ef *EnumFunction) EnumParent() *Enum { return ef.Enum }
 func newEnumFunction(ei *EnumItem) *EnumFunction {
 	return &EnumFunction{
 		Lambda: &Lambda{
-			Params:   ei.Params,
-			Return:   &EnumRef{EnumItem: ei, Called: true},
+			Params: ei.Params,
+			Return: &EnumRef{EnumItem: ei, Called: true},
 		},
 		EnumItem: ei,
 	}
@@ -144,6 +144,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 				}
 				if _, ok := ei.paramMap[key.Name]; ok {
 					err := klarerrs.Node(klarerrs.ErrRedeclaredParamLabel, key)
+					err.Name = key.Name
 					err.Label = "A parameter named " + quote(key.Name) + " already exists"
 					err.AddHighlight(
 						"It was first defined here",

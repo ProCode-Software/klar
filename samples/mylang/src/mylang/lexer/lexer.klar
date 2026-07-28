@@ -95,7 +95,7 @@ func Lexer.append(char: String) {
 }
 
 func Lexer.buildToken(make: func(text: String) -> Token) -> Token {
-    content := self.builder.join("")
+    content := self.builder.join(with: "")
     self.builder.clear()
     return make(content)
 }

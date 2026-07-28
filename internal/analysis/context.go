@@ -21,7 +21,7 @@ type Context struct {
 	Children []*Context
 	Flags    Flag
 	Attrs    map[ContextAttribute]any
-	Used     map[string]struct{}
+	Used     map[*Object]struct{}
 	File     FileID
 }
 
@@ -60,25 +60,18 @@ func (ctx *Context) getAttribute(key ContextAttribute) any {
 	return ctx.Attrs[key]
 }
 
-func (ctx *Context) Declare(obj *Object, flag ...Flag) (existing *Object) {
-	flags := parseFlags(flag)
+func (ctx *Context) Declare(obj *Object) (existing *Object) {
 	name := obj.Name
-	ctx.initDecls()
+	obj.Context = ctx
+	if ctx.Declarations == nil {
+		ctx.Declarations = make(map[string]*Object)
+	}
 	if existing = ctx.Declarations[name]; existing != nil {
 		return
 	}
 	ctx.Declarations[name] = obj
-	if obj.Context == nil { // TODO: should this be changed?
-		obj.Context = ctx
-	}
-	_ = flags
+	// TODO: Change obj's order
 	return nil
-}
-
-func (ctx *Context) initDecls() {
-	if ctx.Declarations == nil {
-		ctx.Declarations = make(map[string]*Object)
-	}
 }
 
 // Lookup returns the object with the given name in the
@@ -106,11 +99,11 @@ func (ctx *Context) SortedDecls() []*Object {
 	return ctx.sortedDecls
 }
 
-func (c *Checker) declare(ctx *Context, obj *Object, flags ...Flag) {
+func (c *Checker) declare(ctx *Context, obj *Object) {
 	if obj.Name == "_" {
 		return
 	}
-	if existing := ctx.Declare(obj, flags...); existing != nil {
+	if existing := ctx.Declare(obj); existing != nil {
 		// Declared already
 		err := redeclaredError(obj, existing, true)
 		c.fileError(err, obj.File)
@@ -148,4 +141,37 @@ func (ctx *Context) String() string {
 
 func (ctx *Context) IsEmpty() bool {
 	return ctx == nil || len(ctx.Declarations) == 0
+}
+
+func (ctx *Context) markUsed(o *Object) {
+	if ctx.File.Builtin() {
+		return
+	}
+	if ctx.Used == nil {
+		ctx.Used = make(map[*Object]struct{})
+	}
+	ctx.Used[o] = struct{}{}
+}
+
+// Unused is an iterator that yields the unused objects declared in the
+// context. Public objects and objects prefixed with '_' are not yielded.
+// Objects in a different module may be yielded.
+func (ctx *Context) Unused(yield func(*Object) bool) {
+	for _, o := range ctx.SortedDecls() {
+		if _, ok := ctx.Used[o]; ok {
+			continue
+		}
+		// TODO: Don't yield objects from different modules.
+		// Store the module in the context.
+		needUsage := !o.Public && !strings.HasPrefix(o.Name, "_") &&
+			!o.Flags.Has(ImplicitVar)
+		// Only specific kinds of variables need to be used
+		if vr, ok := o.Type.(*Variable); ok && needUsage {
+			k := vr.VarKind
+			needUsage = k == LocalVar || k == TopLevelVar || k == FuncParamVar
+		}
+		if needUsage && !yield(o) {
+			return
+		}
+	}
 }

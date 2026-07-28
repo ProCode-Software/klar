@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
@@ -124,4 +125,9 @@ func FormatThisWord(n int, word string) string {
 		return "this " + word
 	}
 	return "these " + word + "s"
+}
+
+func Capitalize(word string) string {
+	firstLetter, n := utf8.DecodeRuneInString(word)
+	return string(unicode.ToUpper(firstLetter)) + word[n:]
 }

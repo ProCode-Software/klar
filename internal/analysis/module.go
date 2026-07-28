@@ -18,9 +18,9 @@ type Module struct {
 	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath
 	Imports     []*Module
-	Targets     []target.Target  // Targets the module was compiled for
+	Targets     []target.Target // Targets the module was compiled for
 	KlarVersion version.Version // Minimum required Klar version
-	Context     *Context         // Root non-builtin context
+	Context     *Context        // Root non-builtin context
 	Flags       Flag
 	Info        *Info
 }

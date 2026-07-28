@@ -39,10 +39,10 @@ const (
 func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 	attrs *[]*ast.Attribute, declareToCtx bool,
 ) {
+	// Set the object's context even if it's not being declared into it
+	obj.Context = ctx
 	if declareToCtx {
 		c.declare(ctx, obj)
-	} else {
-		obj.Context = ctx // Still set the object's context
 	}
 	// Parse the attributes if any (top-level only)
 	if attrs != nil {
@@ -54,7 +54,6 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 	if obj.Name == "_" {
 		// Since the object won't be added to the context, it won't be checked.
 		// For discarded idents, it's guaranteed there are no dependencies
-		obj.Context = ctx
 		obj.Order = uint32(len(ctx.Declarations))
 		c.checkDeclaration(obj)
 	}

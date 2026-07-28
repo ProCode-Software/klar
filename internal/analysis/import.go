@@ -136,10 +136,7 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 		// 	its name being redeclared, it shows the range of the import rather
 		// 	than the definition outside the current module.
 		// - We can use the user-declared unqualified import alias
-		obj = new(*obj)
-		obj.Range = name.Name.Range()
-		obj.File = fctx.File
-		obj.Module = c.module
+		obj = obj.Clone(c.module, fctx.File, name.Name.Range())
 		// TODO: Should we change obj's order, and context?
 		if !name.Label.IsZero() {
 			obj.Name = name.Label.Name

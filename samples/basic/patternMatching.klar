@@ -2,7 +2,7 @@ value := 10
 otherValue := 15
 luckyNums := [2, 3, 5, 9, 39, 27]
 when value {
-    [1, 2] -> {}
+    1 | 2 -> {}
     < 5 -> {}
     // value <= otherValue <= 25
     <= otherValue <= 25 -> {}
@@ -158,7 +158,7 @@ when list {
     // unwrapped into a new list `rest`, with a length of 4.
     [rest..., 5, 6] if rest.length == 4 -> print(rest) // [1, 2, 3, 4]
     // Equivalent, and more idiomatic
-    [[_, _, _, _] as rest, 5, 6] -> print(rest) // [1, 2, 3, 4]
+    [[_, _, _, _]... as rest, 5, 6] -> print(rest) // [1, 2, 3, 4]
     // Matches a list that contains `3`
     [..., 3, ...] -> {}
     // Matches a list that contains `3`, unwrapping the parts before and after it.

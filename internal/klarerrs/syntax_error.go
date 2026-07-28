@@ -117,6 +117,7 @@ const (
 	ErrRedeclaredGeneric       // Generic parameter redeclared
 	ErrNonNameInGeneric        // Left-hand side of generic type isn't a name
 	ErrRedeclaredParamLabel    // Parameter label for enum item or function already declared
+	ErrRespecifiedParamLabel   // Parameter label for enum item or function already provided
 
 	// When =====
 

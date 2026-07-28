@@ -69,8 +69,6 @@ func TokenPos(err Code, pos lexer.Position, tok lexer.Token) *Error {
 	}
 }
 
-func TooManyErrors() *Error { return &Error{Code: ErrTooManyErrors} }
-
 func Undefined(name string, rang ranges.Range) *Error {
 	return &Error{
 		Code:  ErrUndefined,

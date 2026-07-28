@@ -132,6 +132,16 @@ func (o *Object) IsTypeName() bool {
 // o is not a type name.
 func (o *Object) TypeName() *TypeName { return o.Type.(*TypeName) }
 
+func (o *Object) Clone(mod *Module, fid FileID, rang ranges.Range) *Object {
+	cloned := new(*o)
+	cloned.Range = rang
+	cloned.File = fid
+	if mod != nil {
+		cloned.Module = mod
+	}
+	return cloned
+}
+
 type ObjectKind interface {
 	Type
 	objKind()
@@ -280,6 +290,5 @@ var (
 // following this are unreachable.
 type NoReturn struct{ Type }
 
-func (nr *NoReturn) IsTODO() bool { return nr.Type == nil }
-
+func (nr *NoReturn) IsTODO() bool    { return nr.Type == nil }
 func (u *NoReturn) Underlying() Type { return cmp.Or[Type](u.Type, u /* is a TODO */) }

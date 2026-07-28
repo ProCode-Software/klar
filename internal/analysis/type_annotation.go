@@ -94,6 +94,7 @@ func (c *Checker) parseTypeAlias(expr *ast.TypeAlias, ctx *Context, flags Flag) 
 	if Underlying(target.Type) == nil {
 		c.checkDeclaration(target)
 	}
+	target.Context.markUsed(target) // Mark the type as used
 	if !c.expectTypeName(target, expr, ctx.File) ||
 		// If the type is generic, ensure it has type parameters
 		!c.checkGenericCount(target, expr.Range, flags, ctx.File) {
@@ -134,6 +135,7 @@ func (c *Checker) parseQualifiedTypeAlias(expr *ast.QualifiedTypeAlias,
 		c.fileError(klarerrs.Undefined(nsIdent.Name, nsIdent.Range()), ctx.File)
 		return InvalidType
 	}
+	nsObj.Context.markUsed(nsObj) // Mark the namespace as used
 	ns, ok := Underlying(nsObj.Type).(*Namespace)
 	if !ok {
 		// In `x.y`, 'x' isn't a namespace
@@ -241,5 +243,5 @@ func (c *Checker) checkUnionType(expr *ast.UnionType, ctx *Context) Type {
 	for i, t := range expr.Options {
 		types[i] = c.parseType(t, ctx)
 	}
-	return &Union{Types: types}
+	return NewUnion(types)
 }

@@ -147,10 +147,9 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			return InvalidType
 		case IntType:
 			if hint != nil && hint.Kind() == FloatType {
-				return hint
+				return FloatType
 			}
-			// If untyped, then it's an Int by default
-			return IntType
+			return IntType // If untyped, then it's an Int by default
 		case KindList:
 			// No hint and no list items: unknown list type
 			err := klarerrs.Node(klarerrs.ErrUntypedEmptyList, node)
@@ -213,12 +212,18 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 		c.fileError(err, fid)
 		return InvalidType
 	case *UntypedLambda:
-		// Ensure we have all the param types, or report an error.
-		// Invalid:
 		// 	_ = func a, b {}
-		// Valid:
-		//  _ = func(a: Int, b: Int) -> Int {}
-		return typ
+		lambda, _ := node.(*ast.LambdaExpression)
+		var err *klarerrs.Error
+		if lambda != nil {
+			err = klarerrs.Slice(klarerrs.ErrUntypedLambda, lambda.Params)
+			err.Label = "I don't know the types of these parameters"
+		} else {
+			err = klarerrs.Node(klarerrs.ErrUntypedLambda, node)
+			err.Label = "I don't know the types of the parameters of this"
+		}
+		c.fileError(err, fid)
+		return InvalidType
 	default:
 		return typ // Already typed
 		// TODO: This could be list of untyped. Walk the types and run toTyped

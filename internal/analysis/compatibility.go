@@ -35,6 +35,8 @@ func Compatible(a, b Type) bool {
 		b = &Optional{AnyType}
 	}
 	switch {
+	case b == InvalidType:
+		return true // Show less errors
 	case bKind == AnyType:
 		// A => Any if A != nil. All non-optional types are compatible with Any
 		return aKind != KindOptional
@@ -90,6 +92,15 @@ func Compatible(a, b Type) bool {
 			if !slices.ContainsFunc(ub.Types, func(tb Type) bool {
 				return Compatible(ta, tb)
 			}) {
+				return false
+			}
+		}
+		return true
+	case bKind != KindUnion && aKind == KindUnion:
+		// A | B => C if A => C and B => C
+		ua := As[*Union](a)
+		for _, ta := range ua.Types {
+			if !Compatible(ta, b) {
 				return false
 			}
 		}

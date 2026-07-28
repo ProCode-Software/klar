@@ -137,6 +137,38 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 			// Remaining statements will still be checked
 		}
 	}
+	// Queue this because lambdas are queued, and their bodies have to
+	// be checked first.
+	c.queue(func() { c.reportUnusedWarnings(sctx.ctx) }, false)
+}
+
+func (c *Checker) reportUnusedWarnings(ctx *Context) {
+	for obj := range ctx.Unused {
+		if obj.Module != c.module {
+			continue
+		}
+		warn := klarerrs.Range(klarerrs.WarnUnused, obj.Range).MarkWarning()
+		warn.Name = obj.Name
+		warn.SetParam("kind", kindOf(obj.Type))
+		// Be more specific if the object is a function parameter
+		if vr, ok := obj.Type.(*Variable); ok && vr.VarKind == FuncParamVar {
+			warn.SetParam("kind", "parameter")
+		}
+		// TODO: Only recommend deleting or exporting if the value has no side effects
+		var exportHint string
+		if obj.File.TopLevel() {
+			// Only recommend exporting if it's a top-level declaration
+			exportHint = " export it,"
+		}
+		warn.Hintf(
+			"Delete it,%s or prefix the name with an underscore (e.g. '_%s')",
+			exportHint, obj.Name,
+		)
+		c.fileError(warn, obj.File)
+		if warn.File == "" {
+			fmt.Println(warn.File, "|", obj.File, "|", obj.Name, obj.FilePathRange())
+		}
+	}
 }
 
 func canForwardDeclareInFunc(stmt ast.Statement) bool {

@@ -14,8 +14,8 @@ import (
 // A Function can take multiple sets of parameters using [Overload]s.
 type Function struct {
 	Overloads []*Overload
-	Return    Type // TODO: If returns can be Result/optional, move to Overload
-	Arity     Arity
+	Return    Type  // TODO: If returns can be Result/optional, move to Overload
+	Arity     Arity // TODO: Is this needed?
 }
 
 func (*Function) objKind() {}
@@ -157,87 +157,8 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 	ov.Generics = c.parseGenerics(stmt.GenericParams, ov.Object.File, ctx)
 
 	// 3. Params
-	var restParam *Variable // Unlabelled
 	ov.Params = make([]*Variable, 0, len(stmt.Parameters))
-	ov.Arity = Arity{}
-	for _, param := range stmt.Parameters {
-		typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
-		for _, pn := range param.Names {
-			vrObj := NewObject(pn.Name.Name, ov.Object.File, pn.Name.Range(), c.module, nil)
-			vr := NewVariable(vrObj, FuncParamVar, typ)
-			if variadic {
-				vr.Object.Flags |= VariadicParam
-			}
-			c.declare(ctx, vrObj)
-			switch {
-			case !pn.Label.IsZero():
-				// Labelled param
-				lp := &LabelledParam{pn.Label.Name, vr}
-				ov.LabelledParams = append(ov.LabelledParams, lp)
-				if ov.labelMap == nil {
-					ov.labelMap = make(map[string]*Variable)
-				}
-				// TODO: Check for name conflicts
-				ov.labelMap[pn.Label.Name] = vr
-			case variadic:
-				// Unlabelled variadic param
-				ov.Params = append(ov.Params, vr)
-
-				// If there is a variadic parameter, there is no max number of params
-				ov.Arity.MaxParams = -1
-				if !isInit {
-					fn.Arity.MaxParams = -1
-				}
-				// Ensure there is only 1 variadic param in the overload
-				if restParam != nil {
-					// Variadic exists
-					err := objectError(klarerrs.ErrMultipleVariadicParam, vrObj)
-					err.Label = "A variadic parameter was already defined"
-					err.AddHighlight(
-						"The first variadic parameter was defined here",
-						restParam.Object.Range,
-					)
-					c.fileError(err, ov.File)
-					break
-				}
-				restParam = vr
-			default:
-				// Normal param
-				ov.Params = append(ov.Params, vr)
-				ov.Arity.MinParams++
-				ov.Arity.MaxParams++
-			}
-
-			// Check default value
-			if param.Default != nil {
-				vr.Object.Flags |= HasDefault
-				// A variadic parameter can't have a default value
-				// 	func _(items: ...Int = [1, 2, 3])
-				if variadic {
-					err := klarerrs.Node(klarerrs.ErrVariadicDefault, param.Default)
-					err.Label = "Remove this default value"
-					err.AddHighlight(
-						"This parameter is defined as variadic",
-						param.Type.GetRange(),
-					)
-					c.fileError(err, ov.File)
-					continue
-				}
-				// TODO: Should it be delayed?
-				// TODO: Should a default value be allowed with a generic param?
-				t := NewExpr(ctx, constExpr)
-				c.checkExpr(param.Default, t)
-				if !Compatible(t.Type, typ) {
-					err := typeMismatch(typ, t.Type, param.Default.GetRange())
-					err.Node = param.Default
-					err.AddHighlight(
-						"The type of the parameter is "+quoteAka(typ),
-						param.Type.GetRange(),
-					)
-				}
-			}
-		}
-	}
+	restParam := c.checkFuncDeclParams(ov, stmt, ctx, isInit, fn) // Unlabelled
 	// Decrease the arity's minimum if the params end in optionals or have default values
 	// Arity only counts unlabelled params
 	if ov.Arity.MinParams > 0 {
@@ -349,6 +270,91 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 			}
 		}, true)
 	}
+}
+
+func (c *Checker) checkFuncDeclParams(
+	ov *Overload, stmt *ast.FunctionDeclaration, ctx *Context,
+	isInit bool, fn *Function,
+) (restParam *Variable) {
+	for _, param := range stmt.Parameters {
+		typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
+		for _, pn := range param.Names {
+			vrObj := NewObject(pn.Name.Name, ov.Object.File, pn.Name.Range(), c.module, nil)
+			vr := NewVariable(vrObj, FuncParamVar, typ)
+			if variadic {
+				vr.Object.Flags |= VariadicParam
+			}
+			c.declare(ctx, vrObj)
+			switch {
+			case !pn.Label.IsZero():
+				// Labelled param
+				lp := &LabelledParam{pn.Label.Name, vr}
+				ov.LabelledParams = append(ov.LabelledParams, lp)
+				if ov.labelMap == nil {
+					ov.labelMap = make(map[string]*Variable)
+				}
+				// TODO: Check for name conflicts
+				ov.labelMap[pn.Label.Name] = vr
+			case variadic:
+				// Unlabelled variadic param
+				ov.Params = append(ov.Params, vr)
+
+				// If there is a variadic parameter, there is no max number of params
+				ov.Arity.MaxParams = -1
+				if !isInit {
+					fn.Arity.MaxParams = -1
+				}
+				// Ensure there is only 1 variadic param in the overload
+				if restParam != nil {
+					// Variadic exists
+					err := objectError(klarerrs.ErrMultipleVariadicParam, vrObj)
+					err.Label = "A variadic parameter was already defined"
+					err.AddHighlight(
+						"The first variadic parameter was defined here",
+						restParam.Object.Range,
+					)
+					c.fileError(err, ov.File)
+					break
+				}
+				restParam = vr
+			default:
+				// Normal param
+				ov.Params = append(ov.Params, vr)
+				ov.Arity.MinParams++
+				ov.Arity.MaxParams++
+			}
+
+			// Check default value
+			if param.Default != nil {
+				vr.Object.Flags |= HasDefault
+				// A variadic parameter can't have a default value
+				// 	func _(items: ...Int = [1, 2, 3])
+				if variadic {
+					err := klarerrs.Node(klarerrs.ErrVariadicDefault, param.Default)
+					err.Label = "Remove this default value"
+					err.AddHighlight(
+						"This parameter is defined as variadic",
+						param.Type.GetRange(),
+					)
+					c.fileError(err, ov.File)
+					continue
+				}
+				// TODO: Should it be delayed?
+				// TODO: Should a default value be allowed with a generic param?
+				t := NewExpr(ctx, constExpr)
+				c.checkExpr(param.Default, t)
+				if !Compatible(t.Type, typ) {
+					err := typeMismatch(typ, t.Type, param.Default.GetRange())
+					err.Node = param.Default
+					err.AddHighlight(
+						"The type of the parameter is "+quoteAka(typ),
+						param.Type.GetRange(),
+					)
+				}
+			}
+		}
+	}
+	return restParam
 }
 
 func (c *Checker) checkInitReturnType(

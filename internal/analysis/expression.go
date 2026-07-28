@@ -218,6 +218,7 @@ func (e *Expr) IsFiltered(expr ast.Expression) (filtered bool, node string) {
 	return
 }
 
+// If valid, t's Type will be set to an [*Object].
 func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 	t.Type = InvalidType
 	var (
@@ -234,6 +235,7 @@ func (c *Checker) checkSymbolExpr(s *ast.Symbol, allowType bool, t *Expr) {
 		c.checkDeclaration(obj)
 	}
 	t.Type = obj
+	obj.Context.markUsed(obj) // Mark it as used in the context it was declared in
 	switch {
 	case !obj.IsTypeName():
 	case t.hint != nil && t.hint.Kind() == KindFunction:
@@ -935,6 +937,7 @@ func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
 		valVar      = NewVariable(valObj, PipelineVar, first.Type)
 		pipelineCtx = NewContext(t.Context, t.Context.File)
 	)
+	pipelineCtx.Declare(valObj)
 	for _, step := range expr.Steps[1:] {
 		if ret, ok := step.(*ast.ReturnStatement); ok {
 			if !t.mode.has(exprStmt) {
@@ -950,9 +953,7 @@ func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
 		}
 		// TODO: Ensure each step is a call, and pass `value` as a param
 		// See RFC #8: https://github.com/ProCode-Software/klar/discussions/11
-		e := t.NewChild()
-		e.Context = pipelineCtx
-		c.checkExpr(step.(ast.Expression), e)
+		e := c.checkExpr(step.(ast.Expression), t.NewChild().withContext(pipelineCtx))
 		valVar.Type = e.Type // Set `value` to the type of the last step
 	}
 	t.Type = valVar.Type

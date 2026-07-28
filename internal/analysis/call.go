@@ -313,6 +313,7 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet
 		} else {
 			typ = c.checkExprFrom(arg.Value, t).Type
 		}
+		// TODO: Labelled param followed by unlabelled params is considered variadic
 		if arg.Label != nil {
 			if ps.labelled == nil {
 				ps.labelled = make(map[string]Type)
@@ -323,7 +324,7 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet
 			ps.nodeMap = append(ps.nodeMap, arg.Value)
 		}
 	}
-	return
+	return ps
 }
 
 func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.CallParam, t *Expr) {
@@ -334,38 +335,15 @@ func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.Ca
 		c.overloadArityError(o, ps, params, t)
 		return
 	}
-	var positionalI int
-	for _, param := range params {
-		var got Type
-		var expVar *Variable
-		if param.Label != nil {
-			if expVar, _ = o.labelMap[param.Label.Name]; expVar == nil {
-				// Labelled param doesn't exist
-				err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, param.Label)
-				err.Desc = "These params are defined: " + strings.Join(
-					slices.Sorted(maps.Keys(o.labelMap)), ", ",
-				)
-				c.fileError(err, t.FileID())
-				continue
-			}
-			got = ps.labelled[param.Label.Name]
-		} else {
-			expVar = o.Params[min(positionalI, len(o.Params)-1)]
-			got = ps.params[positionalI]
-			positionalI++
-		}
+
+	checkParam := func(expVar *Variable, got Type, getNode func() ast.Expression) {
 		exp := expVar.Type
 		isVariadic := expVar.Object.Flags.Has(VariadicParam)
 		if isVariadic {
 			exp = exp.(*List).Elem
 		}
-		if rest, ok := param.Value.(*ast.RestExpression); ok {
-			_ = c.Info.Expressions[rest.Expression]
-			// TODO: Get length of rest and check types
-			continue
-		}
 		if !Compatible(got, exp) {
-			err := typeMismatch(exp, got, param.Value.GetRange())
+			err := typeMismatch(exp, got, getNode().GetRange())
 			c.fileError(err, t.FileID())
 		}
 		// Set the inferred types for lambdas and shorthands
@@ -373,11 +351,64 @@ func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.Ca
 		// they won't be set.
 		switch Underlying(got).(type) {
 		case *UntypedLambda, *UntypedInit:
-			if e := c.Info.Expressions[param.Value]; e != nil {
+			if e := c.Info.Expressions[getNode()]; e != nil {
 				e.Type = exp
 			}
 		}
 	}
+
+	// Positional params
+	for i, got := range ps.params {
+		expVar := o.Params[min(i, len(o.Params)-1)]
+		checkParam(expVar, got, func() ast.Expression { return ps.nodeMap[i] })
+	}
+
+	// Labelled params
+	orderedLabels := orderedLabelledParams(params)
+	var labelledNodes map[string]*ast.CallParam // Lazily initialized
+	getLabelledNodes := func() map[string]*ast.CallParam {
+		if labelledNodes == nil {
+			labelledNodes = makeLabelledParamMap(params)
+		}
+		return labelledNodes
+	}
+	for _, name := range orderedLabels {
+		got := ps.labelled[name]
+		expVar, ok := o.labelMap[name]
+		if !ok {
+			// Labelled param doesn't exist
+			labelNode := getLabelledNodes()[name].Label
+			err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, labelNode)
+			err.Desc = "These params are defined: " + strings.Join(
+				slices.Sorted(maps.Keys(o.labelMap)), ", ",
+			)
+			c.fileError(err, t.FileID())
+			continue
+		}
+		checkParam(expVar, got, func() ast.Expression {
+			return getLabelledNodes()[name].Value
+		})
+	}
+}
+
+func orderedLabelledParams(nodes []*ast.CallParam) (labels []string) {
+	for _, node := range nodes {
+		if node.Label != nil {
+			labels = append(labels, node.Label.Name)
+		}
+	}
+	return
+}
+
+func makeLabelledParamMap(params []*ast.CallParam) map[string]*ast.CallParam {
+	m := make(map[string]*ast.CallParam)
+	for _, node := range params {
+		if node.Label != nil {
+			// Respecified labels already checked at parse-time
+			m[node.Label.Name] = node
+		}
+	}
+	return m
 }
 
 // Try to show a helpful message if the user provided a labelled

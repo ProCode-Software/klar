@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"cmp"
-	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -18,8 +17,8 @@ func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 	if c.Options.Error != nil {
 		c.Options.Error(err)
 	}
-	if mx := c.Options.MaxErrors; mx > 0 && len(c.Errors) >= mx {
-		c.Errors = append(c.Errors, klarerrs.TooManyErrors())
+	if mx := c.Options.MaxErrors; mx > 0 && len(c.Errors) >= mx &&
+		klarerrs.ErrorCount(c.Errors) >= mx { // Exclude warnings from error limit
 		panic(stopChecker{})
 	}
 	return err
@@ -46,27 +45,28 @@ func redeclaredError(new, old *Object, topLevel bool) *klarerrs.Error {
 }
 
 func kindOf(typ ObjectKind) string {
-	// TODO: finish implementing
-	switch typ := typ.(type) {
+	switch typ.(type) {
 	case *Variable:
 		return "variable"
 	case *Constant:
 		return "constant"
 	case *Function, *Overload:
 		return "function"
+	case *FunctionAlias:
+		return "function alias"
 	case *TypeName:
-		if typ.Type == nil {
+		return "type"
+		/* if typ.Type == nil {
 			return "type"
 		}
-		return typ.Kind().String()
+		return typ.Kind().String() */
 	case *Namespace:
 		return "namespace"
 	case nil:
-		return ""
+		return "object"
 	default:
-		_ = typ
+		return "object"
 	}
-	return fmt.Sprintf("%T", typ)
 }
 
 func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {

@@ -12,8 +12,9 @@ public type Parser {
 func Parser.current() -> Token = self.tokens[self.index]
 func Parser.hasTokens() = self.index < self.tokens.length
 func Parser.advance() -> (current: Token) {
-    current = self.tokens[self.index]
+    current := self.tokens[self.index]
     self.index += 1
+    return current
 }
 
 func (parser: Parser).parse() -> Result<Program, [SyntaxError]> {

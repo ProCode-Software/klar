@@ -13,7 +13,7 @@ import (
 
 type whenSubject struct {
 	*Expr
-	Node    ast.Expression // Can be nil
+	Node    ast.Expression // Nil if implicit 'true'
 	Options []*WhenPattern
 	Default *WhenPattern // Default case. Can be nil
 }
@@ -71,6 +71,7 @@ type patternChecker struct {
 func (pc *patternChecker) fid() FileID { return pc.pat.FileID() }
 
 func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
+	t.Type = t.hint
 	fid := t.FileID()
 	subjects := make([]*whenSubject, len(expr.Subjects))
 	for i, subj := range expr.Subjects {
@@ -180,11 +181,13 @@ func (c *Checker) performWhenSmartCasts(
 	subjects []*whenSubject, nilChecks map[int]int, caseI int, bodyCtx *Context,
 ) {
 	for subjI, subj := range subjects {
-		orig, ok := subj.Type.(*Object)
+		og, ok := subj.Type.(*Object)
 		if !ok {
+			// Unfortunately, we can only smart-cast variables. See
+			// the comment in [Checker.checkWhenExpr].
 			continue
 		}
-		casted := new(*orig)
+		casted := og.Clone(c.module, subj.FileID(), subj.Node.GetRange())
 		types := make([]Type, len(subj.Options))
 		for i, opt := range subj.Options {
 			// Another smart cast: If one case checks if a subject is nil,
@@ -196,7 +199,7 @@ func (c *Checker) performWhenSmartCasts(
 			types[i] = opt.Type
 		}
 		union := NewUnion(types)
-		switch orig := orig.Type.(type) {
+		switch orig := og.Type.(type) {
 		case *Variable:
 			NewVariable(casted, orig.VarKind, union)
 		case *Constant:
@@ -204,13 +207,18 @@ func (c *Checker) performWhenSmartCasts(
 		default: // Unsupported
 		}
 		// Use [Context.Declare] to avoid reporting redeclared errors
-		if orig = bodyCtx.Declare(casted); orig != nil {
-			panic(fmt.Sprintf("%q redeclared in body context: %#v", orig.Name, orig))
+		if og := bodyCtx.Declare(casted); og != nil {
+			panic(fmt.Sprintf("%q redeclared in body context: %#v", og.Name, og))
 		}
+		// Casted object doesn't need to be used. Also, it was already used
+		// in the 'when' subject
+		casted.Context.markUsed(casted)
 	}
 }
 
-func (c *Checker) declareWhenPatternAliases(subjects []*whenSubject, vars []ast.Identifier, bodyCtx *Context) {
+func (c *Checker) declareWhenPatternAliases(
+	subjects []*whenSubject, vars []ast.Identifier, bodyCtx *Context,
+) {
 	for i, name := range vars {
 		if len(subjects) == 0 {
 			// Implicit `when true` can't declare variables because they
@@ -237,7 +245,9 @@ func (c *Checker) declareWhenPatternAliases(subjects []*whenSubject, vars []ast.
 	}
 }
 
-func (c *Checker) checkWhenBody(expr *ast.WhenExpression, caseI int, bctx *Context, t *Expr) {
+func (c *Checker) checkWhenBody(
+	expr *ast.WhenExpression, caseI int, bctx *Context, whenExpr *Expr,
+) {
 	cs := expr.Cases[caseI]
 	stmtFlags := allowNextStop
 	if caseI == len(expr.Cases)-1 {
@@ -247,43 +257,45 @@ func (c *Checker) checkWhenBody(expr *ast.WhenExpression, caseI int, bctx *Conte
 	// Blocks aren't allowed, and the only statements allowed are control statements
 	switch body := cs.Body.(type) {
 	case *ast.Block:
-		if !t.mode.has(exprStmt) {
+		if !whenExpr.mode.has(exprStmt) {
 			err := klarerrs.Node(klarerrs.ErrBlockInWhenExpr, body)
 			err.AddHighlight("This 'when' is being used as an expression", expr.Range)
 			err.Label = "This is only allowed in a 'when' statement"
-			c.fileError(err, t.FileID())
+			c.fileError(err, whenExpr.FileID())
 			// We will still check the body
 		}
-		sctx := newChildStmtContext(t.stmtCtx, bctx, stmtFlags)
+		sctx := newChildStmtContext(whenExpr.stmtCtx, bctx, stmtFlags)
 		c.checkBlock(body.Body, sctx)
 	case ast.Statement:
-		sctx := newChildStmtContext(t.stmtCtx, bctx, stmtFlags|braceless)
+		sctx := newChildStmtContext(whenExpr.stmtCtx, bctx, stmtFlags|braceless)
 		c.checkStmt(body, sctx)
 	case ast.Expression:
-		bodyExpr := NewExpr(bctx, allowNothingValue).withHint(t.hint)
+		bodyExpr := NewExpr(bctx, allowNothingValue).withHint(whenExpr.hint)
 		// Allow functions that return Nothing to be used as bodies in
 		// 'when' statements
-		if t.mode.has(exprStmt) {
+		if whenExpr.mode.has(exprStmt) {
 			bodyExpr.mode |= exprStmt
 		}
-		bodyExpr.stmtCtx = t.stmtCtx
+		bodyExpr.stmtCtx = whenExpr.stmtCtx
 		c.checkExpr(body, bodyExpr)
 		if bodyExpr.Kind() == NothingType {
-		} else if !t.mode.has(exprStmt) {
+		} else if !whenExpr.mode.has(exprStmt) {
 			// When the 'when' is being used as an expression, the bodies must
 			// have the same type.
-			t.Type = t.hint
-			prevBodyType := t.Type
-			c.inferCollection(bodyExpr, &t.Type, body, t.hint, func(err *klarerrs.Error) {
-				if err.Code == klarerrs.ErrTypeMismatch {
-					return
-				}
-				err.AddHighlight(
-					"The previous body expression has type "+quoteAka(prevBodyType),
-					expr.Cases[caseI-1].Body.GetRange(),
-				)
-				err.SetParam("kind", "'when' expression")
-			})
+			prevBodyType := whenExpr.Type
+			c.inferCollection(
+				bodyExpr, &whenExpr.Type, body, whenExpr.hint,
+				func(err *klarerrs.Error) {
+					if err.Code == klarerrs.ErrTypeMismatch {
+						return
+					}
+					err.AddHighlight(
+						"The previous body expression has type "+quoteAka(prevBodyType),
+						expr.Cases[caseI-1].Body.GetRange(),
+					)
+					err.SetParam("kind", "'when' expression")
+				},
+			)
 		}
 	}
 }
@@ -360,7 +372,7 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 	case *ast.StructDotInit:
 		pc.checkStruct(expr.Params)
 	case *ast.ListLiteral:
-		pc.checkList(expr)
+		pc.checkListInner(expr)
 	case *ast.MapLiteral:
 		pc.checkMap(expr)
 	case *ast.EnumLiteral:
@@ -393,17 +405,18 @@ func (c *Checker) checkWhenPattern(ws *whenSubject, expr ast.Expression) *WhenPa
 		}
 	case *ast.Symbol:
 		// Could be a type
-		obj := ws.Context.LookupRecursive(expr.Identifier)
+		c.checkSymbolExpr(expr, true, pat.Expr)
+		obj := pat.Type.(*Object)
 		switch {
 		case obj == nil:
 			c.fileError(klarerrs.Undefined(expr.Identifier, expr.Range), ws.FileID())
 			pat.PatternKind, pat.Type = InvalidPattern, InvalidType
 			return pat
 		case obj.IsTypeName():
-			pat.PatternKind, pat.Type = TypePattern, obj
+			pat.PatternKind = TypePattern
 			// This pattern is only allowed on non-concrete types.
 		default:
-			pat.PatternKind, pat.Type = LiteralExprPattern, obj
+			pat.PatternKind = LiteralExprPattern
 		}
 	default: // Including parentheses
 		c.checkExpr(expr, pat.Expr)
@@ -537,18 +550,24 @@ func (c *Checker) findWhenPattern(
 }
 
 // Allows sub-options and as-declarations
-func (pc *patternChecker) checkExprAdvanced(expr ast.Expression) *Expr {
-	t := pc.pat.NewChild()
+func (pc *patternChecker) checkExprAdvanced(expr ast.Expression, hint Type, litPattern bool) *Expr {
+	t := pc.pat.NewChild().withHint(hint)
 	switch expr := expr.(type) {
 	case *ast.SubOptions:
 		t.Type = pc.checkOptions(expr)
 		pc.Info.Expressions[expr] = t
 	case *ast.AsExpression:
-		t = pc.checkExprAdvanced(expr.Expression) // Could be sub-options
+		t = pc.checkExprAdvanced(expr.Expression, hint, litPattern) // Could be sub-options
 		if err := pc.pat.declareVar(expr.Name, t.Type, expr.Expression); err != nil {
 			pc.fileError(err, pc.fid())
 		}
 		pc.Info.Expressions[expr] = t
+	case *ast.ListLiteral:
+		if !litPattern {
+			return pc.checkExpr(expr, t)
+		}
+		// TODO: Nested list pattern matching
+		t.Type = &List{hint}
 	default:
 		pc.checkExpr(expr, t)
 	}
@@ -610,7 +629,7 @@ func (pc *patternChecker) checkString(lit *ast.StringLiteral) {
 	}
 }
 
-func (pc *patternChecker) checkList(list *ast.ListLiteral) {
+func (pc *patternChecker) checkListInner(list *ast.ListLiteral) {
 	pc.pat.PatternKind = ListPattern
 	var hint Type
 	switch {
@@ -641,6 +660,8 @@ func (pc *patternChecker) checkList(list *ast.ListLiteral) {
 				continue
 			case *ast.Discard:
 				panic("'..._' or '_...' rest not rejected")
+			case *ast.ListLiteral:
+				continue // TODO: Nested patterns
 			default:
 				e = pc.pat.NewChild()
 				if ok := pc.checkListRest(item, e); !ok {
@@ -652,11 +673,20 @@ func (pc *patternChecker) checkList(list *ast.ListLiteral) {
 			continue
 		case *ast.Discard:
 			continue
+		case *ast.AsExpression:
+			// [[_, _, _, _]... as rest, 5, 6]
+			rest, ok := item.Expression.(*ast.RestExpression)
+			if !ok {
+				e = pc.checkExprAdvanced(item, hint, true)
+				break
+			}
+			_ = rest
+			continue // Nested list
 		default:
 			// TODO: Redeclared errors will be raised out of order. If a symbol
 			// is declared first, then an as-expression with the same name, the error
 			// will be on the symbol even though it was declared first.
-			e = pc.checkExprAdvanced(item)
+			e = pc.checkExprAdvanced(item, hint, true)
 		}
 		prev := listType.Elem
 		// Same as [Checker.checkListLiteral]
@@ -753,8 +783,10 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 	}
 	var hadLabelled bool
 	for i, param := range expr.Args {
-		if dot, ok := param.Value.(*ast.RestExpression); ok && dot.Expression == nil {
+		if rest, ok := param.Value.(*ast.RestExpression); ok {
 			// Skip: .withParams3(5, ...) | .withParams4(5, ..., 3, 4)
+			// Rest: .withParams3(5, rest...) | .withParams4(5, rest..., 3, 4)
+			_ = rest
 			continue // TODO
 		}
 		var actualType Type
@@ -807,9 +839,10 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 		default:
 			// Has literal value (may or may not be labelled)
 			// 	.withParams(5) | .withParams(a: 5)
-			if val := pc.checkExprAdvanced(expr).Type; !Compatible(val, actualType) {
+			val := pc.checkExprAdvanced(expr, actualType, false)
+			if !Compatible(val.Type, actualType) {
 				pc.fileError(
-					typeMismatch(actualType, val, expr.GetRange()), pc.fid(),
+					typeMismatch(actualType, val.Type, expr.GetRange()), pc.fid(),
 				)
 			}
 		}
