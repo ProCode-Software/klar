@@ -284,7 +284,7 @@ func (e *Error) handleTypeError() string {
 	case ErrIndexEnumMethod:
 		return "Method " + Quote(e.Name) + " can only be accessed on each of the enum's items, not the enum itself"
 	case ErrNotOptionalType:
-		return "'none' can only be used as a value of an optional type"
+		return "'none' can only be assigned to an optional type"
 	case ErrInvalidCollectionType:
 		items := "items"
 		if e.StringParam("kind") == "'when' expression" {

@@ -43,6 +43,7 @@ func NewContext(parent *Context, fid FileID, flags ...Flag) *Context {
 const (
 	_ ContextAttribute = iota
 	firstStmtIndex
+	unusedReported
 )
 
 func (ctx *Context) setAttribute(key ContextAttribute, val any) *Context {

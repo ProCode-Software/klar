@@ -79,6 +79,16 @@ func objectError(code klarerrs.Code, obj *Object) *klarerrs.Error {
 }
 
 func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
+	if got == Untyped(KindOptional) {
+		// Trying to assign nil to a non-optional type
+		err := klarerrs.Range(klarerrs.ErrNotOptionalType, gotRange)
+		err.Label = "Required type " + klarerrs.Quote(exp.String()) + " can't be 'none'"
+		err.Info = klarerrs.TypeErrorInfo{
+			ExpectedType: exp.String(),
+			GotType:      got.String(),
+		}
+		return err
+	}
 	err := cmp.Or(
 		tryUnwrapRequiredError(exp, got, gotRange),
 		klarerrs.Range(klarerrs.ErrTypeMismatch, gotRange),

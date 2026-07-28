@@ -122,6 +122,8 @@ func (c *Checker) Check() {
 
 	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)
+	// Report warnings for unused top-level objects and imports
+	c.reportTopLevelUnused()
 
 	c.ResetState() // Free memory
 }
@@ -221,4 +223,17 @@ func (c *Checker) runDelayed(from int) {
 	}
 	wg.Wait()
 	c.delayed = c.delayed[:from]
+}
+
+func (c *Checker) reportTopLevelUnused() {
+	// Unused unexported top-level objects
+	c.reportUnusedWarnings(c.module.Context)
+	// Unused imports
+	for _, fid := range slices.Sorted(maps.Keys(c.module.fileContext)) {
+		fctx := c.module.fileContext[fid]
+		// Errors may have already been reported while checking top-level statements
+		if fctx.getAttribute(unusedReported) != true {
+			c.reportUnusedWarnings(fctx)
+		}
+	}
 }

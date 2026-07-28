@@ -149,14 +149,17 @@ func (c *Checker) reportUnusedWarnings(ctx *Context) {
 		}
 		warn := klarerrs.Range(klarerrs.WarnUnused, obj.Range).MarkWarning()
 		warn.Name = obj.Name
-		warn.SetParam("kind", kindOf(obj.Type))
+		kind := kindOf(obj.Type)
 		// Be more specific if the object is a function parameter
 		if vr, ok := obj.Type.(*Variable); ok && vr.VarKind == FuncParamVar {
-			warn.SetParam("kind", "parameter")
+			kind = "parameter"
+		} else if kind == "namespace" {
+			kind = "imported module"
 		}
+		warn.SetParam("kind", kind)
 		// TODO: Only recommend deleting or exporting if the value has no side effects
 		var exportHint string
-		if obj.File.TopLevel() {
+		if obj.Context == c.module.Context {
 			// Only recommend exporting if it's a top-level declaration
 			exportHint = " export it,"
 		}
@@ -169,6 +172,7 @@ func (c *Checker) reportUnusedWarnings(ctx *Context) {
 			fmt.Println(warn.File, "|", obj.File, "|", obj.Name, obj.FilePathRange())
 		}
 	}
+	ctx.setAttribute(unusedReported, true)
 }
 
 func canForwardDeclareInFunc(stmt ast.Statement) bool {
