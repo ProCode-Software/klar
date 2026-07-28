@@ -48,11 +48,11 @@ type Version struct {
 	BuildNum int
 }
 
-func (v *Version) Major() int { return v.Parts[0] }
-func (v *Version) Minor() int { return v.Part(1) }
-func (v *Version) Patch() int { return v.Part(2) }
+func (v Version) Major() int { return v.Parts[0] }
+func (v Version) Minor() int { return v.Part(1) }
+func (v Version) Patch() int { return v.Part(2) }
 
-func (v *Version) Part(n int) int {
+func (v Version) Part(n int) int {
 	if len(v.Parts) < n+1 {
 		return 0
 	}
@@ -66,11 +66,11 @@ func (v *Version) UnmarshalText(text []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	*v = *v2
+	*v = v2
 	return nil
 }
 
-func (v *Version) String() string {
+func (v Version) String() string {
 	var b strings.Builder
 	if len(v.Parts) == 0 {
 		return "v0.0"
@@ -90,7 +90,7 @@ func (v *Version) String() string {
 	return "v" + b.String()[1:]
 }
 
-func (v *Version) Normalize() *Version {
+func (v Version) Normalize() Version {
 	// v1.2.0 -> v1.2
 	// Remove commit info (+...)
 	return v
@@ -98,6 +98,6 @@ func (v *Version) Normalize() *Version {
 
 var Regex = `(\d+)(?:\.(?P<minor>\d+)){,3}`
 
-func Compare(v1, v2 *Version) int {
+func Compare(v1, v2 Version) int {
 	return 0
 }

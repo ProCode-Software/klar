@@ -23,7 +23,7 @@ type Options struct {
 	// TODO: Support multiple targets
 	Targets []target.Target
 	// The minimum version of Klar required to compile the program.
-	KlarVersion *version.Version
+	KlarVersion version.Version
 	// If Error != nil, it is called when an error is reported.
 	Error func(*klarerrs.Error)
 	// Whether the program is being typechecked for testing purposes.

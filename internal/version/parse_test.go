@@ -9,45 +9,45 @@ func TestParse(t *testing.T) {
 		name    string
 		input   string
 		full    bool
-		want    *Version
+		want    Version
 		wantErr bool
 	}{
-		{name: "valid version", input: "1.2.3", full: true, want: &Version{Parts: []int{1, 2, 3}}},
+		{name: "valid version", input: "1.2.3", full: true, want: Version{Parts: []int{1, 2, 3}}},
 		{
 			name:  "valid version with prefix",
 			input: "v1.2.3", full: true,
-			want: &Version{Parts: []int{1, 2, 3}},
+			want: Version{Parts: []int{1, 2, 3}},
 		},
-		{name: "one part", input: "v1", full: true, want: &Version{Parts: []int{1}}},
+		{name: "one part", input: "v1", full: true, want: Version{Parts: []int{1}}},
 		{
 			name:  "with build",
 			input: "v1.0 beta",
 			full:  true,
-			want:  &Version{Parts: []int{1, 0}, Build: Beta},
+			want:  Version{Parts: []int{1, 0}, Build: Beta},
 		},
 		{
 			name:  "with build and number",
 			input: "v1.0 beta 2",
 			full:  true,
-			want:  &Version{Parts: []int{1, 0}, Build: Beta, BuildNum: 2},
+			want:  Version{Parts: []int{1, 0}, Build: Beta, BuildNum: 2},
 		},
 		{
 			name:  "backtrack trailing space if !full",
 			input: "v1.0 ",
 			full:  false,
-			want:  &Version{Parts: []int{1, 0}},
+			want:  Version{Parts: []int{1, 0}},
 		},
 		{
 			name:  "backtrack trailing space after build if !full",
 			input: "v1.0 beta ",
 			full:  false,
-			want:  &Version{Parts: []int{1, 0}, Build: Beta},
+			want:  Version{Parts: []int{1, 0}, Build: Beta},
 		},
 		{
 			name:  "backtrack trailing space after build number if !full",
 			input: "v1.0 beta 2 ",
 			full:  false,
-			want:  &Version{Parts: []int{1, 0}, Build: Beta, BuildNum: 2},
+			want:  Version{Parts: []int{1, 0}, Build: Beta, BuildNum: 2},
 		},
 
 		// Bad inputs

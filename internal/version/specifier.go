@@ -11,7 +11,7 @@ type Specifier struct {
 	// If the specifier specifies a latest version, MatchesLatest is used to match
 	// v using b, the build specified. MatchesLatest should determine if v is latest
 	// version with build b.
-	MatchesLatest func(v *Version, b Build) bool
+	MatchesLatest func(v Version, b Build) bool
 }
 
 // ParseSpecifier parses the version specifier represented by s, returning
@@ -23,7 +23,7 @@ func ParseSpecifier(s string) (Specifier, error) {
 func (s *Specifier) IsZero() bool { return s.specComponent == nil }
 
 // GetMatches returns the versions in vs that match the specifier.
-func (s *Specifier) GetMatches(vs []*Version) []*Version { return nil }
+func (s *Specifier) GetMatches(vs []Version) []Version { return nil }
 
 func (s *Specifier) UnmarshalText(text []byte) (err error) {
 	*s, err = ParseSpecifier(string(text))
@@ -63,7 +63,7 @@ type (
 	// 	= 3.5
 	modifierComponent struct {
 		keyword int
-		version *Version
+		version Version
 	}
 	// Example:
 	// 	latest
@@ -73,7 +73,7 @@ type (
 	// 	2.1...3.2
 	// 	1..<2.2
 	rangeComponent struct {
-		min, max *Version
+		min, max Version
 		open     bool // true if ..< was used
 	}
 	anyComponent struct{} // *, any
@@ -114,7 +114,7 @@ func (c *latestComponent) String() string {
 // ========
 
 // Matches reports whether v matches the versions specified by s.
-func (s *Specifier) Matches(v *Version) bool {
+func (s *Specifier) Matches(v Version) bool {
 	switch c := s.specComponent.(type) {
 	case *modifierComponent:
 		switch c.keyword {
@@ -146,7 +146,7 @@ func (s *Specifier) IsLatest() bool {
 }
 
 func ParseSpecifierAndMatch(
-	s string, v *Version, matchesLatest func(v *Version, b Build) bool,
+	s string, v Version, matchesLatest func(v Version, b Build) bool,
 ) (bool, error) {
 	spec, err := ParseSpecifier(s)
 	if err != nil {

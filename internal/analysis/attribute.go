@@ -18,14 +18,14 @@ type Attributes struct {
 	Deprecated *Deprecation
 	External   []*External
 	Target     []target.Target
-	Added      *version.Version
+	Added      version.Version
 	Name       map[target.Target]string
 }
 
 // All fields are optional
 type Deprecation struct {
 	Reason string
-	Since  *version.Version
+	Since  version.Version
 	Use    string // What users should use instead
 	// Specific targets this is deprecated on. If not specified,
 	// the deprecation applies to all targets.

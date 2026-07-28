@@ -11,7 +11,7 @@ import (
 type CheckOptions struct {
 	File        string
 	Target      target.Target
-	KlarVersion *version.Version
+	KlarVersion version.Version
 	Path        string
 	*analysis.Options
 }

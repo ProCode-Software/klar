@@ -25,14 +25,14 @@ type PkgHash uint64
 
 type Lockfile struct {
 	Version    int
-	Klar       *version.Version
+	Klar       version.Version
 	Packages   []*Package
 	PackageMap map[PkgHash]*Package
 }
 
 type PackageHeader struct {
 	Name      string // Always the name of the package from the manifest
-	Version   *version.Version
+	Version   version.Version
 	From      PackageSource
 	GitCommit string // The resolved commit number, if from Git
 	Hash      PkgHash

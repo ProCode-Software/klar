@@ -7,6 +7,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
+	"github.com/ProCode-Software/klar/internal/version"
 )
 
 func (pkc *PackageCompiler) TypeCheckModule(
@@ -55,7 +56,7 @@ func (pkc *PackageCompiler) getCheckerOptions(mod *Module) *analysis.Options {
 		Targets:              pkc.Targets,
 		IsTest:               pkc.Mode == ModeTest,
 		MaxErrors:            MaxErrors,
-		KlarVersion:          nil, // TODO: [version.Specifier].Min()
+		KlarVersion:          version.Version{}, // TODO: [version.Specifier].Min()
 		EnforceTargetSupport: pkc.EnforceTargetSupport,
 	}
 	return opts

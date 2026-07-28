@@ -19,7 +19,7 @@ type Module struct {
 	ImportPath  imports.ImportPath
 	Imports     []*Module
 	Targets     []target.Target  // Targets the module was compiled for
-	KlarVersion *version.Version // Minimum required Klar version
+	KlarVersion version.Version // Minimum required Klar version
 	Context     *Context         // Root non-builtin context
 	Flags       Flag
 	Info        *Info
@@ -30,7 +30,7 @@ func NewModule(
 	name, path string,
 	importPath imports.ImportPath,
 	programs map[string]*ast.Program,
-	klarVersion *version.Version,
+	klarVersion version.Version,
 	targets []target.Target,
 ) *Module {
 	ctx := NewContext(BuiltInContext, 0)

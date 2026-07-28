@@ -6,7 +6,7 @@ var KlarVersion, KlarCommit string
 
 var KlarVersionAndCommit = KlarVersion + "+" + KlarCommit
 
-var ParsedKlarVersion *version.Version
+var ParsedKlarVersion version.Version
 
 func init() {
 	var err error

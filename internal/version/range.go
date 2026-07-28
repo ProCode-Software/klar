@@ -1,7 +1,7 @@
 package version
 
 type Range struct {
-	From, To *Version
+	From, To Version
 	Open     bool // If ..<
 }
 

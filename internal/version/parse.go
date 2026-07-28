@@ -10,8 +10,8 @@ import (
 	"github.com/ProCode-Software/klar/internal/lexer"
 )
 
-// parse parses a version literal. An error is returned if the version is invalid.
-func Parse(s string) (*Version, error) {
+// Parse parses a version literal. An error is returned if the version is invalid.
+func Parse(s string) (Version, error) {
 	v, _, err := parse(s, true)
 	return v, err
 }
@@ -19,17 +19,17 @@ func Parse(s string) (*Version, error) {
 // parse parses a version literal. The length of the parsed version is
 // returned. If full is true, an error is returned if there are trailing
 // characters after the version.
-func parse(s string, full bool) (v *Version, n int, err error) {
+func parse(s string, full bool) (v Version, n int, err error) {
 	if len(s) == 0 {
-		return nil, 0, errors.New("version is empty")
+		return v, 0, errors.New("version is empty")
 	}
 	// TODO: Special error if contains underscore
-	v = &Version{}
+	v = Version{}
 	if s[0] == 'v' {
 		n++
 	}
 	if len(s) == 1 {
-		return nil, 1, errors.New("expected version number after 'v'")
+		return v, 1, errors.New("expected version number after 'v'")
 	}
 parseParts:
 	for n < len(s) {
@@ -48,7 +48,7 @@ parseParts:
 				n++
 			}
 			if overflows {
-				return nil, n, fmt.Errorf("version number %s is too large", s[start:n])
+				return v, n, fmt.Errorf("version number %s is too large", s[start:n])
 			}
 			v.Parts = append(v.Parts, number)
 			if n >= len(s) {
@@ -59,7 +59,7 @@ parseParts:
 		case s[n] == '.':
 			n++
 			if n >= len(s) || !isDigit(s[n]) {
-				return nil, n, errors.New("expected a number after dot")
+				return v, n, errors.New("expected a number after dot")
 			}
 			continue
 		case s[n] == ' ':
@@ -72,17 +72,17 @@ parseParts:
 		case !full:
 			return v, n, nil
 		case s[n] == '_':
-			return nil, n, errors.New("version numbers can't contain underscores")
+			return v, n, errors.New("version numbers can't contain underscores")
 		default:
 			r, _ := utf8.DecodeRuneInString(s[n:])
-			return nil, n, fmt.Errorf("invalid character in version: %q", r)
+			return v, n, fmt.Errorf("invalid character in version: %q", r)
 		}
 	}
 	switch {
 	case len(v.Parts) == 0:
-		return nil, n, errors.New("expected at least 1 number in version")
+		return v, n, errors.New("expected at least 1 number in version")
 	case len(v.Parts) > 4:
-		return nil, n, errors.New("expected at most 4 parts in version")
+		return v, n, errors.New("expected at most 4 parts in version")
 	case n >= len(s):
 		return v, n, nil
 	}
@@ -104,7 +104,9 @@ parseParts:
 	// Build number
 	if s[n] == ' ' && s[n+1:] != "" {
 		n++
-		buildNumLen := strings.IndexFunc(s[n:], func(r rune) bool { return !lexer.IsDigit(r) })
+		buildNumLen := strings.IndexFunc(s[n:], func(r rune) bool {
+			return !lexer.IsDigit(r)
+		})
 		if buildNumLen < 0 {
 			buildNumLen = len(s[n:])
 		}
@@ -115,7 +117,7 @@ parseParts:
 	}
 	if n < len(s) && full {
 		r, _ := utf8.DecodeRuneInString(s[n:])
-		return nil, n, fmt.Errorf("invalid character in version: %q", r)
+		return v, n, fmt.Errorf("invalid character in version: %q", r)
 	}
 	return v, n, nil
 }
