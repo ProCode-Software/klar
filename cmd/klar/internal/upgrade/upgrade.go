@@ -65,7 +65,7 @@ func Run(c *argparse.Parser) {
 		// If there's an error, tell the user how to update manually
 		ansi.TagFprintfln(
 			os.Stderr,
-			"\n<**>Please update Klar manually by running:</**>\n\n    <m!>%s</m>",
+			"\n<**>Please update Klar manually by running:</**>\n\n    <m!>%s</m!>",
 			installCmd,
 		)
 	}()
