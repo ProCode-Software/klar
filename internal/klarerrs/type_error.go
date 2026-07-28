@@ -120,6 +120,7 @@ const (
 	// Call ====
 
 	ErrWrongParamCount // Wrong number of parameters passed to a function
+	ErrMissingParamLabel // Positional parameter should be labelled
 )
 
 func (e *Error) handleTypeError() string {
@@ -349,5 +350,7 @@ func (e *Error) handleTypeError() string {
 	case ErrForExprResMismatch:
 		return "The right-hand side of a 'for' expression must return " +
 			e.StringParam("required") + " when iterating over " + e.StringParam("iterKind")
+	case ErrMissingParamLabel:
+	return "This parameter needs to be labelled '" + e.Name + ":'"
 	}
 }
