@@ -12,29 +12,29 @@ func _() {
 	_ = x[SyntaxErrorPrefix-100]
 	_ = x[WarningPrefix-300]
 	_ = x[TypeErrorPrefix-400]
-	_ = x[ReferenceErrorPrefix-500]
-	_ = x[ModuleErrorPrefix-600]
-	_ = x[ImplementationErrorPrefix-700]
-	_ = x[ErrModuleNotFound-601]
-	_ = x[ErrSelfImport-602]
-	_ = x[ErrModuleKlarTooNew-603]
-	_ = x[ErrImporterError-604]
-	_ = x[ErrImporterNotFound-605]
-	_ = x[ErrModuleCompileError-606]
-	_ = x[ErrPrivateImport-607]
-	_ = x[ErrSingleFileImport-608]
-	_ = x[ErrUnsupportedImportTarget-609]
-	_ = x[ErrImportPathAliased-610]
-	_ = x[ErrImportEmpty-611]
-	_ = x[ErrImportPathConflict-612]
-	_ = x[ErrNoPublicExports-613]
-	_ = x[ErrUndefined-501]
-	_ = x[ErrEnumUndefined-502]
-	_ = x[ErrEnumCycle-503]
-	_ = x[ErrExportUndefined-504]
-	_ = x[ErrNotExported-505]
-	_ = x[ErrLoopLabelUndefined-506]
-	_ = x[ErrParamLabelUndefined-507]
+	_ = x[ReferenceErrorPrefix-600]
+	_ = x[ModuleErrorPrefix-700]
+	_ = x[ImplementationErrorPrefix-800]
+	_ = x[ErrModuleNotFound-701]
+	_ = x[ErrSelfImport-702]
+	_ = x[ErrModuleKlarTooNew-703]
+	_ = x[ErrImporterError-704]
+	_ = x[ErrImporterNotFound-705]
+	_ = x[ErrModuleCompileError-706]
+	_ = x[ErrPrivateImport-707]
+	_ = x[ErrSingleFileImport-708]
+	_ = x[ErrUnsupportedImportTarget-709]
+	_ = x[ErrImportPathAliased-710]
+	_ = x[ErrImportEmpty-711]
+	_ = x[ErrImportPathConflict-712]
+	_ = x[ErrNoPublicExports-713]
+	_ = x[ErrUndefined-601]
+	_ = x[ErrEnumUndefined-602]
+	_ = x[ErrEnumCycle-603]
+	_ = x[ErrExportUndefined-604]
+	_ = x[ErrNotExported-605]
+	_ = x[ErrLoopLabelUndefined-606]
+	_ = x[ErrParamLabelUndefined-607]
 	_ = x[ErrUnexpectedToken-101]
 	_ = x[ErrExpectedToken-102]
 	_ = x[ErrImportExpectedModule-103]
@@ -284,13 +284,13 @@ func (i Code) String() string {
 	case 400 <= i && i <= 490:
 		i -= 400
 		return _Code_name_3[_Code_index_3[i]:_Code_index_3[i+1]]
-	case 500 <= i && i <= 507:
-		i -= 500
-		return _Code_name_4[_Code_index_4[i]:_Code_index_4[i+1]]
-	case 600 <= i && i <= 613:
+	case 600 <= i && i <= 607:
 		i -= 600
+		return _Code_name_4[_Code_index_4[i]:_Code_index_4[i+1]]
+	case 700 <= i && i <= 713:
+		i -= 700
 		return _Code_name_5[_Code_index_5[i]:_Code_index_5[i+1]]
-	case i == 700:
+	case i == 800:
 		return _Code_name_6
 	default:
 		return "Code(" + strconv.FormatInt(int64(i), 10) + ")"
