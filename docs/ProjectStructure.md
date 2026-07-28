@@ -1,5 +1,8 @@
-# Project Structure Specification
+# Klar Project Structure
+
 This document describes the structure of projects and special files and directories for Klar implementations.
+
+> Note: This document describes the layout of projects compiled by Klar, not the Klar compiler itself.
 
 ## Project Directories/Root Folders
 
@@ -27,9 +30,9 @@ For full Klar projects with a glas.pack, these folders inside the same folder as
 
 Klar scripts placed outside a project with a glas.pack file are allowed.
 
--   Are discrete modules, even with files in the same folder
--   Must be run by name
--   Cannot install or import modules outside the standard library
+- Are discrete modules, even with files in the same folder
+- Must be run by name
+- Cannot install or import modules outside the standard library
 
 ## Manifest/Configuration Files
 
@@ -57,11 +60,11 @@ Modules are defined by directories. Creating a directory inside a directory crea
 
 The module identifier is the name of the directory. A module identifier:
 
--   can contain any Unicode letter or digit or underscores (`_`)
--   cannot be a keyword (such as `import, func,` or `go`) or a modifier (`public, opaque`, etc.)
--   cannot be a special project directory (such as `pkg`)
--   cannot begin with a digit
--   cannot be only a single underscore (`_`)
+- can contain any Unicode letter or digit or underscores (`_`)
+- cannot be a keyword (such as `import, func,` or `go`) or a modifier (`public, opaque`, etc.)
+- cannot be a special project directory (such as `pkg`)
+- cannot begin with a digit
+- cannot be only a single underscore (`_`)
 
 Most valid Klar identifiers are valid module identifiers. If an identifier is not a valid Klar identifier, it is not a valid module identifier.
 

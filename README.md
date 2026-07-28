@@ -148,7 +148,7 @@ func testSum() {
 
 ## Contributing, Development, Issues, and PRs
 
-For a basic contribution guide for ths repo, see [CONTRIBUTING.md](https://github.com/ProCode-Software/klar/blob/main/CONTRIBUTING.md). It also contains a guide on learning how the Klar compiler works.
+For a basic contribution guide for this repo, see [CONTRIBUTING.md](https://github.com/ProCode-Software/klar/blob/main/CONTRIBUTING.md). It also contains a guide on learning how the Klar compiler works.
 
 ## Feedback, Comments, and RFCs
 

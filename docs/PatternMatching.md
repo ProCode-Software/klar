@@ -114,7 +114,7 @@ when msg {
 
 word := 'hello'
 when word[0] {
-    // Matches if the string is a single upppercase letter
+    // Matches if the string is a single uppercase letter
     'A'...'Z' -> {}
     // Lowercase letter
     'a'...'z' -> {}

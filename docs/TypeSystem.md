@@ -290,7 +290,7 @@ func now() -> Date
 func parseISODate(date: String) -> Result<Date>
 ```
 
-Compilation will fail if a function or method without an implementation is referred to in a module. For example, if targetting JavaScript, there must be an `@external` defined for the JavaScript target in order to compile the module.
+Compilation will fail if a function or method without an implementation is referred to in a module. For example, if targeting JavaScript, there must be an `@external` defined for the JavaScript target in order to compile the module.
 
 It is the developer's responsibility to ensure the Klar function and type signatures are correct, and the external paths are correct. The compiler won't enforce it.
 
@@ -515,7 +515,7 @@ first(of: ['a', 'b', 'c'])
 first(of: [Any](of: false, 'a', true, 2, 5.4, [1, 2]))
 ```
 
-All generics are inferred, along with comparible operations. Each declared generic must be used in function parameters, as there is no syntax for explicitly declaring types for each generic (e.g. `first<Int>(...)`). The following is not allowed:
+All generics are inferred, along with compatible operations. Each declared generic must be used in function parameters, as there is no syntax for explicitly declaring types for each generic (e.g. `first<Int>(...)`). The following is not allowed:
 
 ```klar
 func first<T>(of list: [Any]) -> T
