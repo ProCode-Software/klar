@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -299,6 +300,22 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 		p.Error(klarerrs.Node(klarerrs.ErrSelfExecFunc, left))
 	}
 	var args []*ast.CallParam
+	var labelMap map[string]*ast.CallParam // To detect duplicate labels
+	addLabel := func(param *ast.CallParam) {
+		name := param.Label.Name
+		if labelMap == nil {
+			labelMap = make(map[string]*ast.CallParam)
+		} else if orig, ok := labelMap[name]; ok {
+			// Respecified label
+			err := klarerrs.Node(klarerrs.ErrRespecifiedParamLabel, param)
+			err.Name = name
+			err.Label = fmt.Sprintf("Labelled parameter '%s:' was already provided", name)
+			err.AddHighlight("It was already provided here", orig.GetRange())
+			p.Error(err)
+			return
+		}
+		labelMap[name] = param
+	}
 	for p.WhileNotEndOr(lexer.RightParenthesis) {
 		arg := &ast.CallParam{}
 		arg.Range.Start = p.Curr().Position
@@ -319,6 +336,9 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			fallthrough
 		default:
 			arg.Value = p.ParseExpression(ExpressionBindingPower)
+		}
+		if arg.Label != nil {
+			addLabel(arg)
 		}
 		markEndPos(p, arg)
 		args = append(args, arg)
