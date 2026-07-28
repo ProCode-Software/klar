@@ -16,7 +16,6 @@ type Lambda struct {
 	arity    Arity
 	Variadic bool
 	Return   Type
-	Complete bool
 }
 
 func (*Lambda) Kind() Kind { return KindFunction }
@@ -106,6 +105,5 @@ func (c *Checker) checkFunctionType(expr *ast.FunctionType, ctx *Context) Type {
 	} else {
 		l.Return = NothingType
 	}
-	l.Complete = true
 	return l
 }

@@ -92,7 +92,6 @@ func newEnumFunction(ei *EnumItem) *EnumFunction {
 		Lambda: &Lambda{
 			Params:   ei.Params,
 			Return:   &EnumRef{EnumItem: ei, Called: true},
-			Complete: true,
 		},
 		EnumItem: ei,
 	}

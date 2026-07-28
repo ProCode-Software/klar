@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -805,51 +806,122 @@ func (c *Checker) checkMapCastExpr(expr *ast.MapCastExpression, t *Expr) {
 }
 
 func (c *Checker) checkLambdaExpr(expr *ast.LambdaExpression, t *Expr) {
-	bodyCtx := NewContext(t.Context, t.Context.File)
-	sig := &Lambda{}
+	// Both are lazy-initialized
+	var untyped *UntypedLambda
+	var typed *Lambda
+
+	// No parameters means the lambda is typed
+	if len(expr.Params) == 0 {
+		typed = &Lambda{}
+	}
 	// For now, we're only collecting the explicit types for params and returns
-	for _, pair := range expr.Params {
+	for i, pair := range expr.Params {
+		// Default value
+		var def Type
+		if pair.Value != nil {
+			def = c.checkExprFrom(pair.Value, t).Type
+		}
+
+		// No explicit type: untyped
 		if pair.Type == nil {
+			if untyped == nil {
+				untyped = &UntypedLambda{
+					Vars: make([]UntypedLambdaParam, 0, len(expr.Params)),
+				}
+			}
+			for _, vr := range pair.Keys {
+				var name string
+				if sym, ok := vr.(*ast.Symbol); ok {
+					name = sym.Identifier
+				} else {
+					// TODO: Stringify ast.Assignable
+					name = "<destructure>"
+				}
+				untyped.Vars = append(untyped.Vars, UntypedLambdaParam{
+					Name:    name,
+					Default: def,
+				})
+			}
 			continue
+		}
+
+		// Typed lambda
+		if typed == nil {
+			typed = &Lambda{Params: make([]Type, 0, len(expr.Params))}
 		}
 		typ, variadic := c.parseTypeOrVariadic(pair.Type, t.Context)
 		if variadic {
-			sig.Variadic = true
+			typed.Variadic = true
 			// Ensure this is the last param
+			if i < len(expr.Params)-1 || len(pair.Keys) > 1 {
+			}
 		}
-		// sig.Params is lazy-initialized only if any explicit types were provided
-		if sig.Params == nil {
-			sig.Params = make([]Type, 0, len(expr.Params))
+		for range pair.Keys {
+			typed.Params = append(typed.Params, typ)
 		}
-		for range max(len(pair.Keys), 1) {
-			sig.Params = append(sig.Params, typ)
+		// Ensure the default value is compatible with the explicit type
+		if def != nil && !Compatible(def, typ) {
+			c.fileError(typeMismatch(typ, def, pair.Value.GetRange()), t.FileID())
 		}
 	}
-	// TODO: params and checking return type
-	c.queue(func() {
-		// There was an error before this queued function, such as wrong
-		// param counts or types.
-		if t.Type == InvalidType {
-			return
-		}
+
+	if untyped != nil {
+		t.Type = untyped
 		// At the time this is run, the function's params and return type
-		// should be resolved.
-		if t.hint == nil {
-			// Untyped lambda. Ensure we have all the param types, or report an error.
-			// Invalid:
-			// 	_ = func a, b {}
-			// Valid:
-			//  _ = func(a: Int, b: Int) -> Int {}
+		// should be resolved into t.Type.
+		c.queue(func() { c.checkLambdaBody(expr, t) }, true)
+	} else {
+		t.Type = typed
+		// If the lambda is typed, we can check the function body right away.
+		// Right now, we may or may not have an explicit return type.
+		c.checkLambdaBody(expr, t)
+	}
+}
+
+// TODO: Factor functionality from [Checker.checkFuncBody]
+func (c *Checker) checkLambdaBody(expr *ast.LambdaExpression, t *Expr) {
+	l, ok := Underlying(t.Type).(*Lambda)
+	if !ok {
+		return // Lambda is still untyped
+	}
+	bodyCtx := NewContext(t.Context, t.Context.File)
+	// Declare variables
+	var i int
+	for _, pair := range expr.Params {
+		for _, assg := range pair.Keys {
+			var typ Type
+			if i >= len(l.Params) {
+				// Type mismatch already reported
+				typ = InvalidType
+			} else {
+				typ = l.Params[i]
+			}
+			i++
+			// TODO: followDestructure skips non-name variables because errors are
+			// pre-reported for variable declarations, but not lambdas. Find a way
+			// to report those errors (another option to followDestructure is
+			// preferred over another pass).
+			for dest, typ := range c.followDestructure(
+				assg, typ, t.FileID(),
+				cmp.Or[ast.Node](pair.Type, pair.Value, assg).GetRange(), true,
+			) {
+				sym := dest.(*ast.Symbol)
+				vr := NewObject(sym.Identifier, t.FileID(), sym.Range, c.module, nil)
+				NewVariable(vr, FuncParamVar, typ)
+				c.declare(bodyCtx, vr)
+			}
 		}
-		if expr.Block != nil {
-			sctx := newStmtContext(bodyCtx, t.Context.File, 0)
-			c.checkBlock(expr.Block.Body, sctx)
-		} else {
-			c.checkExprFrom(expr.Expr, t)
-		}
-		sig.Complete = true
-	}, true)
-	t.Type = sig
+	}
+
+	// Body
+	if expr.Block != nil {
+		sctx := newStmtContext(bodyCtx, t.Context.File, 0)
+		c.checkBlock(expr.Block.Body, sctx)
+	} else {
+		c.checkExpr(expr.Expr, t.NewChild(allowNothingValue).withContext(bodyCtx))
+	}
+
+	// TODO: Check returns
 }
 
 const PipelineResultName = "value"

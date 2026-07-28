@@ -17,12 +17,12 @@ type Context struct {
 	Declarations map[string]*Object
 	sortedDecls  []*Object // By object order. Lazily sorted; never reference directly.
 	// discardDecls []*Object // Declarations with '_' name and can't be put in Declarations
-	Parent       *Context
-	Children     []*Context
-	Flags        Flag
-	Attrs        map[ContextAttribute]any
-	Used         map[string]struct{}
-	File         FileID
+	Parent   *Context
+	Children []*Context
+	Flags    Flag
+	Attrs    map[ContextAttribute]any
+	Used     map[string]struct{}
+	File     FileID
 }
 
 type Declaration struct {

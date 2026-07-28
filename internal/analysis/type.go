@@ -3,6 +3,7 @@ package analysis
 import (
 	"fmt"
 	"iter"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -100,8 +101,36 @@ type UntypedInit struct {
 	Params []*ast.CallParam
 }
 
-func (i *UntypedInit) Kind() Kind     { return i.kind }
-func (i *UntypedInit) String() string { return i.kind.String() }
+type UntypedLambda struct {
+	Vars []UntypedLambdaParam
+}
+
+type UntypedLambdaParam struct {
+	Name    string
+	Default Type // Can be nil
+}
+
+func (*UntypedLambda) Kind() Kind { return KindFunction }
+func (ul *UntypedLambda) String() string {
+	var b strings.Builder
+	b.WriteString("func(")
+	for i, param := range ul.Vars {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.Name)
+	}
+	b.WriteByte(')')
+	return b.String()
+}
+
+func (i *UntypedInit) Kind() Kind { return i.kind }
+func (i *UntypedInit) String() string {
+	if i.kind == KindEnum {
+		return "." + i.Node.(*ast.EnumLiteral).Name.Name
+	}
+	return i.kind.String()
+}
 
 func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type {
 	switch ut := typ.(type) {
@@ -183,6 +212,13 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 		)
 		c.fileError(err, fid)
 		return InvalidType
+	case *UntypedLambda:
+		// Ensure we have all the param types, or report an error.
+		// Invalid:
+		// 	_ = func a, b {}
+		// Valid:
+		//  _ = func(a: Int, b: Int) -> Int {}
+		return typ
 	default:
 		return typ // Already typed
 		// TODO: This could be list of untyped. Walk the types and run toTyped

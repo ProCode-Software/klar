@@ -3,6 +3,7 @@ package analysis
 import (
 	"cmp"
 	"fmt"
+	"iter"
 	"slices"
 )
 
@@ -18,7 +19,10 @@ func Compatible(a, b Type) bool {
 	case Untyped:
 		// Untyped Int is compatible with Int and Float. For other untyped
 		// types, they're compatible if they have the same Kind.
-		return aKind == bKind || (a == Untyped(IntType) && bKind == FloatType)
+		if aKind == bKind || (aKind == IntType && bKind == FloatType) {
+			return true
+		}
+		// Continue because 'b' may be a union, optional, etc.
 	case *UntypedInit:
 		return aKind == bKind
 	case *NoReturn:
@@ -42,7 +46,7 @@ func Compatible(a, b Type) bool {
 	case bKind == KindOptional && aKind != KindOptional:
 		// A => B? if A => B
 		if b == Untyped(KindOptional) {
-			return true // Non-optional to untyped nil
+			return false // Non-optional to untyped nil
 		}
 		b := Underlying(b).(*Optional)
 		return Compatible(a, b.Elem)
@@ -96,8 +100,16 @@ func Compatible(a, b Type) bool {
 		return Compatible(ma.Key, mb.Key) && Compatible(ma.Value, mb.Value)
 	case bKind == KindEnum && aKind == KindEnum:
 		ea := Underlying(a).(EnumParenter)
+		b = Underlying(b)
+		if _, ok := b.(*UntypedInit); ok {
+			return false
+		}
 		eb := Underlying(b).(EnumParenter)
 		return ea.EnumParent() == eb.EnumParent()
+	case bKind == KindFunction && aKind == KindFunction:
+		if funcsCompatible(a, b) {
+			return true
+		}
 	}
 	return TypesEqual(a, b) // TODO
 }
@@ -250,5 +262,67 @@ func IsUntyped(t Type) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func funcsCompatible(a, b Type) bool {
+	a, b = Underlying(a), Underlying(b)
+	if a, ok := a.(*UntypedLambda); ok {
+		switch b := Underlying(b).(type) {
+		case *Lambda:
+			return len(a.Vars) == len(b.Params)
+		case *Overload:
+			if len(b.LabelledParams) > 0 {
+				return false
+			}
+		}
+	}
+	paramsA, variadicA, returnA, ok := makeFuncIter(a)
+	if !ok {
+		return false
+	}
+	paramsB, variadicB, returnB, ok := makeFuncIter(a)
+	if !ok {
+		return false
+	}
+	// Compare variadicity and return types
+	// TODO: func(...Any) is compatible with func(Int)
+	if variadicA != variadicB || !Compatible(returnA, returnB) {
+		return false
+	}
+	// Compare params
+	nextA, stopA := iter.Pull(paramsA)
+	nextB, stopB := iter.Pull(paramsB)
+	defer stopA()
+	defer stopB()
+	for {
+		a, okA := nextA()
+		b, okB := nextB()
+		if !okA || !okB {
+			return okA == okB
+		}
+		if !Compatible(a, b) {
+			return false
+		}
+	}
+}
+
+func makeFuncIter(fn Type) (params iter.Seq[Type], variadic bool, ret Type, ok bool) {
+	switch fn := fn.(type) {
+	case *Lambda:
+		return slices.Values(fn.Params), fn.Variadic, fn.Return, true
+	case *Overload:
+		if len(fn.LabelledParams) > 0 {
+			return nil, false, nil, false
+		}
+		return func(yield func(Type) bool) {
+			for _, param := range fn.Params {
+				if !yield(param) {
+					return
+				}
+			}
+		}, fn.Variadic(), fn.Return, true
+	default:
+		return nil, false, nil, false
 	}
 }

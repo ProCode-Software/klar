@@ -750,6 +750,7 @@ func (c *Checker) checkRedeclaredOverload(a, b *Overload) (ok bool) {
 // for overload resolution.
 type paramSet struct {
 	params   []Type
+	nodeMap  []ast.Expression // For positional params
 	labelled map[string]Type
 }
 
@@ -972,4 +973,9 @@ func isVariadicParam(typ Type) (inner Type) {
 		return vr.Type.(*List).Elem
 	}
 	return nil
+}
+
+// Variadic reports whether ov's positional parameter set is variadic.
+func (ov *Overload) Variadic() bool {
+	return len(ov.Params) > 1 && isVariadicParam(ov.Params[len(ov.Params)-1]) != nil
 }

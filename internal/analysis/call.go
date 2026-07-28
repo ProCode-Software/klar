@@ -3,7 +3,10 @@ package analysis
 import (
 	"cmp"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -130,7 +133,7 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 			firstArg = res
 		}
 		c.checkTypeCast(typ, name, args, firstArg, t)
-	case *EnumRef:
+	case *EnumFunction:
 		t.Type = lhs
 	case *Lambda:
 		c.checkLambdaParams(fn, args, t)
@@ -141,12 +144,15 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 		if err != nil {
 			err.Range = ranges.FromSlice(args)
 			c.fileError(err, t.FileID())
+			// ov still isn't nil
 		}
-		_ = ov
+		c.checkOverloadParams(ov, pset, args, t)
 	case *Overload:
 		t.Type = fn.Return
+		// c.checkOverloadParams(fn, )
 	case *UntypedInit: // Not resolved yet
 		t.Type = InvalidType
+	case Kind:
 	default:
 		panic(fmt.Sprintf(
 			"checkCallArgs: unhandled LHS type after being handled by checkCallExpr: %T (underlying: %T)",
@@ -168,6 +174,14 @@ func (c *Checker) checkArity(args []*ast.CallParam, arity Arity, got int, fid Fi
 func arityError(args []*ast.CallParam, arity Arity, got int) *klarerrs.Error {
 	err := klarerrs.Slice(klarerrs.ErrWrongParamCount, args)
 	err.SetParam("got", got)
+	expParam := strconv.Itoa(arity.MinParams)
+	switch {
+	case arity.MaxParams == -1:
+		expParam += "+" // Expected 2+ params
+	case arity.MinParams != arity.MaxParams:
+		expParam += "-" + strconv.Itoa(arity.MaxParams) // Expected 2-4 params
+	}
+	err.SetParam("expected", expParam)
 	if got < arity.MinParams {
 		err.SetParam("notEnough", true)
 	}
@@ -277,11 +291,16 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet
 	for _, arg := range params {
 		var typ Type
 		if rest, ok := arg.Value.(*ast.RestExpression); ok {
+			// TODO: If the param is labelled, a rest is only allowed if the
+			// param is variadic
 			inner := c.checkExprFrom(rest.Expression, t)
 			switch inner.Kind() {
 			case KindTuple:
 				tup := As[*Tuple](inner.Type)
 				ps.params = append(ps.params, tup.Items...)
+				for range tup.Items {
+					ps.nodeMap = append(ps.nodeMap, rest.Expression)
+				}
 				continue
 			case KindList:
 				typ = As[*List](inner.Type).Elem
@@ -301,10 +320,102 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet
 			ps.labelled[arg.Label.Name] = typ
 		} else {
 			ps.params = append(ps.params, typ)
+			ps.nodeMap = append(ps.nodeMap, arg.Value)
 		}
 	}
 	return
 }
 
 func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.CallParam, t *Expr) {
+	t.Type = o.Return
+	// Arity check. We're not directly calling [Checker.checkArity] so we can
+	// offer hints if positional params were used instead of labelled ones.
+	if !o.Arity.InRange(len(ps.params)) {
+		c.overloadArityError(o, ps, params, t)
+		return
+	}
+	var positionalI int
+	for _, param := range params {
+		var got Type
+		var expVar *Variable
+		if param.Label != nil {
+			if expVar, _ = o.labelMap[param.Label.Name]; expVar == nil {
+				// Labelled param doesn't exist
+				err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, param.Label)
+				err.Desc = "These params are defined: " + strings.Join(
+					slices.Sorted(maps.Keys(o.labelMap)), ", ",
+				)
+				c.fileError(err, t.FileID())
+				continue
+			}
+			got = ps.labelled[param.Label.Name]
+		} else {
+			expVar = o.Params[min(positionalI, len(o.Params)-1)]
+			got = ps.params[positionalI]
+			positionalI++
+		}
+		exp := expVar.Type
+		isVariadic := expVar.Object.Flags.Has(VariadicParam)
+		if isVariadic {
+			exp = exp.(*List).Elem
+		}
+		if rest, ok := param.Value.(*ast.RestExpression); ok {
+			_ = c.Info.Expressions[rest.Expression]
+			// TODO: Get length of rest and check types
+			continue
+		}
+		if !Compatible(got, exp) {
+			err := typeMismatch(exp, got, param.Value.GetRange())
+			c.fileError(err, t.FileID())
+		}
+		// Set the inferred types for lambdas and shorthands
+		// TODO: This isn't a perfect solution. If these types are a list element,
+		// they won't be set.
+		switch Underlying(got).(type) {
+		case *UntypedLambda, *UntypedInit:
+			if e := c.Info.Expressions[param.Value]; e != nil {
+				e.Type = exp
+			}
+		}
+	}
+}
+
+// Try to show a helpful message if the user provided a labelled
+// parameter as positional
+func (c *Checker) overloadArityError(
+	o *Overload, ps paramSet, params []*ast.CallParam, t *Expr,
+) {
+	defaultError := func() {
+		// If there's no special hint we can give, use the generic message
+		c.checkArity(params, o.Arity, len(ps.params), t.FileID())
+	}
+	// To show a different message, the user has to provide all required
+	// positional params (may be 0)
+	if len(ps.params) <= len(o.Params) {
+		defaultError()
+		return
+	}
+	var hadAltError bool
+	for i, posParam := range ps.params[len(o.Params):] {
+		// Labelled params must be in order to show the special message
+		if i >= len(o.LabelledParams) {
+			break
+		}
+		labelled := o.LabelledParams[i]
+		if !Compatible(posParam, labelled.Variable.Type) {
+			continue
+		}
+		hadAltError = true
+		node := ps.nodeMap[len(o.Params)+i]
+		err := klarerrs.Node(klarerrs.ErrMissingParamLabel, node)
+		err.Name = labelled.Label
+		err.Label = fmt.Sprintf("Missing parameter label '%s:'", labelled.Label)
+		hintWithDiff(err, "Add the missing label", klarerrs.AddedString{
+			Pos: node.GetRange().Start, String: labelled.Label + ": ",
+		})
+		c.fileError(err, t.FileID())
+	}
+	if !hadAltError {
+		defaultError()
+	}
 }
