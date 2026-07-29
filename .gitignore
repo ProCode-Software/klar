@@ -61,3 +61,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.tsbuildinfo
 
 .qwen
+
+# tree-sitter bindings
+/pkg/tree-sitter-*/bindings/
+/pkg/tree-sitter-*/binding.gyp
+/pkg/tree-sitter-*/src/
+/pkg/tree-sitter-*/.editorconfig/
