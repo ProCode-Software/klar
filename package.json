@@ -1,22 +1,20 @@
 {
-  "name": "klar",
-  "version": "0.0.1",
-  "description": "A programming language",
-  "private": true,
-  "workspaces": [
-    "klar-vscode"
-  ],
-  "keywords": [
-    "programming language"
-  ],
-  "author": "ProCode Software",
-  "license": "Apache-2.0",
-  "trustedDependencies": [
-    "@vscode/vsce-sign"
-  ],
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "npm:@typescript/native-preview@latest"
-  },
-  "packageManager": "bun@1.3.14"
+    "name": "klar",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The progressive programming language",
+    "keywords": [
+        "programming language"
+    ],
+    "license": "Apache-2.0",
+    "author": "ProCode Software",
+    "workspaces": [
+        "klar-vscode",
+        "pkg/tree-sitter-*"
+    ],
+    "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^7.0.2"
+    },
+    "packageManager": "bun@1.3.14"
 }

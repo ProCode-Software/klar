@@ -47,11 +47,11 @@ You may research online about new language and stdlib features.
 
 Klar is a compiler for a modern programming language:
 
-1. **Lexer** → tokenizes source code
-2. **Parser** → builds AST from tokens
-3. **Analysis** → type checking and semantic validation
-4. **Code generation** → outputs JavaScript, and other languages in the future
-5. **Runtime** → In the distant future
+1. **Lexer:** tokenizes source code
+2. **Parser:** builds AST from tokens
+3. **Analysis:** type checking and semantic validation
+4. **Code generation:** outputs JavaScript, and other languages in the future
+5. **Runtime:** In the distant future
 
 The file extension is `.klar` only.
 
@@ -68,12 +68,12 @@ Klon is a markup language that will be Klar's flagship configuration format. `gl
 
 ## Key Packages
 
-- `cmd/klar/` — Main CLI
+- `cmd/klar/` - Main CLI
 - `cmd/glas/` - Glas CLI
-- `internal/*` — Core compiler
-- `pkg/*` — Public APIs
-- `std/` — Standard library written in Klar
-- `klar-vscode/` VSCode extension for Klar
+- `internal/*` - Core compiler
+- `pkg/*` - Public APIs
+- `std/` - Standard library written in Klar
+- `klar-vscode/` - VSCode extension for Klar
 
 ## Important Notes
 
