@@ -14,35 +14,36 @@ import (
 )
 
 func main() {
-	var parseFunc, freeFunc js.Func
-
-	parseFunc = js.FuncOf(func(this js.Value, args []js.Value) any {
+	var compile, freeCompiler js.Func
+	compile = js.FuncOf(func(this js.Value, args []js.Value) any {
 		s, report := Parse(args[0].String(), args[1].String())
-		var reportFunc js.Func
-		reportFunc = js.FuncOf(func(this js.Value, args []js.Value) any {
-			reportFunc.Release()
+		var getErrors js.Func
+		getErrors = js.FuncOf(func(this js.Value, args []js.Value) any {
+			getErrors.Release()
 			return report()
 		})
 		return js.ValueOf(map[string]any{
-			"output":       s,
-			"reportErrors": reportFunc, // Returns CLI-style diagnostics as a string
+			"output":    s,
+			"getErrors": getErrors, // Returns CLI-style diagnostics as a string
 		})
 	})
-	js.Global().Set("compileKlar", parseFunc)
-
 	// Function to free the compiler when the page is unloaded
-	freeFunc = js.FuncOf(func(js.Value, []js.Value) any {
-		parseFunc.Release()
-		freeFunc.Release()
+	freeCompiler = js.FuncOf(func(js.Value, []js.Value) any {
+		compile.Release()
+		freeCompiler.Release()
 		return nil
 	})
-	js.Global().Set("freeCompiler", freeFunc)
+
+	js.Global().Set("Klar", js.ValueOf(map[string]any{
+		"compile":      compile,
+		"freeCompiler": freeCompiler,
+	}))
 
 	select {} // Keep running
 }
 
 // Parse compiles the given source string and returns the result as a JSON string.
-func Parse(s string, fileName string) (out string, report func() string) {
+func Parse(s string, fileName string) (data string, report func() string) {
 	var (
 		buf         strings.Builder
 		c, res, err = build.CompileString(s, fileName)
