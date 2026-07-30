@@ -22,6 +22,7 @@ ignore (
 	./docs
 	./klar-vscode
 	./pkg/tree-sitter-klar
+	./pkg/klar-zed
 	./samples
 	./std
 	node_modules

@@ -1,0 +1,12 @@
+[package]
+name = "klar-zed"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/klar.rs"
+
+[dependencies]
+zed_extension_api = "0.7.0"
