@@ -165,8 +165,8 @@ func (ctx *Context) Unused(yield func(*Object) bool) {
 		// TODO: Don't yield objects from different modules.
 		// Store the module in the context.
 		needUsage := !o.Public && !strings.HasPrefix(o.Name, "_") &&
-			!o.Flags.Has(ImplicitVar)
-		// Only specific kinds of variables need to be used
+			!o.Flags.Has(ImplicitVar|UsageOptional)
+		// Only specific kinds of variables need t0o be used
 		if vr, ok := o.Type.(*Variable); ok && needUsage {
 			k := vr.VarKind
 			needUsage = k == LocalVar || k == TopLevelVar || k == FuncParamVar

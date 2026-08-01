@@ -1,7 +1,9 @@
 package klarerrs
 
 import (
+	"cmp"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -130,4 +132,23 @@ func FormatThisWord(n int, word string) string {
 func Capitalize(word string) string {
 	firstLetter, n := utf8.DecodeRuneInString(word)
 	return string(unicode.ToUpper(firstLetter)) + word[n:]
+}
+
+func FormatCountCustom(n int, zero, one, more string) (s string) {
+	// Replace %d if present. We're using this instead of fmt.Sprintf
+	// because if I can recall, it will error if we pass `n` with no
+	// format specifiers (extra).
+	defer func() {
+		if i := strings.Index(s, "%d"); i >= 0 {
+			s = s[:i] + strconv.Itoa(n) + s[i+len("%d"):]
+		}
+	}()
+	switch n {
+	case 0:
+		return cmp.Or(zero, more)
+	case 1:
+		return one
+	default:
+		return more
+	}
 }

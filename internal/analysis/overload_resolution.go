@@ -22,6 +22,10 @@ type paramSet struct {
 	variadicLabelled map[string][]Type
 }
 
+func (ps paramSet) NumLabelled() int {
+	return len(ps.labelled) + len(ps.variadicLabelled)
+}
+
 func (ps paramSet) String() string {
 	var b strings.Builder
 	b.WriteByte('(')
@@ -54,10 +58,17 @@ func (ps paramSet) String() string {
 	return b.String()
 }
 
-// Does not guarantee correct arity
-func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet) (*Overload, *klarerrs.Error) {
+// Does not guarantee correct arity. Returns true if an exact match was found.
+func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet, mustBeExact bool) (
+	*Overload, bool, *klarerrs.Error,
+) {
 	if len(overloads) == 1 {
-		return overloads[0], nil
+		var exact bool
+		if mustBeExact {
+			// Only return true if all parameters match exactly
+			exact = scoreOverloadByConcrete(overloads, make(map[*Overload]int), ps)
+		}
+		return overloads[0], exact, nil
 	}
 	scores := make(map[*Overload]int)
 	// checkWinner returns nil if there is no clear winner. A clear winner is one
@@ -80,9 +91,12 @@ func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet) (*Overload
 	}
 
 	// Pass 1: Score based on whether the param is a concrete type.
-	scoreOverloadByConcrete(overloads, scores, ps)
+	exact := scoreOverloadByConcrete(overloads, scores, ps)
+	if mustBeExact && !exact {
+		return nil, false, nil
+	}
 	if winner := checkWinner(); winner != nil {
-		return winner, nil
+		return winner, exact, nil
 	}
 
 	// Retain only the top overloads
@@ -111,7 +125,7 @@ func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet) (*Overload
 	// overall least broad interfaces wins.
 	sortOverloadsByBroadness(top, scores, ps)
 	if winner := checkWinner(); winner != nil {
-		return winner, nil
+		return winner, exact, nil
 	}
 	// If there is no clear winner at this point, there is a bug. We may have
 	// not validated the declarations enough. We will tell the user to report an
@@ -122,7 +136,7 @@ func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet) (*Overload
 	warn.Desc = "The type checker picks the best overload by scoring each declared overload, multiple overloads are tied for the highest score. As a last resort, we picked " +
 		quote(top[0].StringWithName(top[0].Name)) + ".\n" +
 		"This isn't your fault; please file an issue on GitHub."
-	return top[0], warn
+	return top[0], exact, warn
 }
 
 // scoreOverloadByConcrete scores based on whether the param is a concrete type.
@@ -140,10 +154,13 @@ func (c *Checker) resolveOverload(overloads []*Overload, ps paramSet) (*Overload
 // If one overload was a StructDeclaration, there would be a winner. Pass 2
 // solves this by sorting each interface by smallest to largest (specificity -
 // so TypeDeclaration wins because Node and Statement don't implement it)
-func scoreOverloadByConcrete(overloads []*Overload, scores map[*Overload]int, ps paramSet) {
-	scoreParam := func(exp, got Type) int {
+func scoreOverloadByConcrete(
+	overloads []*Overload, scores map[*Overload]int, ps paramSet,
+) (hasExact bool) {
+	scoreParam := func(exp, got Type, currIsExact *bool) int {
 		switch {
 		case !Compatible(got, exp):
+			*currIsExact = false
 			return 0
 		case !IsConcreteType(exp) && !TypesEqual(got, exp):
 			// fn(Intf) <- fn(Impl) scores less than fn(Impl) <- fn(Impl)
@@ -154,11 +171,13 @@ func scoreOverloadByConcrete(overloads []*Overload, scores map[*Overload]int, ps
 		}
 	}
 	for _, ov := range overloads {
+		currIsExact := true
 		// Positional params
 		if !ov.Arity.InRange(len(ps.params)) {
 			// Scores much less points, but don't skip it
 			// TODO: Should we take more points off based on number of params?
 			scores[ov] -= 5
+			currIsExact = false
 		}
 		for i, got := range ps.params {
 			if len(ov.Params) == 0 {
@@ -171,7 +190,7 @@ func scoreOverloadByConcrete(overloads []*Overload, scores map[*Overload]int, ps
 			} else if i >= len(ov.Params) {
 				break
 			}
-			scores[ov] += scoreParam(expType, got)
+			scores[ov] += scoreParam(expType, got, &currIsExact)
 		}
 
 		// Labelled params
@@ -179,25 +198,32 @@ func scoreOverloadByConcrete(overloads []*Overload, scores map[*Overload]int, ps
 			exp, ok := ov.labelMap[name]
 			if !ok {
 				scores[ov] -= 3
+				currIsExact = false
 				continue
 			}
 			expType := exp.Type
 			if exp.Object.Flags.Has(VariadicParam) {
 				expType = expType.(*List).Elem
 			}
-			scores[ov] += scoreParam(expType, got)
+			scores[ov] += scoreParam(expType, got, &currIsExact)
 		}
 		// Check if any required labelled params are missing
-		for name := range ov.labelMap {
-			if _, ok := ps.labelled[name]; !ok {
+		for name, vr := range ov.labelMap {
+			if _, ok := ps.labelled[name]; !ok && !IsOptionalParam(vr.Object) {
 				scores[ov] -= 2
+				currIsExact = false
 			}
 		}
+		// If at least 1 overload has correct params, `exact` will be true
+		if !hasExact && currIsExact {
+			hasExact = true
+		}
 	}
+	return hasExact
 }
 
 func sortOverloadsByBroadness(overloads []*Overload, scores map[*Overload]int, ps paramSet) {
-	scoreTypes := func(expA, expB, _ Type, sizeA, sizeB *int) {
+	scoreTypes := func(expA, expB, _got Type, sizeA, sizeB *int) {
 		compatAB, compatBA := Compatible(expA, expB), Compatible(expB, expA)
 		switch {
 		case compatAB && !compatBA:

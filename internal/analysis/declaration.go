@@ -22,6 +22,7 @@ type varInfo struct {
 	// Set when rhs is checked, or the explicit type is known. Pointer is
 	// never nil, but the *Expr can be.
 	rhsExpr **Expr
+	sctx    *stmtContext // Statement context the var/const was defined in
 }
 
 type funcKind uint8
@@ -60,6 +61,9 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
+	defer panicWithContext(func() string {
+		return fmt.Sprintf("%T declaration at %s", o.Type, o.FilePathRange())
+	})
 	/*
 		Red: Type isn't known yet. Not in objPathIndex.
 		White: Type is pending. Is in objPathIndex.
@@ -198,7 +202,7 @@ func (c *Checker) collectMethods(ctx *Context, typeName string, methods []method
 // associates them with the type with name typeName. Each [*Object] in inits
 // should have type [*Overload]. The type with name typeName is looked up
 // within the context and validated.
-func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Object) {
+func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Overload) {
 	identRange := func(obj *Object) ranges.Range {
 		return obj.info.node.(*ast.FunctionDeclaration).Identifier.Range()
 	}
@@ -211,7 +215,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 		if selfObj == nil {
 			// Undefined
 			for _, o := range inits {
-				err := klarerrs.Undefined(typeName, identRange(o))
+				err := klarerrs.Undefined(typeName, identRange(o.Object))
 				c.fileError(err, o.File)
 			}
 			return
@@ -239,7 +243,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 	case *TypeAlias:
 		// Similar to method receivers, this can't be an alias
 		for _, o := range inits {
-			err := klarerrs.Range(klarerrs.ErrAliasSelfType, identRange(o))
+			err := klarerrs.Range(klarerrs.ErrAliasSelfType, identRange(o.Object))
 			err.SetParam("initializer", true)
 			err.Label = "Initializer target can't be an alias"
 			c.fileError(err, o.File)
@@ -248,7 +252,7 @@ func (c *Checker) collectInitializers(ctx *Context, typeName string, inits []*Ob
 	default:
 		// Type doesn't support initializers
 		for _, o := range inits {
-			err := klarerrs.Range(klarerrs.ErrUnsupportedInitType, identRange(o))
+			err := klarerrs.Range(klarerrs.ErrUnsupportedInitType, identRange(o.Object))
 			err.Label = "Can't create initializers on this kind of type"
 			c.fileError(err, o.File)
 		}

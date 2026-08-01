@@ -47,7 +47,7 @@ func (c *Checker) checkListLiteral(expr *ast.ListLiteral, t *Expr) {
 				continue
 			}
 		} else {
-			c.checkExpr(item, e)
+			c.checkExpr(item, e.withHint(hint))
 		}
 		prev := list.Elem
 		c.inferCollection(e, &list.Elem, item, hint, func(err *klarerrs.Error) {

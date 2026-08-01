@@ -20,7 +20,7 @@ type Enum struct {
 	Generics     []*Generic
 	origin       *Enum     // Without initialized generics
 	Methods      []*Object // Type [*Function]
-	Initializers []*Object // Type [*Overload]
+	Initializers []*Overload
 	MethodSet
 }
 
@@ -357,4 +357,10 @@ func (er *EnumRef) Index(name string, t *Expr) *klarerrs.Error {
 		}
 	}
 	return fieldNotFound(name)
+}
+
+func (c *Checker) checkDefaultEnumInit(s *Enum,
+	args []*ast.CallParam, ps paramSet, t *Expr,
+) (isInit bool) {
+	return false // TODO: Not implemented
 }

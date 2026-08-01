@@ -53,7 +53,8 @@ func (fa *FunctionAlias) Underlying() Type {
 	}
 	return fa.Target.Type
 }
-func (*FunctionAlias) objKind() {}
+func (a *FunctionAlias) Kind() Kind { return KindFunction }
+func (*FunctionAlias) objKind()     {}
 func (fa *FunctionAlias) String() string {
 	if fa.Target == nil {
 		return "<function alias -> unknown>"
@@ -411,6 +412,7 @@ func (c *Checker) checkFuncBody(stmt *ast.FunctionDeclaration, ov *Overload,
 ) {
 	sctx := newStmtContext(ov.InnerContext, ov.File, allowReturn)
 	sctx.returnHint = ov.Return
+	c.recordBlock(stmt.Body, sctx)
 	c.checkBlock(stmt.Body.Body, sctx)
 
 	// Ensure return statements are present. They aren't needed if:
@@ -584,8 +586,6 @@ func (o *Overload) StringWithName(name string) string {
 
 func (g *Generic) Kind() Kind { return KindGeneric }
 
-func (a *FunctionAlias) Kind() Kind { return KindFunction }
-
 func (m *MethodSet) AddMethod(obj *Object) (err *klarerrs.Error) {
 	if m.methodMap == nil {
 		m.methodMap = make(map[string]*Object)
@@ -678,4 +678,24 @@ func isVariadicParam(typ Type) (inner Type) {
 // Variadic reports whether ov's positional parameter set is variadic.
 func (ov *Overload) Variadic() bool {
 	return len(ov.Params) > 1 && isVariadicParam(ov.Params[len(ov.Params)-1]) != nil
+}
+
+// TODO
+func (c *Checker) checkFuncAlias(o *Object) {
+	info := o.info
+	targetExpr := info.node.(*ast.FuncAliasDeclaration).Target
+	// TODO: Lookup the target expression and make sure it resolves to a function
+	var target *Object = nil
+	if info.receiver != nil {
+		// Method alias
+		sym := targetExpr.(*ast.Symbol)
+		_ = sym
+	} else {
+		// Normal function
+		switch targetExpr.(type) {
+		case *ast.IndexExpression:
+		case *ast.Symbol:
+		}
+	}
+	o.Type.(*FunctionAlias).Target = target
 }

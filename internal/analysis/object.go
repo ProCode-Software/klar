@@ -13,7 +13,7 @@ type Object struct {
 	Name    string       // Name of the object as declared in its module
 	Context *Context     // Context in which the object was declared
 	Range   ranges.Range // Position span of the object in the source code
-	File    FileID       // File ID the object was declared in
+	File    FileID       // File ID the object was declared in. If top level, o.File != o.Context.File
 	Public  bool         // Whether the object is exported
 	Module  *Module      // Module where the object was declared
 	Type    ObjectKind   // Type of the object
@@ -76,8 +76,6 @@ func (obj *Object) ObjectString() string {
 		switch inner := typ.Type.(type) {
 		case *Struct:
 			declKind = "struct"
-		case *StructField:
-			declKind = "field"
 		case *EnumItem:
 			declKind = "enum item"
 		case *Enum:

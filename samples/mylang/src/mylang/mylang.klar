@@ -1,12 +1,9 @@
 import mylang.ast
-import mylang.lexer
-import mylang.parser.{Parser}
+import mylang.lexer.{Lexer}
+import mylang.parser.{Parser, SyntaxError}
 
-public func parseString(input: String) -> Result<Command, [SyntaxError]> {
-    lexer := Lexer(input)
-    tokens := lexer.tokenize()
-    return parseTokens(tokens)
-}
+public func parseString(input: String) -> Result<Command, [SyntaxError]>
+    = Lexer(input).tokenize() |> parseTokens
 
 public func parseTokens(tokens: [lexer.Token]) -> Result<Command, [SyntaxError]>
     = Parser(tokens).parse()

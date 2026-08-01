@@ -54,6 +54,7 @@ const (
 	varAttrs         = nameAttr | externalAttr
 )
 
+// If len(attrs) == 0, parseAttributes returns nil.
 func (c *Checker) parseAttributes(attrs []*ast.Attribute,
 	target attrTarget, nodeRange ranges.Range, fid FileID,
 ) *Attributes {

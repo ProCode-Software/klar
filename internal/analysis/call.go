@@ -48,9 +48,7 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 			enum := expr.Callee.(*ast.EnumLiteral)
 			calledInit := &UntypedInit{kind: KindEnum, Node: enum, Params: expr.Args}
 			t.Type = calledInit
-			c.queue(func() {
-				c.checkEnumParams(expr, t)
-			}, true)
+			c.queue(func() { c.checkEnumParams(expr, t) }, true)
 			return // Won't check params now
 		}
 		canCall = false
@@ -88,6 +86,13 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 }
 
 func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overload Type) {
+	defer panicWithContext(func() string {
+		return fmt.Sprintf(
+			"call to %s at %s:%s",
+			lhs, c.module.ResolveFilePath(t.FileID()), ranges.FromSlice(args),
+		)
+	})
+
 	var name string
 	if obj, ok := lhs.(*Object); ok {
 		name = obj.Name
@@ -102,37 +107,63 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 		// show a hint that there's a more idiomatic way to check.
 		//
 		// If we have `T(t)`, show an error that the cast is redundant.
-		typ := fn
+		und := fn
 		if tn, ok := fn.(*TypeName); ok {
-			typ = tn.Type
+			und = tn.Type
 		}
 
-		// Primitive initializer
-		var isPrimitive bool
-		switch und := typ.(type) {
+		// Builtin initializer
+		var isBuiltin bool
+		switch und2 := und.(type) {
 		case Kind:
-			isPrimitive = true
-			typ = builtinModule.Context.Lookup(und.String()).TypeName().
+			isBuiltin = true
+			und = builtinModule.Context.Lookup(und2.String()).TypeName().
 				Type.(*bootstrapType).asDeclared
 		case *bootstrapType:
-			isPrimitive = true
-			typ = und.asDeclared
+			isBuiltin = true
+			und = und2.asDeclared
 		}
-		_ = isPrimitive
 
-		var firstArg Type
-		if typ, ok := Underlying(typ).(*Struct); ok {
-			// Structs can be initialized in other ways, not just casts
-			// TODO: Disallow using default initializers for builtins
-			res, isCast := c.checkStructInitializer(typ, name, args)
-			if !isCast {
-				t.Type = lhs // Preserve type name
-				// TODO: res may be an optional. Make it return a kind instead?
+		var castParam Type
+		// Call might be an initializer. Structs, enums, and builtins can be
+		// initialized in other ways, not just casts.
+		switch und := Underlying(und).(type) {
+		case *Struct:
+			ps := c.inferCallParams(args, t)
+			// Custom initializers have priority over default initializers
+			if ok := c.tryCheckInitializer(und.Initializers, ps, args, t); ok {
+				// TODO: t.Type may be set to an optional or result
+				// t.Type = lhs // Preserve type name given in LHS
 				return
 			}
-			firstArg = res
+			// Now try using a default initializer
+			// Users can't access default initializers for builtins, except Error
+			if !isBuiltin || name == "Error" {
+				if ok := c.checkDefaultStructInit(und, args, ps, t.FileID()); ok {
+					t.Type = lhs // Default initializer is never fallable
+					return
+				}
+			}
+			castParam = ps.params[0]
+		case *Enum:
+			ps := c.inferCallParams(args, t)
+			if ok := c.tryCheckInitializer(und.Initializers, ps, args, t); ok {
+				// TODO: Preserve type name given in LHS
+				return
+			}
+			// TODO: If we support raw-value initializers or flag enums, attempt
+			// to check for that.
+			if ok := c.checkDefaultEnumInit(und, args, ps, t); ok {
+				return
+			}
+			// TODO: Check arity count like below
+			castParam = ps.params[0]
+		default:
+			// TODO: Ensure exactly 1 parameter was passed
+			castParam = c.checkExprFrom(args[0].Value, t).Type
 		}
-		c.checkTypeCast(typ, name, args, firstArg, t)
+		// Otherwise, it's a type cast
+		c.checkTypeCast(lhs, castParam, args[0].Value, t)
 	case *EnumFunction:
 		t.Type = lhs
 	case *Lambda:
@@ -140,7 +171,7 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 	case *Function:
 		t.Type = fn.Return
 		pset := c.inferCallParams(args, t)
-		ov, err := c.resolveOverload(fn.Overloads, pset)
+		ov, _, err := c.resolveOverload(fn.Overloads, pset, false)
 		if err != nil {
 			err.Range = ranges.FromSlice(args)
 			c.fileError(err, t.FileID())
@@ -283,17 +314,17 @@ func (c *Checker) checkEnumParams(expr *ast.CallExpression, t *Expr) {
 }
 
 func (c *Checker) checkTypeCast(
-	typ Type, name string, args []*ast.CallParam, firstArg Type, t *Expr) {
+	target, param Type, arg ast.Expression, t *Expr) {
 }
 
 // Returned parameters are untyped
-func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet) {
+func (c *Checker) inferCallParams(params []*ast.CallParam, callExpr *Expr) (ps paramSet) {
 	for _, arg := range params {
 		var typ Type
 		if rest, ok := arg.Value.(*ast.RestExpression); ok {
 			// TODO: If the param is labelled, a rest is only allowed if the
 			// param is variadic
-			inner := c.checkExprFrom(rest.Expression, t)
+			inner := c.checkExprFrom(rest.Expression, callExpr)
 			switch inner.Kind() {
 			case KindTuple:
 				tup := As[*Tuple](inner.Type)
@@ -307,11 +338,11 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, t *Expr) (ps paramSet
 			case StringType:
 				typ = StringType
 			default:
-				c.fileError(invalidRestTypeError(inner.Type, rest.Expression), t.FileID())
+				c.fileError(invalidRestTypeError(inner.Type, rest.Expression), callExpr.FileID())
 				typ = inner.Type
 			}
 		} else {
-			typ = c.checkExprFrom(arg.Value, t).Type
+			typ = c.checkExprFrom(arg.Value, callExpr).Type
 		}
 		// TODO: Labelled param followed by unlabelled params is considered variadic
 		if arg.Label != nil {

@@ -75,26 +75,6 @@ func (c *Checker) checkTypeAlias(o *Object, node *ast.TypeAliasDeclaration) {
 	alias.Type = rhs
 }
 
-// TODO
-func (c *Checker) checkFuncAlias(o *Object) {
-	info := o.info
-	targetExpr := info.node.(*ast.FuncAliasDeclaration).Target
-	// TODO: Lookup the target expression and make sure it resolves to a function
-	var target *Object = nil
-	if info.receiver != nil {
-		// Method alias
-		sym := targetExpr.(*ast.Symbol)
-		_ = sym
-	} else {
-		// Normal function
-		switch targetExpr.(type) {
-		case *ast.IndexExpression:
-		case *ast.Symbol:
-		}
-	}
-	o.Type.(*FunctionAlias).Target = target
-}
-
 func Unalias(t Type) Type {
 	if a, ok := t.(*TypeAlias); ok {
 		return a.Resolve()

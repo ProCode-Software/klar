@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"maps"
-	"path/filepath"
 	"slices"
 	"sync"
 
@@ -39,12 +38,11 @@ type Options struct {
 }
 
 type Checker struct {
-	Programs     map[string]*ast.Program // Files in the module that is being checked.
-	Errors       []*klarerrs.Error       // Errors reported while type checking.
-	Info         *Info
-	Options      *Options // Options for type checking.
-	module       *Module
-	nodeContexts map[ast.Node]*Context // Node where each context begins, excluding top-level
+	Programs map[string]*ast.Program // Files in the module that is being checked.
+	Errors   []*klarerrs.Error       // Errors reported while type checking.
+	Info     *Info
+	Options  *Options // Options for type checking.
+	module   *Module
 
 	// For tracking cycles
 	objPath      []*Object       // Path of object deps
@@ -89,6 +87,7 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	}
 	c.Info = &Info{
 		Expressions: make(map[ast.Expression]*Expr),
+		Blocks:      make(map[ast.Node]*stmtContext),
 	}
 	mod.Info = c.Info
 	c.module = mod
@@ -107,7 +106,7 @@ func (c *Checker) Check() {
 	c.performImports(sortedFiles, fileContexts)
 
 	// Collect top-level objects in each file and put them in the module
-	methods, inits := c.collectTopLevelObjects(sortedFiles, fileContexts)
+	collector := c.collectTopLevelObjects(sortedFiles, fileContexts)
 
 	// If we're currently bootstrapping, wrap the declared types to allow
 	// special operations on them. This must be queued before function bodies.
@@ -118,7 +117,7 @@ func (c *Checker) Check() {
 	// Check for direct cycles among those objects
 	c.checkDirectCycles(c.module.Context)
 	// Typecheck those declarations, but not function bodies
-	c.checkContextDecls(c.module.Context, methods, inits)
+	c.checkContextDecls(c.module.Context, collector, nil)
 
 	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)
@@ -132,9 +131,6 @@ func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 	fileContexts := make(map[string]*Context, len(sortedFiles))
 	c.module.fileID = make(map[FileID]string, len(sortedFiles))
 	c.module.fileContext = make(map[FileID]*Context, len(sortedFiles))
-	if c.nodeContexts == nil {
-		c.nodeContexts = make(map[ast.Node]*Context, len(sortedFiles))
-	}
 	for i, name := range sortedFiles {
 		i := FileID(i) + 1
 		c.module.fileID[i] = name
@@ -147,6 +143,7 @@ func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 func (c *Checker) CheckedModule() *Module { return c.module }
 
 func (c *Checker) FileContextOf(fid FileID) *Context { return c.module.fileContext[fid] }
+func (c *Checker) FilePathOf(fid FileID) string      { return c.module.ResolveFilePath(fid) }
 
 // Keeps the created type information
 func (c *Checker) ResetState() {
@@ -157,14 +154,6 @@ func (c *Checker) ResetAll() {
 	c.Errors = nil
 	c.Programs = nil
 	c.Options = nil
-	c.nodeContexts = nil
-}
-
-func (c *Checker) filePath(name string) string {
-	if (c.module.Flags & SingleFileModule) != 0 {
-		return c.module.Path
-	}
-	return filepath.Join(c.module.Path, name)
 }
 
 func (o *Options) NormalizedTargets(yield func(target.Target) bool) {

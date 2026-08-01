@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"cmp"
+	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -126,6 +127,17 @@ func handlePanic() {
 	r := recover()
 	if _, ok := r.(stopChecker); !ok && r != nil {
 		panic(r)
+	}
+}
+
+func panicWithContext(getLocation func() string) {
+	switch r := recover(); r.(type) {
+	case nil:
+	case stopChecker:
+		panic(r)
+	default:
+		// This prints an AST stack. Unfortunately, Go doesn't make it look clean.
+		panic(fmt.Errorf("%v\n\twhile checking %s", r, getLocation()))
 	}
 }
 

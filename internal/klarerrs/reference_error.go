@@ -14,6 +14,7 @@ const (
 	ErrNotExported         // Can't import an exported object
 	ErrLoopLabelUndefined  // Loop label isn't defined
 	ErrParamLabelUndefined // Param with label doesn't exist
+	ErrFieldNotFound       // Field not found
 )
 
 func (e *Error) handleReferenceError() string {

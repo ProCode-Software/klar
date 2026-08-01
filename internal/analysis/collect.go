@@ -22,7 +22,7 @@ type methodInfo struct {
 // Contents of each objects are not checked yet.
 func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
-) (methods map[string][]methodInfo, inits map[string][]*Object) {
+) *stmtCollector {
 	var (
 		collector     = &stmtCollector{topLevel: true, ctx: c.module.Context}
 		attrs         []*ast.Attribute
@@ -72,7 +72,7 @@ func (c *Checker) collectTopLevelObjects(
 				if fileName == "main.klar" {
 					break
 				}
-				c.declareVars(stmt, collector, public, &attrs)
+				c.declareVars(stmt, collector, public, &attrs, nil)
 				continue
 
 				// Top-level statements
@@ -152,15 +152,19 @@ func (c *Checker) collectTopLevelObjects(
 		}
 	}
 	if len(topLevelStmts) > 0 {
-		c.queue(func() { c.checkTopLevelStmts(topLevelStmts, topLevelFctx) }, true)
+		c.queue(func() {
+			sctx := c.checkTopLevelStmts(topLevelStmts, topLevelFctx)
+			prog := c.Programs[c.module.ResolveFile(topLevelFctx.File)]
+			c.recordBlock(prog, sctx)
+		}, true)
 	}
-	return collector.methods, collector.inits
+	return collector
 }
 
 // checkContextDecls typechecks all declarations in the
 // given context, but not function bodies.
 func (c *Checker) checkContextDecls(
-	ctx *Context, methods map[string][]methodInfo, inits map[string][]*Object,
+	ctx *Context, collector *stmtCollector, sctx *stmtContext,
 ) {
 	var (
 		typeAliases []*Object // [*TypeName]
@@ -195,18 +199,18 @@ func (c *Checker) checkContextDecls(
 		c.checkDeclaration(obj)
 	}
 	// 5. Methods and initializers: Associate methods/initializers with receiver types
-	for _, typeName := range slices.Sorted(maps.Keys(methods)) {
-		c.collectMethods(ctx, typeName, methods[typeName])
+	for _, typeName := range slices.Sorted(maps.Keys(collector.methods)) {
+		c.collectMethods(ctx, typeName, collector.methods[typeName])
 	}
-	for _, typeName := range slices.Sorted(maps.Keys(inits)) {
-		c.collectInitializers(ctx, typeName, inits[typeName])
+	for _, typeName := range slices.Sorted(maps.Keys(collector.inits)) {
+		c.collectInitializers(ctx, typeName, collector.inits[typeName])
 	}
 }
 
 type stmtCollector struct {
 	ctx       *Context // Where the objects will be declared to
 	fid       FileID
-	inits     map[string][]*Object
+	inits     map[string][]*Overload
 	methods   map[string][]methodInfo
 	topLevel  bool
 	currOrder uint32
@@ -219,9 +223,9 @@ func (sc *stmtCollector) declareMethod(s *ast.Identifier, info methodInfo) {
 	sc.methods[s.Name] = append(sc.methods[s.Name], info)
 }
 
-func (sc *stmtCollector) declareInitializer(ov *Object) {
+func (sc *stmtCollector) declareInitializer(ov *Overload) {
 	if sc.inits == nil {
-		sc.inits = make(map[string][]*Object)
+		sc.inits = make(map[string][]*Overload)
 	}
 	sc.inits[ov.Name] = append(sc.inits[ov.Name], ov)
 }
@@ -239,15 +243,16 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	public bool, attrs *[]*ast.Attribute,
 ) {
 	name := stmt.Identifier.Name
-	ov := NewObject(name, sc.fid, stmt.GetRange(), c.module, &Overload{})
-	ov.Type.(*Overload).Object = ov
-	ov.Public = public
+	obj := NewObject(name, sc.fid, stmt.GetRange(), c.module, nil)
+	ov := &Overload{Object: obj}
+	obj.Type = ov
+	obj.Public = public
 
 	var par *Object
 	var isInit bool
 	if stmt.SelfType != nil {
 		// Method
-		sc.declareMethod(stmt.SelfType, methodInfo{decl: stmt, obj: ov})
+		sc.declareMethod(stmt.SelfType, methodInfo{decl: stmt, obj: obj})
 	} else {
 		par, isInit = c.getOverloadParent(name, stmt, sc)
 	}
@@ -258,7 +263,7 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	default:
 		// New overload (may be the first)
 		parFn := par.Type.(*Function)
-		parFn.Overloads = append(parFn.Overloads, ov.Type.(*Overload))
+		parFn.Overloads = append(parFn.Overloads, ov)
 		// If at least 1 overload is public, the entire function is public
 		if public {
 			par.Public = true
@@ -269,9 +274,9 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	}
 	// No kind is declared into the context. For overloads, their parent has
 	// already been declared.
-	ov.info = &DeclarationInfo{node: stmt}
-	ov.Order = sc.nextOrder()
-	c.declareWithInfo(ov, sc.ctx, attrs, false)
+	obj.info = &DeclarationInfo{node: stmt}
+	obj.Order = sc.nextOrder()
+	c.declareWithInfo(obj, sc.ctx, attrs, false)
 }
 
 // declareFuncAlias declares a function alias object for the given declaration. If
@@ -319,7 +324,7 @@ func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
 			sc.ctx.Declarations[name] = obj
 			// Move the existing initializers to sc.inits
 			for _, ov := range fn.Overloads {
-				sc.declareInitializer(ov.Object)
+				sc.declareInitializer(ov)
 			}
 			fn.Overloads = fn.Overloads[:0]
 		}
@@ -367,7 +372,7 @@ func (c *Checker) getOverloadParent(
 // declareVars declares placeholder [*Object]s for each variable
 // declared in d. Values aren't checked yet.
 func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
-	public bool, attrs *[]*ast.Attribute,
+	public bool, attrs *[]*ast.Attribute, sctx *stmtContext,
 ) {
 	var (
 		lastDecl     *Object
@@ -464,6 +469,7 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				rhs:     value,
 				rhsExpr: rhsExpr,
 				expType: explicitType,
+				sctx:    sctx,
 			}}
 			obj.Order = sc.nextOrder()
 			c.declareWithInfo(obj, sc.ctx, attrs, true)
@@ -471,7 +477,8 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 	}
 }
 
-func (c *Checker) checkTopLevelStmts(stmts []ast.Statement, fctx *Context) {
-	sctx := newStmtContext(fctx, fctx.File, 0)
+func (c *Checker) checkTopLevelStmts(stmts []ast.Statement, fctx *Context) *stmtContext {
+	sctx := newStmtContext(fctx, fctx.File, 0) // Return not allowed
 	c.checkBlock(stmts, sctx)
+	return sctx
 }

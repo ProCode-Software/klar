@@ -3,7 +3,7 @@
 /// not understood by MyLang is tokenized as [Token.illegal].
 
 // Reads characters from a string and converts them into [Token]s
-type Lexer {
+public type Lexer {
     input: String // The string to read from
     index: Int = 0 // The index of the lexer
     prev: String = "" // The previously read character. Starts empty
@@ -44,7 +44,7 @@ func Lexer.tokenize() -> [Token] {
 }
 
 // Whether `char` is an ASCII digit
-func isNumber(char: String) = char[0]!! in '0'...'9'
+// func isNumber(char: String) = char[0]!! in '0'...'9'
 // Whether `char` is an ASCII letter
 func isLetter(char: String) = char[0]!! in 'A'...'Z' or 'a'...'z'
 

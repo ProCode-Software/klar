@@ -79,7 +79,16 @@ func (c *Checker) checkVarDecl(o *Object) {
 	if *vinfo.rhsExpr != nil {
 		rhs = *vinfo.rhsExpr
 	} else {
-		rhs = c.checkExpr(rhsExpr, NewExpr(o.LookupContext()).withHint(vinfo.expType))
+		rhs = NewExpr(o.LookupContext()).withHint(vinfo.expType)
+		// Attach the statement context to the value so it can return out
+		// of the variable's parent function and access loop labels.
+		// 	func x() {
+		// 		y := when 1 + 1 { 2 -> return, _ -> 3 }
+		// 	}
+		if vinfo.sctx != nil {
+			rhs.stmtCtx = vinfo.sctx
+		}
+		c.checkExpr(rhsExpr, rhs)
 		rhs.Type = c.toTyped(rhs.Type, vinfo.expType, rhsExpr, rhs.Context.File)
 		*vinfo.rhsExpr = rhs
 	}
@@ -122,23 +131,28 @@ func (c *Checker) checkConstDecl(o *Object) {
 		cnst  = o.Type.(*Constant)
 		vinfo = o.info.varInfo
 		val   = vinfo.rhs
-		e     *Expr
+		rhs     *Expr
 	)
 	// Use the cached expression or check the RHS
 	if *vinfo.rhsExpr != nil {
-		e = *vinfo.rhsExpr
+		rhs = *vinfo.rhsExpr
 	} else {
-		e = c.checkExpr(val, NewExpr(o.LookupContext(), constExpr).withHint(vinfo.expType))
-		e.Type = c.toTyped(e.Type, vinfo.expType, val, e.Context.File)
-		*vinfo.rhsExpr = e
+		rhs = NewExpr(o.LookupContext(), constExpr).withHint(vinfo.expType)
+		// See comment in [Checker.checkVarDecl]
+		if vinfo.sctx != nil {
+			rhs.stmtCtx = vinfo.sctx
+		}
+		c.checkExpr(val, rhs)
+		rhs.Type = c.toTyped(rhs.Type, vinfo.expType, val, rhs.Context.File)
+		*vinfo.rhsExpr = rhs
 	}
 
 	// TODO: destructure
-	cnst.Value = e.ConstValue()
+	cnst.Value = rhs.ConstValue()
 	if cnst.Value == nil {
 		cnst.Value = UnknownConst{} // Ensure this is never nil if checking fails
 	}
-	cnst.Type = e.Type
+	cnst.Type = rhs.Type
 	// TODO: Go type checker calls check.assignment
 }
 

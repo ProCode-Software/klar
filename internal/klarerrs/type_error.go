@@ -60,15 +60,16 @@ const (
 
 	// Literal ====
 
-	ErrUntypedStruct         // Can't determine type of struct from shorthand (`.(...)`)
-	ErrUntypedEnum           // Can't determine type of enum from shorthand (`.key`)
-	ErrUntypedEmptyList      // Can't infer type of empty list
-	ErrUntypedEmptyMap       // Can't infer type of empty map
-	ErrUntypedNil            // 'nil' requires a type (explicit type at assignment)
-	ErrUntypedLambda         // Can't infer parameter types for lambda
-	ErrUnknownRegexFlag      // Unknown regex flag on current target
-	ErrNotOptionalType       // 'nil' is only valid for optional types
-	ErrInvalidCollectionType // Items in a list or map must have the same type
+	ErrUntypedStruct          // Can't determine type of struct from shorthand (`.(...)`)
+	ErrUntypedEnum            // Can't determine type of enum from shorthand (`.key`)
+	ErrUntypedEmptyList       // Can't infer type of empty list
+	ErrUntypedEmptyMap        // Can't infer type of empty map
+	ErrUntypedNil             // 'nil' requires a type (explicit type at assignment)
+	ErrUntypedLambda          // Can't infer parameter types for lambda
+	ErrUnknownRegexFlag       // Unknown regex flag on current target
+	ErrNotOptionalType        // 'nil' is only valid for optional types
+	ErrInvalidCollectionType  // Items in a list or map must have the same type
+	ErrInvalidStructShorthand // .(...) only allowed as a shorthand for structs
 
 	// Expression ====
 
@@ -82,7 +83,6 @@ const (
 	ErrNilMapIndex          // Indexing a map using a 'none' literal is always a 'none' value
 	ErrNonNumericIndex      // Index for list/String/tuple must be Int
 	ErrInvalidMapIndex      // Map must be indexed with its key type
-	ErrFieldNotFound        // Field not found
 	ErrInvalidComputedIndex // Computed index not supported for this type
 	ErrDotIndexRequired     // Dot index required to index this type instead of computed String index
 	ErrNothingAsValue       // Function returning Nothing can't be used as a value
@@ -120,8 +120,10 @@ const (
 
 	// Call ====
 
-	ErrWrongParamCount   // Wrong number of parameters passed to a function
-	ErrMissingParamLabel // Positional parameter should be labelled
+	ErrWrongParamCount         // Wrong number of parameters passed to a function
+	ErrMissingParamLabel       // Positional parameter should be labelled
+	ErrTooManyInitFields       // More params passed to initializer than allowed
+	ErrPositionalFieldProvided // Field provided as both positional and labelled param
 )
 
 func (e *Error) handleTypeError() string {
@@ -342,7 +344,7 @@ func (e *Error) handleTypeError() string {
 	case ErrMisplacedMapRest:
 		return "A map can only be rested within a map literal"
 	case ErrInvalidRestValue:
-		return "The value being rested must be a list, tuple, or string"
+		return "The value before '...' must be a list, tuple, or string"
 	case ErrResultMustBeChecked:
 		if e.BoolParam("discarded") {
 			return "Can't discard this result value with type " + e.Name
@@ -355,5 +357,9 @@ func (e *Error) handleTypeError() string {
 		return "This parameter needs to be labelled '" + e.Name + ":'"
 	case ErrUntypedLambda:
 		return "The parameters of this lambda need explicit types"
+	case ErrInvalidStructShorthand:
+		return "A type cast must be called with an explicit type"
+	case ErrTooManyInitFields:
+		return "Too many parameters in this initializer; there are only "
 	}
 }

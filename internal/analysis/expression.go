@@ -87,6 +87,13 @@ func (c *Checker) checkExprFrom(
 }
 
 func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
+	defer panicWithContext(func() string {
+		return fmt.Sprintf(
+			"%T expression at %s:%s",
+			expr, c.module.ResolveFilePath(t.FileID()), expr.GetRange(),
+		)
+	})
+
 	switch expr := expr.(type) {
 	case *ast.BinaryExpression:
 		c.checkBinaryExpr(expr, t)
@@ -335,8 +342,9 @@ func (c *Checker) checkGoExpr(expr *ast.GoExpression, t *Expr) {
 	// the function with the RHS. The parser allows `go Struct()`. Ensure
 	// `Struct` is a function.
 	if expr.Body != nil {
-		// Treated as a function scope, so it can't break loops outside of the block
+		// Treated as a function scope, so it can't return or break loops outside of the block
 		block := newStmtContext(NewContext(t.Context, t.FileID()), t.FileID(), allowReturn)
+		c.recordBlock(expr.Body, block)
 		c.checkBlock(expr.Body.Body, block)
 		ret := c.inferReturnType(*block.returns)
 		t.Type = &Task{ret}
@@ -402,7 +410,7 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, lhs Type, t *Expr) {
 	var err *klarerrs.Error
 	if expr.Computed {
 		rhs := c.checkExprFrom(expr.Property, t)
-		// TODO: handle unions (union of #{Int: Andy} and [Any]
+		// TODO: handle unions (union of #{Int: Any} and [Any]
 		// supports computed indexing)
 		if compIndexer, ok := Underlying(lhs).(ComputedIndexer); ok {
 			err = compIndexer.IndexComputed(rhs.Type, t)
@@ -751,16 +759,36 @@ func (c *Checker) checkSliceExpr(expr *ast.SliceExpression, t *Expr) {
 }
 
 func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
-	switch {
-	case t.hint != nil && t.hint.Kind() == KindStruct:
-		t.Type = t.hint
-	case t.hint != nil:
-		t.Type = InvalidType
-	default:
-		t.Type = &UntypedInit{kind: KindStruct, Node: expr, Params: expr.Params}
+	hint := t.hint
+	if hint != nil && hint.Kind() == KindResult {
+		// If the target type is a result, allow the shorthand, which will
+		// refer to the success type, even if it isn't a struct. Initializing
+		// an error will always have to be explicit.
+		hint = As[*Result](hint).Success
 	}
-	// Check the parameters once its type is inferred
-	c.queue(func() { c.checkCallArgs(t.Type, expr.Params, t) }, false)
+	t.Type = hint
+	switch {
+	case hint == nil:
+		t.Type = &UntypedInit{kind: KindStruct, Node: expr, Params: expr.Params}
+		// Check the parameters once its type is inferred
+		c.queue(func() { c.checkCallArgs(t.Type, expr.Params, t) }, false)
+		return
+	case hint.Kind() == KindStruct || hint.Kind() == ErrorType:
+		// Valid
+	default:
+		err := klarerrs.Node(klarerrs.ErrInvalidStructShorthand, expr)
+		err.Label = "Type " + quoteAka(hint) + " isn't a struct"
+		// Unions, optionals, and results can't be written as function callees
+		if isTypeName(hint) || IsConcreteType(hint) {
+			hintWithDiff(
+				err, "Replace '.' with "+quote(hint.String()),
+				klarerrs.DeletedRange{ranges.SingleChar(expr.Range.Start)},
+				klarerrs.AddedString{Pos: expr.Range.Start, String: hint.String()},
+			)
+		}
+		c.fileError(err, t.FileID())
+	}
+	c.checkCallArgs(t.Type, expr.Params, t)
 }
 
 func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
@@ -917,7 +945,10 @@ func (c *Checker) checkLambdaBody(expr *ast.LambdaExpression, t *Expr) {
 
 	// Body
 	if expr.Block != nil {
-		sctx := newStmtContext(bodyCtx, t.Context.File, 0)
+		// Creating a new stmtCtx without a parent so the body can't return or
+		// break the parent's loops
+		sctx := newStmtContext(bodyCtx, t.Context.File, allowReturn)
+		c.recordBlock(expr.Block, sctx)
 		c.checkBlock(expr.Block.Body, sctx)
 	} else {
 		c.checkExpr(expr.Expr, t.NewChild(allowNothingValue).withContext(bodyCtx))

@@ -312,7 +312,8 @@ func funcsCompatible(a, b Type) bool {
 		if !okA || !okB {
 			return okA == okB
 		}
-		if !Compatible(a, b) {
+		// fn(A) => fn(B) if B => A. It can't be the other way around.
+		if !Compatible(b, a) {
 			return false
 		}
 	}

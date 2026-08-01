@@ -28,6 +28,7 @@ type returnStmt struct {
 type loopLabel struct {
 	pos  ranges.Range
 	used bool
+	node ast.Node // 'for', 'while', or 'when'
 }
 
 type stmtFlags uint8
@@ -68,6 +69,9 @@ func newChildStmtContext(parentSctx *stmtContext,
 }
 
 func (sctx *stmtContext) fid() FileID { return sctx.ctx.File }
+func (sctx *stmtContext) newChildContext() *Context {
+	return NewContext(sctx.ctx, sctx.ctx.File)
+}
 
 // Reports an error if the label already exists
 //
@@ -79,7 +83,7 @@ func (sctx *stmtContext) fid() FileID { return sctx.ctx.File }
 //			stop :loop // Which loop?
 //		}
 //	}
-func (sctx *stmtContext) declareLabel(name string, r ranges.Range) (err *klarerrs.Error) {
+func (sctx *stmtContext) declareLabel(name string, r ranges.Range, node ast.Node) (err *klarerrs.Error) {
 	if other, ok := sctx.loopLabels[name]; ok {
 		err := klarerrs.Range(klarerrs.ErrRedeclaredLoopLabel, r)
 		err.Label = "A loop label named " + quote(name) + " was already defined"
@@ -91,7 +95,7 @@ func (sctx *stmtContext) declareLabel(name string, r ranges.Range) (err *klarerr
 		err.AddDetail("It was already defined here", "", other.pos)
 		return err
 	}
-	sctx.loopLabels[name] = &loopLabel{pos: r}
+	sctx.loopLabels[name] = &loopLabel{pos: r, node: node}
 	return nil
 }
 
@@ -112,7 +116,7 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 		// Actually check the declarations. Similar to [Checker.Check]. Variables
 		// are checked before these so functions can forward-reference them.
 		c.checkDirectCycles(sctx.ctx)
-		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
+		c.checkContextDecls(sctx.ctx, sctx.collector, sctx)
 	}
 
 	var unreachableReported bool
@@ -168,9 +172,6 @@ func (c *Checker) reportUnusedWarnings(ctx *Context) {
 			exportHint, obj.Name,
 		)
 		c.fileError(warn, obj.File)
-		if warn.File == "" {
-			fmt.Println(warn.File, "|", obj.File, "|", obj.Name, obj.FilePathRange())
-		}
 	}
 	ctx.setAttribute(unusedReported, true)
 }
@@ -202,11 +203,17 @@ func terminatingStmtKind(stmt ast.Statement) string {
 
 func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	defer c.runDelayed(len(c.delayed))
+	defer panicWithContext(func() string {
+		return fmt.Sprintf(
+			"%T statement at %s:%s",
+			stmt, c.FilePathOf(sctx.fid()), stmt.GetRange(),
+		)
+	})
 
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
 		expr := c.checkExpr(stmt.Expression, sctx.newExpr(exprStmt))
-		c.reportUnusedExprError(stmt, expr)
+		c.validateExprStmt(stmt, expr)
 	case *ast.BadExpression:
 		panic("checking invalid AST")
 
@@ -218,7 +225,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	case *ast.FuncAliasDeclaration:
 		c.declareFuncAlias(stmt, sctx.collector, false, nil)
 	case *ast.VariableDeclaration:
-		c.declareVars(stmt, sctx.collector, false, nil)
+		c.declareVars(stmt, sctx.collector, false, nil, sctx)
 	case *ast.AssignmentStatement:
 		c.checkAssignStmt(stmt, sctx)
 	case ast.ModifierDeclaration:
@@ -245,11 +252,11 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	// allowed, so we need to typecheck declarations immediately.
 	if sctx.flags&allowForwardDecl == 0 && canForwardDeclareInFunc(stmt) {
 		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
-		c.checkContextDecls(sctx.ctx, sctx.collector.methods, sctx.collector.inits)
+		c.checkContextDecls(sctx.ctx, sctx.collector, sctx)
 	}
 }
 
-func (c *Checker) reportUnusedExprError(stmt *ast.ExpressionStatement, expr *Expr) {
+func (c *Checker) validateExprStmt(stmt *ast.ExpressionStatement, expr *Expr) {
 	sctx, fid := expr.stmtCtx, expr.FileID()
 	addHints := func(err *klarerrs.Error) {
 		// If we have something like `func x() -> Int { 2 }`, recommend
@@ -269,7 +276,6 @@ func (c *Checker) reportUnusedExprError(stmt *ast.ExpressionStatement, expr *Exp
 	}
 	switch {
 	case (sctx.flags & braceless) != 0:
-	// TODO: find a way to return the value type
 	case !isAllowedAsStmt(stmt.Expression):
 		// Unused expression value
 		err := klarerrs.Node(klarerrs.ErrUnusedValue, stmt)
@@ -364,13 +370,14 @@ func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 	}
 	// Optional loop label
 	if lb := stmt.Label; lb != nil {
-		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
+		if err := sctx.declareLabel(lb.Name, lb.GetRange(), stmt); err != nil {
 			c.fileError(err, sctx.ctx.File)
 		}
 	}
 	// Body
-	bodyCtx := NewContext(sctx.ctx, sctx.ctx.File)
-	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
+	bodySctx := newChildStmtContext(sctx, sctx.newChildContext(), allowNextStop)
+	c.recordBlock(stmt.Body, bodySctx)
+	c.checkBlock(stmt.Body.Body, bodySctx)
 }
 
 func (c *Checker) checkControlStmt(stmt ast.Statement,
@@ -405,12 +412,14 @@ func (c *Checker) checkForStmt(stmt *ast.ForStatement, sctx *stmtContext) {
 	bodyCtx, _ := c.checkForVars(stmt.Variables, stmt.Iterator, sctx.ctx, sctx.newExpr)
 	// Optional loop label
 	if lb := stmt.Label; lb != nil {
-		if err := sctx.declareLabel(lb.Name, lb.GetRange()); err != nil {
+		if err := sctx.declareLabel(lb.Name, lb.GetRange(), stmt); err != nil {
 			c.fileError(err, sctx.ctx.File)
 		}
 	}
 	// Body
-	c.checkBlock(stmt.Body.Body, newChildStmtContext(sctx, bodyCtx, allowNextStop))
+	bodySctx := newChildStmtContext(sctx, bodyCtx, allowNextStop)
+	c.recordBlock(stmt.Body, bodySctx)
+	c.checkBlock(stmt.Body.Body, bodySctx)
 }
 
 func (c *Checker) checkForVars(vars []*ast.AssignableTypePair, iter ast.Expression,
@@ -586,7 +595,12 @@ func (c *Checker) checkAssignStmt(stmt *ast.AssignmentStatement, sctx *stmtConte
 	for i, dest := range stmt.Assignee {
 		rhs, rhsNode := singleRHS, singleRHSNode
 		if singleRHS == nil {
-			rhs = c.checkExpr(stmt.Values[i], sctx.newExpr())
+			var hint Type
+			if _, ok := dest.(*ast.Symbol); ok {
+				// TODO: Don't check dest twice
+				hint = c.checkExpr(dest, sctx.newExpr()).Type
+			}
+			rhs = c.checkExpr(stmt.Values[i], sctx.newExpr().withHint(hint))
 			rhsNode = stmt.Values[i]
 		}
 		for dest, typ := range c.followDestructure(
@@ -608,7 +622,7 @@ func (c *Checker) checkAssignment(
 	lhs, rhs Type, lhsNode, rhsNode ast.Expression,
 	uc ast.Operator, fid FileID,
 ) {
-	switch lhs.(type) {
+	switch lhs := lhs.(type) {
 	case *Constant:
 		// Can't assign to a const
 		err := klarerrs.Node(klarerrs.ErrAssignToConst, lhsNode)
@@ -618,8 +632,12 @@ func (c *Checker) checkAssignment(
 	case *Function, *Overload, *FunctionAlias:
 		// Functions are readonly
 	case *EnumRef:
-	case *StructField:
-		// Ensure it isn't readonly
+	case *Variable:
+		switch lhs.VarKind {
+		case StructFieldVar:
+			// TODO: Ensure it isn't readonly
+		}
+		// TODO: Other kinds
 	}
 	// String multiplication (`String * Int`) will be checked by checkBinaryOperation
 	isStringMult := uc.Kind == lexer.Asterisk && lhs.Kind() == StringType

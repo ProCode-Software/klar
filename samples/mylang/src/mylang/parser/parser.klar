@@ -71,10 +71,12 @@ func Parser.parseCommand() -> Result<Command, SyntaxError> {
                     _ -> return SyntaxError.flagNameMustBeIdent(self.current())
                 }
                 self.advance()
-                when self.current() {
-                    .dash -> flags += [.(name, isShort, BoolValue(true))]
-                    _ -> flags += [.(name, isShort, try self.parseValue())]
-                }
+                flags += [.(
+                    name: flagName, :isShort, value: when self.current() {
+                        .dash -> BoolValue(true)
+                        _ -> try self.parseValue()
+                    },
+                )]
             }
             _ -> args += [try self.parseValue()]
         }

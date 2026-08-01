@@ -265,9 +265,11 @@ func (c *Checker) checkWhenBody(
 			// We will still check the body
 		}
 		sctx := newChildStmtContext(whenExpr.stmtCtx, bctx, stmtFlags)
+		c.recordBlock(body, sctx)
 		c.checkBlock(body.Body, sctx)
 	case ast.Statement:
 		sctx := newChildStmtContext(whenExpr.stmtCtx, bctx, stmtFlags|braceless)
+		c.recordBlock(body, sctx)
 		c.checkStmt(body, sctx)
 	case ast.Expression:
 		bodyExpr := NewExpr(bctx, allowNothingValue).withHint(whenExpr.hint)
@@ -798,6 +800,7 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 			}
 			if actualType = e.ParamByName(param.Label.Name); actualType == nil {
 				err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, param.Label)
+				err.Name = param.Label.Name
 				err.Desc = "These params are defined: " + strings.Join(
 					slices.Sorted(maps.Keys(e.paramMap)), ", ",
 				)

@@ -19,7 +19,7 @@ public type Comment { text: String }
 public type Flag {
     name: String
     isShort: Bool
-    Value: Value
+    value: Value
 }
 
 // The value of an argument or flag.

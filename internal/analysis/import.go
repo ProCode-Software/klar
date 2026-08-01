@@ -120,6 +120,10 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 	// Declare the namespace
 	nsType := &Namespace{ImportPath: mod.ImportPathString(), Context: mod.Context}
 	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, nsType)
+	// The namespace doesn't have to be used when there are unqualified imports
+	if len(stmt.UnqualifiedImports) > 0 {
+		nsObj.Flags |= UsageOptional
+	}
 	c.declare(fctx, nsObj)
 
 	// Declare unqualified imports
@@ -141,6 +145,7 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 		if !name.Label.IsZero() {
 			obj.Name = name.Label.Name
 		}
+		obj.Public = false // To ensure warnings are reported if unused
 		// Declare the unqualified import
 		// TODO: Use a custom redeclared error to show "X was already imported"
 		c.declare(fctx, obj)

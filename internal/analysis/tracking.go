@@ -6,7 +6,8 @@ type TrackedInfo interface {
 
 type TrackedFunc struct {
 	// Variables declared outside the function that are captured
-	Captures []*Object
+	Captures   []*Object
+	SideEffect bool // Whether the function has side effects
 }
 
 func (TrackedFunc) tracked() {}
