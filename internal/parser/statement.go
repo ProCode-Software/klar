@@ -183,7 +183,7 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 	if p.CurrKind() == lexer.LeftCurlyBrace {
 		p.Error(klarerrs.Token(klarerrs.ErrNoForIterator, p.Curr()))
 	} else {
-		f.Variables, f.Iterator = p.parseForVariables()
+		f.Variables, f.In, f.Iterator = p.parseForVariables()
 	}
 	f.Label = p.tryParseLoopLabel()
 	f.Body = p.ParseBlock()
@@ -191,14 +191,14 @@ func (p *Parser) ParseForStatement() *ast.ForStatement {
 }
 
 func (p *Parser) parseForVariables() (
-	vars []*ast.AssignableTypePair, iter ast.Expression,
+	vars []*ast.AssignableTypePair, in lexer.Position, iter ast.Expression,
 ) {
 	var first ast.Expression
 	if p.CurrKind() != lexer.Underscore {
 		first = p.ParseExpressionFilter(excludeIf(lexer.In), bpOf(lexer.In), 0)
 		if p.CurrKind() == lexer.LeftCurlyBrace {
 			// for 5 {}
-			return nil, first
+			return nil, in, first
 		}
 	}
 	var assg ast.Assignable
@@ -206,8 +206,8 @@ func (p *Parser) parseForVariables() (
 		assg = p.validateAssignable(first)
 	}
 	p.parseAssignableTypePairs(&vars, assg, true)
-	p.Expect(lexer.In)
-	return vars, p.ParseExpression(ExpressionBindingPower)
+	in = p.Expect(lexer.In).Position
+	return vars, in, p.ParseExpression(ExpressionBindingPower)
 }
 
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {

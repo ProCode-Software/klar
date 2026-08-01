@@ -312,6 +312,7 @@ type ObjectPipeline struct {
 type ForExpression struct {
 	BaseNode
 	Variables []*AssignableTypePair
+	In        lexer.Position
 	Iterator  Expression
 	Operator  Operator
 	Value     Expression
@@ -401,8 +402,9 @@ type StopStatement struct {
 type ForStatement struct {
 	BaseNode
 	Variables []*AssignableTypePair // Pairs don't have default values
-	Label     *Identifier
+	In        lexer.Position
 	Iterator  Expression
+	Label     *Identifier
 	Body      *Block
 }
 
@@ -579,6 +581,7 @@ type TypeAlias struct {
 type QualifiedTypeAlias struct {
 	BaseNode
 	Namespace, Identifier Identifier
+	Dot                   lexer.Position
 }
 
 // An OptionalType is a type marked with the suffix '?'. In Klar, this indicates

@@ -603,7 +603,7 @@ func (p *Parser) ParseObjectPipeline(obj ast.Expression, bp BindingPower) *ast.O
 func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	f := &ast.ForExpression{}
-	f.Variables, f.Iterator = p.parseForVariables()
+	f.Variables, f.In, f.Iterator = p.parseForVariables()
 	k := p.CurrKind()
 	switch {
 	case p.isEqual(p.Curr()):

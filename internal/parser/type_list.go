@@ -186,11 +186,10 @@ func (p *Parser) ParseTupleType() ast.Type {
 	if len(labels) > 0 {
 		// Labels missing a type
 		if mode == labelsAndTypes {
-			err := klarerrs.Range(klarerrs.ErrMissingLabelsType, ranges.Range{
-				Start: labels[0].Position,
-				End:   labels[len(labels)-1].End(),
-			})
-			p.missingParamTypeAnnotError(err, "item", len(labels), t.Values[len(t.Values)-1].Range)
+			err := klarerrs.Slice(klarerrs.ErrMissingLabelsType, labels)
+			p.missingParamTypeAnnotError(
+				err, "item", len(labels), t.Values[len(t.Values)-1].Range,
+			)
 			p.Error(err)
 		}
 		for _, name := range labels {

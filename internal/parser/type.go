@@ -134,13 +134,13 @@ func (p *Parser) ParseRestType() *ast.RestType {
 }
 
 func (p *Parser) ParseTypeNamespace(left *ast.TypeAlias, bp BindingPower) *ast.QualifiedTypeAlias {
-	p.Advance() // .
 	return &ast.QualifiedTypeAlias{
 		Namespace: ast.Identifier{
 			Name:     left.Identifier,
 			Position: left.Range.Start,
 			Len:      left.Range.LineLength(),
 		},
+		Dot:        p.Advance().Position, // .
 		Identifier: p.ParseIdentifier(),
 	}
 }
