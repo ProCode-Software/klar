@@ -60,8 +60,8 @@ func KlarStdDir() (string, error) {
 		return "", err
 	}
 	var isInHome bool
-	if _, err := filepath.Rel(home, execPath); err == nil {
-		isInHome = true
+	if rel, err := filepath.Rel(home, execPath); err == nil {
+		isInHome = filepath.IsLocal(rel)
 	}
 	if isInHome {
 		// User installation of Klar
