@@ -243,6 +243,10 @@ Regenerating files is required after making changes to the following:
 
 To generate these files, run `make gen`.
 
+#### Testing the Compiler
+
+The preferred way to test the compiler and its outputs is to compile the [`samples/mylang`](./samples/mylang) package via `klar build ./samples/mylang`. Files in `./samples/basic` can be run individually, and can be edited to test errors.
+
 #### Linting
 
 Lint your Go code by running the `./scripts/lint.sh` script. Also, ensure comments and strings have correct spelling by running `./scripts/spellcheck.sh`.
