@@ -783,13 +783,37 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 		err.Name = e.Name
 		return
 	}
-	var hadLabelled bool
+	var (
+		hadLabelled bool
+		firstRest   *ast.RestExpression
+		provided    = make(map[int]struct{}, len(e.Params))
+	)
 	for i, param := range expr.Args {
 		if rest, ok := param.Value.(*ast.RestExpression); ok {
+			if _, ok := rest.Expression.(*ast.Symbol); !ok &&
+				rest.Expression != nil && param.Label == nil {
+				// Literal expression rest
+				// .withParams(3, (4, 5)...)
+				inner := pc.checkExprFrom(rest.Expression, pc.pat.Expr)
+				// Rest must be a tuple
+				switch inner.Kind() {
+				case KindTuple:
+
+				case KindList, StringType:
+					pc.fileError(misplacedListRestError(inner.Kind(), rest), pc.fid())
+				default:
+					pc.fileError(invalidRestTypeError(inner.Type, rest), pc.fid())
+				}
+				continue
+			}
 			// Skip: .withParams3(5, ...) | .withParams4(5, ..., 3, 4)
 			// Rest: .withParams3(5, rest...) | .withParams4(5, rest..., 3, 4)
-			_ = rest
-			continue // TODO
+			if firstRest != nil {
+				// More than 1 rest in pattern
+				continue
+			}
+			firstRest = rest
+			continue
 		}
 		var actualType Type
 		if param.Label != nil {
@@ -806,10 +830,13 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 				)
 				pc.fileError(err, pc.fid())
 				actualType = InvalidType
+			} else {
+				provided[e.paramMap[param.Label.Name]] = struct{}{}
 			}
 			// withParams(:a)
 			if param.Shorthand {
-				if err := pc.pat.declareVar(*param.Label, actualType, param.Value); err != nil {
+				err := pc.pat.declareVar(*param.Label, actualType, param.Value)
+				if err != nil {
 					pc.fileError(err, pc.fid())
 				}
 				continue
@@ -828,6 +855,7 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 				break
 			}
 			actualType = e.Params[i]
+			provided[i] = struct{}{}
 		}
 
 		switch expr := param.Value.(type) {
@@ -849,6 +877,34 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 				)
 			}
 		}
+	}
+
+	if firstRest == nil {
+		return
+	}
+	// Expand the rest and declare the variable if needed
+	restTuple := &Tuple{Items: make([]Type, 0, len(e.Params)-len(provided))}
+	for i, typ := range e.Params {
+		if _, ok := provided[i]; !ok {
+			restTuple.Items = append(restTuple.Items, typ)
+		}
+	}
+	// Ensure ... represents at least 2 items. If it represents 1, it
+	// should be replaced with '_'. Or 0, it should be removed.
+	switch restTuple.Len() {
+	case 0:
+	case 1:
+	}
+	switch inner := firstRest.Expression.(type) {
+	case nil: // Nothing to do
+	case *ast.Symbol:
+		if err := pc.pat.declareVar(
+			inner.ToIdentifier(), restTuple, firstRest,
+		); err != nil {
+			pc.fileError(err, pc.fid())
+		}
+	default:
+		panic(fmt.Sprintf("unhandled: %T", inner))
 	}
 }
 
