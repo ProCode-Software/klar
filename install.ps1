@@ -235,6 +235,7 @@ try {
         $stdDir = Join-Path $env:LocalAppData 'Klar\std'
     }
     New-Item -ItemType Directory -Path $stdDir -Force | Out-Null
+    Remove-Item -Path (Join-Path $stdDir '*') -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item -Path (Join-Path $buildDir 'std\*') -Destination $stdDir -Recurse -Force
 
     Write-Host ''

@@ -246,9 +246,11 @@ esac
 
 if [[ $global -eq 1 ]]; then
     sudo mkdir -p "$STD_DIR"
+    sudo rm -rf "${STD_DIR?}"/*
     sudo mv -t "$STD_DIR" ./std/*
 else
     mkdir -p "$STD_DIR"
+    sudo rm -rf "${STD_DIR?}"/*
     mv -t "$STD_DIR" ./std/*
 fi
 
