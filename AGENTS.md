@@ -6,12 +6,12 @@ This file contains rules for AI agents working with this codebase.
 
 - Always use the latest Go syntax and features (from the Go version defined in `go.mod`). This includes:
     - `range` loops
-    - `strings.SplitSeq`
+    - `strings.SplitSeq` (and other `strings.*Seq` functions)
     - `WaitGroup.Go`
     - `new(expr)`
     - `reflect.Type/Value.Fields/Methods`
 
-You may research online about new language and stdlib features.
+You may research online about new language and stdlib features. You can also use `go doc -all <pkg>` to look up documentation for a package.
 
 - **Do not create or run tests** unless explicitly asked, or you modify code that requires testing
 - **Do not generate, remove, or modify blank lines and comments** except when code really needs explanation, or requested

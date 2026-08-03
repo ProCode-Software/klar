@@ -238,6 +238,7 @@ Always consistently use the same receiver name for all methods on a type.
 - Most of the time, a single-letter is sufficient for numeric indices. `i` should be the default.
     - This variable can be shadowed. In fact, it is common for far-away loops (such as typechecking each item in an interface, then each parameter if it is a method).
     - If the next loop is tightly related to the previous one, use `j` for the next one.
+    - If you have to use a name beyond `j`, rename all loop variables to something meaningful.
     - Otherwise, use more meaningful names so readers know the purpose of the variable (`somethingI`). Never use `somethingJ`, use `somethingElseI`.
 - For a map value, or list element, follow the same rules as local variables.
 
@@ -245,10 +246,11 @@ Always consistently use the same receiver name for all methods on a type.
 
 You should be able to have an idea of the variable's purpose without needing to go back to the definition. If you are shortening a name, and its meaning is ambiguous, spell it out (e.g. `count` instead of `ct` or `cnt`)
 
-"Element": `el`, `elm`, or `elem` are allowed
-"Item": Only use `item` (or `someItem`), not `it` or anything else
-"Input": `inp` only (Use `i` sparingly -- it may be confusing with a numeric index)
-Function variables: `fn`, not `fnc`. `cb` is allowed for "callback", and `pred` is allowed for "predicate".
+- "Element": `el`, `elm`, or `elem` are allowed
+- "Item": Only use `item` (or `someItem`), not `it` or anything else
+- "Input": `inp` only (Use `i` sparingly -- it may be confusing with a numeric index)
+- Function variables: `fn`, not `fnc`. `cb` is allowed for "callback", and `pred` is allowed for "predicate".
+- "Identifier": `ident` or `id`. When referring to `ast.Identifier` specifically, `ident` should be used most of the time.
 
 ### Forbidden Names
 
@@ -284,31 +286,49 @@ func (p *Parser) Curr() lexer.Token { ... }
 
 ### Internal Comments
 
-- Use `// TODO:` for missing features or improvements. Messages are usually lowercase
+- Use `// TODO:` for missing features or improvements.
+- Capitalize the first letter of each sentence.
 - Comments should provide educational value or context about the code. They should help others learn the architecture, and keep code maintainable. Use them to explain complex or obscure logic, not to mention every step (something AI loves to do).
 - They should be easy to understand (in terms of reading level). Avoid high-level words unless they're related to tech.
 - Abbreviations (e.g. AST, expr, stdlib) are allowed, but for exports or long comments, use them less. Be aware of the background of developers working on this project; use abbreviations most of them would understand.
 - Comments usually don't end in periods, unless they're long or multiple sentences.
-- Quote code using backticks or single quotes.
+- Quote code using backticks or single quotes. Most references to local variables should be quoted, but this usually isn't the case for functions.
 - Indent Klar code snippets similar to Go doc comments.
+- Prefer linking to objects, including unexported ones, using brackets, similar to Go doc comments.
 
 ## Go Language Features
 
-Always make use of the latest Go syntax and standard library features. Consult the `go.mod` at the root of the project for the latest version.
+Always make use of the latest Go syntax and standard library features. Consult the `go.mod` at the root of the project for the latest version. As Go is updated, this list will be added to.
 
 - Use **`any`** instead of `interface{}` (never allowed except for stub interfaces).
 - Use **`range`** and iterators, including custom iterators (great examples include [Checker.followDestructure](../../internal/analysis/destructure.go) and [Tokenizer.Tokenize](../../internal/lexer/lexer.go)) to avoid creating slices solely for iteration.
 - Use **`min()`**, **`max()`**, and **`cmp.Or()`** where appropriate.
-- Use **`new(expr)`** for allocating and initializing pointers.
-- Modernize whenever your LSP suggests it.
+- Use **`new(expr)`** to return a pointer to an expression. This is best for calls, which can't directly be indirected in Go.
+
+    ```go
+    param.Label = new(p.ParseIdentifier())
+
+    // As opposed to
+    ident := p.ParseIdentifier()
+    param.Label = &ident
+    ```
+
+- To initialize types, always use `&Type` instead of `new(Type)` when possible (e.g. `b := &strings.Builder{}`). Types without a valid composite syntax, such as Go builtins and interfaces, can use `new(Type)`.
+- Modernize whenever your LSP suggests it. Running the lint script `./scripts/lint.sh` can query Gopls for quick fixes.
 - Use `(*testing.B).Loop()` instead of `b.N`.
 - Favor `slices` and `maps` packages over manual implementations.
-- Use `strings.Builder` for efficient string concatenation. Never concatenate to a string in a loop.
+- Use `strings.Builder` for efficient string concatenation. Never concatenate to a string in a loop. If a string is concatenated to conditionally more than 3 times, use a Builder.
+- Use `strings.*Seq` functions rathern than `strings.*` (e.g. `strings.SplitSeq` instead of `strings.Split`) when the result is solely for the purpose of iteration. They are also suitable for getting an item at a specific list index. For example, to get the first split result:
+    ```go
+    var first string
+    for first = range strings.SplitSeq(s) {
+        break
+    }
+    ```
 - **ProTip:** For sorting keys in a map, use the following one-liner:
-
-```go
-keys := slices.Sorted(maps.Keys(m)) // OMG WOW!!!
-```
+    ```go
+    keys := slices.Sorted(maps.Keys(m)) // OMG WOW!!!
+    ```
 
 ## Testing & Benchmarking
 
