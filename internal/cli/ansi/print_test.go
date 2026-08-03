@@ -139,7 +139,7 @@ func TestColorize(t *testing.T) {
 	})
 }
 
-func TestFprintf(t *testing.T) {
+func TestTagFprintf(t *testing.T) {
 	buf := &bytes.Buffer{}
 	n, err := TagFprintf(buf, "Hello <r bold>%s</>", "world")
 	if err != nil {
