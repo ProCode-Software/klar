@@ -158,7 +158,7 @@ func Run(c *argparse.Parser) {
 	fmt.Print(ansi.ClearLine)
 	ansi.TagPrintfln(
 		upgradeMessage, latestVer, util.FormatDuration(time.Since(startTime)),
-		rel.TagName,
+		rel.TagName, cli.KlarIssues,
 	)
 	ok = true
 }
@@ -166,7 +166,7 @@ func Run(c *argparse.Parser) {
 const upgradeMessage = `<** g!>Welcome to <c>Klar build %s</c>!</> Upgraded in <b>%s</b>
 
 <y>Release notes:</> <m>https://github.com/ProCode-Software/klar/releases/tag/%s</m>
-<r>Report bugs:</> <m>https://github.com/ProCode-Software/klar/issues</m>`
+<r>Report bugs:</> <m>%s</m>`
 
 func getLatestRelease() *githubRelease {
 	res, err := http.Get(ReleasesURL)

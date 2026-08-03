@@ -64,11 +64,12 @@ func ShowHelp(w io.Writer, full bool) {
 
 	if full {
 		FlagHelp(hb)
+		// TODO: Should we show accepted env vars? Or show them in `klar help env`?
 	}
 
 	// Social Links
 	hb.ShortTitle("GitHub")
-	hb.Println(ansi.Magenta("https://github.com/ProCode-Software/klar"))
+	hb.Println(ansi.Magenta(cli.KlarGitHub))
 }
 
 func FlagHelp(hb *HelpBuilder) {

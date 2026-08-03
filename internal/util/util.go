@@ -78,10 +78,21 @@ func (aw *allWriter) WriteByte(c byte) error {
 
 func RelPath(basePath, targPath string) string {
 	rel, err := filepath.Rel(basePath, targPath)
-	if err != nil || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if err != nil || !filepath.IsLocal(rel) {
 		return targPath
 	}
 	return rel
+}
+
+func ShortenHomePath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if rel, err := filepath.Rel(home, path); err == nil && filepath.IsLocal(rel) {
+		return filepath.Join("~", rel)
+	}
+	return path
 }
 
 // RandomSlice returns a random element from a slice.
@@ -141,4 +152,22 @@ func ClearScreen() (ok bool) {
 	}
 	cmd.Stdout = os.Stdout
 	return cmd.Run() == nil
+}
+
+// FastDelete deletes the item at index i from s. The slice will be
+// out of order.
+//
+// FastDelete is faster than [slices.Delete] because it swaps the item to
+// be deleted with the last item and then truncates the slice. This should
+// be used when the order of the slice doesn't matter.
+func FastDelete[T any](s []T, i int) []T {
+	_ = s[i] // Bounds check
+	if len(s) == 1 {
+		s = s[:0]
+		return s
+	}
+	last := len(s) - 1
+	s[i], s[last] = s[last], s[i]
+	s = s[:last]
+	return s
 }
