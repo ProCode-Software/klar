@@ -105,7 +105,6 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 	switch fn := UnderlyingTypeName(lhs, true).(type) {
 	case *TypeName, *Map, *List: // List/map cast
 		t.Type = lhs
-		panic(1)
 		// For type casts `T(v)`, `v` must be compatible with `T`.
 		//
 		// Or, if `v` is an implementation of `T` - `V(t)`, `V?` is returned.
