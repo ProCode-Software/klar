@@ -7,7 +7,7 @@
     "printWidth": 90,
     "trailingComma": "es5",
     "useTabs": false,
-    "sortPackageJson": false,
+    "sortPackageJson": true,
     "ignorePatterns": [],
     "insertFinalNewline": true,
     "sortImports": {
