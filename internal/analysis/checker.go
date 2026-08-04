@@ -71,8 +71,6 @@ func NewChecker(mod *Module, opts *Options) *Checker {
 var DefaultCheckerOptions = &klarbuild.CheckerOptions{
 	ValidateExhaustiveness: klarbuild.NoExhaustiveness,
 	AllowAssertions:        klarbuild.AllowAssertions,
-	CheckedListIndexing:    true,
-	CoerceNumbers:          false,
 	ValidateExternals:      false,
 	CheckAllResults:        false,
 	UseAllValues:           false,

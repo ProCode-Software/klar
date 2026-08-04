@@ -137,12 +137,6 @@ type CheckerOptions struct {
 	// prevents obscure crashes in programs, requiring programs to
 	// explicitly check values and crashout.
 	AllowAssertions CheckedAssertionOption `options:"CheckedAssertionOption"`
-	// Whether all list index expressions should return `Result` instead of
-	// crashing when out of bounds.
-	CheckedListIndexing bool
-	// Whether the `Int` and `Float` should be treated as the same type.
-	// Useful when compiling for JavaScript, where all numbers are floats.
-	CoerceNumbers bool
 	// Whether JavaScript externals should be checked that the export exists.
 	// This is accomplished by importing the external JS file using the
 	// project's default runtime and indexing the export name.
