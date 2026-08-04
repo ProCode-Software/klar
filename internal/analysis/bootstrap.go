@@ -28,7 +28,7 @@ var _ interface {
 
 func (c *Checker) wrapBootstrapTypes() {
 	for declaredName, ct := range compositeTypes {
-		obj := c.module.Context.Lookup(declaredName)
+		obj := c.Module.Context.Lookup(declaredName)
 		if obj == nil || !obj.IsTypeName() {
 			continue
 		}
@@ -36,12 +36,12 @@ func (c *Checker) wrapBootstrapTypes() {
 		tn.Type = &bootstrapType{
 			asDeclared: tn.Type,
 			kind:       ct.kind,
-			withKind:   ct.asKind(c.module.Context), // Root context to lookup generics
+			withKind:   ct.asKind(c.Module.Context), // Root context to lookup generics
 		}
 	}
 	// Int, String, etc.
 	for name, kind := range primitives {
-		obj := c.module.Context.Lookup(name)
+		obj := c.Module.Context.Lookup(name)
 		if obj == nil || !obj.IsTypeName() {
 			continue
 		}
@@ -66,7 +66,7 @@ func (c *Checker) wrapBootstrappedTypeName(tn *TypeName, recv *Object) *TypeName
 		return &TypeName{Name: tn.Name, Type: &bootstrapType{
 			asDeclared: recv.TypeName().Type,
 			kind:       ct.kind,
-			withKind:   ct.asKind(c.module.Context),
+			withKind:   ct.asKind(c.Module.Context),
 		}}
 	}
 	return tn

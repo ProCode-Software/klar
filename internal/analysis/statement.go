@@ -148,7 +148,7 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 
 func (c *Checker) reportUnusedWarnings(ctx *Context) {
 	for obj := range ctx.Unused {
-		if obj.Module != c.module {
+		if obj.Module != c.Module {
 			continue
 		}
 		warn := klarerrs.Range(klarerrs.WarnUnused, obj.Range).MarkWarning()
@@ -163,7 +163,7 @@ func (c *Checker) reportUnusedWarnings(ctx *Context) {
 		warn.SetParam("kind", kind)
 		// TODO: Only recommend deleting or exporting if the value has no side effects
 		var exportHint string
-		if obj.Context == c.module.Context {
+		if obj.Context == c.Module.Context {
 			// Only recommend exporting if it's a top-level declaration
 			exportHint = " export it,"
 		}
@@ -202,13 +202,14 @@ func terminatingStmtKind(stmt ast.Statement) string {
 }
 
 func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
-	defer c.runDelayed(len(c.delayed))
-	defer panicWithContext(func() string {
-		return fmt.Sprintf(
+	if c.debug() {
+		c.logger.push(fmt.Sprintf(
 			"%T statement at %s:%s",
-			stmt, c.FilePathOf(sctx.fid()), stmt.GetRange(),
-		)
-	})
+			stmt, c.Module.ResolveFile(sctx.fid()), stmt.GetRange(),
+		))
+		defer c.logger.pop()
+	}
+	defer c.runDelayed(len(c.delayed))
 
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
@@ -495,7 +496,7 @@ outer:
 				if !ok {
 					continue // Discard
 				}
-				vr := NewObject(sym.Identifier, fid, sym.GetRange(), c.module, nil)
+				vr := NewObject(sym.Identifier, fid, sym.GetRange(), c.Module, nil)
 				_ = NewVariable(vr, LocalVar, typ)
 				c.declare(bodyCtx, vr)
 			}

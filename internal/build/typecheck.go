@@ -1,6 +1,7 @@
 package build
 
 import (
+	"os"
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
@@ -22,26 +23,29 @@ func (pkc *PackageCompiler) TypeCheckModule(
 	opts.Importer = importer
 
 	// Initialized the typed module
-	mod := analysis.NewModule(
+	typedMod := analysis.NewModule(
 		m.Name(), m.Path, importPath,
 		m.Programs,
 		opts.KlarVersion, opts.Targets,
 	)
 	if m.SingleFile {
-		mod.Flags |= analysis.SingleFileModule
+		typedMod.Flags |= analysis.SingleFileModule
 	}
 	// Apply bootstrap flag for stdlib modules being bootstrapped
 	// (klar._builtin and klar._builtin.attributes)
-	if isBootstrapping && len(importPath) > 1 &&
+	if isBootstrapping && len(importPath) >= 2 &&
 		importPath[0] == "klar" && importPath[1] == "_builtin" {
-		mod.Flags |= analysis.BootstrapModule
+		typedMod.Flags |= analysis.BootstrapModule
 	}
 
-	ch := typeCheckerPool.Get(mod, opts)
-	defer typeCheckerPool.Put(ch)
-	ch.Check()
-	m.Checked = ch.CheckedModule()
-	return ch.Errors
+	c := typeCheckerPool.Get(typedMod, opts)
+	defer typeCheckerPool.Put(c)
+	if pkc.IsDebug {
+		c.EnableDebug(os.Stderr)
+	}
+	c.Check()
+	m.Checked = c.Module
+	return c.Errors
 }
 
 // getCheckerOptions returns an [analysis.Options] object for a module. It

@@ -105,7 +105,7 @@ func (c *Checker) checkWhenExpr(expr *ast.WhenExpression, t *Expr) {
 			vars := c.checkCommonPatternVars(subj.Options)
 			// Declare the variables into the body's context
 			for name, wv := range vars {
-				obj := NewObject(name, fid, wv.DeclRange, c.module, nil)
+				obj := NewObject(name, fid, wv.DeclRange, c.Module, nil)
 				obj.Flags |= ImplicitVar
 				// TODO: Should we add a new [VariableKind] WhenVar for unwrapped variables?
 				NewVariable(obj, LocalVar, wv.Type)
@@ -187,7 +187,7 @@ func (c *Checker) performWhenSmartCasts(
 			// the comment in [Checker.checkWhenExpr].
 			continue
 		}
-		casted := og.Clone(c.module, subj.FileID(), subj.Node.GetRange())
+		casted := og.Clone(c.Module, subj.FileID(), subj.Node.GetRange())
 		types := make([]Type, len(subj.Options))
 		for i, opt := range subj.Options {
 			// Another smart cast: If one case checks if a subject is nil,
@@ -229,7 +229,7 @@ func (c *Checker) declareWhenPatternAliases(
 		if name.IsDiscard() {
 			continue
 		}
-		obj := NewObject(name.Name, bodyCtx.File, name.Range(), c.module, nil)
+		obj := NewObject(name.Name, bodyCtx.File, name.Range(), c.Module, nil)
 		// TODO: Use type of pattern, and ensure the variable will have the
 		// same type across options
 		NewVariable(obj, LocalVar, subj.Type)

@@ -1,8 +1,17 @@
 package cli
 
-import "github.com/ProCode-Software/klar/internal/version"
+import (
+	"os"
+
+	"github.com/ProCode-Software/klar/internal/version"
+)
 
 var KlarVersion, KlarCommit string
+
+const (
+	KlarGitHub = "https://github.com/ProCode-Software/klar"
+	KlarIssues = KlarGitHub + "/issues"
+)
 
 var KlarVersionAndCommit = KlarVersion + "+" + KlarCommit
 
@@ -15,3 +24,5 @@ func init() {
 		panic("failed to parse Klar version: " + err.Error())
 	}
 }
+
+var Debug = os.Getenv("KLAR_DEBUG") == "1"

@@ -86,12 +86,17 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 }
 
 func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overload Type) {
-	defer panicWithContext(func() string {
-		return fmt.Sprintf(
+	if c.debug() {
+		rang := "<no params>"
+		if len(args) > 0 {
+			rang = ranges.FromSlice(args).String()
+		}
+		c.logger.push(fmt.Sprintf(
 			"call to %s at %s:%s",
-			lhs, c.module.ResolveFilePath(t.FileID()), ranges.FromSlice(args),
-		)
-	})
+			lhs, c.Module.ResolveFile(t.FileID()), rang,
+		))
+		defer c.logger.pop()
+	}
 
 	var name string
 	if obj, ok := lhs.(*Object); ok {
@@ -100,6 +105,7 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 	switch fn := UnderlyingTypeName(lhs, true).(type) {
 	case *TypeName, *Map, *List: // List/map cast
 		t.Type = lhs
+		panic(1)
 		// For type casts `T(v)`, `v` must be compatible with `T`.
 		//
 		// Or, if `v` is an implementation of `T` - `V(t)`, `V?` is returned.

@@ -278,8 +278,9 @@ func IsUntyped(t Type) bool {
 
 func funcsCompatible(a, b Type) bool {
 	a, b = Underlying(a), Underlying(b)
-	if a, ok := a.(*UntypedLambda); ok {
-		switch b := Underlying(b).(type) {
+	switch a := a.(type) {
+	case *UntypedLambda:
+		switch b := b.(type) {
 		case *Lambda:
 			return len(a.Vars) == len(b.Params)
 		case *Overload:
@@ -287,7 +288,17 @@ func funcsCompatible(a, b Type) bool {
 				return false
 			}
 		}
+	case *Function:
+		return hasCompatibleOverload(a, b)
 	}
+	// TODO: I don't know if we can check for this (A => *Function)
+	/* if b, ok := b.(*Function); ok {
+		// We can't use [hasCompatibleOverload](b, a) because we still need
+		// to check for A => B.
+		return slices.ContainsFunc(b.Overloads, func(a *Overload) bool {
+			return funcsCompatible(a, b)
+		})
+	} */
 	paramsA, variadicA, returnA, ok := makeFuncIter(a)
 	if !ok {
 		return false
@@ -323,6 +334,11 @@ func makeFuncIter(fn Type) (params iter.Seq[Type], variadic bool, ret Type, ok b
 	switch fn := fn.(type) {
 	case *Lambda:
 		return slices.Values(fn.Params), fn.Variadic, fn.Return, true
+	case *Function:
+		if len(fn.Overloads) > 0 {
+			return nil, false, nil, false
+		}
+		return makeFuncIter(fn.Overloads[0])
 	case *Overload:
 		if len(fn.LabelledParams) > 0 {
 			return nil, false, nil, false
@@ -337,4 +353,10 @@ func makeFuncIter(fn Type) (params iter.Seq[Type], variadic bool, ret Type, ok b
 	default:
 		return nil, false, nil, false
 	}
+}
+
+func hasCompatibleOverload(a *Function, b Type) bool {
+	return slices.ContainsFunc(a.Overloads, func(a *Overload) bool {
+		return funcsCompatible(a, b)
+	})
 }

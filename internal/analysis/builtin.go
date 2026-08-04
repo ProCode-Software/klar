@@ -227,21 +227,21 @@ func (c *Checker) loadInternalModules() {
 	var (
 		builtinImportPath    = imports.ImportPath{"klar", "_builtin"}
 		attributesImportPath = imports.ImportPath{"klar", "_builtin", "attributes"}
-		currImpPath          = c.module.ImportPath
+		currImpPath          = c.Module.ImportPath
 	)
 	switch {
 	// BootstrapModule is set if the module containing builtins or
 	// attributes is currently being typechecked
-	case !c.module.Flags.Has(BootstrapModule) && !builtinsLoaded:
+	case !c.Module.Flags.Has(BootstrapModule) && !builtinsLoaded:
 		// Not bootstrapping. These only need to be declared once per
 		// compile session.
 		declareBuiltinTypes()
 		declareBuiltinFunctions()
 		builtinsLoaded = true
 	case slices.Equal(currImpPath, builtinImportPath):
-		builtinModule = c.module
+		builtinModule = c.Module
 	case slices.Equal(currImpPath, attributesImportPath):
-		attributesModule = c.module
+		attributesModule = c.Module
 	}
 }
 

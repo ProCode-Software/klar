@@ -87,12 +87,13 @@ func (c *Checker) checkExprFrom(
 }
 
 func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
-	defer panicWithContext(func() string {
-		return fmt.Sprintf(
+	if c.debug() {
+		c.logger.push(fmt.Sprintf(
 			"%T expression at %s:%s",
-			expr, c.module.ResolveFilePath(t.FileID()), expr.GetRange(),
-		)
-	})
+			expr, c.Module.ResolveFile(t.FileID()), expr.GetRange(),
+		))
+		defer c.logger.pop()
+	}
 
 	switch expr := expr.(type) {
 	case *ast.BinaryExpression:
@@ -936,7 +937,7 @@ func (c *Checker) checkLambdaBody(expr *ast.LambdaExpression, t *Expr) {
 				cmp.Or[ast.Node](pair.Type, pair.Value, assg).GetRange(), true,
 			) {
 				sym := dest.(*ast.Symbol)
-				vr := NewObject(sym.Identifier, t.FileID(), sym.Range, c.module, nil)
+				vr := NewObject(sym.Identifier, t.FileID(), sym.Range, c.Module, nil)
 				NewVariable(vr, FuncParamVar, typ)
 				c.declare(bodyCtx, vr)
 			}
@@ -963,7 +964,7 @@ func (c *Checker) checkPipelineExpr(expr *ast.PipelineExpression, t *Expr) {
 	first := c.checkExprFrom(expr.Steps[0].(ast.Expression), t)
 	var (
 		valObj = NewObject(
-			PipelineResultName, t.Context.File, expr.Range, c.module, nil,
+			PipelineResultName, t.Context.File, expr.Range, c.Module, nil,
 		)
 		valVar      = NewVariable(valObj, PipelineVar, first.Type)
 		pipelineCtx = NewContext(t.Context, t.Context.File)

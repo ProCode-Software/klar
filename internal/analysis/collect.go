@@ -24,7 +24,7 @@ func (c *Checker) collectTopLevelObjects(
 	files []string, fileContexts map[string]*Context,
 ) *stmtCollector {
 	var (
-		collector     = &stmtCollector{topLevel: true, ctx: c.module.Context}
+		collector     = &stmtCollector{topLevel: true, ctx: c.Module.Context}
 		attrs         []*ast.Attribute
 		topLevelFctx  *Context
 		topLevelStmts []ast.Statement
@@ -37,7 +37,7 @@ func (c *Checker) collectTopLevelObjects(
 			// First statement after imports. Any import after this is misplaced.
 			// An import will never be at program.Body[firstStmt].
 			firstStmt, _  = fctx.getAttribute(firstStmtIndex).(int)
-			allowTopLevel = fileName == "main.klar" || c.module.Flags.Has(SingleFileModule)
+			allowTopLevel = fileName == "main.klar" || c.Module.Flags.Has(SingleFileModule)
 		)
 		collector.fid = fid
 		for _, stmt := range program.Body[firstStmt:] {
@@ -84,7 +84,7 @@ func (c *Checker) collectTopLevelObjects(
 				// Allow unused values in REPL. Also, don't report an error here if top-level
 				// statements are allowed. An error will be reported later while checking
 				// top-level statements.
-				if !allowTopLevel && !c.module.Flags.Has(REPLModule) &&
+				if !allowTopLevel && !c.Module.Flags.Has(REPLModule) &&
 					!isAllowedAsStmt(stmt.Expression) {
 					c.fileError(klarerrs.Node(klarerrs.ErrUnusedValue, stmt), fid)
 					// Still have to check it
@@ -126,7 +126,7 @@ func (c *Checker) collectTopLevelObjects(
 		fctx := fileContexts[fileName]
 		for _, imported := range fctx.SortedDecls() {
 			name := imported.Name
-			topLevelObj := c.module.Context.Lookup(name)
+			topLevelObj := c.Module.Context.Lookup(name)
 			if topLevelObj == nil {
 				continue // No error
 			}
@@ -154,7 +154,7 @@ func (c *Checker) collectTopLevelObjects(
 	if len(topLevelStmts) > 0 {
 		c.queue(func() {
 			sctx := c.checkTopLevelStmts(topLevelStmts, topLevelFctx)
-			prog := c.Programs[c.module.ResolveFile(topLevelFctx.File)]
+			prog := c.Programs[c.Module.ResolveFile(topLevelFctx.File)]
 			c.recordBlock(prog, sctx)
 		}, true)
 	}
@@ -243,7 +243,7 @@ func (c *Checker) declareFunc(stmt *ast.FunctionDeclaration, sc *stmtCollector,
 	public bool, attrs *[]*ast.Attribute,
 ) {
 	name := stmt.Identifier.Name
-	obj := NewObject(name, sc.fid, stmt.GetRange(), c.module, nil)
+	obj := NewObject(name, sc.fid, stmt.GetRange(), c.Module, nil)
 	ov := &Overload{Object: obj}
 	obj.Type = ov
 	obj.Public = public
@@ -294,7 +294,7 @@ func (c *Checker) declareFuncAlias(stmt *ast.FuncAliasDeclaration, sc *stmtColle
 	// Will be resolved later
 	obj := NewObject(
 		stmt.Identifier.Name,
-		sc.fid, stmt.Range, c.module, &FunctionAlias{},
+		sc.fid, stmt.Range, c.Module, &FunctionAlias{},
 	)
 	obj.Public = public
 	if stmt.Struct != nil {
@@ -313,7 +313,7 @@ func (c *Checker) declareType(stmt ast.TypeDeclaration, sc *stmtCollector,
 	public bool, attrs *[]*ast.Attribute,
 ) {
 	name := stmt.Name()
-	obj := NewObject(name, sc.fid, stmt.GetRange(), c.module, &TypeName{nil, name})
+	obj := NewObject(name, sc.fid, stmt.GetRange(), c.Module, &TypeName{nil, name})
 
 	var hadInit bool
 	if maybeFnObj := sc.ctx.Lookup(name); maybeFnObj != nil {
@@ -349,7 +349,7 @@ func (c *Checker) getOverloadParent(
 	par = sc.ctx.Lookup(name)
 	if par == nil {
 		// If this is the first overload, declare a new parent function
-		par = NewObject(name, sc.fid, node.GetRange(), c.module, &Function{})
+		par = NewObject(name, sc.fid, node.GetRange(), c.Module, &Function{})
 		// The parent's node and range are the first overload
 		par.info = &DeclarationInfo{node: node}
 		par.Order = sc.nextOrder()
@@ -423,7 +423,7 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 				c.fileError(klarerrs.Node(klarerrs.ErrNonNameDeclaration, err), sc.fid)
 				continue
 			}
-			obj := NewObject(name.Identifier, sc.fid, name.Range, c.module, nil)
+			obj := NewObject(name.Identifier, sc.fid, name.Range, c.Module, nil)
 			obj.Public = public
 
 			// Check whether the variable is a const. Vars and consts can't

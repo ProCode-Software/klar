@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"maps"
@@ -14,6 +15,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/build/logger"
+	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
@@ -31,6 +33,7 @@ type Compiler struct {
 	Progress  Progress
 	Parser    Parser
 	collectMu sync.Mutex
+	IsDebug   bool
 	*slog.Logger
 }
 
@@ -47,6 +50,7 @@ func NewCompiler(mode BuildMode, cwd string) *Compiler {
 		},
 		Logger:   slog.New(slog.DiscardHandler),
 		Progress: HiddenProgress{},
+		IsDebug:  cli.Debug,
 	}
 }
 
@@ -196,5 +200,8 @@ func SetLogger(b *Compiler, verbose, json bool) error {
 		flags |= logger.ShowSource
 	}
 	b.Logger = slog.New(logger.NewLogHandler(out, flags))
+	if b.Logger.Enabled(context.TODO(), slog.LevelDebug) {
+		b.IsDebug = true
+	}
 	return nil
 }

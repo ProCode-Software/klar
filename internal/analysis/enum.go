@@ -211,7 +211,7 @@ func (c *Checker) checkEnumValue(o *Object, e *Enum, ei *EnumItem,
 			err.SetParam("otherKey", otherItem.Name)
 			err.AddDetail(
 				"Item "+klarerrs.Quote(otherItem.Name)+" was declared here",
-				c.module.ResolveFile(o.File), expr.GetRange(),
+				c.Module.ResolveFile(o.File), expr.GetRange(),
 			)
 			c.fileError(err, o.File)
 		} else {

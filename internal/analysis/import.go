@@ -50,10 +50,10 @@ func (c *Checker) performImports(files []string, fileContexts map[string]*Contex
 	}
 	importCache := make(map[string]*imported)
 	ictx := &importCtx{
-		target:     c.module.Targets[0], // TODO
-		importPath: c.module.ImportPath,
-		fileDir:    c.module.Path,
-		singleFile: c.module.Flags.Has(SingleFileModule),
+		target:     c.Module.Targets[0], // TODO
+		importPath: c.Module.ImportPath,
+		fileDir:    c.Module.Path,
+		singleFile: c.Module.Flags.Has(SingleFileModule),
 	}
 	for _, fileName := range files {
 		fctx := fileContexts[fileName]
@@ -119,7 +119,7 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 
 	// Declare the namespace
 	nsType := &Namespace{ImportPath: mod.ImportPathString(), Context: mod.Context}
-	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, nsType)
+	nsObj := NewObject(ns, fctx.File, stmt.Range, c.Module, nsType)
 	// The namespace doesn't have to be used when there are unqualified imports
 	if len(stmt.UnqualifiedImports) > 0 {
 		nsObj.Flags |= UsageOptional
@@ -140,7 +140,7 @@ func (c *Checker) applyImportedModule(mod *Module, stmt *ast.ImportStatement, fc
 		// 	its name being redeclared, it shows the range of the import rather
 		// 	than the definition outside the current module.
 		// - We can use the user-declared unqualified import alias
-		obj = obj.Clone(c.module, fctx.File, name.Name.Range())
+		obj = obj.Clone(c.Module, fctx.File, name.Name.Range())
 		// TODO: Should we change obj's order, and context?
 		if !name.Label.IsZero() {
 			obj.Name = name.Label.Name
@@ -161,7 +161,7 @@ func (c *Checker) declareErrorImport(stmt *ast.ImportStatement, fctx *Context) {
 		ns = stmt.Alias.Name
 	}
 	// Declare the namespace
-	nsObj := NewObject(ns, fctx.File, stmt.Range, c.module, &InvalidObject{})
+	nsObj := NewObject(ns, fctx.File, stmt.Range, c.Module, &InvalidObject{})
 	c.declare(fctx, nsObj)
 }
 
@@ -190,7 +190,7 @@ func (c *Checker) reportImportError(importPath string, err error,
 		// Keep the provided label or use no label
 	case slices.Contains(imports.StdlibImports, importPathBase):
 		kerr.Label = quotedImportPath + " isn't in the standard library"
-	case importPathBase == c.module.ImportPath[0]:
+	case importPathBase == c.Module.ImportPath[0]:
 		kerr.Label = quotedImportPath + " isn't in the current package"
 	default:
 		kerr.Label = "Can't find " + quotedImportPath
@@ -200,7 +200,7 @@ func (c *Checker) reportImportError(importPath string, err error,
 }
 
 func (c *Checker) checkImportTargetSupport(imported *Module, stmt *ast.ImportStatement) *klarerrs.Error {
-	for _, currTarget := range c.module.Targets {
+	for _, currTarget := range c.Module.Targets {
 		if target.Supports(imported.Targets, currTarget) {
 			continue
 		}

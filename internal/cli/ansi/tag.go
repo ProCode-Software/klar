@@ -67,13 +67,13 @@ func Colorize(s string) string {
 		case '\\':
 			// Escape
 			if i+1 < len(s) {
-				next := s[i+1]
-				if next == '<' || next == '>' || next == '\\' {
+				if next := s[i+1]; next == '<' || next == '>' || next == '\\' {
 					b.WriteByte(next)
 					i++
 					continue
 				}
 			}
+			// Literal
 			b.WriteByte(c)
 			continue
 		case EscapeTag:
@@ -116,7 +116,7 @@ func Colorize(s string) string {
 			}
 			// </...> may partially close the top of the stack (but not anything
 			// opened before). `<** r>...</r>` is allowed.
-			top := stack[len(stack)-1]
+			top := &stack[len(stack)-1]
 			for colorName := range strings.FieldsSeq(colorsToClose) {
 				code, ok := ColorMap[colorName]
 				if !ok {

@@ -159,7 +159,7 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			err.Hint("If you're declaring a variable, add a type annotation before ':='.")
 
 			diff2 := klarerrs.NewDiff(
-				c.module.ResolveFilePath(fid),
+				c.Module.ResolveFilePath(fid),
 				klarerrs.AddedString{Pos: node.GetRange().Start, String: "[T]("},
 				klarerrs.AddedString{Pos: node.GetRange().End, String: ")"},
 			)
@@ -187,7 +187,7 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 			err := klarerrs.Node(klarerrs.ErrUntypedEnum, enum)
 			err.Label = "I don't know the type of this enum"
 			diff := klarerrs.NewDiff(
-				c.module.ResolveFilePath(fid),
+				c.Module.ResolveFilePath(fid),
 				klarerrs.AddedString{Pos: enum.Range.Start, String: "T"},
 			)
 			err.HintWithDiff(
@@ -201,7 +201,7 @@ func (c *Checker) toTyped(typ, hint Type, node ast.Expression, fid FileID) Type 
 		err := klarerrs.Node(klarerrs.ErrUntypedStruct, ut.Node)
 		err.Label = "I don't know the type of this struct"
 		diff := klarerrs.NewDiff(
-			c.module.ResolveFilePath(fid),
+			c.Module.ResolveFilePath(fid),
 			klarerrs.DeletedRange{ranges.SingleChar(ut.Node.GetRange().Start)}, // '.'
 			klarerrs.AddedString{Pos: ut.Node.GetRange().Start, String: "T"},
 		)

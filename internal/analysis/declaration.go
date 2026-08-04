@@ -61,9 +61,12 @@ func (c *Checker) declareWithInfo(obj *Object, ctx *Context,
 }
 
 func (c *Checker) checkDeclaration(o *Object) {
-	defer panicWithContext(func() string {
-		return fmt.Sprintf("%T declaration at %s", o.Type, o.FilePathRange())
-	})
+	if c.debug() {
+		c.logger.push(fmt.Sprintf(
+			"%T declaration at %s", o.Type, o.FileRange(),
+		))
+		defer c.logger.pop()
+	}
 	/*
 		Red: Type isn't known yet. Not in objPathIndex.
 		White: Type is pending. Is in objPathIndex.

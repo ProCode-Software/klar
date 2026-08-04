@@ -131,7 +131,7 @@ func (c *Checker) checkConstDecl(o *Object) {
 		cnst  = o.Type.(*Constant)
 		vinfo = o.info.varInfo
 		val   = vinfo.rhs
-		rhs     *Expr
+		rhs   *Expr
 	)
 	// Use the cached expression or check the RHS
 	if *vinfo.rhsExpr != nil {

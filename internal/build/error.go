@@ -218,7 +218,7 @@ func (c *Compiler) PrintKlonWarnings(warn []*klon.Error, file string) {
 	}
 	if len(warn) > 10 {
 		warn = warn[:10]
-		cli.Custom(
+		cli.CustomError(
 			ansi.BoldBrightYellow(title), "",
 			fmt.Sprintf(
 				ansi.BrightYellow("There are %d warnings; showing only the first 10:"),
@@ -228,7 +228,7 @@ func (c *Compiler) PrintKlonWarnings(warn []*klon.Error, file string) {
 	}
 	for _, err := range warn {
 		if err := c.printKlonDiagnostic(err, file, title); err != nil {
-			cli.Custom(ansi.BoldBrightYellow(title), err.Error())
+			cli.CustomError(ansi.BoldBrightYellow(title), err.Error())
 		}
 	}
 	fmt.Println()

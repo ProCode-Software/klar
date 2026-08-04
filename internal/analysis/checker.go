@@ -1,16 +1,43 @@
 package analysis
 
 import (
+	"fmt"
+	"io"
 	"maps"
 	"slices"
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
 )
+
+type Checker struct {
+	Programs map[string]*ast.Program // Files in the module that is being checked.
+	Errors   []*klarerrs.Error       // Errors reported while type checking.
+	Info     *Info
+	Options  *Options // Options for type checking.
+	Module   *Module
+
+	// For tracking cycles
+	objPath      []*Object       // Path of object deps
+	objPathIndex map[*Object]int // Indices of objects in objPath
+
+	delayed []action
+
+	logger *debugLogger
+}
+
+// NewChecker returns an initialized Checker that checks the programs in mod.
+// If opts == nil, default options are used.
+func NewChecker(mod *Module, opts *Options) *Checker {
+	c := &Checker{}
+	c.Init(mod, opts)
+	return c
+}
 
 type Options struct {
 	// The [Importer] to use for importing modules. If set to nil, an error is
@@ -37,36 +64,14 @@ type Options struct {
 	*klarbuild.CheckerOptions
 }
 
-type Checker struct {
-	Programs map[string]*ast.Program // Files in the module that is being checked.
-	Errors   []*klarerrs.Error       // Errors reported while type checking.
-	Info     *Info
-	Options  *Options // Options for type checking.
-	module   *Module
-
-	// For tracking cycles
-	objPath      []*Object       // Path of object deps
-	objPathIndex map[*Object]int // Indices of objects in objPath
-
-	delayed []action
-}
-
 // FileID is the numerical identifier for a [*ast.Program].
 //   - FileID <= -1: Builtin context
 //   - FileID == 0: Module context
 //   - FileID >= 1: File context.
 type FileID int
 
-func (f FileID) TopLevel() bool { return f == 0 }
-func (f FileID) Builtin() bool  { return f < 0 }
-
-// NewChecker returns an initialized Checker that checks the programs in mod.
-// If opts == nil, default options are used.
-func NewChecker(mod *Module, opts *Options) *Checker {
-	c := &Checker{}
-	c.Init(mod, opts)
-	return c
-}
+func (fid FileID) TopLevel() bool { return fid == 0 }
+func (fid FileID) Builtin() bool  { return fid < 0 }
 
 var DefaultCheckerOptions = &klarbuild.CheckerOptions{
 	ValidateExhaustiveness: klarbuild.NoExhaustiveness,
@@ -88,7 +93,7 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 		Blocks:      make(map[ast.Node]*stmtContext),
 	}
 	mod.Info = c.Info
-	c.module = mod
+	c.Module = mod
 	c.Programs = mod.Programs
 	c.Options = opts
 	c.loadInternalModules()
@@ -108,14 +113,14 @@ func (c *Checker) Check() {
 
 	// If we're currently bootstrapping, wrap the declared types to allow
 	// special operations on them. This must be queued before function bodies.
-	if c.module.Flags.Has(BootstrapModule) {
+	if c.Module.Flags.Has(BootstrapModule) {
 		c.queue(c.wrapBootstrapTypes, false)
 	}
 
 	// Check for direct cycles among those objects
-	c.checkDirectCycles(c.module.Context)
+	c.checkDirectCycles(c.Module.Context)
 	// Typecheck those declarations, but not function bodies
-	c.checkContextDecls(c.module.Context, collector, nil)
+	c.checkContextDecls(c.Module.Context, collector, nil)
 
 	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)
@@ -127,31 +132,33 @@ func (c *Checker) Check() {
 
 func (c *Checker) initFileContexts(sortedFiles []string) map[string]*Context {
 	fileContexts := make(map[string]*Context, len(sortedFiles))
-	c.module.fileID = make(map[FileID]string, len(sortedFiles))
-	c.module.fileContext = make(map[FileID]*Context, len(sortedFiles))
+	c.Module.fileID = make(map[FileID]string, len(sortedFiles))
+	c.Module.fileContext = make(map[FileID]*Context, len(sortedFiles))
 	for i, name := range sortedFiles {
 		i := FileID(i) + 1
-		c.module.fileID[i] = name
-		fileContexts[name] = NewContext(c.module.Context, i)
-		c.module.fileContext[i] = fileContexts[name]
+		c.Module.fileID[i] = name
+		fileContexts[name] = NewContext(c.Module.Context, i)
+		c.Module.fileContext[i] = fileContexts[name]
 	}
 	return fileContexts
 }
 
-func (c *Checker) CheckedModule() *Module { return c.module }
-
-func (c *Checker) FileContextOf(fid FileID) *Context { return c.module.fileContext[fid] }
-func (c *Checker) FilePathOf(fid FileID) string      { return c.module.ResolveFilePath(fid) }
+func (c *Checker) FileContextOf(fid FileID) *Context { return c.Module.fileContext[fid] }
+func (c *Checker) FilePathOf(fid FileID) string      { return c.Module.ResolveFilePath(fid) }
 
 // Keeps the created type information
 func (c *Checker) ResetState() {
+	c.delayed = nil
+	c.objPath = nil
+	c.objPathIndex = nil
 }
 
 func (c *Checker) ResetAll() {
-	c.module = nil
+	c.Module = nil
 	c.Errors = nil
 	c.Programs = nil
 	c.Options = nil
+	c.logger = nil
 }
 
 func (o *Options) NormalizedTargets(yield func(target.Target) bool) {
@@ -214,13 +221,38 @@ func (c *Checker) runDelayed(from int) {
 
 func (c *Checker) reportTopLevelUnused() {
 	// Unused unexported top-level objects
-	c.reportUnusedWarnings(c.module.Context)
+	c.reportUnusedWarnings(c.Module.Context)
 	// Unused imports
-	for _, fid := range slices.Sorted(maps.Keys(c.module.fileContext)) {
-		fctx := c.module.fileContext[fid]
+	for _, fid := range slices.Sorted(maps.Keys(c.Module.fileContext)) {
+		fctx := c.Module.fileContext[fid]
 		// Errors may have already been reported while checking top-level statements
 		if fctx.getAttribute(unusedReported) != true {
 			c.reportUnusedWarnings(fctx)
 		}
+	}
+}
+
+type debugLogger struct {
+	depth int
+	w     io.Writer
+}
+
+func (c *Checker) EnableDebug(w io.Writer) { c.logger = &debugLogger{w: w} }
+func (c *Checker) debug() bool             { return c.logger != nil }
+
+func (l *debugLogger) push(proc string) {
+	if l != nil {
+		l.depth++
+		var c byte = '='
+		if l.depth%2 == 0 {
+			c = '-'
+		}
+		fmt.Fprintf(l.w, "[Analysis] %*s %s\n", (l.depth*2)-1, char.Repeat(c, l.depth), proc)
+	}
+}
+
+func (l *debugLogger) pop() {
+	if l != nil {
+		l.depth--
 	}
 }

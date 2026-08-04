@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"cmp"
-	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -14,7 +13,7 @@ type stopChecker struct{}
 
 func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 	c.Errors = append(c.Errors, err)
-	c.module.Flags |= ModuleWithErrors
+	c.Module.Flags |= ModuleWithErrors
 	if c.Options.Error != nil {
 		c.Options.Error(err)
 	}
@@ -26,7 +25,7 @@ func (c *Checker) error(err *klarerrs.Error) *klarerrs.Error {
 }
 
 func (c *Checker) fileError(err *klarerrs.Error, fid FileID) {
-	err.File = c.module.ResolveFilePath(fid)
+	err.File = c.Module.ResolveFilePath(fid)
 	c.error(err)
 }
 
@@ -127,17 +126,6 @@ func handlePanic() {
 	r := recover()
 	if _, ok := r.(stopChecker); !ok && r != nil {
 		panic(r)
-	}
-}
-
-func panicWithContext(getLocation func() string) {
-	switch r := recover(); r.(type) {
-	case nil:
-	case stopChecker:
-		panic(r)
-	default:
-		// This prints an AST stack. Unfortunately, Go doesn't make it look clean.
-		panic(fmt.Errorf("%v\n\twhile checking %s", r, getLocation()))
 	}
 }
 

@@ -12,8 +12,8 @@ import (
 
 var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
 
-// Custom prints an error to [os.Stderr] with a custom title
-func Custom(errorType string, msg string, detail ...any) {
+// CustomError prints an error to [os.Stderr] with a custom title
+func CustomError(errorType string, msg string, detail ...any) {
 	title := ansi.BoldBrightRed(errorType) + ansi.BoldDim(":")
 	v := []any{title}
 	if msg != "" {
@@ -24,12 +24,12 @@ func Custom(errorType string, msg string, detail ...any) {
 
 // Error prints an error to [os.Stderr].
 func Error(msg string, detail ...any) {
-	Custom("Error", msg, detail...)
+	CustomError("Error", msg, detail...)
 }
 
 // Warn prints a warning to [os.Stderr].
 func Warn(msg string, detail ...any) {
-	Custom(ansi.BoldBrightYellow("Warning"), msg, detail...)
+	CustomError(ansi.BoldBrightYellow("Warning"), msg, detail...)
 }
 
 // Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
@@ -60,11 +60,11 @@ func InternalError(detail ...any) {
 }
 
 func HintIndent(hint string) {
-	Custom(ansi.BrightBlue("  Hint"), "", hint)
+	CustomError(ansi.BrightBlue("  Hint"), "", hint)
 }
 
 func Hint(hint string) {
-	Custom(ansi.BrightBlue("Hint"), "", hint)
+	CustomError(ansi.BrightBlue("Hint"), "", hint)
 }
 
 func Eprintf(format string, a ...any) {
@@ -72,7 +72,7 @@ func Eprintf(format string, a ...any) {
 }
 
 func ColorErrorfln(format string, a ...any) {
-	ansi.TagFprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
+	ansi.TagFprintfln(os.Stderr, "<** r!>Error</r!><dim>:</><**> "+format, a...)
 }
 
 func ErrNoManifest(dir string) {
@@ -105,17 +105,6 @@ type SignalExit struct{ Code int }
 // [HandleSignalExit] and calls [os.Exit] with the provided code.
 func Exit(code int) {
 	panic(SignalExit{code})
-}
-
-func HandleSignalExit() {
-	switch r := recover().(type) {
-	case SignalExit:
-		os.Exit(r.Code)
-	case nil:
-		return
-	default:
-		panic(r)
-	}
 }
 
 func Confirm(msg string, defaultRes bool) bool {

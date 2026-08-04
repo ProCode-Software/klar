@@ -73,7 +73,7 @@ func (c *Checker) parseAttribute(a *Attributes, attr *ast.Attribute,
 	t attrTarget, nodeRange ranges.Range, fid FileID,
 ) {
 	// TODO: Should this be a limitation?
-	if attributesModule == c.module {
+	if attributesModule == c.Module {
 		panic("klar._builtin.attributes module can't reference attributes")
 	}
 	name := attr.Name.Name

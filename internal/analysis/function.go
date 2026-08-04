@@ -145,9 +145,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		case isInit: // Initializer
 			selfPos = stmt.Identifier.Range()
 		}
-		selfObj := NewObject(selfName, ov.Object.File, selfPos, c.module, nil)
+		selfObj := NewObject(selfName, ov.Object.File, selfPos, c.Module, nil)
 		tn := info.receiver.TypeName()
-		if c.module.Flags.Has(BootstrapModule) {
+		if c.Module.Flags.Has(BootstrapModule) {
 			tn = c.wrapBootstrappedTypeName(tn, info.receiver)
 		}
 		ov.Self = NewVariable(selfObj, SelfVar, tn)
@@ -280,7 +280,7 @@ func (c *Checker) checkFuncDeclParams(
 	for _, param := range stmt.Parameters {
 		typ, variadic := c.parseTypeOrVariadic(param.Type, ctx)
 		for _, pn := range param.Names {
-			vrObj := NewObject(pn.Name.Name, ov.Object.File, pn.Name.Range(), c.module, nil)
+			vrObj := NewObject(pn.Name.Name, ov.Object.File, pn.Name.Range(), c.Module, nil)
 			vr := NewVariable(vrObj, FuncParamVar, typ)
 			if variadic {
 				vr.Object.Flags |= VariadicParam
@@ -459,7 +459,7 @@ func (c *Checker) parseGenerics(names []ast.Identifier,
 ) []*Generic {
 	generics := make([]*Generic, len(names))
 	for i, param := range names {
-		genObj := NewObject(param.Name, fid, param.Range(), c.module, &TypeName{Name: param.Name})
+		genObj := NewObject(param.Name, fid, param.Range(), c.Module, &TypeName{Name: param.Name})
 		gen := newGeneric(genObj, i)
 		c.declare(ctx, genObj)
 		generics[i] = gen
