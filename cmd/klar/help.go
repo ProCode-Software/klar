@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/util"
 )
 
@@ -48,6 +48,9 @@ func ShowHelp(w io.Writer, full bool) {
 	hb.Command("format", "Format source code")
 	hb.Command("lint", "Check your code for correctness")
 	hb.Command("test", "Run tests for a Klar project")
+	if full {
+		hb.Command("lsp", "Start the Klar Language Server (for IDEs only)")
+	}
 
 	hb.Split(ansi.Cyan)
 	hb.Command("clean", "Clean build cache")

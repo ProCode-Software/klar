@@ -6,6 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/format"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/help"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/lint"
+	"github.com/ProCode-Software/klar/cmd/klar/internal/lsp"
 	klarnew "github.com/ProCode-Software/klar/cmd/klar/internal/new"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/repl"
 	"github.com/ProCode-Software/klar/cmd/klar/internal/run"
@@ -96,6 +97,11 @@ var KlarCommands = map[string]*command.Command{
 		ShortDescription: "Upgrade Klar to the latest version",
 		Run:              upgrade.Run,
 		LongDescription:  upgrade.LongDescription,
+	},
+	"lsp": {
+		ShortDescription: "Start the Klar Language Server (for IDEs only)",
+		Run:              lsp.Run,
+		LongDescription:  lsp.LongDescription,
 	},
 }
 

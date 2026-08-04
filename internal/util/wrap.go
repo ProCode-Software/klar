@@ -13,10 +13,10 @@ type Wrapper struct {
 	WriteNewline func()
 }
 
-func Wrap(s string, w AllWriter, width, firstRowWith, margin int) {
+func Wrap(s string, w AllWriter, width, firstRowWidth, margin int) {
 	wr := &Wrapper{
 		Width:         width,
-		FirstRowWidth: firstRowWith,
+		FirstRowWidth: firstRowWidth,
 		AllWriter:     w,
 		Margin:        margin,
 	}

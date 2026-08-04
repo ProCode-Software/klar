@@ -94,7 +94,7 @@ func main() {
 		if badFlag := args[1]; badFlag[0] == '-' {
 			// Invalid flag
 			cli.ColorErrorfln("<**>I don't understand the <c>%s</c> flag</**>", badFlag)
-			FlagHelp(NewHelpBuilder(os.Stderr))
+			FlagHelp(command.NewHelpBuilder(os.Stderr))
 			cli.Exit(2)
 		}
 		// Command
