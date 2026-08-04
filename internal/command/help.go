@@ -130,6 +130,11 @@ func getDefault(flag argparse.FlagDef) string {
 		if def == "" {
 			return ""
 		}
+	case flag.Type == argparse.TypeList:
+		def = fmt.Sprintf("%+v", flag.Default.Value)
+		if def == "[]" {
+			return ""
+		}
 	default:
 		switch v := flag.Default.Value; v {
 		case "", false, 0, nil:

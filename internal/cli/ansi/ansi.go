@@ -159,3 +159,17 @@ useColor := isattyOut && term != "" && term != "dumb" && !noColor
 func Hyperlink(label, url string) string {
 	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, label)
 }
+
+func Bit8(c int, s string) string {
+	if DisableColor {
+		return ""
+	}
+	return fmt.Sprintf("\x1b[38;5;%dm%s%s", c, s, CodeReset)
+}
+
+func ColorBit8(c int) string {
+	if DisableColor {
+		return ""
+	}
+	return fmt.Sprintf("\x1b[38;5;%dm", c)
+}

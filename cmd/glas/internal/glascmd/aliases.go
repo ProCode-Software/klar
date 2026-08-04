@@ -9,9 +9,11 @@ var Aliases = map[string]string{
 	"uninstall": "remove",
 	"r":         "remove",
 	"ls":        "list",
+	"tree":      "list",
 	"p":         "publish",
 	"pub":       "publish",
 	"up":        "update",
+	"show":      "info",
 }
 
 // Set command aliases

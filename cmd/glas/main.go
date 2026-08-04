@@ -18,15 +18,16 @@ var (
 )
 
 func Main(lookupKlarCmd func(string) *command.Command) {
+	command.ExecName = "glas"
 	args := os.Args
 	if len(args) < 2 {
-		ShowHelp(os.Stderr)
+		ShowHelp(os.Stderr, false)
 		cli.Exit(2)
 	}
 	cmdName := args[1]
 	switch cmdName {
 	case "--help", "-h":
-		ShowHelp(os.Stdout)
+		ShowHelp(os.Stdout, true)
 	case "-v", "--version", "version":
 		fmt.Printf("Klar %s (%s)\n", cli.KlarVersion, cli.KlarCommit)
 	case "": // TODO
@@ -37,17 +38,17 @@ func Main(lookupKlarCmd func(string) *command.Command) {
 	case "help":
 		// glas help | glas help "" | glas help glas
 		if len(args) < 3 || args[2] == "" || args[2] == "glas" {
-			ShowHelp(os.Stdout)
+			ShowHelp(os.Stdout, true)
 			cli.Exit(0)
 		}
 		// glas help cmd -> glas cmd --help
-		// If it's not a command, run `glas help` with the topic.
+		// If it's not a command, run `klar help` with the topic.
 		cmd := args[2]
 		if command.Lookup(cmd, commands, aliases) != nil {
 			os.Args[1], cmdName = cmd, cmd
 			os.Args[2] = "--help"
 		}
-		fallthrough
+		command.Run(lookupKlarCmd("help"))
 	default:
 		if args[1][0] == '-' {
 			// Expected a command
@@ -78,6 +79,7 @@ func promptKlarRun(klarCmd *command.Command, providedName string) {
 	), true)
 	if yes {
 		util.ClearScreen()
+		command.ExecName = "klar"
 		command.Run(klarCmd)
 		cli.Exit(0)
 	}
