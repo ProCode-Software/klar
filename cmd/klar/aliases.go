@@ -1,6 +1,6 @@
-package klarcmd
+package main
 
-var KlarCommandAliases = map[string]string{
+var Aliases = map[string]string{
 	"b":     "build",
 	"r":     "run",
 	"up":    "upgrade",
@@ -9,8 +9,8 @@ var KlarCommandAliases = map[string]string{
 
 // Set command aliases
 func init() {
-	for alias, cmd := range KlarCommandAliases {
-		c := KlarCommands[cmd]
+	for alias, cmd := range Aliases {
+		c := Commands[cmd]
 		c.Aliases = append(c.Aliases, alias)
 	}
 }

@@ -1,4 +1,4 @@
-package klarcmd
+package main
 
 import (
 	"github.com/ProCode-Software/klar/cmd/klar/internal/build"
@@ -15,7 +15,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/command"
 )
 
-var KlarCommands = map[string]*command.Command{
+var Commands = map[string]*command.Command{
 	"build": {
 		ShortDescription: "Compile a project to JavaScript",
 		LongDescription:  build.LongDescription,
@@ -109,11 +109,11 @@ type s = []string
 
 // Set command names
 func init() {
-	for name, cmd := range KlarCommands {
+	for name, cmd := range Commands {
 		cmd.Name = name
 		if cmd.Flags != nil {
 			cmd.Usage = cmd.Flags.Pattern
 		}
 	}
-	command.Commands = KlarCommands
+	command.Commands = Commands
 }

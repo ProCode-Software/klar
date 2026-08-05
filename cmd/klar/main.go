@@ -13,18 +13,12 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/cmd/glas"
-	"github.com/ProCode-Software/klar/cmd/klar/internal/klarcmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/run"
 	"github.com/ProCode-Software/klar/internal/util"
-)
-
-var (
-	commands = klarcmd.KlarCommands
-	aliases  = klarcmd.KlarCommandAliases
 )
 
 func main() {
@@ -48,7 +42,7 @@ func main() {
 	switch cmdName {
 	case "-":
 		tryPipe()
-		command.Run(commands["repl"])
+		command.Run(Commands["repl"])
 	case "-c":
 		if len(args) < 3 {
 			cli.Failure(
@@ -74,9 +68,9 @@ func main() {
 	case "glas":
 		os.Args = os.Args[1:] // Strip 'klar' from 'klar glas'
 		glas.Main(func(cmdName string) *command.Command {
-			return command.Lookup(cmdName, commands, aliases)
+			return command.Lookup(cmdName, Commands, Aliases)
 		})
-	case "help":
+	case "help", "h":
 		// klar help | klar help klar
 		if len(args) < 3 || args[2] == "" || args[2] == "klar" {
 			ShowHelp(os.Stdout, true)
@@ -84,7 +78,7 @@ func main() {
 		}
 		// klar help cmd -> klar cmd --help
 		cmd := args[2]
-		if command.Lookup(cmd, commands, aliases) != nil {
+		if command.Lookup(cmd, Commands, Aliases) != nil {
 			os.Args[1], cmdName = cmd, cmd
 			os.Args[2] = "--help"
 		}
@@ -98,13 +92,13 @@ func main() {
 			cli.Exit(2)
 		}
 		// Command
-		if cmd := command.Lookup(cmdName, commands, aliases); cmd != nil {
+		if cmd := command.Lookup(cmdName, Commands, Aliases); cmd != nil {
 			command.Run(cmd)
 			break
 		}
 		// Equivalent to `klar run [file]`
 		os.Args = append([]string{"klar", ""}, os.Args[1:]...)
-		command.Run(commands["run"])
+		command.Run(Commands["run"])
 	}
 }
 

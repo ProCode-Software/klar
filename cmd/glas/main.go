@@ -4,18 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ProCode-Software/klar/cmd/glas/internal/glascmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/util"
 )
 
-var (
-	commands = glascmd.Commands
-	aliases  = glascmd.Aliases
-	Version  = cli.KlarVersion
-)
 
 func Main(lookupKlarCmd func(string) *command.Command) {
 	command.ExecName = "glas"
@@ -44,7 +38,7 @@ func Main(lookupKlarCmd func(string) *command.Command) {
 		// glas help cmd -> glas cmd --help
 		// If it's not a command, run `klar help` with the topic.
 		cmd := args[2]
-		if command.Lookup(cmd, commands, aliases) != nil {
+		if command.Lookup(cmd, Commands, Aliases) != nil {
 			os.Args[1], cmdName = cmd, cmd
 			os.Args[2] = "--help"
 		}
@@ -55,7 +49,7 @@ func Main(lookupKlarCmd func(string) *command.Command) {
 			cli.ColorErrorfln("<**>I don't understand the <c>%s</c> flag</**>", args[1])
 			cli.Exit(2)
 		}
-		cmd := command.Lookup(cmdName, commands, aliases)
+		cmd := command.Lookup(cmdName, Commands, Aliases)
 		if cmd != nil {
 			command.Run(cmd)
 			break

@@ -1,4 +1,4 @@
-package glascmd
+package glas
 
 import (
 	"github.com/ProCode-Software/klar/cmd/glas/internal/add"

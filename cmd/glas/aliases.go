@@ -1,4 +1,4 @@
-package glascmd
+package glas
 
 var Aliases = map[string]string{
 	// Alias -> Command

@@ -3,7 +3,6 @@ package glas
 import (
 	"io"
 
-	"github.com/ProCode-Software/klar/cmd/glas/internal/glascmd"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/command"
@@ -37,7 +36,7 @@ func ShowHelp(w io.Writer, full bool) {
 			hb.Split(color)
 		}
 		for _, cmd := range g.commands {
-			hb.Command(cmd, glascmd.Commands[cmd].ShortDescription)
+			hb.Command(cmd, Commands[cmd].ShortDescription)
 		}
 	}
 	hb.Flush()
