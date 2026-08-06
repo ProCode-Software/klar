@@ -41,6 +41,26 @@ func KlarDataDir() (string, error) {
 	return filepath.Join(home, ".local", "share", "klar"), nil
 }
 
+// KlarStateDir returns the directory where Klar's persistent state is stored.
+// This is where REPL history and crash logs are saved. On Windows and macOS,
+// this is equivalent to [KlarDataDir]. Otherwise, it is ~/.local/state/klar.
+func KlarStateDir() (string, error) {
+	dataDir, err := KlarDataDir()
+	if err != nil {
+		return "", err
+	}
+	switch runtime.GOOS {
+	case "darwin", "ios", "windows":
+		return dataDir, nil
+	default:
+		// On Linux/XDG, there is ~/.local/state/klar
+		return filepath.Join(
+			filepath.Dir(filepath.Dir(dataDir)), // ~/.local
+			"state", "klar",
+		), nil
+	}
+}
+
 // KlarStdDir returns the directory where Klar standard library source code
 // is stored. If a $KLAR_STD environment variable is set, it is returned.
 // Otherwise, if the current executable is located in the user's home directory,

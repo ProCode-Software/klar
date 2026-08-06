@@ -12,15 +12,30 @@ import (
 )
 
 // QuoteToken add quotes around source code. By default, QuoteToken uses single
-// quotes for source code, or backticks if the source contains single quotes.
+// quotes for source code, backticks if the source contains single quotes, or
+// double quotes if it contains both or non-printable characters.
 func Quote(s string) string {
-	if strings.Contains(s, "'") {
-		return "`" + s + "`"
+	var hasSingleQuote, hasBacktick, hasCtrl bool
+	for _, r := range s {
+		switch {
+		case r == '\'':
+			hasSingleQuote = true
+		case r == '`':
+			hasBacktick = true
+		case !unicode.IsPrint(r):
+			hasCtrl = true
+		}
 	}
-	if len(s) > 0 && !unicode.IsPrint(rune(s[0])) {
+	switch {
+	case hasCtrl:
 		return fmt.Sprintf("%q", s)
+	case !hasSingleQuote:
+		return "'" + s + "'"
+	case !hasBacktick:
+		return "`" + s + "`"
+	default:
+		return `"` + s + `"`
 	}
-	return "'" + s + "'"
 }
 
 func QuoteToken(tok lexer.Token) string {

@@ -20,18 +20,25 @@ func ParseSpecifier(s string) (Specifier, error) {
 	return Specifier{}, nil
 }
 
-func (s *Specifier) IsZero() bool { return s.specComponent == nil }
+func (s Specifier) IsZero() bool { return s.specComponent == nil }
 
 // GetMatches returns the versions in vs that match the specifier.
-func (s *Specifier) GetMatches(vs []Version) []Version { return nil }
+func (s Specifier) GetMatches(vs []Version) []Version { return nil }
 
 func (s *Specifier) UnmarshalText(text []byte) (err error) {
 	*s, err = ParseSpecifier(string(text))
 	return err
 }
 
-func (s *Specifier) MarshalText() ([]byte, error) {
+func (s Specifier) MarshalText() ([]byte, error) {
 	return []byte(s.String()), nil
+}
+
+func (s Specifier) String() string {
+	if s.IsZero() {
+		return "<nil specifier>"
+	}
+	return s.specComponent.String()
 }
 
 // Components
@@ -46,21 +53,18 @@ type specComponent interface {
 // Used in modifierComponent
 const (
 	exactly = iota // =
-	from           // >=
+	from           // +
 	sameMajor
 	sameMinor
-	below // <
-	above // >
-	upTo  // <=
 )
 
 // TODO: update for consistency OR look at preferred formats for String()
 type (
 	// Examples:
-	// 	from 1.0
-	// 	exactly 3.1.4
-	// 	>= 2.1
-	// 	= 3.5
+	// 	1.0+
+	// 	=3.1.4
+	// 	2.x
+	// 	2.1.x
 	modifierComponent struct {
 		keyword int
 		version Version
@@ -76,20 +80,21 @@ type (
 		min, max Version
 		open     bool // true if ..< was used
 	}
-	anyComponent struct{} // *, any
+	anyComponent struct{} // *
 )
 
 func (c *modifierComponent) String() string {
-	keywords := map[int]string{
-		exactly:   "=",
-		from:      ">=",
-		sameMajor: "TODO",
-		sameMinor: "TODO",
-		below:     "<",
-		above:     ">",
-		upTo:      "<=",
+	ver := c.version.String()
+	switch c.keyword {
+	case exactly:
+		return "=" + ver
+	case from:
+		return ver + "+"
+	case sameMajor, sameMinor:
+		return ver + ".x"
+	default:
+		panic(fmt.Sprintf("unhandled keyword: %d", c.keyword))
 	}
-	return keywords[c.keyword] + c.version.String()
 }
 
 func (c *rangeComponent) String() string {
@@ -122,7 +127,7 @@ func (s *Specifier) Matches(v Version) bool {
 		}
 		return false
 	case *anyComponent:
-		return true // All versions match any
+		return true // All versions match '*'
 	case *latestComponent:
 		if s.MatchesLatest == nil {
 			// Can't match without knowing the latest version

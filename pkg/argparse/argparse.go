@@ -154,7 +154,7 @@ loop:
 			break loop
 		case item == "--help", item == "-h":
 			return HelpError{}
-		case item == "-":
+		case item == "-", item == "":
 			// Usually means "read from stdin". Treat as an argument
 			fallthrough
 		default:

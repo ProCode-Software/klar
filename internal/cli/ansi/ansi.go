@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -172,4 +173,18 @@ func ColorBit8(c int) string {
 		return ""
 	}
 	return fmt.Sprintf("\x1b[38;5;%dm", c)
+}
+
+func ListSeparator(color string, s string) string {
+	if DisableColor {
+		return s
+	}
+	return CodeReset + s + color
+}
+
+func JoinColor(items []string, color, sep string) string {
+	if DisableColor {
+		return strings.Join(items, sep)
+	}
+	return Color(color, strings.Join(items, ListSeparator(color, sep)))
 }

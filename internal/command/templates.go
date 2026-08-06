@@ -10,8 +10,8 @@ var fullHelpTemplate = `
 
 {{ if and .Flags (len .Flags.FlagDefs) -}}
 {{ title "Flags" }}
-{{ .FlagString 2 -}}
-{{- end -}}
+{{ .FlagString 2 }}
+{{ end -}}
 
 {{- if .Examples }}
 {{ title "Examples" -}}

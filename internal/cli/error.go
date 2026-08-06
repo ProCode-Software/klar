@@ -4,32 +4,48 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
 	"golang.org/x/term"
 )
 
-var errorPrefix = ansi.BoldBrightRed("Error") + ansi.BoldDim(": ")
+func TitlePrefix(color, title string) string {
+	return ansi.Color(color, title) + ansi.BoldDim(":") + " "
+}
+
+var errorPrefix = TitlePrefix(ansi.CodeBoldBrightRed, "Error")
 
 // CustomError prints an error to [os.Stderr] with a custom title
-func CustomError(errorType string, msg string, detail ...any) {
-	title := ansi.BoldBrightRed(errorType) + ansi.BoldDim(":")
-	v := []any{title}
+func CustomError(titleColor, title string, msg string, detail ...any) {
+	t := strings.TrimSuffix(TitlePrefix(titleColor, title), " ")
+	v := []any{t}
 	if msg != "" {
-		v = []any{title, ansi.Bold(msg)}
+		v = []any{t, ansi.Bold(msg)}
 	}
 	fmt.Fprintln(os.Stderr, append(v, detail...)...)
 }
 
 // Error prints an error to [os.Stderr].
 func Error(msg string, detail ...any) {
-	CustomError("Error", msg, detail...)
+	CustomError(ansi.CodeBoldBrightRed, "Error", msg, detail...)
 }
 
 // Warn prints a warning to [os.Stderr].
 func Warn(msg string, detail ...any) {
-	CustomError(ansi.BoldBrightYellow("Warning"), msg, detail...)
+	CustomError(ansi.CodeBoldBrightYellow, "Warning", msg, detail...)
+}
+
+func Warnf(msg, detail string, v ...any) {
+	f := ansi.Bold(msg)
+	if detail != "" {
+		f += " " + detail
+	}
+	fmt.Fprint(
+		os.Stderr, TitlePrefix(ansi.CodeBoldBrightYellow, "Warning"),
+		fmt.Sprintf(f, v...), "\n",
+	)
 }
 
 // Failure prints an error to [os.Stderr], followed by a call to [os.Exit](1).
@@ -72,7 +88,7 @@ func Eprintf(format string, a ...any) {
 }
 
 func ColorErrorfln(format string, a ...any) {
-	ansi.TagFprintfln(os.Stderr, "<** r!>Error</r!><dim>:</><**> "+format, a...)
+	ansi.TagFprintfln(os.Stderr, "<** r!>Error</r!><dim>:</> "+format, a...)
 }
 
 func ErrNoManifest(dir string) {
@@ -105,6 +121,16 @@ type SignalExit struct{ Code int }
 // [HandleSignalExit] and calls [os.Exit] with the provided code.
 func Exit(code int) {
 	panic(SignalExit{code})
+}
+
+func HandleSignalExit() {
+	switch r := recover().(type) {
+	case SignalExit:
+		os.Exit(r.Code)
+	case nil:
+	default:
+		panic(r)
+	}
 }
 
 func Confirm(msg string, defaultRes bool) bool {

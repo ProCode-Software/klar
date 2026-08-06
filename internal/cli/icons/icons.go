@@ -20,3 +20,5 @@ const (
 	Check            = '✓'
 	Warning          = '⚠'
 )
+
+// ›

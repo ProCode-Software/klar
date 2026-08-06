@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"maps"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/parser"
+	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
 
@@ -168,38 +168,16 @@ const showFileInLogs = false
 
 // SetLogger sets b's Logger and verbosity. If verbose is true, b.Logger is set
 // to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
-// of the value of verbose, b.Logger is set to write to that file. Otherwise,
+// of the value of verbose, b.Logger is set to write to that file. If the
+// $KLAR_DEBUG variable is enabled, b.Logger is set to write to stderr. Otherwise,
 // b.Logger is set to nil. SetLogger returns an error if it fails to
 // open $KLAR_LOG_FILE.
 func SetLogger(b *Compiler, verbose, json bool) error {
-	var (
-		logFile = os.Getenv("KLAR_LOG_FILE")
-		out     io.Writer
-		flags   logger.Flags
-	)
-	switch {
-	case logFile != "":
-		file, err := os.Create(logFile) //nolint:gosec // G703 - internal env var only
-		if err != nil {
-			return &FilesystemError{"create", "KLAR_LOG_FILE", err}
-		}
-		out = file
-		flags |= logger.NoColor
-	case verbose:
-		out = os.Stderr
-	default:
-		return nil
+	l, err := util.SetLogger(verbose, json)
+	if err != nil {
+		return err
 	}
-	if json {
-		b.Logger = slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{
-			AddSource: showFileInLogs,
-		}))
-		return nil
-	}
-	if showFileInLogs {
-		flags |= logger.ShowSource
-	}
-	b.Logger = slog.New(logger.NewLogHandler(out, flags))
+	b.Logger = l
 	if b.Logger.Enabled(context.TODO(), slog.LevelDebug) {
 		b.IsDebug = true
 	}

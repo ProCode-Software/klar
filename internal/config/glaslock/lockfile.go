@@ -50,7 +50,6 @@ type Package struct {
 type PackageInfo interface {
 	packageInfo()
 }
-
 type NPMInfo struct {
 	Registry  string
 	Integrity string
@@ -58,10 +57,9 @@ type NPMInfo struct {
 type WorkspaceInfo struct {
 	Dir string // Relative to project root
 }
-
 type GitInfo struct {
-	RefType glaspack.GitRefKind
-	Ref     string
+	RefType glaspack.GitRefKind // As provided in glas.pack
+	Ref     string              // As provided in glas.pack
 	URL     string
 	// Name of subdirectory in 'pkg' if the package came from a monorepo
 	Subpath   string
@@ -80,3 +78,20 @@ func (p *Package) NPMInfo() *NPMInfo             { return p.Info.(*NPMInfo) }
 func (p *Package) WorkspaceInfo() *WorkspaceInfo { return p.Info.(*WorkspaceInfo) }
 func (p *Package) GitInfo() *GitInfo             { return p.Info.(*GitInfo) }
 func (p *Package) LocalInfo() *LocalInfo         { return p.Info.(*LocalInfo) }
+
+const DefaultNPMRegistry = "https://registry.npmjs.org"
+
+// Init fills in any missing fields for the Package.
+func (p *Package) Init() {
+	switch info := p.Info.(type) {
+	case *GitInfo:
+		// Commit is stored in the header rather than as a directive in 'package'
+		if info.RefType == glaspack.CommitRef && info.Ref == "" {
+			info.Ref = p.PackageHeader.GitCommit
+		}
+	case *NPMInfo:
+		if info.Registry == "" {
+			info.Registry = DefaultNPMRegistry
+		}
+	}
+}

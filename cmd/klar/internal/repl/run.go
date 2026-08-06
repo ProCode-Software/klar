@@ -76,12 +76,13 @@ func Run(*argparse.Parser) {
 }
 
 func HistoryFile() (string, error) {
-	if err := module.LoadSystemDirs(); err != nil {
+	stateDir, err := module.KlarStateDir()
+	if err != nil {
 		return "", err
 	}
-	hist := filepath.Join(module.SystemDirs.Cache, "replHistory.txt")
-	// Create the cache directory if missing
-	if err := os.MkdirAll(module.SystemDirs.Cache, 0o755); err != nil {
+	hist := filepath.Join(stateDir, "replHistory.txt")
+	// Create the state directory if missing
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		return hist, err
 	}
 	return hist, nil

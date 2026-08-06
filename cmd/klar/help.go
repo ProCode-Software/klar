@@ -22,7 +22,7 @@ func ShowHelp(w io.Writer, full bool) {
 
 	// Title
 	hb.Println(
-		ansi.Bold(util.KlarGradient("Klar:")), // or 8-bit 48-50/45-86
+		ansi.Bold(ansi.Bit8(85, "Klar"))+ansi.BoldDim(":"), // or 8-bit 48-50/85-86
 		util.RandomSlice(RandomDescriptions),
 		ansi.Gray("v"+cli.KlarVersionAndCommit),
 	)

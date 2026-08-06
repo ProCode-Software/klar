@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand/v2"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"golang.org/x/term"
 )
@@ -170,4 +172,60 @@ func FastDelete[T any](s []T, i int) []T {
 	s[i], s[last] = s[last], s[i]
 	s = s[:last]
 	return s
+}
+
+// SetLogger sets b's Logger and verbosity. If verbose is true, b.Logger is set
+// to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
+// of the value of verbose, b.Logger is set to write to that file. Otherwise,
+// b.Logger is set to nil. SetLogger returns an error if it fails to
+// open $KLAR_LOG_FILE.
+func SetLogger(verbose, json bool) (l *slog.Logger, err error) {
+	var (
+		logFile = os.Getenv("KLAR_LOG_FILE")
+		out     io.Writer
+		flags   logger.Flags
+	)
+	switch {
+	case logFile != "":
+		file, err := os.Create(logFile) //nolint:gosec // G703 - internal env var only
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to create file at %s set by $KLAR_LOG_FILE: %w", logFile, err,
+			)
+		}
+		out = file
+		flags |= logger.NoColor
+	case verbose || os.Getenv("KLAR_DEBUG") == "1":
+		out = os.Stderr
+	default:
+		return slog.New(slog.DiscardHandler), nil
+	}
+	if json {
+		return slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{})), nil
+	}
+	return slog.New(logger.NewLogHandler(out, flags)), nil
+}
+
+func JoinFunc[T any](s []T, fn func(T) string, sep string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i, v := range s {
+		if i > 0 {
+			b.WriteString(sep)
+		}
+		b.WriteString(fn(v))
+	}
+	return b.String()
+}
+
+func JoinColorFunc[T any](items []T, color string, f func(T) string, sep string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	if ansi.DisableColor {
+		return JoinFunc(items, f, sep)
+	}
+	return ansi.Color(color, JoinFunc(items, f, ansi.ListSeparator(color, sep)))
 }

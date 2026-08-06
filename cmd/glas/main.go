@@ -10,9 +10,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/util"
 )
 
-
 func Main(lookupKlarCmd func(string) *command.Command) {
-	command.ExecName = "glas"
 	args := os.Args
 	if len(args) < 2 {
 		ShowHelp(os.Stderr, false)
@@ -29,28 +27,41 @@ func Main(lookupKlarCmd func(string) *command.Command) {
 			ansi.CodeBold,
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
-	case "help":
+	case "help", "?":
 		// glas help | glas help "" | glas help glas
 		if len(args) < 3 || args[2] == "" || args[2] == "glas" {
 			ShowHelp(os.Stdout, true)
 			cli.Exit(0)
 		}
-		// glas help cmd -> glas cmd --help
-		// If it's not a command, run `klar help` with the topic.
-		cmd := args[2]
-		if command.Lookup(cmd, Commands, Aliases) != nil {
-			os.Args[1], cmdName = cmd, cmd
-			os.Args[2] = "--help"
+		// Help for a Glas command: glas help cmdName -> glas cmdName --help
+		cmdName := args[2]
+		if glasCmd := command.Lookup(cmdName, Commands, Aliases); glasCmd != nil {
+			command.ExecName, os.Args[1], os.Args[2] = "glas", cmdName, "--help"
+			command.Run(glasCmd)
+			break
 		}
+		// Help for a Klar command: glas help build
+		if klarCmd := lookupKlarCmd(cmdName); klarCmd != nil {
+			os.Args[1], os.Args[2] = cmdName, "--help"
+			command.Run(klarCmd)
+			break
+		}
+		// Topic: run `klar help` with the topic. It also includes Glas topics
+		// TODO: 'glas help klar' doesn't work
 		command.Run(lookupKlarCmd("help"))
 	default:
 		if args[1][0] == '-' {
 			// Expected a command
-			cli.ColorErrorfln("<**>I don't understand the <c>%s</c> flag</**>", args[1])
+			cli.ColorErrorfln(
+				"<**>I don't understand the <c>%s</c> flag.</> "+
+					"The 'glas' command doesn't accept any flags",
+				args[1],
+			)
 			cli.Exit(2)
 		}
 		cmd := command.Lookup(cmdName, Commands, Aliases)
 		if cmd != nil {
+			command.ExecName = "glas"
 			command.Run(cmd)
 			break
 		}
@@ -73,7 +84,6 @@ func promptKlarRun(klarCmd *command.Command, providedName string) {
 	), true)
 	if yes {
 		util.ClearScreen()
-		command.ExecName = "klar"
 		command.Run(klarCmd)
 		cli.Exit(0)
 	}

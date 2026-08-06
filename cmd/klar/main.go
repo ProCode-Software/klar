@@ -66,11 +66,11 @@ func main() {
 			"Command %s isn't implemented yet", ansi.Cyan(cmdName),
 		))
 	case "glas":
-		os.Args = os.Args[1:] // Strip 'klar' from 'klar glas'
+		os.Args = slices.Delete(os.Args, 1, 2) // Strip 'klar' from 'klar glas'
 		glas.Main(func(cmdName string) *command.Command {
 			return command.Lookup(cmdName, Commands, Aliases)
 		})
-	case "help", "h":
+	case "help", "h", "?":
 		// klar help | klar help klar
 		if len(args) < 3 || args[2] == "" || args[2] == "klar" {
 			ShowHelp(os.Stdout, true)
@@ -192,7 +192,7 @@ func startProf() *os.File {
 	return file
 }
 
-// setCrashOutput sets the crash output to a file in the Klar cache directory.
+// setCrashOutput sets the crash output to a file in the Klar state directory.
 // The time used in the filename is based on the time the executable was started,
 // rather than the time the crash occurred.
 //
@@ -200,15 +200,15 @@ func startProf() *os.File {
 //
 // TODO: We could probably rename the file
 func setCrashOutput() (f *os.File) {
-	cacheDir, err := module.KlarCacheDir()
+	stateDir, err := module.KlarStateDir()
 	if err != nil {
 		// Don't crash the program if we can't create the file
 		fmt.Fprintf(
-			os.Stderr, "Failed to get Klar cache directory for crash output: %v", err,
+			os.Stderr, "Failed to get Klar state directory for crash output: %v", err,
 		)
 		return nil
 	}
-	crashLogDir := filepath.Join(cacheDir, "crashDumps")
+	crashLogDir := filepath.Join(stateDir, "crashDumps")
 	stat, err := os.Stat(crashLogDir)
 	switch {
 	case err == nil && !stat.IsDir():
@@ -235,7 +235,7 @@ func setCrashOutput() (f *os.File) {
 
 	// Create a new crash log file. It will be deleted if there is no panic.
 	f, err = os.Create(filepath.Join(
-		cacheDir, "crashDumps",
+		stateDir, "crashDumps",
 		fmt.Sprintf("klarPanic_%s.txt", time.Now().Format("2006-01-02_15-04-05")),
 	))
 	if err != nil {

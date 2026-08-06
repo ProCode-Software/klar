@@ -9,7 +9,7 @@ import (
 )
 
 func ShowHelp(w io.Writer, full bool) {
-	const glasColor = 86
+	const glasColor = 111
 	hb := command.NewHelpBuilder(w)
 
 	// Title
@@ -57,5 +57,5 @@ var groups = []struct {
 	commands []string
 }{
 	{ansi.ColorBit8(159), []string{"add", "update", "remove", "install"}},
-	{ansi.ColorBit8(215), []string{"list", "outdated", "why", "audit", "info", "clean"}},
+	{ansi.ColorBit8(3), []string{"list", "outdated", "why", "audit", "info", "clean"}},
 }

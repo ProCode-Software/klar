@@ -83,6 +83,7 @@ func Colorize(s string) string {
 			}
 			b.WriteString(s[i+1 : i+1+unesc])
 			unesc += i + 1 // Skip the unescape
+			i = unesc
 			continue
 		case UnescapeTag:
 			continue // Unmatched unescape. Don't write

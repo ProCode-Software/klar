@@ -2,6 +2,7 @@ package glaslock
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ProCode-Software/klar/internal/char"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/version"
 )
@@ -117,6 +119,7 @@ func parsePackageDirective(
 		return false, err
 	}
 	p.PackageHeader = *ph
+	defer p.Init()
 
 	// Package info
 loop:
@@ -225,6 +228,7 @@ func getInfo[T PackageInfo](p *Package) T {
 	return p.Info.(T)
 }
 
+// Contains only directives specific to sources
 var expectedSources = map[string][]PackageSource{
 	"registry":  {NPM},
 	"integrity": {NPM, Git},
@@ -299,6 +303,8 @@ func trimLine(s string) string {
 	return strings.TrimSpace(s)
 }
 
+// String returns a representation of the header in the same format used
+// after the 'package' directive in the lockfile.
 func (h *PackageHeader) String() string {
 	var commit string
 	if h.GitCommit != "" {
@@ -318,4 +324,62 @@ func (s PackageSource) String() string {
 		panic(fmt.Sprintf("invalid PackageSource: %d", s))
 	}
 	return srcs[s]
+}
+
+// WriteTo writes a lockfile in 'glas.lock' format to the given writer.
+func (l *Lockfile) WriteTo(w io.Writer) (int64, error) {
+	const indentSize = 4
+	indent := char.Repeat(' ', indentSize)
+	buf := &bytes.Buffer{}
+
+	fmt.Fprintf(w, "lockfile %d\nklar %s\n", l.Version, l.Klar)
+	for _, pkg := range l.Packages {
+		fmt.Fprintf(buf, "\npackage %s\n", pkg.PackageHeader.String())
+		if pkg.DevOnly {
+			buf.Write(indent)
+			buf.WriteString("for dev\n")
+		}
+		for _, ws := range pkg.For {
+			fmt.Fprintf(buf, "%*s %s\n", indentSize, "for", ws)
+		}
+		writeInfo(pkg.Info, buf, indent)
+		for _, dep := range pkg.Deps {
+			fmt.Fprintf(buf, "%sdependency %s\n", indent, dep.String())
+		}
+	}
+	return buf.WriteTo(w)
+}
+
+func writeInfo(info PackageInfo, buf *bytes.Buffer, indent []byte) {
+	switch info := info.(type) {
+	case *GitInfo:
+		fmt.Fprintf(buf, "%surl %s\n", indent, info.URL)
+		switch info.RefType {
+		case glaspack.BranchRef:
+			fmt.Fprintf(buf, "%sbranch %s\n", indent, info.Ref)
+		case glaspack.TagRef:
+			fmt.Fprintf(buf, "%stag %s\n", indent, info.Ref)
+		case glaspack.CommitRef: // Nothing to do. Commit hash is already in header
+		default:
+			panic(fmt.Sprintf(
+				"unhandled git RefType while writing lockfile: %d",
+				info.RefType,
+			))
+		}
+		if info.Subpath != "" {
+			fmt.Fprintf(buf, "%ssubpath %s\n", indent, info.Subpath)
+		}
+		fmt.Fprintf(buf, "%sintegrity %s\n", indent, info.Integrity)
+	case *NPMInfo:
+		if strings.TrimSuffix(info.Registry, "/") != DefaultNPMRegistry {
+			fmt.Fprintf(buf, "%sregistry %s\n", indent, info.Registry)
+		}
+		fmt.Fprintf(buf, "%sintegrity %s\n", indent, info.Integrity)
+	case *WorkspaceInfo:
+		fmt.Fprintf(buf, "%ssubpath %s\n", indent, info.Dir)
+	case *LocalInfo:
+		fmt.Fprintf(buf, "%spath %s\n", indent, info.Path)
+	default:
+		panic(fmt.Sprintf("unhandled PackageInfo type while writing lockfile: %T", info))
+	}
 }
