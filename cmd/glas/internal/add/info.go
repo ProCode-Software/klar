@@ -25,21 +25,9 @@ type deprecation struct {
 	alt []string
 }
 
-func (ic *installContext) getPackageInfo(pkg pkg) *pkgInfo {
-	switch pkg.src {
-	case npmSource:
-		return ic.getNPMInfo(pkg)
-	case localSource, workspaceSource:
-	case gitSource:
-	default:
-		panic(fmt.Sprintf("invalid package source: %d", pkg.src))
-	}
-	return nil
-}
-
-func showInfo(pkg pkg, info *pkgInfo) {
+func showInfo(pkg Package, info *pkgInfo) {
 	var src string
-	switch pkg.src {
+	switch pkg.Source() {
 	case workspaceSource:
 		src = ansi.Bit8(213, "workspace")
 	case localSource:
@@ -57,7 +45,7 @@ func showInfo(pkg pkg, info *pkgInfo) {
 	}
 	title := func(s string) string { return ansi.Bold(s) + ansi.BoldDim(":") }
 	ansi.TagPrintfln(
-		"%s <d>›</d> <**><c!>%s</c!> <d>v%s</>%s",
+		"%s <d>›</d> <**><c!>%s</c!> <d>%s</>%s",
 		src, info.name, info.version, deprecatedWarning,
 	)
 	if info.deprecated != nil {
@@ -74,13 +62,24 @@ func showInfo(pkg pkg, info *pkgInfo) {
 	}
 	// Deps
 	depString := strings.Join(info.deps, ", ")
+	depTitle := "Dependencies"
 	if len(info.deps) == 0 {
 		depString = ansi.Green("None")
+	} else {
+		depTitle = fmt.Sprintf("Dependencies (%d)", len(info.deps))
 	}
-	fmt.Println(title("Dependencies"), depString)
+	fmt.Println(title(depTitle), depString)
 	for _, name := range slices.Sorted(maps.Keys(info.etc)) {
 		if val := info.etc[name]; val != "" {
 			fmt.Println(title(name), val)
 		}
 	}
+}
+
+func formatDependency(name, ver string) string {
+	name = ansi.Yellow(name)
+	if ver != "" {
+		return name + " " + ansi.Dim(ver)
+	}
+	return name
 }

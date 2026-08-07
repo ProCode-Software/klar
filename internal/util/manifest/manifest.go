@@ -23,12 +23,15 @@ var errorReporter *reporter.Reporter
 
 var manifestCache = make(map[string]*glaspack.Manifest)
 
-func GetPackageInfo() *module.PackageInfo {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cli.Failure("Failed to resolve current package:", err)
+func GetPackageInfo(dir string) *module.PackageInfo {
+	var err error
+	if dir == "" {
+		if dir, err = os.Getwd(); err != nil {
+			cli.Failure("Failed to resolve current package:", err)
+		}
 	}
-	pkgDir, projDir := module.PackageRoot(cwd)
+
+	pkgDir, projDir := module.PackageRoot(dir)
 
 	// Parse manifests
 	// ======

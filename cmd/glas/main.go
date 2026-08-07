@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/cli/prompt"
 	"github.com/ProCode-Software/klar/internal/command"
 	"github.com/ProCode-Software/klar/internal/util"
 )
@@ -78,7 +79,7 @@ func Main(lookupKlarCmd func(string) *command.Command) {
 }
 
 func promptKlarRun(klarCmd *command.Command, providedName string) {
-	yes := cli.Confirm(ansi.Colorizef(
+	yes := prompt.Confirm(ansi.Colorizef(
 		"\n<b!>Hint</b!><dim>:</dim> I found the command <m>klar %s</m>. Do you want to run it?",
 		providedName,
 	), true)

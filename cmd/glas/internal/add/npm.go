@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -15,6 +15,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/pm/npm"
 	"github.com/ProCode-Software/klar/internal/util"
+	"github.com/ProCode-Software/klar/internal/version"
 )
 
 var npmRegistry = glaslock.DefaultNPMRegistry
@@ -25,20 +26,32 @@ func init() {
 	}
 }
 
-func splitVersion(name string) (name_, version string, hasVer bool) {
-	withoutScopeAt, hasScope := strings.CutPrefix(name, "@")
-	name, version, hasVer = strings.Cut(withoutScopeAt, "@")
-	if hasScope {
-		name = "@" + name
-	}
-	return name, version, hasVer
+var _ Package = &npmPackage{}
+
+type npmPackage struct {
+	nameAndVersion string
+	manifest       *npm.RegistryVersion
 }
 
-func (ic *installContext) getNPMInfo(pkg pkg) *pkgInfo {
+func (p *npmPackage) Source() pkgSource { return npmSource }
+func (p *npmPackage) Name() string {
+	if p.manifest == nil {
+		name, _, _ := splitVersion(p.nameAndVersion)
+		return name
+	}
+	return p.manifest.Name
+}
+func (p *npmPackage) ResolvedVersion() string          { return p.manifest.Version }
+func (p *npmPackage) Specifier() (_ version.Specifier) { return } // TODO
+func (p *npmPackage) setNameAndSpec(name string, spec version.Specifier) {
+	panic("invalid usage")
+}
+
+func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 	// Split the name from the version
 	// 	@proicons/react@v4 -> @proicons/react
 	//  lodash@v8 -> lodash
-	name, version, _ := splitVersion(pkg.name)
+	name, version, _ := splitVersion(p.nameAndVersion)
 	registryPath, err := url.JoinPath(npmRegistry, name)
 	if err != nil {
 		cli.Failure("Invalid URL:", err)
@@ -95,7 +108,7 @@ func (ic *installContext) getNPMInfo(pkg pkg) *pkgInfo {
 
 	info := &pkgInfo{
 		name:    data.Name,
-		version: data.DistTags[distTag],
+		version: "v" + data.DistTags[distTag],
 		desc:    pkgJSON.Description,
 		etc: map[string]string{
 			"License":   ansi.Green(pkgJSON.License),
@@ -109,14 +122,46 @@ func (ic *installContext) getNPMInfo(pkg pkg) *pkgInfo {
 		},
 		deps: make([]string, 0, len(pkgJSON.Dependencies)),
 	}
+
 	// Dependencies
+	depString := func(name, ver string) string {
+		name = ansi.Hyperlink(ansi.Yellow(name), "https://npmjs.com/package/"+name)
+		return formatDependency(name, ver)
+	}
 	for name, ver := range pkgJSON.Dependencies {
-		info.deps = append(info.deps, ansi.Yellow(name)+" "+ansi.Dim(ver))
+		info.deps = append(info.deps, depString(name, ver))
+	}
+	for name, ver := range pkgJSON.PeerDependencies {
+		info.deps = append(info.deps, depString(name, ver))
 	}
 
 	// Deprecation
 	if pkgJSON.Deprecated != "" {
 		info.deprecated = &deprecation{msg: pkgJSON.Deprecated}
 	}
+
+	// Weekly downloads
+	if downloads, err := p.getWeeklyDownloads(data.Name); err == nil {
+		info.etc["Weekly downloads"] = strconv.Itoa(downloads)
+	}
+
 	return info
+}
+
+func (p *npmPackage) getWeeklyDownloads(name string) (int, error) {
+	res, err := http.Get("https://api.npmjs.org/downloads/point/last-week/" + name)
+	if err != nil {
+		return 0, err
+	}
+	defer res.Body.Close()
+	var data struct {
+		Downloads int `json:"downloads"`
+	}
+	if err := json.UnmarshalRead(res.Body, &data); err != nil {
+		return 0, err
+	}
+	return data.Downloads, nil
+}
+
+func (p *npmPackage) Install(ic *installContext) {
 }

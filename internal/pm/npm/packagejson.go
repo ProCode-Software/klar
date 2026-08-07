@@ -15,12 +15,14 @@ type PackageJSON struct {
 		URL       string `json:"url"`
 		Directory string `json:"directory"`
 	} `json:"repository"`
-	Type            string            `json:"type"`
-	Main            string            `json:"main"`
-	Module          string            `json:"module"`
-	DevDependencies map[string]string `json:"devDependencies"`
-	Dependencies    map[string]string `json:"dependencies"`
-	Exports         map[string]any    `json:"exports"` // string | [PackageExport]
+	Type             string            `json:"type"`
+	Main             string            `json:"main"`
+	Module           string            `json:"module"`
+	DevDependencies  map[string]string `json:"devDependencies"`
+	Dependencies     map[string]string `json:"dependencies"`
+	PeerDependencies map[string]string `json:"peerDependencies"`
+	// TODO: optionalDependencies?
+	Exports map[string]any `json:"exports"` // string | [PackageExport]
 }
 
 type PackageExport struct{}

@@ -34,6 +34,9 @@ func Colorizef(format string, a ...any) string {
 func TagPrintln(v string) (n int, err error) {
 	return fmt.Println(Colorize(v))
 }
+func TagPrintf(format string, a ...any) (n int, err error) {
+	return fmt.Print(Colorizef(format, a...))
+}
 
 func TagPrintfln(format string, a ...any) (n int, err error) {
 	return fmt.Println(Colorizef(format, a...))
