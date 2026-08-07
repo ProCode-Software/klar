@@ -1,14 +1,12 @@
 package cli
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/module"
-	"golang.org/x/term"
 )
 
 func TitlePrefix(color, title string) string {
@@ -130,38 +128,5 @@ func HandleSignalExit() {
 	case nil:
 	default:
 		panic(r)
-	}
-}
-
-func Confirm(msg string, defaultRes bool) bool {
-	// (y/n) display
-	var defaultStr string
-	if defaultRes {
-		defaultStr = ansi.ColorSprintf(ansi.CodeDim, "(%s/n)", ansi.BoldBrightGreen("Y"))
-	} else {
-		defaultStr = ansi.ColorSprintf(ansi.CodeDim, "(y/%s)", ansi.BoldBrightRed("N"))
-	}
-
-	fmt.Printf("%s %s: ", msg, defaultStr) // Prompt
-	defer fmt.Println()                    // Final newline
-
-	// The terminal has to be made raw so we can read a single character without
-	// the user pressing Enter
-	if oldState, err := term.MakeRaw(int(os.Stdin.Fd())); err == nil {
-		defer term.Restore(int(os.Stdin.Fd()), oldState)
-	}
-	for {
-		res := make([]byte, 1)
-		os.Stdin.Read(res)
-		switch bytes.ToLower(res)[0] {
-		case ' ', '\n', '\t', 'r':
-			continue
-		case 'y', 't', '1':
-			return true
-		case 'n', 'f', '0':
-			return false
-		default:
-			return defaultRes
-		}
 	}
 }
