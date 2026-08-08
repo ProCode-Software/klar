@@ -8,51 +8,45 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ProCode-Software/klar/cmd/glas/internal/monorepo"
 	"github.com/ProCode-Software/klar/cmd/glas/internal/spinner"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/prompt"
+	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/internal/util/manifest"
-	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
 
 type Package interface {
 	Name() string
-	Source() pkgSource
-	Specifier() version.Specifier
-	setNameAndSpec(name string, spec version.Specifier)
+	Source() PackageSource
 	ResolvedVersion() string
 	Info(*installContext) *pkgInfo
 	Install(*installContext)
 }
 
-type pkg struct {
-	name        string
-	versionSpec version.Specifier
-	src         pkgSource
-}
-
-type pkgSource int
+type PackageSource int
 
 const (
-	gitSource pkgSource = iota
-	npmSource
-	localSource
-	workspaceSource
+	GitSource PackageSource = iota
+	NPMSource
+	LocalSource
+	WorkspaceSource
 )
 
 type installContext struct {
 	targetPkgs []*module.PackageInfo
 	*slog.Logger
 	*argparse.Parser
-	debug bool
+	isInteractive bool
+	debug         bool
 }
 
 func Run(p *argparse.Parser) {
@@ -67,6 +61,11 @@ func Run(p *argparse.Parser) {
 		cli.Exit(2)
 	}
 	ic := &installContext{Parser: p}
+	startTime := time.Now()
+
+	if len(pkgs) > 1 && p.Flag("subdir").Set {
+		cli.Failure("The '--subdir' flag can be used with only 1 dependency")
+	}
 
 	// Setup verbose logging
 	logger, err := util.SetLogger(p.Flag("verbose").Bool(), false)
@@ -77,7 +76,7 @@ func Run(p *argparse.Parser) {
 	if ic.Logger.Enabled(context.TODO(), slog.LevelDebug) {
 		ic.debug = true
 	}
-	isInteractive := term.IsTerminal(int(os.Stdout.Fd()))
+	ic.isInteractive = term.IsTerminal(int(os.Stdout.Fd()))
 
 	// 1. Get the packages the deps will be installed for
 	projInfo := manifest.GetPackageInfo("")
@@ -99,7 +98,7 @@ func Run(p *argparse.Parser) {
 			got[pkgName] = struct{}{}
 		}
 	case manifest.IsMonorepoRoot(projInfo):
-		if p.Flag("yes").Bool() || p.Flag("project").Bool() || !isInteractive {
+		if p.Flag("yes").Bool() || p.Flag("project").Bool() || !ic.isInteractive {
 			// Assume they're installing for the whole project
 			ic.targetPkgs = []*module.PackageInfo{projInfo}
 			break
@@ -109,12 +108,7 @@ func Run(p *argparse.Parser) {
 		ic.targetPkgs = []*module.PackageInfo{projInfo}
 	}
 
-	type pkgPair struct {
-		pkg  Package
-		info *pkgInfo
-	}
-	parsedPkgs := make([]pkgPair, len(pkgs))
-
+	parsedPkgs := make([]pkgsAndInfo, len(pkgs))
 	// 2. Now that we have the target packages loaded, we can finally install
 	// each package. Do this in parallel because of NPM requests, and cloning
 	// Git repos (shallow until confirmed).
@@ -123,11 +117,9 @@ func Run(p *argparse.Parser) {
 		wg.Go(func() {
 			defer cli.HandleSignalExit() // When [cli.Failure] is called
 			pkg := ic.parseInput(inp)
-			info := pkg.Info(ic)
-			parsedPkgs[i] = pkgPair{pkg, info}
+			parsedPkgs[i] = pkgsAndInfo{pkg, pkg.Info(ic)}
 		})
 	}
-
 	// Loader while waiting for the info to be fetched
 	done := make(chan struct{})
 	go spinner.Circle(fmt.Sprintf(
@@ -138,49 +130,34 @@ func Run(p *argparse.Parser) {
 	close(done)
 	fmt.Print(ansi.ClearLine)
 
-	rejected := make(map[int]struct{})
-	// 3. Ask for confirmation
-	for i, pair := range parsedPkgs {
-		yes := p.Flag("yes").Bool()
-		if pair.info == nil {
-			continue
-		}
-		if len(parsedPkgs) > 1 {
-			ansi.ColorPrintfln(
-				ansi.CodeDim+ansi.CodeUnderline,
-				"Package %d of %d", i+1, len(parsedPkgs),
-			)
-		}
-		showInfo(pair.pkg, pair.info)
-		if !yes && isInteractive {
-			choice := prompt.ChooseLetter(
-				ansi.BoldBrightYellow("Do you want to install?"),
-				map[byte]string{'y': "Yes", 'n': "No", 'x': "No to all"}, 'y',
-			)
-			switch choice {
-			case 'n':
-				rejected[i] = struct{}{}
-			case 'x':
-				ansi.ColorPrintln(ansi.CodeBrightRed, "Cancelled installing all packages")
-				cli.Exit(1)
-			}
-		}
-		if i < len(parsedPkgs)-1 {
-			fmt.Println()
-		}
-	}
-	if len(rejected) == len(parsedPkgs) {
-		ansi.ColorPrintln(ansi.CodeBrightRed, "Cancelled installing all packages")
-		cli.Exit(1)
-	}
+	// 3. Ask for confirmation, displaying the info for each package
+	rejected := ic.promptPackages(parsedPkgs)
 
 	// 4. Install accepted packages
-	for i, pkg := range parsedPkgs {
+	for i, pair := range parsedPkgs {
 		if _, ok := rejected[i]; ok {
 			continue
 		}
-		pkg.pkg.Install(ic)
+		pair.pkg.Install(ic)
 	}
+
+	// 5. Update lockfile and manifest
+	for _, pair := range parsedPkgs {
+		ic.updateManifests(pair.pkg)
+		ic.updateLockfile(pair.pkg, ic.targetPkgs[0].ProjectDir)
+	}
+
+	// 6. Summary
+	elapsed := time.Since(startTime)
+	ansi.TagPrintfln(
+		"\n<** g!>🚚 Successfully installed <c>%s</c></> in <c>%s</c>",
+		klarerrs.FormatCount(len(parsedPkgs), "package"),
+		util.FormatDuration(elapsed),
+	)
+	for _, pair := range parsedPkgs {
+		ansi.TagPrintfln(" <g>+</g> %s <d>%s</d>", pair.info.name, pair.info.version)
+	}
+	// TODO: Show documentation links
 }
 
 // Shown if 'glas add' is being run in the root of a monorepo
@@ -256,24 +233,31 @@ func (ic *installContext) parseInput(inp string) (pkg Package) {
 	// TODO: In the future, we could treat local packages as Git repos and
 	// versions can be allowed.
 	if name, ver, hasVersion := splitVersion(nameAndVersion); hasVersion &&
-		pkg.Source() != npmSource {
-		if pkg.Source() == localSource || pkg.Source() == workspaceSource {
+		pkg.Source() != NPMSource {
+		if pkg.Source() == LocalSource || pkg.Source() == WorkspaceSource {
 			cli.Failuref(
-				"Can't provide a version for local/workspace dependeny %s",
+				"Can't provide a version for local/workspace dependency %s",
 				name,
 			)
 		}
 		if ver == "" {
-			cli.Failuref("A version is required after %q", klarerrs.Quote(name+"@"))
+			cli.Failuref("A version is required after %s", klarerrs.Quote(name+"@"))
 		}
-		spec, err := version.ParseSpecifier(ver)
-		if err != nil {
-			cli.FailureDetailf(
-				"Failed to parse version %q for package %s: ", err.Error(),
-				ver, name,
-			)
+		// For Git packages, the specifier may be:
+		// - A commit '+...'
+		// - A tag/version specifier 'v...'
+		// - A branch '...'
+		gitPkg := pkg.(*gitPackage)
+		gitPkg.url, gitPkg.rawSpec = name, ver
+		switch ver[0] {
+		case 'v':
+			gitPkg.specKind = glaspack.TagRef
+		case '+':
+			gitPkg.specKind = glaspack.CommitRef
+			gitPkg.rawSpec = ver[1:]
+		default:
+			gitPkg.specKind = glaspack.BranchRef
 		}
-		pkg.setNameAndSpec(name, spec)
 	}
 	// Show a warning if the package name isn't a path
 	if gitPkg, ok := pkg.(*gitPackage); ok && !strings.Contains(gitPkg.url, ".") {
@@ -293,6 +277,51 @@ func (ic *installContext) parseInput(inp string) (pkg Package) {
 		}
 	}
 	return pkg
+}
+
+type pkgsAndInfo struct {
+	pkg  Package
+	info *pkgInfo
+}
+
+func (ic *installContext) promptPackages(parsedPkgs []pkgsAndInfo) (rejected map[int]struct{}) {
+	rejected = make(map[int]struct{})
+	// 3. Ask for confirmation
+	for i, pair := range parsedPkgs {
+		yes := ic.Flag("yes").Bool()
+		if pair.info == nil {
+			continue
+		}
+		if len(parsedPkgs) > 1 {
+			ansi.ColorPrintfln(
+				ansi.CodeDim+ansi.CodeUnderline,
+				"Package %d of %d", i+1, len(parsedPkgs),
+			)
+		}
+		showInfo(pair.pkg, pair.info)
+		// Also auto-confirm if not interactive / pipe
+		if !yes && ic.isInteractive {
+			choice := prompt.ChooseLetter(
+				ansi.BoldBrightYellow("Do you want to install?"),
+				map[byte]string{'y': "Yes", 'n': "No", 'x': "No to all"}, 'y',
+			)
+			switch choice {
+			case 'n':
+				rejected[i] = struct{}{}
+			case 'x':
+				ansi.ColorPrintln(ansi.CodeBrightRed, "Cancelled installing all packages")
+				cli.Exit(1)
+			}
+		}
+		if i < len(parsedPkgs)-1 {
+			fmt.Println()
+		}
+	}
+	if len(rejected) == len(parsedPkgs) {
+		ansi.ColorPrintln(ansi.CodeBrightRed, "Cancelled installing all packages")
+		cli.Exit(1)
+	}
+	return rejected
 }
 
 func splitVersion(name string) (name_, version string, hasVer bool) {

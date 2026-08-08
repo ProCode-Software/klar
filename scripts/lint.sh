@@ -2,6 +2,7 @@
 export GOEXPERIMENT=jsonv2
 go fix ./...
 golangci-lint run "$@" &
+go vet -composites=false ./...
 "$(dirname "$(realpath "$0")")/gopls_check.sh"
 
 wait

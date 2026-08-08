@@ -3,6 +3,7 @@ package version
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // A Specifier represents a version specifier that can be used to match specific versions.
@@ -16,8 +17,27 @@ type Specifier struct {
 
 // ParseSpecifier parses the version specifier represented by s, returning
 // an error if the specifier is invalid.
-func ParseSpecifier(s string) (Specifier, error) {
-	return Specifier{}, nil
+func ParseSpecifier(s string) (spec Specifier, err error) {
+	switch {
+	case s == "latest":
+		spec.specComponent = &latestComponent{build: Stable}
+	case strings.HasPrefix(s, "latest "):
+		_, build, _ := strings.Cut(s, "latest ")
+		b, ok := BuildMap[build]
+		if !ok {
+			return spec, fmt.Errorf("invalid build: %s", build)
+		}
+		spec.specComponent = &latestComponent{build: b}
+	case strings.HasPrefix(s, "="):
+		_, version, _ := strings.Cut(s, "=")
+		version = strings.TrimSpace(version)
+		parsedVer, err := Parse(version)
+		if err != nil {
+			return spec, fmt.Errorf("invalid version: %s", version)
+		}
+		spec.specComponent = &modifierComponent{exactly, parsedVer}
+	}
+	return spec, nil
 }
 
 func (s Specifier) IsZero() bool { return s.specComponent == nil }
@@ -51,9 +71,11 @@ type specComponent interface {
 }
 
 // Used in modifierComponent
+type modifier int
+
 const (
-	exactly = iota // =
-	from           // +
+	exactly modifier = iota // =
+	from                    // +
 	sameMajor
 	sameMinor
 )
@@ -66,7 +88,7 @@ type (
 	// 	2.x
 	// 	2.1.x
 	modifierComponent struct {
-		keyword int
+		keyword modifier
 		version Version
 	}
 	// Example:

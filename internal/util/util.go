@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log/slog"
@@ -49,6 +50,36 @@ func formatFloat(f float64) string {
 	s = strings.TrimRight(s, "0")
 	s = strings.TrimRight(s, ".")
 	return s
+}
+
+func FormatNumber(n int) string {
+	orig := strconv.Itoa(n)
+	// Numbers under 10,000 shouldn't have separators
+	if len(orig) <= 4 || (len(orig) == 5 && orig[0] == '-') {
+		return orig
+	}
+	isNegative := orig[0] == '-'
+	if isNegative {
+		orig = orig[1:]
+	}
+	var (
+		numSeps = (len(orig) - 1) / 3
+		buf     = make([]byte, len(orig)+numSeps)
+		bufI    = len(buf)
+	)
+	for end := len(orig); end > 0; end -= 3 {
+		start := max(end-3, 0)
+		bufI -= end - start
+		copy(buf[bufI:], orig[start:end])
+		if start > 0 {
+			bufI--
+			buf[bufI] = ','
+		}
+	}
+	if isNegative {
+		return "-" + string(buf)
+	}
+	return string(buf)
 }
 
 type AllWriter interface {
@@ -228,4 +259,31 @@ func JoinColorFunc[T any](items []T, color string, f func(T) string, sep string)
 		return JoinFunc(items, f, sep)
 	}
 	return ansi.Color(color, JoinFunc(items, f, ansi.ListSeparator(color, sep)))
+}
+
+type DecodeUnion[A, B any] struct {
+	IsB bool
+	v   any
+}
+
+func (u DecodeUnion[A, B]) A() A         { return u.v.(A) }
+func (u DecodeUnion[A, B]) B() B         { return u.v.(B) }
+func (u DecodeUnion[_, _]) IsZero() bool { return u.v == nil }
+
+func (u *DecodeUnion[A, B]) UnmarshalJSON(data []byte) error {
+	u.v = nil
+	var a A
+	if err := json.Unmarshal(data, &a); err == nil {
+		u.IsB = false
+		u.v = a
+		return nil
+	}
+	var b B
+	err := json.Unmarshal(data, &b)
+	if err == nil {
+		u.IsB = true
+		u.v = b
+		return nil
+	}
+	return fmt.Errorf("input couldn't be decoded into %T or %T: %w", a, b, err)
 }

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/cli"
@@ -15,7 +14,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/pm/npm"
 	"github.com/ProCode-Software/klar/internal/util"
-	"github.com/ProCode-Software/klar/internal/version"
 )
 
 var npmRegistry = glaslock.DefaultNPMRegistry
@@ -33,7 +31,7 @@ type npmPackage struct {
 	manifest       *npm.RegistryVersion
 }
 
-func (p *npmPackage) Source() pkgSource { return npmSource }
+func (p *npmPackage) Source() PackageSource { return NPMSource }
 func (p *npmPackage) Name() string {
 	if p.manifest == nil {
 		name, _, _ := splitVersion(p.nameAndVersion)
@@ -41,16 +39,13 @@ func (p *npmPackage) Name() string {
 	}
 	return p.manifest.Name
 }
-func (p *npmPackage) ResolvedVersion() string          { return p.manifest.Version }
-func (p *npmPackage) Specifier() (_ version.Specifier) { return } // TODO
-func (p *npmPackage) setNameAndSpec(name string, spec version.Specifier) {
-	panic("invalid usage")
-}
-
+func (p *npmPackage) ResolvedVersion() string { return p.manifest.Version }
 func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 	// Split the name from the version
 	// 	@proicons/react@v4 -> @proicons/react
 	//  lodash@v8 -> lodash
+	//
+	// TODO: NPM allows local paths and protocols. Don't fail if not a valid URL
 	name, version, _ := splitVersion(p.nameAndVersion)
 	registryPath, err := url.JoinPath(npmRegistry, name)
 	if err != nil {
@@ -63,11 +58,11 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 		)
 	}
 	defer res.Body.Close()
+	var registryHint string
+	if npmRegistry != glaslock.DefaultNPMRegistry {
+		registryHint = " (" + registryPath + ")"
+	}
 	if res.StatusCode > 299 {
-		var registryHint string
-		if npmRegistry != glaslock.DefaultNPMRegistry {
-			registryHint = " (" + registryPath + ")"
-		}
 		if res.StatusCode == 404 {
 			cli.Failuref(
 				"Package %s not found in NPM registry%s",
@@ -87,6 +82,15 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 			name, err.Error(),
 		)
 	}
+	// If the package was unpublished, there will be an "unpublished" field
+	// in .times (that is an object)
+	// TODO: Will this check fail if any, but not all, versions were unpublished?
+	if !data.Time["unpublished"].IsZero() {
+		cli.Failuref(
+			"Package %s was unpublished from NPM %s",
+			klarerrs.Quote(name), registryHint,
+		)
+	}
 	// On the CLI, the version can be exact, or a tag like 'beta'
 	// TODO: Either Klar or NPM specifiers may be allowed
 	distTag := "latest"
@@ -99,20 +103,29 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 	}
 	pkgJSON := data.Versions[actualVersion]
 	if pkgJSON == nil {
+		if len(data.Versions) == 0 {
+			cli.Failuref(
+				"NPM package %s has no versions available", klarerrs.Quote(data.Name),
+			)
+		}
 		cli.Failuref(
 			"Can't find version %s for NPM package %s",
 			klarerrs.Quote(cmp.Or(actualVersion, distTag)),
 			klarerrs.Quote(data.Name),
 		)
 	}
+	return p.infoFromRegistry(&data, distTag, actualVersion)
+}
 
+func (p *npmPackage) infoFromRegistry(data *npm.RegistryData, distTag, actualVersion string) *pkgInfo {
+	pkgJSON := data.Versions[actualVersion]
 	info := &pkgInfo{
 		name:    data.Name,
 		version: "v" + data.DistTags[distTag],
 		desc:    pkgJSON.Description,
 		etc: map[string]string{
 			"License":   ansi.Green(pkgJSON.License),
-			"Published": data.Time[actualVersion].Local().Format(time.DateTime),
+			"Published": data.Time[actualVersion].A().Local().Format(time.DateTime),
 			"Keywords": util.JoinColorFunc(
 				pkgJSON.Keywords, ansi.CodeMagenta, func(kw string) string {
 					// Make the keywords clickable
@@ -121,6 +134,12 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 			),
 		},
 		deps: make([]string, 0, len(pkgJSON.Dependencies)),
+	}
+	if pkgJSON.License == "" {
+		info.etc["License"] = ansi.Gray("Unknown")
+	}
+	if pkgJSON.Dist.UnpackedSize > 0 {
+		info.etc["Size (without deps)"] = util.FormatSize(pkgJSON.Dist.UnpackedSize)
 	}
 
 	// Dependencies
@@ -142,9 +161,8 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 
 	// Weekly downloads
 	if downloads, err := p.getWeeklyDownloads(data.Name); err == nil {
-		info.etc["Weekly downloads"] = strconv.Itoa(downloads)
+		info.etc["Weekly downloads"] = util.FormatNumber(downloads)
 	}
-
 	return info
 }
 

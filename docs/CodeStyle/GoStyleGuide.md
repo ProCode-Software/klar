@@ -183,17 +183,25 @@ func (ld *Loader) Load() (*Loaded, error) {
 }
 ```
 
-### Type and Variable Grouping
+### Declaration Grouping
 
-Group 3+ related variables or types using a block:
+Group 3+ variable lines using a block (`var (...)`), including inside function bodies:
 
 ```go
 var (
-	commands = klarcmd.KlarCommands
-	aliases  = klarcmd.KlarCommandAliases
-	profiler prof
+	top       = []*Overload{}
+	bestScore int
+	isFirst   = true
 )
+```
 
+Outside of function bodies, 2 variables may be grouped.
+
+Grouping isn't recommended for multiline values such as function literals or composites.
+
+Blocks should be used very sparingly for types. Use them for closely related types that can be written as one line (1 struct/interface field or `type _ int`)
+
+```go
 type (
 	StringFragment interface{ StringFrag() }
 	EscapeFragment struct{ Value StringEscape }
@@ -201,7 +209,11 @@ type (
 )
 ```
 
-Groups should be used very sparingly for types. Never use them for multiple medium to large-sized structs or interfaces.
+For variables, we also allow declaring or assigning multiple variables in a single line. Use this for extremely related variables.
+
+```go
+start, end := 0, len(s)-1
+```
 
 ## Naming Conventions
 

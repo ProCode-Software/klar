@@ -26,9 +26,11 @@ func Circle(text string, done <-chan struct{}) {
 	}
 	groupI, color := 0, colorRanges[0][0]
 	nextColor := func() int {
-		currColor := color
-		group := colorRanges[groupI]
-		groupStart, groupEnd := group[0], group[1]
+		var (
+			currColor            = color
+			group                = colorRanges[groupI]
+			groupStart, groupEnd = group[0], group[1]
+		)
 		switch {
 		case color == groupEnd:
 			// End of group
@@ -41,6 +43,7 @@ func Circle(text string, done <-chan struct{}) {
 		}
 		return currColor
 	}
+	// https://altcodeunicode.com/alt-codes-geometric-shape-symbols/
 	const first, count = '◐', 6
 	var i int
 	for {

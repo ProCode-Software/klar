@@ -1,13 +1,17 @@
 package npm
 
-import "time"
+import (
+	"time"
+
+	"github.com/ProCode-Software/klar/internal/util"
+)
 
 type RegistryData struct {
 	Name     string                      `json:"name"`
 	DistTags map[string]string           `json:"dist-tags"`
 	Versions map[string]*RegistryVersion `json:"versions"`
 	// Keys include "created" and "modified"
-	Time map[string]time.Time `json:"time"`
+	Time map[string]util.DecodeUnion[time.Time, any] `json:"time"`
 }
 
 type RegistryVersion struct {

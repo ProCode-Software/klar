@@ -173,11 +173,12 @@ func (pi *PackageInfo) PackageDirOf(p *glaslock.Package) string {
 		dir := p.WorkspaceInfo().Dir
 		return filepath.Join(pi.ProjectDir, PkgDir, dir)
 	case glaslock.Git:
-		data := p.GitInfo()
+		info := p.GitInfo()
+		// TODO: Factor
 		return filepath.Join(
 			pi.DataDir(), "packages",
-			strings.ReplaceAll(strings.TrimPrefix(data.URL, "https://"), "/", "+"),
-			data.Integrity, data.Subpath,
+			strings.ReplaceAll(strings.TrimPrefix(info.URL, "https://"), "/", "+"),
+			info.Integrity, info.Subpath,
 		)
 	default:
 		panic(fmt.Sprintf("unhandled package source: %v", p.From))
