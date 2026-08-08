@@ -29,32 +29,27 @@ func UnmarshallRead(r io.Reader, v any, f ...klonflags.Flags) error {
 	return decode(newStreamReader(r), nil, v, f...)
 }
 
-// UnmarshallReadContext is [UnmarshallRead], using a [Context] to define classes
-// and enums.
-func UnmarshallReadContext(r io.Reader, v any, ctx *Context, f ...klonflags.Flags) error {
-	return decode(newStreamReader(r), ctx, v, f...)
-}
-
-// UnmarshallContext is [Unmarshall], using a [Context] to define classes
-// and enums.
-func UnmarshallContext(data []byte, v any, ctx *Context, f ...klonflags.Flags) error {
-	return decode(newBufferReader(data), ctx, v, f...)
-}
-
 // UnmarshallDocument decodes a pre-parsed document into v.
 func UnmarshallDocument(d *ast.Document, v any, f ...klonflags.Flags) error {
 	return decodeDocument(d, nil, v, f...)
 }
 
-// UnmarshallDocumentContext is [UnmarshallDocument], using a
-// [Context] to define classes and enums.
-func UnmarshallDocumentContext(d *ast.Document, v any, ctx *Context, f ...klonflags.Flags) error {
-	return decodeDocument(d, ctx, v, f...)
+// Unmarshall with Context
+// ========
+
+// Unmarshall is [Unmarshall], using ctx to define classes and enums.
+func (ctx *Context) Unmarshall(data []byte, v any, f ...klonflags.Flags) error {
+	return decode(newBufferReader(data), ctx, v, f...)
 }
 
-// NewContext creates a new [Context] for custom decoding behavior.
-func NewContext() *Context {
-	return &Context{}
+// UnmarshallRead is [UnmarshallRead], using ctx to define classes and enums.
+func (ctx *Context) UnmarshallRead(r io.Reader, v any, f ...klonflags.Flags) error {
+	return decode(newStreamReader(r), ctx, v, f...)
+}
+
+// UnmarshallDocument is [UnmarshallDocument], using ctx to define classes and enums.
+func (ctx *Context) UnmarshallDocument(d *ast.Document, v any, f ...klonflags.Flags) error {
+	return decodeDocument(d, ctx, v, f...)
 }
 
 // Parse

@@ -22,8 +22,7 @@ func TestDecodePrimitive(t *testing.T) {
 	})
 	t.Run("BasicInt", func(t *testing.T) {
 		var v int
-		input := `1`
-		if err := Unmarshall([]byte(input), &v); err != nil {
+		if err := Unmarshall([]byte("1"), &v); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if v != 1 {
@@ -32,8 +31,7 @@ func TestDecodePrimitive(t *testing.T) {
 	})
 	t.Run("BasicBool", func(t *testing.T) {
 		var v bool
-		input := ` true `
-		if err := Unmarshall([]byte(input), &v); err != nil {
+		if err := Unmarshall([]byte(` true `), &v); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if v != true {
@@ -45,10 +43,7 @@ func TestDecodePrimitive(t *testing.T) {
 func TestDecodeCollection(t *testing.T) {
 	t.Run("InlineList", func(t *testing.T) {
 		var v [4]uint
-		input := `[4, 1, 6, 7]`
-		if err := Unmarshall([]byte(input), &v); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		unmarshal(t, `[4, 1, 6, 7]`, &v)
 		expected := [4]uint{4, 1, 6, 7}
 		if v != expected {
 			t.Errorf("expected %v, got %v", expected, v)
@@ -56,7 +51,7 @@ func TestDecodeCollection(t *testing.T) {
 	})
 }
 
-func unmarshal(t *testing.T, input string, v any) {
+func unmarshal[V any](t *testing.T, input string, v *V) {
 	t.Helper()
 	if err := Unmarshall([]byte(input), v); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -65,24 +60,24 @@ func unmarshal(t *testing.T, input string, v any) {
 
 func assertErrorCode(t *testing.T, err error, code klonerrs.Code) {
 	t.Helper()
-	if err == nil {
+	switch err := err.(type) {
+	case nil:
 		t.Fatal("expected an error")
-	}
-	if ke, ok := err.(*Error); ok {
-		if ke.Code != code {
-			t.Errorf("expected code %d, got %d", code, ke.Code)
+	case *Error:
+		if err.Code != code {
+			t.Errorf("expected code %d, got %d", code, err.Code)
 		}
-	} else {
+	default:
 		t.Errorf("expected *Error, got %T", err)
 	}
 }
 
 func assertNonKlonError(t *testing.T, err error) {
 	t.Helper()
-	if err == nil {
+	switch err.(type) {
+	case nil:
 		t.Fatal("expected an error")
-	}
-	if _, ok := err.(*Error); ok {
+	case *Error:
 		t.Errorf("expected non-klon error, got *Error")
 	}
 }
@@ -136,47 +131,48 @@ func TestDecodeStruct(t *testing.T) {
 }
 
 func TestDecodeInterface(t *testing.T) {
-	t.Run("MergeIntoInitializedPointer", func(t *testing.T) {
+	t.Run("PointerInterface", func(t *testing.T) {
 		var i int = 10
 		var anyVal any = &i
 		if err := Unmarshall([]byte(`20`), &anyVal); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if i != 20 {
-			t.Errorf("expected i to be 20, but got %d", i)
+			t.Errorf("expected i == 20, but got %d", i)
 		}
 		if p, ok := anyVal.(*int); !ok || p != &i {
 			t.Errorf("expected anyVal to still hold the same pointer &i")
 		}
 	})
-	t.Run("MergeIntoNilPointer", func(t *testing.T) {
+	t.Run("NilPointerInterface", func(t *testing.T) {
 		var anyVal any = (*int)(nil)
 		if err := Unmarshall([]byte(`42`), &anyVal); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		p, ok := anyVal.(*int)
 		if !ok {
-			t.Fatalf("expected anyVal to hold an *int, but got %T", anyVal)
+			t.Fatalf("expected anyVal.(*int), but got %T", anyVal)
 		}
 		if *p != 42 {
 			t.Errorf("expected *p to be 42, but got %d", *p)
 		}
 	})
-	t.Run("FallbackOnTypeMismatch", func(t *testing.T) {
+	t.Run("InterfaceFallback", func(t *testing.T) {
+		// When unmarshalling into a pointer interface, try to mutate the
+		// pointer value if compatible, otherwise change the interface type from
+		// the pointer.
 		var i int = 10
 		var anyVal any = &i
-		if err := Unmarshall([]byte(`'hello'`), &anyVal); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		unmarshal(t, `'hello'`, &anyVal)
 		s, ok := anyVal.(string)
 		if !ok {
-			t.Fatalf("expected anyVal to be a string due to fallback, but got %T", anyVal)
+			t.Fatalf("expected anyVal.(string) due to fallback, but got %T", anyVal)
 		}
 		if s != "hello" {
-			t.Errorf("expected s to be 'hello', but got %q", s)
+			t.Errorf(`expected s == "hello", but got %q`, s)
 		}
 		if i != 10 {
-			t.Errorf("expected i to remain 10, but got %d", i)
+			t.Errorf("expected i == 10, but got %d", i)
 		}
 	})
 }
@@ -196,14 +192,14 @@ func TestDecodeInvalid(t *testing.T) {
 
 type (
 	klonUnmarshallerVersion struct{ Major, Minor int }
-	textUnmarshallerVersion klonUnmarshallerVersion
+	textUnmarshalerVersion  klonUnmarshallerVersion
 	bothUnmarshallerVersion struct {
 		Major, Minor int
 		UsedKlon     bool
 	}
 )
 
-func (v *klonUnmarshallerVersion) UnmarshalKlon(node ast.Node) error {
+func (v *klonUnmarshallerVersion) UnmarshallKlon(node ast.Node) error {
 	s, ok := node.(*ast.String)
 	if !ok {
 		return fmt.Errorf("expected string")
@@ -212,12 +208,12 @@ func (v *klonUnmarshallerVersion) UnmarshalKlon(node ast.Node) error {
 	return err
 }
 
-func (v *textUnmarshallerVersion) UnmarshalText(text []byte) error {
+func (v *textUnmarshalerVersion) UnmarshalText(text []byte) error {
 	_, err := fmt.Sscanf(string(text), "%d.%d", &v.Major, &v.Minor)
 	return err
 }
 
-func (v *bothUnmarshallerVersion) UnmarshalKlon(node ast.Node) error {
+func (v *bothUnmarshallerVersion) UnmarshallKlon(node ast.Node) error {
 	v.UsedKlon = true
 	return nil
 }
@@ -228,45 +224,40 @@ func (v *bothUnmarshallerVersion) UnmarshalText(text []byte) error {
 }
 
 func TestDecodeCustom(t *testing.T) {
-	t.Run("Unmarshaller", func(t *testing.T) {
+	t.Run("KlonUnmarshaller", func(t *testing.T) {
 		var v klonUnmarshallerVersion
-		input := "'1.2'"
-		if err := Unmarshall([]byte(input), &v); err != nil {
+		if err := Unmarshall([]byte("'1.2'"), &v); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if v.Major != 1 || v.Minor != 2 {
+		if v != (klonUnmarshallerVersion{1, 2}) {
 			t.Errorf("expected 1.2, got %d.%d", v.Major, v.Minor)
 		}
 	})
 	t.Run("TextUnmarshaler", func(t *testing.T) {
-		var v textUnmarshallerVersion
-		input := "'3.4'"
-		if err := Unmarshall([]byte(input), &v); err != nil {
+		var v textUnmarshalerVersion
+		if err := Unmarshall([]byte("'3.4'"), &v); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if v.Major != 3 || v.Minor != 4 {
+		if v != (textUnmarshalerVersion{3, 4}) {
 			t.Errorf("expected 3.4, got %d.%d", v.Major, v.Minor)
 		}
 	})
-	t.Run("Priority", func(t *testing.T) {
+	t.Run("KlonUnmarshallerPriority", func(t *testing.T) {
 		var v bothUnmarshallerVersion
-		input := "'any'"
-		if err := Unmarshall([]byte(input), &v); err != nil {
+		if err := Unmarshall([]byte("'any'"), &v); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !v.UsedKlon {
-			t.Error("expected UnmarshalKlon to be used over UnmarshalText")
+			t.Error("expected UnmarshallKlon to be used over UnmarshalText")
 		}
 	})
 	t.Run("ErrorWrapping", func(t *testing.T) {
 		var v klonUnmarshallerVersion
-		input := "123" // Not a string
-		err := Unmarshall([]byte(input), &v)
+		err := Unmarshall([]byte("123"), &v) // Not a string
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		ke, ok := err.(*Error)
-		if !ok || ke.Code != klonerrs.ErrUnmarshallerError {
+		if ke, ok := err.(*Error); !ok || ke.Code != klonerrs.ErrUnmarshallerError {
 			t.Errorf("expected ErrUnmarshallerError, got %v", err)
 		}
 	})

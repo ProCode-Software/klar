@@ -2,10 +2,22 @@ package klon
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ProCode-Software/klar/pkg/klon/klonflags"
 )
+
+type testStruct struct {
+	Name string
+	Id   int
+	Embedded
+}
+
+type withEmbedded struct {
+	Embedded
+	EmbedsAnother
+}
 
 type Embedded struct {
 	Used  bool
@@ -13,16 +25,6 @@ type Embedded struct {
 		Id     int
 		Object any
 	}
-}
-type testStruct struct {
-	Name string
-	Id   int
-	Embedded
-}
-
-type WithEmbedded struct {
-	Embedded
-	EmbedsAnother
 }
 
 type (
@@ -46,8 +48,8 @@ func TestStructFieldCount(t *testing.T) {
 	cases := []testCase{
 		{"Level1Embed_Unkeyed", testStruct{}, unkeyed, 4},
 		{"Level1Embed_Keyed", testStruct{}, keyed, 5},
-		{"Level2Embed_Unkeyed", WithEmbedded{}, unkeyed, 2},
-		{"Level2Embed_Keyed", WithEmbedded{}, keyed, 6},
+		{"Level2Embed_Unkeyed", withEmbedded{}, unkeyed, 3},
+		{"Level2Embed_Keyed", withEmbedded{}, keyed, 6},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -60,7 +62,10 @@ func TestStructFieldCount(t *testing.T) {
 				for i, field := range fields.Flat {
 					names[i] = field.Name
 				}
-				t.Errorf("expected %d fields, got %d: %#v", test.expect, len(fields.Flat), names)
+				t.Errorf(
+					"expected %d fields, got %d: %+v", test.expect, len(fields.Flat),
+					strings.Join(names, ", "),
+				)
 			}
 		})
 	}

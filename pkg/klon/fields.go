@@ -37,6 +37,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 		currFields []*structField
 		nextFields = []*structField{{Type: rt}}
 
+		strct     = rt // For error messages
 		fieldLen  = rt.NumField()
 		strFields = structFields{
 			Flat:         make([]*structField, 0, fieldLen),
@@ -72,54 +73,21 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 				name, ok := f.Tag.Lookup("klon")
 				// Check for json: struct tag and extract the name (1st before comma) only
 				if !ok && flag.Has(klonflags.AllowJSONStructTags) {
-					for name = range strings.SplitSeq(f.Tag.Get("json"), ",") {
-						break
-					}
+					name, _, _ = strings.Cut(f.Tag.Get("json"), ",")
 				}
 				if name == "-" {
 					continue // Don't include this field
 				}
 
 				// Check for "options:" struct tag
-				var decode decodeFunc
-				opts, ok := f.Tag.Lookup("options")
-				if ok {
-					switch rt := f.Type; rt.Kind() {
-					default:
-						decode = preprocessValue(makeEnumDecoder(opts))
-					case reflect.Slice:
-						decodeItem := preprocessValue(makeEnumDecoder(opts))
-						decode = preprocessValue(makeSliceDecoder(rt, decodeItem))
-					case reflect.Array:
-						decodeItem := preprocessValue(makeEnumDecoder(opts))
-						decode = preprocessValue(makeArrayDecoder(rt, decodeItem))
-					case reflect.Map:
-						// 2 options keys need to be provided
-						optsKeys := strings.Split(opts, ",")
-						if len(optsKeys) != 2 {
-							return strFields, fmt.Errorf(
-								"field %s: 'options:' struct tag must have 2 keys when type is a map, got %d",
-								f.Name, len(optsKeys),
-							)
-						}
-						optsKeys[0] = strings.TrimSpace(optsKeys[0]) // Trim whitespace around comma
-						optsKeys[1] = strings.TrimSpace(optsKeys[1])
-
-						var decodeKey, decodeValue decodeFunc
-						if key := optsKeys[0]; key != "" && key != "-" {
-							decodeKey = preprocessValue(makeEnumDecoder(optsKeys[0]))
-						}
-						if key := optsKeys[1]; key != "" && key != "-" {
-							decodeValue = preprocessValue(makeEnumDecoder(optsKeys[1]))
-						}
-						decode = preprocessValue(makeMapDecoder(rt, decodeKey, decodeValue))
-					}
+				decode, err := tryOptionsStructTag(f, strct)
+				if err != nil {
+					return strFields, err
 				}
 
 				indices := make([]int, len(field.Indices)+1)
 				copy(indices, field.Indices)
 				indices[len(field.Indices)] = i
-
 				rt := f.Type
 				if rt.Name() == "" && rt.Kind() == reflect.Pointer {
 					rt = rt.Elem()
@@ -150,7 +118,9 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 						// - Embedded field and non-embedded field with same name
 						// TODO: Check if there are exceptions and precedence rules
 						// to avoid returning an error
-						return strFields, fmt.Errorf("duplicate field: %s", name)
+						return strFields, fmt.Errorf(
+							"duplicate field in struct %s: %s", strct.String(), name,
+						)
 					} else {
 						strFields.Fields[name] = new
 						strFields.FoldedFields[lower] = new
@@ -175,7 +145,10 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 		return strFields, nil // Don't sort fields
 	}
 	slices.SortFunc(strFields.Flat, func(a, b *structField) int {
-		return cmp.Or(strings.Compare(a.Name, b.Name), len(a.Indices)-len(b.Indices))
+		return cmp.Or(
+			strings.Compare(a.Name, b.Name),
+			len(a.Indices)-len(b.Indices),
+		)
 	})
 	return strFields, nil
 }
@@ -195,6 +168,46 @@ func camelCaseField(name string, flags klonflags.Flags) string {
 		numUpper++
 	}
 	return strings.ToLower(name[:numUpper]) + name[numUpper:]
+}
+
+func tryOptionsStructTag(
+	f reflect.StructField, strct reflect.Type,
+) (decode decodeFunc, err error) {
+	opts, ok := f.Tag.Lookup("options")
+	if ok {
+		switch rt := f.Type; rt.Kind() {
+		default:
+			decode = preprocessValue(makeEnumDecoder(opts))
+		case reflect.Slice:
+			decodeItem := preprocessValue(makeEnumDecoder(opts))
+			decode = preprocessValue(makeSliceDecoder(rt, decodeItem))
+		case reflect.Array:
+			decodeItem := preprocessValue(makeEnumDecoder(opts))
+			decode = preprocessValue(makeArrayDecoder(rt, decodeItem))
+		case reflect.Map:
+			// 2 options keys need to be provided
+			keyName, valName, ok := strings.Cut(opts, ",")
+			if !ok {
+				return nil, fmt.Errorf(
+					"field %s.%s: 'options:' struct tag must have 2 keys when type is a map, got 1",
+					strct.String(), f.Name,
+				)
+			}
+			// Trim whitespace around comma
+			keyName = strings.TrimSpace(keyName)
+			valName = strings.TrimSpace(valName)
+
+			var decodeKey, decodeValue decodeFunc
+			if keyName != "" && keyName != "-" {
+				decodeKey = preprocessValue(makeEnumDecoder(keyName))
+			}
+			if valName != "" && valName != "-" {
+				decodeValue = preprocessValue(makeEnumDecoder(valName))
+			}
+			decode = preprocessValue(makeMapDecoder(rt, decodeKey, decodeValue))
+		}
+	}
+	return decode, nil
 }
 
 // TODO: Enum decoder for slice/array items and map values

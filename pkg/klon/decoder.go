@@ -67,7 +67,8 @@ func (d *decoder) getDecoder(rt reflect.Type) decodeFunc {
 	if decode, ok := decodeCache.get(rt); ok {
 		return decode
 	}
-	// If the type implements [Unmarshaller] or [encoding.TextUnmarshaler], use their decoder.
+	// If the type implements [Unmarshaller] or [encoding.TextUnmarshaler],
+	// use their decoder.
 	var decode decodeFunc
 	ptr := reflect.PointerTo(rt)
 	switch {

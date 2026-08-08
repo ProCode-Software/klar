@@ -62,6 +62,7 @@ func decodeUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
 }
 
 func decodeTextUnmarshaller(rv reflect.Value, val ast.Value, d *decoder) error {
+	// Klon value needs to be a String
 	str, err := d.valueToString(val)
 	if err != nil {
 		return err
@@ -232,21 +233,24 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 	if err != nil {
 		if err, ok := err.(*Error); ok && err.Code == klonerrs.ErrCantConvertToString {
 			// Key type should already be validated at parse-time
-			panic(fmt.Sprintf("object key should have been validated during parse: %T", f.Key))
+			panic(fmt.Sprintf(
+				"object key should have been validated during parse: %T", f.Key,
+			))
 		}
 		return err
 	}
 
 	field, err := strFields.Lookup(name, f.Key, d.flags)
-	if err != nil {
-		if d.flags.Has(klonflags.NoUnknownFields) {
-			if d.shouldWarn(err) {
-				d.warn(err)
-				return nil
-			}
-			return err
-		}
+	switch {
+	case err == nil:
+	// Field not found
+	case !d.flags.Has(klonflags.NoUnknownFields):
 		return nil
+	case d.shouldWarn(err):
+		d.warn(err)
+		return nil
+	default:
+		return err
 	}
 	// Follow the indices to find the actual field [reflect.Value]. We
 	// can't use rv.FieldByIndex because it will panic on a nil pointer.
@@ -371,7 +375,9 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 		for _, item := range list.Items {
 			if rest, ok := item.(*ast.ArrowRef); ok {
 				// Rest
-				if i, err = d.appendRestToArray(rv, list, rest, decodeItem, i, arrLength); err != nil {
+				if i, err = d.appendRestToArray(
+					rv, list, rest, decodeItem, i, arrLength,
+				); err != nil {
 					return err
 				} else if i >= arrLength {
 					break
@@ -406,8 +412,7 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 		if i < arrLength {
 			if arrLength == 0 {
 				return decodeError(
-					klonerrs.ErrWrongArrayLength, rv, val,
-					"Expected no items in the list",
+					klonerrs.ErrWrongArrayLength, rv, val, "Expected no items in the list",
 				)
 			}
 			return decodeError(
@@ -434,13 +439,13 @@ func (d *decoder) appendRestToArray(rv reflect.Value, list *ast.List, rest *ast.
 			if d.flags.Has(klonflags.IgnoreArrayLength) {
 				return arrLength, nil
 			}
-			var plus rune
+			var plus string
 			if i > arrLength {
-				plus = '+'
+				plus = "+"
 			}
 			return i, decodeError(
 				klonerrs.ErrWrongArrayLength, rv, list,
-				"Too many items in the list: Expected %d, but found %d%c",
+				"Too many items in the list: Expected %d, but found %d%s",
 				arrLength, i+len(restList.Items), plus,
 			)
 		}
@@ -468,27 +473,29 @@ func makePointerDecoder(rt reflect.Type) decodeFunc {
 }
 
 func decodeInterface(rv reflect.Value, val ast.Value, d *decoder) error {
-	// If the interface is set to a pointer, decode into the pointer's value
+	// If the interface is set to a pointer, try to decode into the pointer's value
 	if !rv.IsNil() {
-		next := rv.Elem() // Underlying value of interface
-		if next.Kind() == reflect.Pointer && rv != next.Elem() {
-			if next.IsNil() {
+		und := rv.Elem() // Underlying value of interface
+		if und.Kind() == reflect.Pointer && rv != und.Elem() {
+			if und.IsNil() {
 				// Initialize the pointer if it's nil
-				next = reflect.New(next.Type().Elem())
-				rv.Set(next)
+				und = reflect.New(und.Type().Elem())
+				rv.Set(und)
 			}
 			// Attempt to decode into the pointed-to value
-			decode := d.getDecoder(next.Type().Elem())
-			if err := decode(next.Elem(), val, d); err == nil {
+			decode := d.getDecoder(und.Type().Elem())
+			if err := decode(und.Elem(), val, d); err == nil {
 				return nil
 			}
-			// If the decode fails, fall back to decoding into any.
+			// If the decode fails, fall back to decoding into any
 		}
 	}
 	// Decode into 'any'
 	// We can't decode into a nil interface with methods
 	if rv.NumMethod() != 0 {
-		return fmt.Errorf("can't decode into nil interface with methods: %s", rv.Type().String())
+		return fmt.Errorf(
+			"can't decode into nil interface with methods: %s", rv.Type().String(),
+		)
 	}
 	v, err := d.toGoValue(val)
 	switch {
