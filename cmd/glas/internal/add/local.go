@@ -1,10 +1,14 @@
 package add
 
 import (
+	"fmt"
 	"path/filepath"
 
+	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util/manifest"
+	"github.com/ProCode-Software/klar/internal/version"
 )
 
 type localPackage struct {
@@ -13,7 +17,7 @@ type localPackage struct {
 	isWorkspace bool
 }
 
-func (p *localPackage) Source() PackageSource {
+func (p *localPackage) Source() glaslock.PackageSource {
 	if p.isWorkspace {
 		return WorkspaceSource
 	}
@@ -27,6 +31,7 @@ func (p *localPackage) Name() string {
 	return p.path
 }
 
+func (p *localPackage) KlarVersion() version.Version { return p.manifest.Version }
 func (p *localPackage) ResolvedVersion() string {
 	return p.manifest.Version.String()
 }
@@ -44,4 +49,15 @@ func (p *localPackage) Info(ic *installContext) *pkgInfo {
 }
 
 func (p *localPackage) Install(ic *installContext) {
+}
+
+func (p *localPackage) workspacePkgName() string {
+	if !p.isWorkspace {
+		panic("workspacePkgName called on non-workspace package")
+	}
+	pkgDir, pkgName := filepath.Split(p.path)
+	if filepath.Base(pkgDir) != module.PkgDir {
+		panic(fmt.Sprintf("expected %s dir, but got %s", module.PkgDir, pkgDir))
+	}
+	return pkgName
 }

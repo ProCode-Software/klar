@@ -40,6 +40,10 @@ func ParseSpecifier(s string) (spec Specifier, err error) {
 	return spec, nil
 }
 
+func MinimumSpecifier(v Version) Specifier {
+	return Specifier{specComponent: &modifierComponent{from, v}}
+}
+
 func (s Specifier) IsZero() bool { return s.specComponent == nil }
 
 // GetMatches returns the versions in vs that match the specifier.

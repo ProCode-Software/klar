@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -36,8 +38,9 @@ type gitPackage struct {
 	pkgDir      string // Directory in / == cloneDir where the actual package is
 }
 
-func (p *gitPackage) Source() PackageSource   { return GitSource }
-func (p *gitPackage) ResolvedVersion() string { return p.manifest.Version.String() }
+func (p *gitPackage) Source() glaslock.PackageSource { return GitSource }
+func (p *gitPackage) ResolvedVersion() string        { return p.manifest.Version.String() }
+func (p *gitPackage) KlarVersion() version.Version   { return p.manifest.Version }
 func (p *gitPackage) Name() string {
 	if p.manifest != nil {
 		return p.manifest.Name
@@ -49,6 +52,15 @@ func (p *gitPackage) Info(ic *installContext) *pkgInfo {
 	if gitPath == "" {
 		gitPath = findGit()
 	}
+	// Add https prefix
+	if !strings.Contains(p.url, "://") {
+		p.url = "https://" + p.url
+	}
+	// Check that the URL is valid
+	if _, err := url.Parse(p.url); err != nil {
+		cli.Failuref("Invalid URL %q: ", err.Error(), p.url)
+	}
+
 	// 1. Validate that any provided specifier/branch/commit exists
 	// For commits, we have to clone first then rev-parse
 	// Otherwise, use ls-remote before cloning
@@ -75,9 +87,6 @@ func (p *gitPackage) Info(ic *installContext) *pkgInfo {
 }
 
 func (p *gitPackage) validateSpec(ic *installContext) {
-	if !strings.Contains(p.url, "://") {
-		p.url = "https://" + p.url
-	}
 	var b strings.Builder
 	cmd := exec.Command(gitPath, "ls-remote", p.url)
 	runCommand(cmd, &b, nil)
@@ -314,3 +323,18 @@ func runCommand(cmd *exec.Cmd, stdout, stderr io.Writer) {
 		)
 	}
 }
+
+// subPath returns the path of the package relative to the project root.
+// If the package is at the project root, it returns an empty string.
+func (p *gitPackage) subPath() string {
+	subPath, err := filepath.Rel(p.checkoutDir, p.pkgDir)
+	if err != nil {
+		panic(fmt.Sprintf("pkgDir %q is not in checkoutDir %s", p.pkgDir, p.checkoutDir))
+	}
+	if subPath == "." {
+		subPath = ""
+	}
+	return subPath
+}
+
+func (p *gitPackage) shortCommit() string { return p.rev[:7] }

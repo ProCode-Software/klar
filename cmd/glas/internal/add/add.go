@@ -15,30 +15,31 @@ import (
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/cli/prompt"
+	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/internal/util/manifest"
+	"github.com/ProCode-Software/klar/internal/version"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
 
 type Package interface {
 	Name() string
-	Source() PackageSource
+	Source() glaslock.PackageSource
 	ResolvedVersion() string
+	KlarVersion() version.Version // Version converted to Klar
 	Info(*installContext) *pkgInfo
 	Install(*installContext)
 }
 
-type PackageSource int
-
 const (
-	GitSource PackageSource = iota
-	NPMSource
-	LocalSource
-	WorkspaceSource
+	GitSource       = glaslock.Git
+	NPMSource       = glaslock.NPM
+	LocalSource     = glaslock.Local
+	WorkspaceSource = glaslock.Workspace
 )
 
 type installContext struct {
@@ -73,7 +74,7 @@ func Run(p *argparse.Parser) {
 		cli.FailureError(err)
 	}
 	ic.Logger = logger
-	if ic.Logger.Enabled(context.TODO(), slog.LevelDebug) {
+	if ic.Logger.Enabled(context.Background(), slog.LevelDebug) {
 		ic.debug = true
 	}
 	ic.isInteractive = term.IsTerminal(int(os.Stdout.Fd()))
@@ -142,10 +143,13 @@ func Run(p *argparse.Parser) {
 	}
 
 	// 5. Update lockfile and manifest
+	lockfile, lockPath := ic.getLockfile()
 	for _, pair := range parsedPkgs {
 		ic.updateManifests(pair.pkg)
-		ic.updateLockfile(pair.pkg, ic.targetPkgs[0].ProjectDir)
+		ic.updateLockfile(pair.pkg, lockfile)
 	}
+	ic.writeLockfile(lockfile, lockPath)
+	ic.writeManifests()
 
 	// 6. Summary
 	elapsed := time.Since(startTime)
@@ -294,8 +298,7 @@ func (ic *installContext) promptPackages(parsedPkgs []pkgsAndInfo) (rejected map
 		}
 		if len(parsedPkgs) > 1 {
 			ansi.ColorPrintfln(
-				ansi.CodeDim+ansi.CodeUnderline,
-				"Package %d of %d", i+1, len(parsedPkgs),
+				ansi.CodeDim+ansi.CodeUnderline, "Package %d of %d", i+1, len(parsedPkgs),
 			)
 		}
 		showInfo(pair.pkg, pair.info)

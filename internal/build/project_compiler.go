@@ -224,7 +224,7 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 		return err
 	}
 	if len(compiler.Errors) > 0 {
-		if pc.Compiler.Logger.Enabled(context.TODO(), slog.LevelError) {
+		if pc.Compiler.Logger.Enabled(context.Background(), slog.LevelError) {
 			pc.Compiler.Logger.Error("Modules being bootstrapped failed to compile")
 			pc.Compiler.Logger.Error("========== BEGIN BOOTSTRAP ERRORS ==========")
 			pc.PrintAllErrors(compiler.Errors)

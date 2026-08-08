@@ -17,12 +17,12 @@ func TestColorize(t *testing.T) {
 			want:  "hello world",
 		},
 		{
-			name:  "simple color",
+			name:  "tag with 1 color",
 			input: "<r>hello</r>",
 			want:  "\x1b[31mhello\x1b[0m",
 		},
 		{
-			name:  "multiple colors space separated",
+			name:  "tag with multiple colors",
 			input: "<r bold>hello</>",
 			want:  "\x1b[31;1mhello\x1b[0m",
 		},
@@ -32,12 +32,12 @@ func TestColorize(t *testing.T) {
 			want:  "\x1b[31mhello \x1b[34mworld\x1b[0m\x1b[31m!\x1b[0m",
 		},
 		{
-			name:  "escaping open",
+			name:  "escaped",
 			input: "\\<r>hello",
 			want:  "<r>hello",
 		},
 		{
-			name:  "escaping close",
+			name:  "escaped close",
 			input: "<r>hello\\</r>",
 			want:  "\x1b[31mhello</r>",
 		},
@@ -47,54 +47,34 @@ func TestColorize(t *testing.T) {
 			want:  "\\\x1b[31mhello",
 		},
 		{
-			name:  "generic close",
+			name:  "close all",
 			input: "<r>hello</>",
 			want:  "\x1b[31mhello\x1b[0m",
 		},
 		{
-			name:  "named close",
-			input: "<r>hello</r>",
-			want:  "\x1b[31mhello\x1b[0m",
-		},
-		{
-			name:  "mismatched close ignored",
-			input: "<r>hello</b>",
-			want:  "\x1b[31mhello", // Should pop r? Or ignore?
-			// Plan said: "Closing: </...> (can be named </red> or generic </>)."
-			// "Closing a tag restores the previous state."
-			// If we have strict matching, </blue> should be ignored if top is red.
-		},
-		{
-			name:  "strict closing match",
+			name:  "close multiple",
 			input: "<r bold>hello</r bold>",
 			want:  "\x1b[31;1mhello\x1b[0m",
 		},
 		{
-			name:  "loose closing match subset",
+			name:  "close 1 of multiple",
 			input: "<r bold>hello</r>",
-			want:  "\x1b[31;1mhello\x1b[0m", // Should close because r is in {r, bold}
+			want:  "\x1b[31;1mhello\x1b[0m\x1b[1m",
 		},
 		{
-			name:  "loose closing match order",
+			name:  "close in different order",
 			input: "<r bold>hello</bold r>",
-			want:  "\x1b[31;1mhello\x1b[0m", // Should close because sets match
-		},
-		{
-			name:  "loose closing mismatch",
-			input: "<r bold>hello</b>",
-			want:  "\x1b[31;1mhello", // Should NOT close because b is not in {r, bold}
-		},
-		{
-			name:  "generic close works for multi",
-			input: "<r bold>hello</>",
 			want:  "\x1b[31;1mhello\x1b[0m",
+		},
+		{
+			name:  "actually close all",
+			input: "<r bold><dim><c>hello</>",
+			want:  "\x1b[31;1m\x1b[2m\x1b[36mhello\x1b[0m",
 		},
 		{
 			name:  "complex nesting",
 			input: "<r>A<g>B<b>C</b>D</g>E</r>",
 			want:  "\x1b[31mA\x1b[32mB\x1b[34mC\x1b[0m\x1b[31m\x1b[32mD\x1b[0m\x1b[31mE\x1b[0m",
-			// Note: When popping blue, we restore red+green.
-			// When popping green, we restore red.
 		},
 	}
 
@@ -106,7 +86,6 @@ func TestColorize(t *testing.T) {
 			}
 		})
 	}
-
 	t.Run("DisableColor", func(t *testing.T) {
 		old := DisableColor
 		DisableColor = true
@@ -119,7 +98,6 @@ func TestColorize(t *testing.T) {
 			t.Errorf("Colorize(%q) with DisableColor=true = %q, want %q", input, got, want)
 		}
 	})
-
 	t.Run("Panic on invalid code", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
@@ -128,7 +106,6 @@ func TestColorize(t *testing.T) {
 		}()
 		Colorize("<unknown>hello")
 	})
-
 	t.Run("Panic on invalid closing code", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {

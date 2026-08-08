@@ -178,7 +178,7 @@ func SetLogger(b *Compiler, verbose, json bool) error {
 		return err
 	}
 	b.Logger = l
-	if b.Logger.Enabled(context.TODO(), slog.LevelDebug) {
+	if b.Logger.Enabled(context.Background(), slog.LevelDebug) {
 		b.IsDebug = true
 	}
 	return nil

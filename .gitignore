@@ -61,6 +61,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.tsbuildinfo
 
 .qwen
+.klar
 
 # tree-sitter bindings
 /pkg/tree-sitter-*/bindings/

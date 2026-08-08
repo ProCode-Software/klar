@@ -9,6 +9,7 @@ import (
 )
 
 func TestErrorMessages(t *testing.T) {
+	missingCodes := []string{}
 	for code := Code(1); ; code++ {
 		if code%100 == 0 && code != SyntaxErrorPrefix+100 {
 			continue // x00
@@ -39,8 +40,18 @@ func TestErrorMessages(t *testing.T) {
 			}
 		}()
 		if !ok {
-			t.Errorf("missing code for %s: %s", e.Title(), e.Code)
+			missingCodes = append(missingCodes, fmt.Sprintf("%s/%s", e.Title(), e.Code))
+			t.Fail()
 		}
+	}
+	if len(missingCodes) > 0 {
+		var b strings.Builder
+		for i := 0; i < len(missingCodes); i += 3 {
+			line := missingCodes[i:min(i+3, len(missingCodes))]
+			b.WriteString(strings.Join(line, "    "))
+			b.WriteByte('\n')
+		}
+		t.Errorf("%d missing codes:\n\n%s", len(missingCodes), b.String())
 	}
 }
 

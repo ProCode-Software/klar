@@ -14,6 +14,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/pm/npm"
 	"github.com/ProCode-Software/klar/internal/util"
+	"github.com/ProCode-Software/klar/internal/version"
 )
 
 var npmRegistry = glaslock.DefaultNPMRegistry
@@ -31,7 +32,7 @@ type npmPackage struct {
 	manifest       *npm.RegistryVersion
 }
 
-func (p *npmPackage) Source() PackageSource { return NPMSource }
+func (p *npmPackage) Source() glaslock.PackageSource { return NPMSource }
 func (p *npmPackage) Name() string {
 	if p.manifest == nil {
 		name, _, _ := splitVersion(p.nameAndVersion)
@@ -63,7 +64,7 @@ func (p *npmPackage) Info(ic *installContext) *pkgInfo {
 		registryHint = " (" + registryPath + ")"
 	}
 	if res.StatusCode > 299 {
-		if res.StatusCode == 404 {
+		if res.StatusCode == http.StatusNotFound {
 			cli.Failuref(
 				"Package %s not found in NPM registry%s",
 				klarerrs.Quote(name), registryHint,
@@ -159,15 +160,15 @@ func (p *npmPackage) infoFromRegistry(data *npm.RegistryData, distTag, actualVer
 		info.deprecated = &deprecation{msg: pkgJSON.Deprecated}
 	}
 
-	// Weekly downloads
-	if downloads, err := p.getWeeklyDownloads(data.Name); err == nil {
-		info.etc["Weekly downloads"] = util.FormatNumber(downloads)
+	// Monthly downloads
+	if downloads, err := p.getMonthlyDownloads(data.Name); err == nil {
+		info.etc["Monthly downloads"] = util.FormatNumber(downloads)
 	}
 	return info
 }
 
-func (p *npmPackage) getWeeklyDownloads(name string) (int, error) {
-	res, err := http.Get("https://api.npmjs.org/downloads/point/last-week/" + name)
+func (p *npmPackage) getMonthlyDownloads(name string) (int, error) {
+	res, err := http.Get("https://api.npmjs.org/downloads/point/last-month/" + name)
 	if err != nil {
 		return 0, err
 	}
@@ -182,4 +183,12 @@ func (p *npmPackage) getWeeklyDownloads(name string) (int, error) {
 }
 
 func (p *npmPackage) Install(ic *installContext) {
+}
+
+func (p *npmPackage) KlarVersion() version.Version {
+	if ver, err := version.Parse(p.ResolvedVersion()); err == nil {
+		return ver
+	}
+	// TODO: Convert SemVer to Klar version
+	return version.Version{}
 }

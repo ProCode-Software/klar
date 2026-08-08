@@ -10,7 +10,7 @@ import (
 // LockfileVersion is the current version of the lockfile format
 const LockfileVersion = 1
 
-var ErrUnsupportedLockfileVersion = fmt.Errorf("unsupported lockfile version")
+var ErrUnsupportedFormat = fmt.Errorf("unsupported lockfile version")
 
 type PackageSource int
 
@@ -28,6 +28,15 @@ type Lockfile struct {
 	Klar       version.Version
 	Packages   []*Package
 	PackageMap map[PkgHash]*Package
+}
+
+func NewLockfile(klarVersion version.Version) *Lockfile {
+	return &Lockfile{
+		Version:    LockfileVersion,
+		Klar:       klarVersion,
+		Packages:   []*Package{},
+		PackageMap: make(map[PkgHash]*Package),
+	}
 }
 
 type PackageHeader struct {

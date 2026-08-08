@@ -67,7 +67,7 @@ func Parse(r io.Reader) (*Lockfile, error) {
 			}
 			l.Version = v
 			if l.Version != LockfileVersion {
-				return nil, ErrUnsupportedLockfileVersion
+				return nil, ErrUnsupportedFormat
 			}
 		case 1:
 			// Klar directive must be second
@@ -279,11 +279,11 @@ func parsePackageHeader(parts []string) (p *PackageHeader, err error) {
 	default:
 		return nil, fmt.Errorf("invalid source: %s", src)
 	}
-	p.Hash = p.generateHash()
+	p.GenerateHash()
 	return p, nil
 }
 
-func (ph *PackageHeader) generateHash() PkgHash {
+func (ph *PackageHeader) GenerateHash() PkgHash {
 	h := fnv.New64a()
 	h.Write([]byte(ph.Name))
 	h.Write([]byte(ph.Version.Normalize().String()))
@@ -291,7 +291,8 @@ func (ph *PackageHeader) generateHash() PkgHash {
 	if ph.From == Git {
 		h.Write([]byte(ph.GitCommit))
 	}
-	return PkgHash(h.Sum64())
+	ph.Hash = PkgHash(h.Sum64())
+	return ph.Hash
 }
 
 // trimLine returns an empty string if the line is empty or contains only a comment.

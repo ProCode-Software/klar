@@ -34,7 +34,7 @@ func showInfo(pkg Package, info *pkgInfo) {
 	case LocalSource:
 		src = ansi.Blue("local")
 	case GitSource:
-		src = ansi.Bit8(215, "git")
+		src = ansi.Yellow("git")
 	case NPMSource:
 		src = ansi.Red("npm")
 	}
