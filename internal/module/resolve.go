@@ -1,6 +1,7 @@
 package module
 
 import (
+	"cmp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,7 @@ func PackageRoot(p string) (pkg, project string) {
 	}
 	// Walk up the directory tree
 	curr, prev := filepath.Clean(p), ""
+	var knownPkg string
 	for {
 		parent, name := splitPath(curr)
 		// Stop if we've reached the root
@@ -47,24 +49,21 @@ func PackageRoot(p string) (pkg, project string) {
 		if _, ok := KlarPackageDirs[name]; ok {
 			// Parent of 'pkg' guaranteed to be project root
 			if name == PkgDir {
-				return prev, parent // x/pkg/y -> (x/pkg/y, x, nil)
+				return prev, parent // x/pkg/y -> (x/pkg/y, x)
 			}
 			// Found the project root
 			if _, ok := ProjectOnlyDirs[name]; ok {
-				return parent, parent
+				return cmp.Or(knownPkg, parent), parent
 			}
-			// Check if parent is 'pkg' (e.g: x/pkg/y/src)
-			if pkgPar, pkg := splitPath(DirFast(parent)); pkg == PkgDir {
-				return parent, pkgPar
-			}
-			return parent, parent
+			// Package directory, but may not be the root
+			knownPkg = parent
 		}
 		// Track the last directory we saw (potential package inside pkg)
-		prev = curr // Child
-		curr = parent
+		prev, curr = curr, parent
 	}
-	// Not found
-	return p, p
+	// No Klar-specific directories found. The provided path is the package/project
+	pkg = cmp.Or(knownPkg, p)
+	return pkg, pkg
 }
 
 // IsPackage reports whether p is a path to a package, as defined by the Klar
@@ -73,6 +72,7 @@ func IsPackage(p string) bool {
 	if _, err := os.Stat(filepath.Join(p, ManifestFile)); err == nil {
 		return true
 	}
+	p = filepath.Clean(p)
 	var depth int
 	var parent, name string
 	for {
@@ -86,7 +86,7 @@ func IsPackage(p string) bool {
 			// Found a Klar project directory - not a package (parent is)
 			return false
 		case p == parent:
-			return true
+			return true // No special directories found
 		}
 		p = strings.TrimSuffix(parent, sep)
 		depth++

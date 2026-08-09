@@ -6,7 +6,10 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
-var KlarVersion, KlarCommit string
+var (
+	KlarVersion = "0.0.0"
+	KlarCommit  string
+)
 
 const (
 	KlarGitHub = "https://github.com/ProCode-Software/klar"

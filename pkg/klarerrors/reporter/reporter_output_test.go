@@ -1,7 +1,7 @@
 package reporter
 
 const singleLine_expected = `
-SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
+Syntax error: Use '=' instead of ':=' to set a default (colonEqual)
 
   ┌─ main.klar:1:3
 1 │ x := 1
@@ -9,7 +9,7 @@ SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
 `
 
 const singleLine1Highlight_expected = `
-SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
+Syntax error: Use '=' instead of ':=' to set a default (colonEqual)
 
   ┌─ main2.klar:1:3
 1 │ x := 1
@@ -18,7 +18,7 @@ SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
 `
 
 const singleLine2Highlights_expected = `
-SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
+Syntax error: Use '=' instead of ':=' to set a default (colonEqual)
 
   ┌─ main.klar:1:3
 1 │ x := 1
@@ -28,7 +28,7 @@ SyntaxError: Use '=' instead of ':=' to set a default (colonEqual)
 `
 
 const Multiline2Highlights_expected = `
-SyntaxError: Braces are required around this statement (requiredBraces)
+Syntax error: Braces are required around this statement (requiredBraces)
 
   ┌─ main.klar:2:3
 1 │ deleteThisLine()

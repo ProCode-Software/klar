@@ -19,13 +19,13 @@ func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (warn []*klo
 	defer fr.Close()
 
 	if ctx == nil {
-		ctx = &klon.Context{}
+		ctx = klon.NewContext()
 	} else {
 		ctx.Warnings = ctx.Warnings[:0] // Clear previous warnings
 	}
 	ctx.SetWarningKinds(klonerrs.ErrFieldNotFound)
 
-	if err = klon.UnmarshallReadContext(fr, config, ctx, DefaultKlonFlags); err != nil {
+	if err = ctx.UnmarshallRead(fr, config, DefaultKlonFlags); err != nil {
 		return ctx.Warnings, err
 	}
 	return ctx.Warnings, nil

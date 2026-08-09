@@ -159,27 +159,28 @@ func (r *Reporter) printNewMultilineUnderlines(s *state, highlights []klarerrs.H
 			// Reduce the offset (and maybe pipe length) to account for the pipe
 			// lengths of previous printed pipes
 			pipeLen = i * 2
-			ulShift int
+			ulReduc int // Underline reduction
 		)
 		printLineStart()
 		r.printHighlightPipes(s, highlights[:i])
 		r.appendRune(r.CharacterSet.HighlightMultilineTL, color)
 		// Dotted offset
 		if pos.Col > 2 {
-			offsetShift := int(pos.Col-2) - pipeLen
-			if offsetShift < 0 {
+			dotsWidth := int(pos.Col-2) - pipeLen
+			if dotsWidth < 0 {
 				// Offset isn't long enough to reduce. Instead reduce the underline
-				offsetShift, ulShift = 0, -offsetShift
+				dotsWidth, ulReduc = 0, -dotsWidth
 			}
 			r.appendf(color, "%s", char.RepeatRune(
-				r.CharacterSet.HighlightMultilineOffset, offsetShift,
+				r.CharacterSet.HighlightMultilineOffset, dotsWidth,
 			))
 		} else if pipeLen > 0 {
-			ulShift = pipeLen
+			ulReduc = pipeLen
 		}
 		// Underline the contents of the first line
+		// Subtract 1 because lastCol is the end of the last character
 		r.appendf(color, "%s", char.RepeatRune(
-			r.CharacterSet.HighlightMulti, max(1, int(lastCol-pos.Col)-ulShift),
+			r.CharacterSet.HighlightMulti, max(1, int(lastCol-pos.Col)-1-ulReduc),
 		))
 		r.newline()
 	}
@@ -205,7 +206,7 @@ func (r *Reporter) printLabel(label, color string,
 	if ulWidth > 0 && Width > 0 && offset+labelLen+ulWidth > Width {
 		r.newline()
 		// If there are pipes that need to be printed, adjust the offset.
-		// Normally, the offset would be the dotted portion:
+		// Normally, the offset would be (dotted):
 		// 	1 | ................~~~~~~~~
 		// If there are pipes that need to be printed, the offset would become:
 		// 	1 |    |............~~~~~~~~

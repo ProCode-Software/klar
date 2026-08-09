@@ -60,6 +60,7 @@ Klar projects follow a specific directory structure specified in [docs/Project S
 See the [samples](samples/) directory for example projects and scripts. [samples/basic/all.klar](samples/basic/all.klar) is a Klar script that demonstrates all syntax features in the language.
 
 ### Klon
+
 Klon is a markup language that will be Klar's flagship configuration format. `glas.pack`, `klar.build`, `klar.config`, and `*.klon` files are written in Klon.
 
 [samples/basic/all.klon](samples/basic/all.klon) is a Klon file that demonstrates all syntax features in the language.

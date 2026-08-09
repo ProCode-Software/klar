@@ -26,5 +26,10 @@ C. Ranges added on multiple lines
     1. For this example, there are 3 ranges
 
 
-Notes (all):
-    1. 
+D. Full line deleted + added (replaced)
+
+Hint: Reorder the parameters
+
+1 - str.replace(with: "hi", "hello")
+2 + str.replace("hello", with: "hi")
+  ·

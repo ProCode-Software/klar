@@ -20,6 +20,8 @@ func TestPackageRoot(t *testing.T) {
 		{"/", "/", "/"},
 		// Invalid projects. Not verified
 		{"/a/b/c/d/e/pkg/f/pkg/g", "/a/b/c/d/e/pkg/f/pkg/g", "/a/b/c/d/e/pkg/f"},
+		// Not a valid project, so the project and package would be 'y'.
+		// If a user's project is there, we don't want it to be detected as 'r'.
 		{"q/w/e/r/pkg/t/y/src/u", "q/w/e/r/pkg/t/y", "q/w/e/r/pkg/t/y"},
 	}
 	for _, tc := range tests {
@@ -28,7 +30,7 @@ func TestPackageRoot(t *testing.T) {
 			pkg, proj := PackageRoot(tc.input)
 			if filepath.Clean(pkg) != tc.wantPkg || filepath.Clean(proj) != tc.wantProj {
 				t.Errorf(
-					"PackageRoot(%#v) = (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
+					"PackageRoot(%#v)\n\t= (pkg %#v, proj %#v)\n\twant (%#v, %#v)",
 					tc.input, pkg, proj, tc.wantPkg, tc.wantProj,
 				)
 			}

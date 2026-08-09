@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"text/tabwriter"
 )
 
 func TestErrorMessages(t *testing.T) {
@@ -40,18 +41,20 @@ func TestErrorMessages(t *testing.T) {
 			}
 		}()
 		if !ok {
-			missingCodes = append(missingCodes, fmt.Sprintf("%s/%s", e.Title(), e.Code))
+			missingCodes = append(missingCodes, e.Code.String())
 			t.Fail()
 		}
 	}
 	if len(missingCodes) > 0 {
-		var b strings.Builder
-		for i := 0; i < len(missingCodes); i += 3 {
-			line := missingCodes[i:min(i+3, len(missingCodes))]
-			b.WriteString(strings.Join(line, "    "))
-			b.WriteByte('\n')
+		t.Errorf("%d missing codes:", len(missingCodes))
+		tw := tabwriter.NewWriter(t.Output(), 10, 4, 2, ' ', 0)
+		for i := 0; i < len(missingCodes); {
+			row := missingCodes[i:min(i+4, len(missingCodes))]
+			tw.Write([]byte(strings.Join(row, "\t")))
+			tw.Write([]byte{'\n'})
+			i += len(row)
 		}
-		t.Errorf("%d missing codes:\n\n%s", len(missingCodes), b.String())
+		tw.Flush()
 	}
 }
 

@@ -63,6 +63,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .qwen
 .klar
 
+_artifacts/
+
 # tree-sitter bindings
 /pkg/tree-sitter-*/bindings/
 /pkg/tree-sitter-*/binding.gyp

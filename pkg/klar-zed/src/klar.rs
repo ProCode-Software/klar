@@ -32,7 +32,7 @@ impl KlarExtension {
         &mut self,
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
-    ) -> Result<String, &'static str> {
+    ) -> Result<String, String> {
         if let Some(path) = worktree.which("klar") {
             return Ok(path);
         }
@@ -44,7 +44,10 @@ impl KlarExtension {
 
         // TODO: Download Klar binary from GitHub
         _ = language_server_id;
-        Err("Klar isn't installed. Please install from https://github.com/ProCode-Software/klar")
+        Err(
+            "Klar isn't installed. Please install from https://github.com/ProCode-Software/klar"
+                .to_string(),
+        )
     }
 }
 

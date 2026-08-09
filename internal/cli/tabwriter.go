@@ -26,7 +26,8 @@ const (
 var newline = []byte{'\n'}
 
 // A TabWriter writes bytes to a writer with vertical column alignment. A zero TabWriter
-// is ready for use. Unlike Go's [text/tabwriter.Writer],
+// is ready for use. Unlike Go's [text/tabwriter.Writer], TabWriter excludes ANSI escape
+// sequences from the calculation of cell size.
 type TabWriter struct {
 	Output     io.Writer
 	Spacing    int  // Spacing between columns
@@ -34,7 +35,7 @@ type TabWriter struct {
 	Margin     int  // Left margin of each line
 	WrapIndent int  // Indent for wrapped lines
 	PadChar    byte // Pad character between printed cells, ' ' by default
-	Separator  byte // Separator character, '\t' by default
+	Separator  byte // Separator character in source, '\t' by default
 	MarginChar byte // Margin character, ' ' by default
 	TermWidth  int  // File descriptor of terminal
 	Flags      TabWriterFlags
@@ -148,7 +149,7 @@ func (tw *TabWriter) Flush() (n int, err error) {
 				isLast = colI == len(line)-1
 			)
 			switch {
-			case tw.TermWidth > 0 && isLast && tw.Flags&WrapTerminalColumns != 0 &&
+			case tw.Flags&WrapTerminalColumns != 0 && tw.TermWidth > 0 && isLast &&
 				cell.length+precColWidth > tw.TermWidth:
 				writeArray = tw.wrapCell(writeArray, cell, precColWidth)
 				isLast = false // Avoid clearing 2 items in writeArray
@@ -160,7 +161,13 @@ func (tw *TabWriter) Flush() (n int, err error) {
 			case tw.Flags&AlignRight != 0:
 				writeArray = [][]byte{offset, cell.content, space}
 			}
-			if isLast { // Trim whitespace at end of line
+			// Trim whitespace at end of line
+			switch {
+			case !isLast:
+			case tw.Flags&AlignRight != 0:
+				// writeArray ends in only 1 space slice
+				writeArray = writeArray[:len(writeArray)-1]
+			default:
 				writeArray = writeArray[:len(writeArray)-2]
 			}
 			for _, seg := range writeArray {
@@ -180,7 +187,6 @@ func (tw *TabWriter) Flush() (n int, err error) {
 	return
 }
 
-// Left align only. TODO: fix
 func (tw *TabWriter) wrapCell(writeArray [][]byte, cell cell, prevColWidth int) [][]byte {
 	target := tw.TermWidth - prevColWidth
 	writeArray = writeArray[:0]
