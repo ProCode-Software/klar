@@ -517,13 +517,13 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 
 func (p *Parser) ParseAttribute() *ast.Attribute {
 	p.Expect(lexer.At)
-	d := &ast.Attribute{}
+	defer func(oldFlags uint8) { p.flags = oldFlags }(p.flags)
 	p.flags |= isAttribute
-	defer func() { p.flags &^= isAttribute }()
-	d.Name = p.ParseIdentifier()
+	d := &ast.Attribute{Name: p.ParseIdentifier()}
 	if p.CurrKind() == lexer.LeftParenthesis {
 		call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 		d.Args = call.Args
+		d.Parens = &call.Parens
 	}
 	return d
 }

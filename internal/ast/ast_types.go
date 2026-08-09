@@ -191,6 +191,7 @@ type CallParam struct {
 // A function call
 type CallExpression struct {
 	Callee Expression
+	Parens ranges.Range // Start/end position of parentheses
 	Args   []*CallParam
 	BaseNode
 }
@@ -230,17 +231,20 @@ type TupleLiteral struct {
 type StructDotInit struct {
 	BaseNode
 	Params []*CallParam
+	Parens ranges.Range // Start/end position of parentheses
 }
 
 type ListCastExpression struct {
 	BaseNode
-	Type Type // Item type
-	Args []*CallParam
+	Type   Type         // Item type
+	Parens ranges.Range // Start/end position of parentheses
+	Args   []*CallParam
 }
 
 type MapCastExpression struct {
 	BaseNode
 	KeyType, ValueType Type
+	Parens             ranges.Range // Start/end position of parentheses
 	Args               []*CallParam
 }
 
@@ -251,6 +255,7 @@ type WhenExpression struct {
 	BaseNode
 	Subjects []Expression
 	Label    *Identifier
+	Parens   ranges.Range // Start/end position of parentheses
 	Cases    []*WhenCase
 }
 
@@ -361,7 +366,9 @@ type TryExpression struct {
 type Attribute struct {
 	BaseNode
 	Name Identifier
-	Args []*CallParam
+	// Start/end position of parentheses. Nil if no parentheses were provided.
+	Parens *ranges.Range
+	Args   []*CallParam
 }
 
 // An ExpressionStatement is an expression used as a statement.

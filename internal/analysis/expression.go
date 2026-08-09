@@ -406,14 +406,15 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, lhs Type, t *Expr) {
 		t.Type = InvalidType
 		return
 	}
+	und := Underlying(lhs)
 	// Types that can be indexed by dot implement [Indexer]
-	indexer, ok := Underlying(lhs).(Indexer)
+	indexer, ok := und.(Indexer)
 	var err *klarerrs.Error
 	if expr.Computed {
 		rhs := c.checkExprFrom(expr.Property, t)
 		// TODO: handle unions (union of #{Int: Any} and [Any]
 		// supports computed indexing)
-		if compIndexer, ok := Underlying(lhs).(ComputedIndexer); ok {
+		if compIndexer, ok := und.(ComputedIndexer); ok {
 			err = compIndexer.IndexComputed(rhs.Type, t)
 		} else {
 			err = indexError(klarerrs.ErrInvalidComputedIndex, rhs.Type, "")
@@ -443,11 +444,18 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, lhs Type, t *Expr) {
 
 	switch {
 	case !ok, t.Type == nil && err == nil:
+		t.Type = InvalidType
+		// Show a specific error if the concrete type of the lhs can be indexed
+		if canIndexConcreteType(lhs, t) {
+			err := unwrapRequiredError(lhs, expr.Range, "before it can be indexed")
+			err.Node = expr.Object
+			c.fileError(err, t.Context.File)
+			break
+		}
 		err := klarerrs.Node(klarerrs.ErrInvalidIndexType, expr.Object)
 		err.Info = klarerrs.TypeErrorInfo{GotType: lhs.String()}
 		err.Label = "Can't index " + klarerrs.WithA(lhs.Kind().String())
 		c.fileError(err, t.Context.File)
-		t.Type = InvalidType
 	case err != nil:
 		// Error while indexing, such as:
 		// - Indexing using an unknown field
@@ -461,6 +469,16 @@ func (c *Checker) checkIndexExpr(expr *ast.IndexExpression, lhs Type, t *Expr) {
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
 	}
+}
+
+func canIndexConcreteType(t Type, e *Expr) bool {
+	if IsConcreteType(t) {
+		return false
+	}
+	if indexer, ok := ConcreteTypeOf(Underlying(t)).(Indexer); ok {
+		return indexer.Index("", new(*e)) == nil
+	}
+	return false
 }
 
 func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
@@ -772,7 +790,7 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 	case hint == nil:
 		t.Type = &UntypedInit{kind: KindStruct, Node: expr, Params: expr.Params}
 		// Check the parameters once its type is inferred
-		c.queue(func() { c.checkCallArgs(t.Type, expr.Params, t) }, false)
+		c.queue(func() { c.checkCallArgs(t.Type, expr.Params, expr.Parens, t) }, false)
 		return
 	case hint.Kind() == KindStruct || hint.Kind() == ErrorType:
 		// Valid
@@ -789,7 +807,7 @@ func (c *Checker) checkStructDotInitExpr(expr *ast.StructDotInit, t *Expr) {
 		}
 		c.fileError(err, t.FileID())
 	}
-	c.checkCallArgs(t.Type, expr.Params, t)
+	c.checkCallArgs(t.Type, expr.Params, expr.Parens, t)
 }
 
 func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
@@ -827,13 +845,13 @@ func (c *Checker) checkTryExpr(expr *ast.TryExpression, t *Expr) {
 
 func (c *Checker) checkListCastExpr(expr *ast.ListCastExpression, t *Expr) {
 	elem := c.parseType(expr.Type, t.Context)
-	c.checkCallArgs(&List{elem}, expr.Args, t)
+	c.checkCallArgs(&List{elem}, expr.Args, expr.Parens, t)
 }
 
 func (c *Checker) checkMapCastExpr(expr *ast.MapCastExpression, t *Expr) {
 	key := c.parseType(expr.KeyType, t.Context)
 	val := c.parseType(expr.ValueType, t.Context)
-	c.checkCallArgs(&Map{key, val}, expr.Args, t)
+	c.checkCallArgs(&Map{key, val}, expr.Args, expr.Parens, t)
 }
 
 func (c *Checker) checkLambdaExpr(expr *ast.LambdaExpression, t *Expr) {
@@ -883,7 +901,7 @@ func (c *Checker) checkLambdaExpr(expr *ast.LambdaExpression, t *Expr) {
 		typ, variadic := c.parseTypeOrVariadic(pair.Type, t.Context)
 		if variadic {
 			typed.Variadic = true
-			// Ensure this is the last param
+			// TODO: Ensure this is the last param
 			if i < len(expr.Params)-1 || len(pair.Keys) > 1 {
 			}
 		}
@@ -1001,7 +1019,7 @@ func (c *Checker) checkObjectPipeline(expr *ast.ObjectPipeline, t *Expr) {
 				Object:   expr.Object,
 				Property: step.Callee,
 			}, obj.Type, lhs)
-			c.checkCallArgs(lhs.Type, step.Args, t.NewChild())
+			c.checkCallArgs(lhs.Type, step.Args, step.Parens, t.NewChild())
 		case *ast.AssignmentStatement:
 			c.checkIndexExpr(&ast.IndexExpression{
 				Object:   expr.Object,

@@ -9,6 +9,10 @@ import (
 )
 
 func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
+	var tupHint *Tuple
+	if t.hint != nil && t.hint.Kind() == KindTuple {
+		tupHint = As[*Tuple](t.hint)
+	}
 	tup := &Tuple{make([]Type, 0, len(expr.Values))}
 	for _, expr := range expr.Values {
 		if rest, ok := expr.(*ast.RestExpression); ok {
@@ -22,7 +26,11 @@ func (c *Checker) checkTupleLiteral(expr *ast.TupleLiteral, t *Expr) {
 			tup.Items = append(tup.Items, restTuple.Items...)
 			continue
 		}
-		tup.Items = append(tup.Items, c.checkExprFrom(expr, t).Type)
+		e := t.NewChild()
+		if i := len(tup.Items); tupHint != nil && i < len(tupHint.Items) {
+			e.hint = tupHint.Items[i]
+		}
+		tup.Items = append(tup.Items, c.checkExpr(expr, e).Type)
 	}
 	t.Type = tup
 }

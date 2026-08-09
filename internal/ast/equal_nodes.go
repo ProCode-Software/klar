@@ -355,6 +355,9 @@ func (a *ForExpression) Equal(b2 Node) bool {
 	if !equalSlice(a.Variables, b.Variables) {
 		return false
 	}
+	if a.In != b.In {
+		return false
+	}
 	if a.Iterator != nil && b.Iterator != nil && !a.Iterator.Equal(b.Iterator) {
 		return false
 	}
@@ -381,10 +384,13 @@ func (a *ForStatement) Equal(b2 Node) bool {
 	if !equalSlice(a.Variables, b.Variables) {
 		return false
 	}
-	if !a.Label.Equal(b.Label) {
+	if a.In != b.In {
 		return false
 	}
 	if a.Iterator != nil && b.Iterator != nil && !a.Iterator.Equal(b.Iterator) {
+		return false
+	}
+	if !a.Label.Equal(b.Label) {
 		return false
 	}
 	if a.Body != nil && b.Body != nil && !a.Body.Equal(b.Body) {
@@ -673,6 +679,9 @@ func (a *ListCastExpression) Equal(b2 Node) bool {
 	if a.Type != nil && b.Type != nil && !a.Type.Equal(b.Type) {
 		return false
 	}
+	if a.Parens != b.Parens {
+		return false
+	}
 	if !equalSlice(a.Args, b.Args) {
 		return false
 	}
@@ -719,6 +728,9 @@ func (a *MapCastExpression) Equal(b2 Node) bool {
 		return false
 	}
 	if a.ValueType != nil && b.ValueType != nil && !a.ValueType.Equal(b.ValueType) {
+		return false
+	}
+	if a.Parens != b.Parens {
 		return false
 	}
 	if !equalSlice(a.Args, b.Args) {
@@ -1004,6 +1016,9 @@ func (a *QualifiedTypeAlias) Equal(b2 Node) bool {
 	if !a.Identifier.Equal(b.Identifier) {
 		return false
 	}
+	if a.Dot != b.Dot {
+		return false
+	}
 	return true
 }
 
@@ -1218,6 +1233,9 @@ func (a *StructDotInit) Equal(b2 Node) bool {
 		return a == b
 	}
 	if !equalSlice(a.Params, b.Params) {
+		return false
+	}
+	if a.Parens != b.Parens {
 		return false
 	}
 	return true
@@ -1484,6 +1502,9 @@ func (a *WhenExpression) Equal(b2 Node) bool {
 		return false
 	}
 	if !a.Label.Equal(b.Label) {
+		return false
+	}
+	if a.Parens != b.Parens {
 		return false
 	}
 	if !equalSlice(a.Cases, b.Cases) {

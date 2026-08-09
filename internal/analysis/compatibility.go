@@ -106,8 +106,12 @@ func Compatible(a, b Type) bool {
 		}
 		return true
 	case bKind == KindMap && aKind == KindMap:
+		b = Underlying(b)
+		if _, ok := b.(Untyped); ok {
+			return false
+		}
 		// #{KA: VA} => #{KB: VB} if KA => KB and VA => VB
-		ma, mb := As[*Map](a), As[*Map](b)
+		ma, mb := As[*Map](a), b.(*Map)
 		return Compatible(ma.Key, mb.Key) && Compatible(ma.Value, mb.Value)
 	case bKind == KindEnum && aKind == KindEnum:
 		ea := Underlying(a).(EnumParenter)
@@ -121,6 +125,10 @@ func Compatible(a, b Type) bool {
 		if funcsCompatible(a, b) {
 			return true
 		}
+	case bKind == KindTuple && aKind == KindTuple:
+		// (AA, AB) => (BA, BB) if AA => AB and BA => BB
+		ta, tb := As[*Tuple](a), As[*Tuple](b)
+		return slices.EqualFunc(ta.Items, tb.Items, Compatible)
 	}
 	return TypesEqual(a, b) // TODO
 }
@@ -158,6 +166,12 @@ func TypesEqual(a, b Type) bool {
 		return TypesEqual(a.Success, b.Success) && TypesEqual(a.Error, b.Error)
 	case *Task:
 		return TypesEqual(a.Result, b.(*Task).Result)
+	case EnumParenter:
+		b, ok := b.(EnumParenter)
+		if !ok {
+			return false
+		}
+		return a.EnumParent() == b.EnumParent()
 	}
 	// Such as structs, enums
 	return a == b

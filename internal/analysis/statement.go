@@ -550,18 +550,14 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 		if varTypes, err = c.isIterable(success, numVars); err != nil {
 			break // Underlying type isn't iterable
 		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
-		err.SetParam("kind", "Result")
-		err.SetParam("before", "before it can be iterated over")
+		err = unwrapRequiredError(t, ranges.Range{}, "before it can be iterated over")
 		return varTypes, err
 	case KindOptional:
 		concrete := Underlying(t).(*Optional).Elem
 		if varTypes, err = c.isIterable(concrete, numVars); err != nil {
 			break // Underlying type isn't iterable
 		}
-		err = klarerrs.TypeError(klarerrs.ErrUnwrapRequired, ranges.Range{}, "", t.String())
-		err.SetParam("kind", "Optional")
-		err.SetParam("before", "before it can be iterated over")
+		err = unwrapRequiredError(t, ranges.Range{}, "before it can be iterated over")
 		return varTypes, err
 	case InvalidType:
 		return []Type{InvalidType, InvalidType}[:numVars], nil // Don't show an error

@@ -290,7 +290,8 @@ func (p *Parser) ParseIndexExpression(left ast.Expression, bp BindingPower) ast.
 }
 
 func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.CallExpression {
-	p.Expect(lexer.LeftParenthesis)
+	call := &ast.CallExpression{Callee: left}
+	call.Parens.Start = p.Expect(lexer.LeftParenthesis).Position
 	switch left := left.(type) {
 	case *ast.ParenExpression:
 		if left, ok := left.Expression.(*ast.LambdaExpression); ok {
@@ -299,7 +300,6 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 	case *ast.LambdaExpression:
 		p.Error(klarerrs.Node(klarerrs.ErrSelfExecFunc, left))
 	}
-	var args []*ast.CallParam
 	var labelMap map[string]*ast.CallParam // To detect duplicate labels
 	addLabel := func(param *ast.CallParam) {
 		name := param.Label.Name
@@ -341,13 +341,14 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 			addLabel(arg)
 		}
 		markEndPos(p, arg)
-		args = append(args, arg)
+		call.Args = append(call.Args, arg)
 		if p.IsNotCurrentlyEndOr(lexer.RightParenthesis) {
 			p.Expect(lexer.Comma)
 		}
 	}
-	p.Expect(lexer.RightParenthesis)
-	return &ast.CallExpression{Callee: left, Args: args}
+	// End() has pointer receiver
+	call.Parens.End = new(p.Expect(lexer.RightParenthesis)).End()
+	return call
 }
 
 func (p *Parser) ParseEnumLiteral() ast.Expression {
@@ -361,7 +362,7 @@ func (p *Parser) ParseEnumLiteral() ast.Expression {
 func (p *Parser) ParseStructDotInit() *ast.StructDotInit {
 	// Parsing starts with (
 	call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
-	return &ast.StructDotInit{Params: call.Args}
+	return &ast.StructDotInit{Params: call.Args, Parens: call.Parens}
 }
 
 func (p *Parser) ParseLambda() *ast.LambdaExpression {
@@ -537,9 +538,11 @@ func (p *Parser) ParseListCast() *ast.ListCastExpression {
 	p.Expect(lexer.LeftBracket)
 	typ := p.ParseType(DefaultTypeBindingPower)
 	p.Expect(lexer.RightBracket)
+	call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 	return &ast.ListCastExpression{
-		Type: typ,
-		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
+		Type:   typ,
+		Parens: call.Parens,
+		Args:   call.Args,
 	}
 }
 
@@ -549,9 +552,11 @@ func (p *Parser) ParseMapCast() *ast.MapCastExpression {
 	p.Expect(lexer.Colon)
 	val := p.ParseType(DefaultTypeBindingPower)
 	p.Expect(lexer.RightCurlyBrace)
+	call := p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis))
 	return &ast.MapCastExpression{
 		KeyType: key, ValueType: val,
-		Args: p.ParseCallExpression(nil, bpOf(lexer.LeftParenthesis)).Args,
+		Parens: call.Parens,
+		Args:   call.Args,
 	}
 }
 

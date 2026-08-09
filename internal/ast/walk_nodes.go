@@ -82,11 +82,11 @@ func (n *FloatLiteral) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *ForExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Iterator}, walkNode{4, n.Value}, walkNode{5, n.Block})
+	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{3, n.Iterator}, walkNode{5, n.Value}, walkNode{6, n.Block})
 }
 
 func (n *ForStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{2, n.Label}, walkNode{3, n.Iterator}, walkNode{4, n.Body})
+	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{3, n.Iterator}, walkNode{4, n.Label}, walkNode{5, n.Body})
 }
 
 func (n *FuncAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
@@ -142,7 +142,7 @@ func (n *LambdaExpression) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *ListCastExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Type}, walkSlice[*CallParam]{2, n.Args})
+	return walkFields(v, n, c, walkNode{1, n.Type}, walkSlice[*CallParam]{3, n.Args})
 }
 
 func (n *ListLiteral) Walk(v Visitor, c *Cursor) StopCode {
@@ -154,7 +154,7 @@ func (n *ListType) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *MapCastExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.KeyType}, walkNode{2, n.ValueType}, walkSlice[*CallParam]{3, n.Args})
+	return walkFields(v, n, c, walkNode{1, n.KeyType}, walkNode{2, n.ValueType}, walkSlice[*CallParam]{4, n.Args})
 }
 
 func (n *MapItem) Walk(v Visitor, c *Cursor) StopCode {
@@ -334,7 +334,7 @@ func (n *WhenCase) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *WhenExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkNode{2, n.Label}, walkSlice[*WhenCase]{3, n.Cases})
+	return walkFields(v, n, c, walkSlice[Expression]{1, n.Subjects}, walkNode{2, n.Label}, walkSlice[*WhenCase]{4, n.Cases})
 }
 
 func (n *WhileStatement) Walk(v Visitor, c *Cursor) StopCode {

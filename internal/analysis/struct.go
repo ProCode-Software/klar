@@ -118,7 +118,8 @@ func IsOptionalParam(p *Object) bool {
 // or result, following the rules of custom initializers. The inferred parameters
 // are returned for use in default initializer checking.
 func (c *Checker) tryCheckInitializer(
-	inits []*Overload, ps paramSet, args []*ast.CallParam, t *Expr,
+	inits []*Overload, ps paramSet, args []*ast.CallParam,
+	parens ranges.Range, t *Expr,
 ) bool {
 	if len(inits) == 0 {
 		return false
@@ -131,7 +132,7 @@ func (c *Checker) tryCheckInitializer(
 		// Idk if this should happen
 		panic("exact overload found, but resolveOverload returned a warning")
 	}
-	c.checkOverloadParams(ov, ps, args, t)
+	c.checkOverloadParams(ov, ps, args, parens, t)
 	return true
 }
 

@@ -82,18 +82,15 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 		c.fileError(err, t.Context.File)
 		t.Type = InvalidType
 	}
-	c.checkCallArgs(lhs.Type, expr.Args, t)
+	c.checkCallArgs(lhs.Type, expr.Args, expr.Parens, t)
 }
 
-func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overload Type) {
+func (c *Checker) checkCallArgs(
+	lhs Type, args []*ast.CallParam, parens ranges.Range, t *Expr,
+) (overload Type) {
 	if c.debug() {
-		rang := "<no params>"
-		if len(args) > 0 {
-			rang = ranges.FromSlice(args).String()
-		}
 		c.logger.push(fmt.Sprintf(
-			"call to %s at %s:%s",
-			lhs, c.Module.ResolveFile(t.FileID()), rang,
+			"call to %s at %s:%s", lhs, c.Module.ResolveFile(t.FileID()), parens,
 		))
 		defer c.logger.pop()
 	}
@@ -136,7 +133,7 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 		case *Struct:
 			ps := c.inferCallParams(args, t)
 			// Custom initializers have priority over default initializers
-			if ok := c.tryCheckInitializer(und.Initializers, ps, args, t); ok {
+			if ok := c.tryCheckInitializer(und.Initializers, ps, args, parens, t); ok {
 				// TODO: t.Type may be set to an optional or result
 				// t.Type = lhs // Preserve type name given in LHS
 				return
@@ -152,7 +149,7 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 			castParam = ps.params[0]
 		case *Enum:
 			ps := c.inferCallParams(args, t)
-			if ok := c.tryCheckInitializer(und.Initializers, ps, args, t); ok {
+			if ok := c.tryCheckInitializer(und.Initializers, ps, args, parens, t); ok {
 				// TODO: Preserve type name given in LHS
 				return
 			}
@@ -164,25 +161,30 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 			// TODO: Check arity count like below
 			castParam = ps.params[0]
 		default:
-			// TODO: Ensure exactly 1 parameter was passed
+			if !c.checkArity(args, Arity{1, 1}, len(args), parens, t.FileID()) {
+				return
+			}
 			castParam = c.checkExprFrom(args[0].Value, t).Type
 		}
 		// Otherwise, it's a type cast
+		if !c.checkArity(args, Arity{1, 1}, len(args), parens, t.FileID()) {
+			return // There must be exactly 1 parameter
+		}
 		c.checkTypeCast(lhs, castParam, args[0].Value, t)
 	case *EnumFunction:
 		t.Type = lhs
 	case *Lambda:
-		c.checkLambdaParams(fn, args, t)
+		c.checkLambdaParams(fn, args, parens, t)
 	case *Function:
 		t.Type = fn.Return
 		pset := c.inferCallParams(args, t)
 		ov, _, err := c.resolveOverload(fn.Overloads, pset, false)
 		if err != nil {
-			err.Range = ranges.FromSlice(args)
+			err.Range = parens
 			c.fileError(err, t.FileID())
 			// ov still isn't nil
 		}
-		c.checkOverloadParams(ov, pset, args, t)
+		c.checkOverloadParams(ov, pset, args, parens, t)
 	case *Overload:
 		t.Type = fn.Return
 		// c.checkOverloadParams(fn, )
@@ -198,17 +200,19 @@ func (c *Checker) checkCallArgs(lhs Type, args []*ast.CallParam, t *Expr) (overl
 	return lhs // TODO
 }
 
-func (c *Checker) checkArity(args []*ast.CallParam, arity Arity, got int, fid FileID) bool {
+func (c *Checker) checkArity(
+	args []*ast.CallParam, arity Arity, got int, parens ranges.Range, fid FileID,
+) bool {
 	if arity.InRange(got) {
 		return true
 	}
-	err := arityError(args, arity, got)
+	err := arityError(args, arity, got, parens)
 	c.fileError(err, fid)
 	return false
 }
 
-func arityError(args []*ast.CallParam, arity Arity, got int) *klarerrs.Error {
-	err := klarerrs.Slice(klarerrs.ErrWrongParamCount, args)
+func arityError(args []*ast.CallParam, arity Arity, got int, parens ranges.Range) *klarerrs.Error {
+	err := klarerrs.Range(klarerrs.ErrWrongParamCount, parens)
 	err.SetParam("got", got)
 	expParam := strconv.Itoa(arity.MinParams)
 	switch {
@@ -232,10 +236,10 @@ func arityError(args []*ast.CallParam, arity Arity, got int) *klarerrs.Error {
 	return err
 }
 
-func (c *Checker) checkLambdaParams(fn *Lambda, args []*ast.CallParam, t *Expr) {
+func (c *Checker) checkLambdaParams(fn *Lambda, args []*ast.CallParam, parens ranges.Range, t *Expr) {
 	t.Type = fn.Return
 	arity := fn.Arity()
-	if !c.checkArity(args, arity, len(args), t.FileID()) {
+	if !c.checkArity(args, arity, len(args), parens, t.FileID()) {
 		return
 	}
 	for i := 0; i < len(args); i++ {
@@ -363,12 +367,14 @@ func (c *Checker) inferCallParams(params []*ast.CallParam, callExpr *Expr) (ps p
 	return ps
 }
 
-func (c *Checker) checkOverloadParams(o *Overload, ps paramSet, params []*ast.CallParam, t *Expr) {
+func (c *Checker) checkOverloadParams(
+	o *Overload, ps paramSet, params []*ast.CallParam, parens ranges.Range, t *Expr,
+) {
 	t.Type = o.Return
 	// Arity check. We're not directly calling [Checker.checkArity] so we can
 	// offer hints if positional params were used instead of labelled ones.
 	if !o.Arity.InRange(len(ps.params)) {
-		c.overloadArityError(o, ps, params, t)
+		c.overloadArityError(o, ps, params, parens, t)
 		return
 	}
 
@@ -450,11 +456,11 @@ func makeLabelledParamMap(params []*ast.CallParam) map[string]*ast.CallParam {
 // Try to show a helpful message if the user provided a labelled
 // parameter as positional
 func (c *Checker) overloadArityError(
-	o *Overload, ps paramSet, params []*ast.CallParam, t *Expr,
+	o *Overload, ps paramSet, params []*ast.CallParam, parens ranges.Range, t *Expr,
 ) {
 	defaultError := func() {
 		// If there's no special hint we can give, use the generic message
-		c.checkArity(params, o.Arity, len(ps.params), t.FileID())
+		c.checkArity(params, o.Arity, len(ps.params), parens, t.FileID())
 	}
 	// To show a different message, the user has to provide all required
 	// positional params (may be 0)

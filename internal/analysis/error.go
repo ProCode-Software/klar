@@ -102,24 +102,38 @@ func typeMismatch(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
 }
 
 func tryUnwrapRequiredError(exp, got Type, gotRange ranges.Range) *klarerrs.Error {
-	var kind string
 	switch got := Underlying(got).(type) {
 	case *Optional:
 		if !Compatible(got.Elem, exp) {
 			return nil
 		}
-		kind = "Optional"
 	case *Result:
 		if !Compatible(got.Success, exp) {
 			return nil
 		}
-		kind = "Result"
 	default:
 		return nil
 	}
-	return klarerrs.Range(klarerrs.ErrUnwrapRequired, gotRange).
+	return unwrapRequiredError(
+		got, gotRange, "before it can be used as "+quote(exp.String()),
+	)
+}
+
+func unwrapRequiredError(t Type, r ranges.Range, before string) *klarerrs.Error {
+	var kind string
+	switch t.Kind() {
+	case KindOptional:
+		kind = "Optional"
+	case KindResult:
+		kind = "Result"
+	default:
+		panic("unexpected kind: " + t.Kind().String())
+	}
+	err := klarerrs.Range(klarerrs.ErrUnwrapRequired, r).
 		SetParam("kind", kind).
-		SetParam("before", "before it can be used as "+quote(exp.String()))
+		SetParam("before", before)
+	err.Info = klarerrs.TypeErrorInfo{GotType: t.String()}
+	return err
 }
 
 func handlePanic() {
