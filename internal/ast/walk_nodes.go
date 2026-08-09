@@ -18,7 +18,7 @@ func (n *AssignmentStatement) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *Attribute) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Name}, walkSlice[*CallParam]{2, n.Args})
+	return walkFields(v, n, c, walkNode{1, n.Name}, walkSlice[*CallParam]{3, n.Args})
 }
 
 func (n *AwaitExpression) Walk(v Visitor, c *Cursor) StopCode {
@@ -42,7 +42,7 @@ func (n *BooleanLiteral) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *CallExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{0, n.Callee}, walkSlice[*CallParam]{1, n.Args})
+	return walkFields(v, n, c, walkNode{0, n.Callee}, walkSlice[*CallParam]{2, n.Args})
 }
 
 func (n *CallParam) Walk(v Visitor, c *Cursor) StopCode {

@@ -83,6 +83,9 @@ func (a *Attribute) Equal(b2 Node) bool {
 	if !a.Name.Equal(b.Name) {
 		return false
 	}
+	if a.Parens != b.Parens {
+		return false
+	}
 	if !equalSlice(a.Args, b.Args) {
 		return false
 	}
@@ -177,6 +180,9 @@ func (a *CallExpression) Equal(b2 Node) bool {
 		return a == b
 	}
 	if a.Callee != nil && b.Callee != nil && !a.Callee.Equal(b.Callee) {
+		return false
+	}
+	if a.Parens != b.Parens {
 		return false
 	}
 	if !equalSlice(a.Args, b.Args) {
