@@ -308,7 +308,7 @@ func (p *Parser) Curr() lexer.Token { ... }
 - Indent Klar code snippets similar to Go doc comments.
 - Prefer linking to objects, including unexported ones, using brackets, similar to Go doc comments.
 
-## Go Language Features
+## Go Language Features / Syntax
 
 Always make use of the latest Go syntax and standard library features. Consult the `go.mod` at the root of the project for the latest version. As Go is updated, this list will be added to.
 
@@ -330,16 +330,50 @@ Always make use of the latest Go syntax and standard library features. Consult t
 - Use `(*testing.B).Loop()` instead of `b.N`.
 - Favor `slices` and `maps` packages over manual implementations.
 - Use `strings.Builder` for efficient string concatenation. Never concatenate to a string in a loop. If a string is concatenated to conditionally more than 3 times, use a Builder.
-- Use `strings.*Seq` functions rathern than `strings.*` (e.g. `strings.SplitSeq` instead of `strings.Split`) when the result is solely for the purpose of iteration. They are also suitable for getting an item at a specific list index. For example, to get the first split result:
+- Use `strings.*Seq` functions rathern than `strings.*` (e.g. `strings.SplitSeq` instead of `strings.Split`) when the result is solely for the purpose of iteration. They are also suitable for getting an item at a specific list index. For example, to get the second split result:
     ```go
-    var first string
-    for first = range strings.SplitSeq(s) {
-        break
+    var i int
+    var second string
+    for item := range strings.SplitSeq(s) {
+        if i == 1 {
+            second = item
+            break
+        }
+        i++
     }
     ```
+    To get the first result, use `strings.Cut` instead.
 - **ProTip:** For sorting keys in a map, use the following one-liner:
     ```go
     keys := slices.Sorted(maps.Keys(m)) // OMG WOW!!!
+    ```
+- Prefer using `make(map[k]v)` to initialize a map rather than `map[k]v{}`.
+- Prefer using `[]T{}` to initialize a slice rather than `make([]T, 0)`.
+    - When the length is predictable, prefer preallocating the length or capacity.
+    - When possible, and the length won't need to grow, preallocate the length.
+    The best example for preallocating _length_ is `FormatNumber` in [internal/util/util.go](../../internal/util/util.go)
+    ```go
+    func FormatNumber(n int) string {
+        orig := strconv.Itoa(n)
+        // Numbers under 10,000 shouldn't have separators
+        if len(orig) <= 4 || (len(orig) == 5 && orig[0] == '-') {
+            return orig
+        }
+        isNegative := orig[0] == '-'
+        if isNegative {
+            orig = orig[1:]
+        }
+        var (
+            // We know exactly how many digits + separators we need
+            numSeps = (len(orig) - 1) / 3
+            buf     = make([]byte, len(orig)+numSeps)
+        )
+        ...
+        if isNegative {
+            return "-" + string(buf)
+        }
+        return string(buf)
+    }
     ```
 
 ## Testing & Benchmarking
