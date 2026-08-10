@@ -25,7 +25,7 @@ func (rd *reader) readRune() (rune, error) {
 			if err == io.EOF {
 				return 0, io.EOF
 			}
-			panic(ReadError{err})
+			panic(readError{err})
 		}
 	}
 	r, n := utf8.DecodeRune(rd.buffer[rd.pos:])
@@ -128,7 +128,9 @@ func (rd *reader) readToken() Token {
 		case '+':
 			if curr, _, _ := rd.currRune(); curr >= '0' && curr <= '9' {
 				tok := rd.readNumber(r, start, bufPos)
-				rd.tokenError(klonerrs.ErrLeadingPlusSign, tok, "Redundant positive number prefix")
+				rd.tokenError(
+					klonerrs.ErrLeadingPlusSign, tok, "Redundant positive number prefix",
+				)
 				return tok
 			}
 		case '.':
@@ -455,7 +457,10 @@ func (rd *reader) readBlockComment(start lexer.Position) {
 	}
 	if depth > 0 {
 		// Unterminated block comment
-		rd.rangeError(klonerrs.ErrUnterminatedComment, cmt.Range, "Expected '*/' to end block comment")
+		rd.rangeError(
+			klonerrs.ErrUnterminatedComment, cmt.Range,
+			"Expected '*/' to end block comment",
+		)
 	}
 	rd.comments = append(rd.comments, cmt)
 }

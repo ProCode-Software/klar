@@ -106,7 +106,9 @@ notFound:
 	return nil, err
 }
 
-func resolveRest[T ast.Value](d *decoder, rest *ast.ArrowRef, rv reflect.Value) (val T, empty bool, err error) {
+func resolveRest[T ast.Value](
+	d *decoder, rest *ast.ArrowRef, rv reflect.Value,
+) (val T, empty bool, err error) {
 	res, err := d.resolveVar(rest.Var)
 	if err != nil {
 		return val, false, err
@@ -155,7 +157,8 @@ func (d *decoder) preprocessObject(obj *ast.Object) (*ast.Object, error) {
 		if existing, ok := literalKeys[path]; ok {
 			return nil, decodeError(
 				klonerrs.ErrDuplicateField, reflect.Value{}, f,
-				"Field %s was already defined at %s", klarerrs.Quote(path), existing.Pos(),
+				"Field %s was already defined at %s",
+				klarerrs.Quote(path), existing.Pos(),
 			)
 		}
 		literalKeys[path] = f

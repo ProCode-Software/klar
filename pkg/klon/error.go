@@ -10,14 +10,14 @@ import (
 	"github.com/ProCode-Software/klar/pkg/klon/klonerrs"
 )
 
-// ReadError is returned when an error occurs while reading from the input.
-type ReadError struct{ Err error }
+// readError is panicked when an error occurs while reading from the input.
+type readError struct{ Err error }
 
-func (err ReadError) Error() string {
+func (err readError) Error() string {
 	return "error while parsing: " + err.Err.Error()
 }
 
-func (err ReadError) Unwrap() error { return err.Err }
+func (err readError) Unwrap() error { return err.Err }
 
 type Error struct {
 	Code  klonerrs.Code
@@ -39,7 +39,7 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("klon: %s error at %s: %s", kind, err.Range, err.Text)
 }
 
-func (e *Error) IsTypeError() bool { return e.isDecodeErr }
+func (err *Error) IsTypeError() bool { return err.isDecodeErr }
 
 // Implements [reporter.Error]
 // =======

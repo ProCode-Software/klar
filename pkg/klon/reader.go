@@ -96,7 +96,7 @@ func (rd *reader) tryRefill() (eof error) {
 			if err == io.EOF {
 				return io.EOF
 			}
-			panic(ReadError{err})
+			panic(readError{err})
 		}
 	}
 	return nil
@@ -108,8 +108,8 @@ func handlePanic(e *error) {
 		return
 	case bailout:
 		return
-	case ReadError:
-		*e = err
+	case readError:
+		*e = err.Err
 	default:
 		panic(err)
 	}
