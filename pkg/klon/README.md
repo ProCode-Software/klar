@@ -7,7 +7,7 @@ Klon features:
 - Comments
 - Variables
 - Nesting based on hyphens rather than indentation (e.g. YAML)
-- String interpolation / Object spreading
+- String interpolation / Object rests
 
 ## JSON Compatibility
 
@@ -37,5 +37,12 @@ See [../../samples/basic/all.klon](https://github.com/ProCode-Software/klar/tree
         - declarationDir: @import ../tsconfig.shared '$DECLARATION_DIR'
     ```
 - Support shebangs at the top of the file. There will probably be some programs that interpret Klon; the feasability is higher for Klon than JSON.
+- Allow indexing objects stored in variables
+    ```klon
+    $user:
+        - name: John
+        - age: 32
+    name: ${user.name}
+    ```
 
 ## Architecture

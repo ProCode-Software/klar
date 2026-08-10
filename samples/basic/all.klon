@@ -7,8 +7,10 @@
 // Top-level object
 // This could be any type, but only 1 is allowed per file
 key: string
+// Keys can be quoted
 'quotedKey': 1
-0: true // Numeric key
+// Numbers are allowed as object keys
+0: true
 
 object:
     - a: 1
@@ -16,15 +18,20 @@ object:
     - c:
         - - another: true
         -- another2: false
-    
+
+// Key-paths may be used to set values in nested objects. This is equivalent to the above.
 object2.a: -1
 object2.b: -2
 object2.c.another: true
 object2.c.another2: false
 
-inlineObject: { a: 1, b: 2, c:
-    - another: true
-    - another2: false }
+// Braces `{...}` can also be used to declare an object
+inlineObject: {
+    a: 1, b: 2,
+    c:
+        - another: true
+        - another2: false
+}
 
 list:
     - First item
@@ -36,6 +43,7 @@ primitives:
     - bool: true
     - bool2: false
     - int: 1
+    - hexadecimalInt: 0xdeada55
     - int2: -1
     - float: 1.0
     - float2: -1.0
@@ -43,12 +51,13 @@ primitives:
     - string2: 'hello'
     - string3: "Hello
     World!"
-    - null:
-
+    - none:
 
 // Variables
+// =======
 numbers: [1, 2, $myNumber, 4]
 
+// Variables can be forward-declared
 $myNumber: 123
 $myNumbers: [3, 4, $myNumber]
 $myNull:
@@ -58,17 +67,18 @@ $myObject:
 
 somethingThatAcceptsAnObject: $myObject
 
-// Object Spread
 anotherThingAcceptingAnObject:
     - key3: value3
+    // Use '<-' (the rest/spread operator) to add the entries from an object stored in a variable
     - <- $myObject
     - key4: value4
 
-// List Spread
+// Rests can also be used in lists
 listSpread: [1, 2, <- $myNumbers, 5, 6]
 
 // String Concatenation
 messageToJane: My name is $name and "I am " ${age} " years old."
+reply: Hi $name, I'm 31 years old.
 
 $name: "John"
 $age: 32
