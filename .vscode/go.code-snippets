@@ -5,9 +5,9 @@
         "body": [
             "func (p *Parser) Parse$1(left ast.Node, bp BindingPower) ast.$2 {",
             "\t$0",
-            "}"
+            "}",
         ],
-        "description": "New LED handler"
+        "description": "New LED handler",
     },
     "nud": {
         "scope": "go",
@@ -16,9 +16,9 @@
             "func (p *Parser) Parse$1() ast.$2 {",
             "\tp.Expect(lexer.$3)",
             "\t$0",
-            "}"
+            "}",
         ],
-        "description": "New NUD handler"
+        "description": "New NUD handler",
     },
     "printtok": {
         "scope": "go",
@@ -26,18 +26,14 @@
         "body": [
             "for _, tok := range p.Tokens {",
             "\tfmt.Printf(\"%-20s %-5s %#q\\n\", tok.Kind, tok.Position, tok.Source)",
-            "}"
+            "}",
         ],
-        "description": "Print all tokens"
+        "description": "Print all tokens",
     },
     "check": {
         "scope": "go",
         "prefix": "check",
-        "body": [
-            "func (c *Checker) $1($2) $3 {",
-            "\t$0",
-            "}"
-        ],
-        "description": "New checker function"
-    }
+        "body": ["func (c *Checker) $1($2) $3 {", "\t$0", "}"],
+        "description": "New checker function",
+    },
 }

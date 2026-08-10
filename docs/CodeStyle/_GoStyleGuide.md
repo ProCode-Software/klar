@@ -9,12 +9,17 @@
 ## Code Organization
 
 ### Sections
+
 ### Separating Functions
+
 ### Ordering Files
 
 ## Statements
+
 ### Variable Declarations
+
 ### If Statements
+
 ### Switch Statements
 
 ## Doc Comments

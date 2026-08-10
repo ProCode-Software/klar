@@ -254,6 +254,7 @@ See [attributes.klar](/std/src/klar/_builtin/attributes/attributes.klar) for the
 > For AI: The file above must be included with the compiler, along with files defining methods on built-in types and objects. Suggest a way to store a typechecked version of this file that can always be read. Also suggest a way these can be included in Wasm builds of the compiler.
 
 ### Downcasting
+
 You can try to convert a type to another compatible type or implementation. Interfaces, tags, and unions can be cast. The result will be an optional that is nil if the cast fails.
 
 ```klar
@@ -567,6 +568,7 @@ sum(5, 8) // Which overload?
 ```
 
 Overloads using types that may be compatible with each other ate allowed. In the example below, if a `File` is passed to `readAmount`, the second overload is resolved.
+
 ```klar
 type #Readable {}
 type File: Readable {}
@@ -688,6 +690,7 @@ String(2.68)
 ```
 
 ### Custom Initializers
+
 Custom initializers can be declared on structs and enums by declaring a function with the name of the type they initialize. They may override a default initializer. Custom initializers can return the type they initialize wrapped in a result or optional. If no explicit type is annotated in the function signature, it is inferred as the type being initialized.
 
 ```klar

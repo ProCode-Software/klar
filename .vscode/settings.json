@@ -9,7 +9,5 @@
     },
     "npm.packageManager": "bun",
     "npm.scriptRunner": "bun",
-    "go.toolsEnvVars": {
-        "GOEXPERIMENT": "jsonv2"
-    }
+    "go.toolsEnvVars": { "GOEXPERIMENT": "jsonv2" }
 }

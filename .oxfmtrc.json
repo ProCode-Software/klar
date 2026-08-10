@@ -22,5 +22,6 @@
             ["internal", "subpath"],
             "type"
         ]
-    }
+    },
+    "overrides": [{ "files": ["*.yml", "*.yaml"], "options": { "tabWidth": 2 } }]
 }

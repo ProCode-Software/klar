@@ -39,11 +39,7 @@ const IncludeType = { name: 'entity.name.type.klar', patterns: [include('types')
 const repository: Repository = {
     comments: {
         patterns: [
-            {
-                begin: '\\A#!',
-                end: /$/,
-                name: 'comment.line.shebang.klar',
-            },
+            { begin: '\\A#!', end: /$/, name: 'comment.line.shebang.klar' },
             {
                 begin: /\/{2}/,
                 end: /$/,
@@ -206,10 +202,7 @@ const repository: Repository = {
     },
     builtinFunctions: {
         patterns: [
-            match(
-                /\b(print|crashout|clone|zip|TODO)\b/,
-                'support.function.builtin.klar'
-            ),
+            match(/\b(print|crashout|clone|zip|TODO)\b/, 'support.function.builtin.klar'),
             match(/\b\p{Lu}[_\p{L}\w]*\b/u, 'entity.name.type.init.klar'),
         ],
     },
@@ -273,10 +266,7 @@ const repository: Repository = {
     types: {
         patterns: [
             match(/\bfunc\b/, 'storage.type.function.klar'),
-            {
-                match: merge(Identifier, '(?=\\.)'),
-                name: 'entity.name.namespace.klar',
-            },
+            { match: merge(Identifier, '(?=\\.)'), name: 'entity.name.namespace.klar' },
             match(
                 /\b(String|Int|Float|Bool|Result|List|Map|Any|Nothing|Error)(?!\.)\b/,
                 'support.type.builtin.klar support.type.primitive.klar'
@@ -494,7 +484,7 @@ const repository: Repository = {
                 end: /$|(?=[,}])/,
                 beginCaptures: [{ name: 'keyword.operator.assignment.klar' }],
                 patterns: BASE,
-            }
+            },
         ],
     },
     typeLabels: {
@@ -526,13 +516,8 @@ const repository: Repository = {
             /\s*(:=)/
         ),
         beginCaptures: [
-            {
-                name: 'variable.other.assignment.klar',
-                patterns: [include('variables')],
-            },
-            {
-                patterns: [include('destructuring')],
-            },
+            { name: 'variable.other.assignment.klar', patterns: [include('variables')] },
+            { patterns: [include('destructuring')] },
             Punctuation.comma,
             Punctuation.colonType,
             IncludeType,

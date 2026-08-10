@@ -13,7 +13,6 @@ In [compatibility.go](./compatibility.go), you'll see syntax in comments that de
 - `A = B` means type _A_ is equal to _B_ (similar meaning for `!=`).
 - `A <=> B` means type _A_ is assignable to _B_ and vice versa.
 
-
 ## Overload Resolution
 
 ### Overload Declaration Rules

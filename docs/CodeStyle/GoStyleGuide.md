@@ -351,7 +351,9 @@ Always make use of the latest Go syntax and standard library features. Consult t
 - Prefer using `[]T{}` to initialize a slice rather than `make([]T, 0)`.
     - When the length is predictable, prefer preallocating the length or capacity.
     - When possible, and the length won't need to grow, preallocate the length.
-    The best example for preallocating _length_ is `FormatNumber` in [internal/util/util.go](../../internal/util/util.go)
+
+        The best example for preallocating _length_ is `FormatNumber` in [internal/util/util.go](../../internal/util/util.go)
+
     ```go
     func FormatNumber(n int) string {
         orig := strconv.Itoa(n)

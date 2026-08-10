@@ -1,5 +1,5 @@
-import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
 import { include, match } from 'vsxtools/tmLanguage'
+import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
 
 RegExp.prototype.toString = function () {
     return this.source

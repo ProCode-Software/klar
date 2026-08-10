@@ -15,14 +15,8 @@
         "version": "0.1.0",
         "license": "Apache-2.0",
         "description": "The progressive programming language",
-        "authors": [
-            {
-                "name": "ProCode Software"
-            }
-        ],
-        "links": {
-            "repository": "https://github.com/ProCode-Software/klar"
-        }
+        "authors": [{ "name": "ProCode Software" }],
+        "links": { "repository": "https://github.com/ProCode-Software/klar" }
     },
     "bindings": {
         "c": false,
