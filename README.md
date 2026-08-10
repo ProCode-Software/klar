@@ -1,6 +1,7 @@
 # Klar 🐨
 
-<img src="https://raw.githubusercontent.com/ProCode-Software/klar/main/.github/banner.png" alt="Banner">
+<img src="https://raw.githubusercontent.com/ProCode-Software/klar/main/.github/banner-light.png#gh-light-mode-only" alt="Banner">
+<img src="https://raw.githubusercontent.com/ProCode-Software/klar/main/.github/banner-dark.png#gh-dark-mode-only" alt="Banner">
 
 Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with no hidden behavior.
 
