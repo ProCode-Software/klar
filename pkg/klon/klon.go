@@ -150,7 +150,7 @@ func Quote(b []byte) []byte {
 		}
 	}
 	if canUnquote && !needEscape {
-		return orig
+		return orig // No characters need escaping or quoting!
 	}
 
 	// Quote and/or escape the string
@@ -181,7 +181,7 @@ func Quote(b []byte) []byte {
 		case unicode.IsPrint(r):
 			res = append(res, orig[i:i+size]...) // No escaping needed
 		default:
-			// Escape nonprintable characters. Code point inside \u{...} must
+			// Escape nonprintable characters. Code inside \u{...} must
 			// be at least 2 digits long
 			res = fmt.Appendf(res, `\u{%.2x}`, r)
 

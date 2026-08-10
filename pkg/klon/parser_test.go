@@ -23,7 +23,7 @@ object:
 	if len(obj.Fields) != 1 {
 		t.Fatalf("expected 1 field, got %d", len(obj.Fields))
 	}
-	
+
 	innerObj, ok := obj.Fields[0].Value.(*ast.Object)
 	if !ok {
 		t.Fatalf("expected *ast.Object for 'object' value, got %T", obj.Fields[0].Value)

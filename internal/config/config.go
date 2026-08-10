@@ -33,6 +33,7 @@ func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (warn []*klo
 
 const KlonIndentSize = 4
 
+// It is recommended to write an AST to a file, rather than a struct directly.
 func WriteToFile[T any](path string, config T, ctx *klon.Context) (err error) {
 	_ = ctx
 	f, err := os.Create(path)

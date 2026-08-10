@@ -17,6 +17,6 @@ var Context = &klon.Context{
 	// TODO: classes
 }
 
-func Write(m *Manifest,  path string) error {
+func Write(m *Manifest, path string) error {
 	return config.WriteToFile(path, m, Context)
 }
