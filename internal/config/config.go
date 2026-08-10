@@ -30,3 +30,19 @@ func ReadFromFile[T any](path string, config *T, ctx *klon.Context) (warn []*klo
 	}
 	return ctx.Warnings, nil
 }
+
+const KlonIndentSize = 4
+
+func WriteToFile[T any](path string, config T, ctx *klon.Context) (err error) {
+	_ = ctx
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+	return klon.MarshallWrite(config, KlonIndentSize, f)
+}

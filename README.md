@@ -1,6 +1,6 @@
 # Klar 🐨
 
-<img src="https://raw.githubusercontent.com/ProCode-Software/klar/main/.github/banner.png">
+<img src="https://raw.githubusercontent.com/ProCode-Software/klar/main/.github/banner.png" alt="Banner>
 
 Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with no hidden behavior.
 
@@ -9,7 +9,7 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 ## Goals
 
-- ⏩ **Progressive.** Unafraid to redesign features from other languages and pioneer new approaches. _Klar is different from the other langs!_
+- ⏩ **Progressive.** Unafraid to redesign features from other languages and pioneer new approaches. _Klar is not like the other languages!_
 - 👓 **Clear.** What you read is what it does.
 - 🛡️ **Safe.** All errors must be handled. Minimal runtime crashes. Type-safe. No null exceptions.
 - 🔮 **Modern.** Klar is a language designed from scratch, without weird C-derived features.
@@ -148,9 +148,14 @@ func testSum() {
 // Run using `klar test`
 ```
 
-## Contributing, Development, Issues, and PRs
+## Contributing & Development
 
-For a basic contribution guide for this repo, see [CONTRIBUTING.md](https://github.com/ProCode-Software/klar/blob/main/CONTRIBUTING.md). It also contains a guide on learning how the Klar compiler works.
+For a basic contribution guide for this repo, see [CONTRIBUTING.md](./CONTRIBUTING.md). It also contains a guide on learning how the Klar compiler works.
+
+The contributing guide also contains information on:
+
+- [How to submit pull requests](./CONTRIBUTING.md/#pull-requests)
+- [How to report bugs and crash reports](./CONTRIBUTING.md/#bug--crash-reports)
 
 ## Feedback, Comments, and RFCs
 
@@ -160,4 +165,4 @@ For other feedback and discussions, where you can request features and comment o
 
 ## License
 
-The Klar project is licensed under the [Apache License 2.0](https://github.com/ProCode-Software/klar/blob/main/LICENSE).
+The Klar project is licensed under the [Apache License 2.0](./LICENSE).

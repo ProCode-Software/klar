@@ -12,8 +12,7 @@ import (
 )
 
 func (d *decoder) makeDefaultDecoder(rt reflect.Type) decodeFunc {
-	kind := rt.Kind()
-	switch kind {
+	switch rt.Kind() {
 	case reflect.String:
 		return decodeString
 	case reflect.Bool:
@@ -163,6 +162,8 @@ func makeMapDecoder(rt reflect.Type, decodeKey, decodeValue decodeFunc) decodeFu
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
 		once.Do(func() {
 			if decodeKey == nil {
+				// TODO: Ensure that the key type is valid for Klon objects,
+				// or is an Unmarshaller/TextUnmarshaler
 				decodeKey = d.getDecoder(keyType)
 			}
 			if decodeValue == nil {
@@ -202,7 +203,7 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		}
 	}
 	return func(rv reflect.Value, val ast.Value, d *decoder) error {
-		if err != nil {
+		if err != nil { // Error while making struct fields
 			return err
 		}
 		once.Do(initDecoder)
@@ -210,6 +211,7 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 		if !ok {
 			return typeMismatchError(rv, val)
 		}
+		// TODO: Check missing fields
 		for _, f := range obj.Fields {
 			if err := d.decodeField(rv, strFields, f); err != nil {
 				return err
@@ -221,7 +223,8 @@ func (d *decoder) makeStructDecoder(rt reflect.Type) decodeFunc {
 
 func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.Field) error {
 	if f.Arrow != nil {
-		// The object should have already been preprocessed, and that involves resolving ArrowRefs.
+		// The object should have already been preprocessed, and that
+		// involves resolving ArrowRefs.
 		panic("field should not have Arrow during decoding")
 	}
 	if f.KeyPath != nil {
@@ -261,7 +264,7 @@ func (d *decoder) decodeField(rv reflect.Value, strFields structFields, f *ast.F
 				el := fv.Type().Elem()
 				// Embedded pointer to unexported struct: type A struct { *b `klon:"B"` }
 				if !fv.CanSet() {
-					return fmt.Errorf("can't set embedded pointer to unexported struct %s", el)
+					return fmt.Errorf("klon: can't set embedded pointer to unexported struct %s", el)
 				}
 				fv.Set(reflect.New(el))
 			}
@@ -348,25 +351,25 @@ func makeArrayDecoder(rt reflect.Type, decodeItem decodeFunc) decodeFunc {
 		})
 
 		list, ok := val.(*ast.List)
-		if !ok {
-			if d.flags.Has(klonflags.NoSingleItemToArray) {
-				return typeMismatchError(rv, val)
-			}
-			if !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1 {
-				if arrLength == 0 {
-					return decodeError(
-						klonerrs.ErrWrongArrayLength, rv, val,
-						"Expected no items in the list",
-					)
-				}
+		switch {
+		case ok:
+		case d.flags.Has(klonflags.NoSingleItemToArray):
+			return typeMismatchError(rv, val)
+		case !d.flags.Has(klonflags.IgnoreArrayLength) && arrLength != 1:
+			if arrLength == 0 {
 				return decodeError(
 					klonerrs.ErrWrongArrayLength, rv, val,
-					"Not enough items in the list: Expected %d, but found 1", arrLength,
+					"Expected no items in the list",
 				)
 			}
-			if arrLength == 0 {
-				return nil
-			}
+			return decodeError(
+				klonerrs.ErrWrongArrayLength, rv, val,
+				"Not enough items in the list: Expected %d, but found 1", arrLength,
+			)
+		case arrLength == 0:
+			// Array length is 0, but 1 item was provided. TODO: This should be an error
+			return nil
+		default:
 			// Put a single item into an array
 			return decodeItem(rv.Index(0), val, d)
 		}
@@ -494,7 +497,7 @@ func decodeInterface(rv reflect.Value, val ast.Value, d *decoder) error {
 	// We can't decode into a nil interface with methods
 	if rv.NumMethod() != 0 {
 		return fmt.Errorf(
-			"can't decode into nil interface with methods: %s", rv.Type().String(),
+			"klon: can't decode into nil interface with methods: %s", rv.Type().String(),
 		)
 	}
 	v, err := d.toGoValue(val)

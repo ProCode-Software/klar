@@ -24,7 +24,7 @@ type structFields struct {
 type structField struct {
 	Name   string
 	Decode decodeFunc // Value decoder
-	Encode any        // TODO
+	Encode encodeFunc // Value encoder
 	Type   reflect.Type
 	// Path to reach the actual field when embedded. If the field is not embedded,
 	// len(Indices) == 1. Each index is passed to [reflect.Value.FieldByIndex].
@@ -119,7 +119,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 						// TODO: Check if there are exceptions and precedence rules
 						// to avoid returning an error
 						return strFields, fmt.Errorf(
-							"duplicate field in struct %s: %s", strct.String(), name,
+							"klon: duplicate field in struct %s: %s", strct.String(), name,
 						)
 					} else {
 						strFields.Fields[name] = new
@@ -141,15 +141,14 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 			}
 		}
 	}
-	if flag.Has(klonflags.NoSortFields) {
-		return strFields, nil // Don't sort fields
+	if flag.Has(klonflags.SortStructFields) {
+		slices.SortFunc(strFields.Flat, func(a, b *structField) int {
+			return cmp.Or(
+				strings.Compare(a.Name, b.Name),
+				len(a.Indices)-len(b.Indices),
+			)
+		})
 	}
-	slices.SortFunc(strFields.Flat, func(a, b *structField) int {
-		return cmp.Or(
-			strings.Compare(a.Name, b.Name),
-			len(a.Indices)-len(b.Indices),
-		)
-	})
 	return strFields, nil
 }
 
@@ -189,7 +188,7 @@ func tryOptionsStructTag(
 			keyName, valName, ok := strings.Cut(opts, ",")
 			if !ok {
 				return nil, fmt.Errorf(
-					"field %s.%s: 'options:' struct tag must have 2 keys when type is a map, got 1",
+					"klon: field %s.%s: 'options:' struct tag must have 2 keys when type is a map, got 1",
 					strct.String(), f.Name,
 				)
 			}

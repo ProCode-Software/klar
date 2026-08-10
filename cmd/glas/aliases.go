@@ -8,6 +8,7 @@ var Aliases = map[string]string{
 	"u":         "remove",
 	"uninstall": "remove",
 	"r":         "remove",
+	"rm":        "remove",
 	"ls":        "list",
 	"tree":      "list",
 	"p":         "publish",

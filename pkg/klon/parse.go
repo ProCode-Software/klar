@@ -14,7 +14,7 @@ import (
 const MaxDepth = 10000
 
 // parseDocument parses a full Klon document.
-func (rd *reader) parseDocument() (*ast.Document, []error) {
+func (rd *reader) parseDocument() (*ast.Document, []*Error) {
 	res := rd.parseValue()
 
 	// Check for EOF

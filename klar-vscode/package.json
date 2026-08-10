@@ -15,7 +15,7 @@
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
     "devDependencies": {
-        "@vscode/vsce": "^3.7.0",
+        "@vscode/vsce": "^3.9.2",
         "vsxtools": "latest"
     },
     "contributes": {

@@ -10,7 +10,6 @@ import (
 )
 
 func (d *decoder) toGoValue(val ast.Value) (any, error) {
-	// TODO: use the klonflags
 	switch val := val.(type) {
 	case *ast.String:
 		str, err := d.evaluateString(val)
@@ -108,7 +107,40 @@ func (d *decoder) objectToGoMap(o *ast.Object) (map[string]any, error) {
 			m[name] = val
 		default:
 			// Key path
+			// TODO
 		}
 	}
 	return m, nil
+}
+
+func (e *encoder) appendAny(val any) error {
+	// Handle common types without reflection
+	switch val := val.(type) {
+	case nil:
+		return e.write("none")
+	case string:
+		str := Quote([]byte(val))
+		return e.writeSlice(str)
+	case []byte:
+		str := Quote([]byte(val))
+		return e.writeSlice(str)
+	case float64:
+		return e.appendFloat(val, 64)
+	case bool:
+		if val == true {
+			return e.write("true")
+		}
+		return e.write("false")
+	case int:
+		return e.appendInt(int64(val))
+	case int64:
+		return e.appendInt(val)
+	case []any:
+	case map[string]any:
+	default:
+		rv := reflect.ValueOf(val)
+		encode := e.getEncoder(rv.Type())
+		return encode(rv, e)
+	}
+	return nil
 }

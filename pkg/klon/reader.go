@@ -26,7 +26,7 @@ type reader struct {
 	vars       map[string]ast.Value
 	ctx        *Context
 	flags      klonflags.Flags
-	errs       []error
+	errs       []*Error
 	comments   []*ast.Comment
 }
 
@@ -115,8 +115,7 @@ func handlePanic(e *error) {
 	}
 }
 
-func parseFlags(flags ...klonflags.Flags) klonflags.Flags {
-	var f klonflags.Flags
+func parseFlags(flags ...klonflags.Flags) (f klonflags.Flags) {
 	for _, flag := range flags {
 		f |= flag
 	}

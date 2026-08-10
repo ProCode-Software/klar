@@ -1,13 +1,13 @@
-import type { ExtensionConfig } from 'vsxtools'
+import type { Config } from 'vsxtools'
 
 export default {
     configurations: {
         default: {
             type: 'language',
             inputs: ['src/klar.ts', 'src/klon.ts', 'src/codeblock.ts'],
-            outputFile: 'syntaxes/[name].tmLanguage.json'
-        }
+            outputFile: 'syntaxes/[name].tmLanguage.json',
+        },
     },
     watch: true,
     jsonIndent: 2,
-} satisfies ExtensionConfig
+} satisfies Config

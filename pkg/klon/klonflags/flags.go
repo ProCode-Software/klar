@@ -5,9 +5,13 @@ type Flags uint32
 const (
 	// Marshalling
 
-	NoSortFields       Flags = 1 << iota // Don't alphabetically sort fields (order is random for maps)
-	InsertFinalNewline                   // Add newline at end of output
-	PreserveFieldCase                    // Don't convert field names to camel case
+	SortStructFields    Flags = 1 << iota // Alphabetically sort struct fields
+	NoSortMaps                            // Don't alphabetically sort map keys. Order will be random.
+	InsertFinalNewline                    // Add newline at end of output
+	PreserveFieldCase                     // Don't convert field names to camel case
+	IndentWithTabs                        // Indent with tabs instead of spaces
+	HexadecimalUInt                       // Write UInts with '0x' prefix
+	PreserveEmptyFields                   // Write struct fields that have zero or empty values
 
 	// Unmarshalling
 

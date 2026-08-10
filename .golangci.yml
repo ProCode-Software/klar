@@ -30,6 +30,7 @@ linters:
     govet:
       disable:
         - composites
+        - stdversion
     exhaustive:
       default-signifies-exhaustive: true
       ignore-enum-types: "\\bTokenType\\b"
