@@ -118,8 +118,12 @@ func Quote(b []byte) []byte {
 	// characters (such as control characters) or invalid UTF-8.
 	//
 	// Quote prefers quoting strings over escaping when possible.
+	//
+	// TODO: Should valid numbers be quoted? If a number is left unquoted,
+	// determinism is lost when unmarshalling into 'any'
 	var (
-		canUnquote = len(bytes.TrimSpace(b)) == len(b) &&
+		// All other space characters must be escaped
+		canUnquote = len(bytes.Trim(b, " ")) == len(b) &&
 			string(b) != "none" &&
 			b[0] != '"' && b[0] != '\''
 		needEscape     bool
@@ -135,6 +139,10 @@ func Quote(b []byte) []byte {
 			canUnquote = false
 		case '\'':
 			hasSingleQuote = true
+		case '\f', '\r', '\t', '\v', '\x1b':
+			// Characters that can be escaped (the string can still be unquoted)
+			// See [getEscape]
+			needEscape = true
 		default:
 			if !unicode.IsPrint(r) {
 				canUnquote = false
@@ -181,8 +189,7 @@ func Quote(b []byte) []byte {
 		case b == '\f':
 			res = append(res, `\f`...)
 		case b == '\n':
-			// TODO: Does \n need escaping?
-			res = append(res, `\n`...)
+			res = append(res, `\n`...) // TODO: Does \n need escaping?
 		case b == '\r':
 			res = append(res, `\r`...)
 		case b == '\t':

@@ -74,11 +74,20 @@ func TestQuote(t *testing.T) {
 		{name: "Unicode", input: "💀", expected: "💀"},
 		{name: "InvalidUTF8", input: "fa\xffhh", expected: `fa\u{ff}hh`},
 		{name: "DollarSign", input: "$50", expected: `\$50`},
+		{name: "Tab", input: "\t", expected: `\t`},
 
 		// Quoting needed
 		{name: "LeadingSpaces", input: "   klar", expected: "'   klar'"},
 		{name: "LeadingUnicodeSpace", input: "\u00a0klar", expected: `'\u{a0}klar'`}, // NBSP
-		{name: "ANSISequence", input: "\x1b[31m", expected: `\e[31m`},
+		{name: "ANSISequence", input: "\x1b[31m", expected: `'\e[31m'`},
+
+		// Some strings that contain invalid UTF-8
+		// Source: https://stackoverflow.com/questions/1301402/example-invalid-utf8-string
+		{
+			name:     "InvalidUTF8",
+			input:    "\xfc\xa1\xa1\xa1\xa1\xa1",
+			expected: `\u{fc}\u{a1}\u{a1}\u{a1}\u{a1}\u{a1}`,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
