@@ -7,15 +7,26 @@
         "Programming Languages"
     ],
     "license": "Apache-2.0",
-    "publisher": "ProCode Software",
+    "author": {
+        "name": "ProCode Software"
+    },
+    "publisher": "klar",
     "type": "module",
+    "main": "dist/index.js",
     "scripts": {
         "watch": "vsxtools run --watch",
-        "build": "vsxtools run && vsxtools pack",
+        "build": "vsxtools run && bun run build-server && vsxtools pack",
+        "build-server": "esbuild src/extension/index.ts --bundle --outdir=dist --platform=node --external:vscode --format=cjs",
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
+    "dependencies": {
+        "vscode-languageclient": "^10.1.0"
+    },
     "devDependencies": {
+        "@types/node": "^26.2.0",
+        "@types/vscode": "1.99.0",
         "@vscode/vsce": "^3.9.2",
+        "esbuild": "^0.28.2",
         "vsxtools": "latest"
     },
     "contributes": {
@@ -68,7 +79,26 @@
                     "meta.embedded.block.klon": "klon"
                 }
             }
-        ]
+        ],
+        "commands": [
+            {
+                "command": "klar.restartServer",
+                "title": "Restart Language Server",
+                "category": "Klar"
+            }
+        ],
+        "configuration": {
+            "title": "Klar",
+            "properties": {
+                "klar.path": {
+                    "type": [
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Path to 'klar' executable. If empty, the extension will look for 'klar' in PATH. Relative paths are relative to the workspace root."
+                }
+            }
+        }
     },
     "engines": {
         "vscode": "^1.99.0"

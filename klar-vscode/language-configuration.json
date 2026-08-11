@@ -36,5 +36,13 @@
         ["\"", "\""],
         ["'", "'"],
         ["`", "`"]
+    ],
+    "onEnterRules": [
+        // Continue module doc comments after a newline
+        {
+            "beforeText": "^\\s*\\/{3}",
+            "action": { "indent": "none", "appendText": "/// " }
+        }
+        // TODO: Should we add this for normal (doc) comments?
     ]
 }

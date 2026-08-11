@@ -12,7 +12,8 @@
         "strict": true,
         "skipLibCheck": true,
         "target": "esnext",
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "types": ["node"]
     },
     "include": ["src"]
 }

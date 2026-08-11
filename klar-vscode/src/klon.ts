@@ -1,6 +1,6 @@
 // oxlint-disable no-useless-escape
-import type { Repository } from 'vsxtools/tmLanguage'
 import { include, match } from 'vsxtools/tmLanguage'
+import type { Repository } from 'vsxtools/tmLanguage'
 
 RegExp.prototype.toString = function () {
     return this.source
