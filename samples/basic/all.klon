@@ -3,7 +3,6 @@
 /*
     /* Nested block comment */
 */
-
 // Top-level object
 // This could be any type, but only 1 is allowed per file
 key: string
@@ -24,6 +23,8 @@ object2.a: -1
 object2.b: -2
 object2.c.another: true
 object2.c.another2: false
+"x": 1
+1: 2
 
 // Braces `{...}` can also be used to declare an object
 inlineObject: {
@@ -55,7 +56,7 @@ primitives:
 
 // Variables
 // =======
-numbers: [1, 2, $myNumber, 4]
+numbers: [1, 2, $myNumber, 4,]
 
 // Variables can be forward-declared
 $myNumber: 123
@@ -77,7 +78,7 @@ anotherThingAcceptingAnObject:
 listSpread: [1, 2, <- $myNumbers, 5, 6]
 
 // String Concatenation
-messageToJane: My name is $name and "I am " ${age} " years old."
+messageToJane: My name is $name and I am ${age} years old.
 reply: Hi $name, I'm 31 years old.
 
 $name: "John"

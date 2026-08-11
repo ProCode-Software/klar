@@ -1,92 +1,167 @@
+// oxlint-disable no-useless-escape
+import type { Repository } from 'vsxtools/tmLanguage'
 import { include, match } from 'vsxtools/tmLanguage'
-import type { Repository, TextMateLanguage } from 'vsxtools/tmLanguage'
 
 RegExp.prototype.toString = function () {
     return this.source
 }
 
 const comma = match(/,/, 'punctuation.separator.comma.klon')
+/* const unquotedString = {
+    begin: /.(?!\/(\/|\*))/,
+    end: /$|(?=\/(?:\/|\*))/,
+    name: 'string.unquoted.klon',
+} */
 
 const repository = {
-    commentInside: match(/TODO/, 'keyword.todo.klon'),
     comments: {
         patterns: [
-            {
-                begin: /\/{2}/,
-                end: /$/,
-                name: 'comment.line.double-slash.klon',
-                patterns: [include('commentInside')],
-            },
             {
                 begin: /\/\*/,
                 end: /\*\//,
                 name: 'comment.block.klon',
-                patterns: [include('commentInside')],
+                patterns: [include('comments')],
             },
+            { begin: /\/\//, end: '$', name: 'comment.line.klon' },
+            { begin: /\A#!/, end: '$', name: 'comment.line.shebang.klon' },
         ],
     },
-    properties: {
-        begin: /(?:(?<=\{)|^)\s*((?:-\s*)*)\s*(?:(\$\s*)?('(?:.*)'|"(?:.*)"|[-\p{L}\w._/+\\]+)\s*(:)\s*)?/u,
-        end: /$|(?=})/,
-        beginCaptures: [
-            { name: 'punctuation.definition.block.sequence.item.klon' },
-            { name: 'punctuation.definition.variable.klar' },
-            { name: 'support.type.property-name.klon', patterns: [include('keys')] },
-            { name: 'punctuation.separator.key-value.klon' },
-            { include: '#values' },
-        ],
-        patterns: [include('values')],
-    },
-    stringLiterals: {
-        begin: /("|')/,
-        end: '\\1',
-        beginCaptures: [{ name: 'punctuation.definition.string.begin.klon' }],
-        endCaptures: [{ name: 'punctuation.definition.string.end.klon' }],
-        contentName: 'string.quoted.klon',
-        patterns: [include('strings')],
-    },
-    namespaces: {
-        match: /(@)[\p{L}\w\d_.\\+-]+/u,
-        name: 'support.class.klon',
-        captures: [undefined, { name: 'punctuation.definition.class.klon' }],
-    },
-    strings: { patterns: [match(/\\./, 'constant.character.escape.klon')] },
-    rawStrings: { match: /.+?/, name: 'string.unquoted.klon' },
     numbers: {
         patterns: [
-            match(/\bv[\d.]+(?:-\w+(?:-\d+)?)?\b/, 'constant.numeric.version.klon'),
-            match(/\b(true|false)\b/, 'constant.language.boolean.$1.klon'),
-            match(/(?:\b|[-+])[\d_]+(?:.[\d_]+)?\b/, 'constant.numeric.decimal.klon'),
-            match(/(?:\B|[-+])\.[\d_]+\b/, 'constant.numeric.decimal.klon'),
+            match(
+                /\G\s*\bv[\d.]+(?:[- ]\w+(?:[- ]\d+)?)?\b/,
+                'constant.numeric.version.klon'
+            ),
+            match(/\G\s*\b(true|false)\b/, 'constant.language.boolean.$1.klon'),
+            match(/\G\s*\b(none)\b/, 'constant.language.none.klon'),
+            match(
+                /\G\s*(?:\b|-)[\d_]*\d(?:\.[\d_]*\d)?\b/,
+                'constant.numeric.decimal.klon'
+            ),
+            match(
+                /\G\s*(?:\b|-)0x[a-fA-F0-9]*[a-fA-F0-9]\b/,
+                'constant.numeric.hexadecimal.klon'
+            ),
+            match(/\G\s*(?:\b|-)0b[01]*[01]\b/, 'constant.numeric.hexadecimal.klon'),
         ],
     },
-    array: {
-        begin: /\[/,
-        end: /\]/,
-        captures: [{ name: 'punctuation.definition.array.klon' }],
-        patterns: [comma, { include: '#values' }],
+    strings: {
+        patterns: [
+            [/\G\s*"/, 'double', ['stringEscapes', 'stringInterpolations'], /"/],
+            [/\G\s*'/, 'single', ['stringEscapes'], /'/],
+            [/\G\s*>(")/, 'double', ['stringEscapes', 'stringInterpolations'], /"/],
+            [/\G\s*>(')/, 'single', ['stringEscapes'], /'/],
+        ].map(([b, name, pat, end]) => ({
+            begin: b,
+            end: end ?? b,
+            name: `string.quoted.${name}.klar`,
+            beginCaptures: [{ name: 'punctuation.definition.string.begin.klar' }],
+            endCaptures: [{ name: 'punctuation.definition.string.end.klar' }],
+            patterns: (pat as string[]).map(include),
+        })),
     },
-    objects: {
+    stringEscapes: {
+        patterns: [
+            match(/\\./, 'constant.character.escape.klon'), // Valid: [befnrtv"'$]
+            match(/\\u\{[a-f0-9A-F]{2,6}\}/, 'constant.character.escape.klon'),
+        ],
+    },
+    objectEntries: {
+        patterns: [
+            // Object spreads
+            {
+                match: /^\s*((?:-\s*)*)\s*(<-)\s*(\$(?:\{)?([\w\p{L}_]+)(?:\})?)/v,
+                captures: [
+                    { name: 'punctuation.definition.object.klon' },
+                    { name: 'keyword.operator.rest.klon' },
+                    { patterns: [include('variableRefs')] },
+                ],
+            },
+            // Key-value pairs
+            {
+                begin: /^\s*((?:-\s*)*)\s*(.+)\s*(:)/,
+                end: /$/,
+                beginCaptures: [
+                    { name: 'punctuation.definition.object.klon' },
+                    {
+                        name: 'variable.other.property meta.object-key.klon',
+                        patterns: [
+                            include('strings'),
+                            include('numbers'),
+                            match(/\./, 'punctuation.separator.keypath.klon'),
+                        ],
+                    },
+                    { name: 'punctuation.separator.colon.klar' },
+                ],
+                patterns: [
+                    include('values'),
+                    include('punctuation'),
+                    include('unquotedString'),
+                ],
+            },
+            // Block lists
+            {
+                begin: /^\s*((?:-\s*)+)\s/,
+                end: /$/,
+                beginCaptures: [
+                    undefined,
+                    { name: 'punctuation.definition.object.klon' },
+                ],
+                patterns: [
+                    include('values'),
+                    include('punctuation'),
+                    include('unquotedString'),
+                ],
+            },
+        ],
+    },
+    variableDefinitions: {
+        begin: /^\s*(\$)([\w_\p{L}]+)\s*(:)/v,
+        end: /$/,
+        beginCaptures: [
+            { name: 'punctuation.definition.variable.klon' },
+            { name: 'variable.other.klon' },
+            { name: 'punctuation.separator.colon.klar' },
+        ],
+        patterns: [include('values'), include('punctuation'), include('unquotedString')],
+    },
+    inlineObjects: {
         begin: /{/,
         end: /}/,
-        captures: [{ name: 'punctuation.definition.object.klon' }],
+        captures: [{ name: 'punctuation.definition.inline-object.klon' }],
         patterns: [
             comma,
-            match(/}/, 'punctuation.definition.object.klon'),
-            include('properties'),
+            {
+                // This begin pattern was very hard to write
+                begin: /([^-\s]+?.*?)\s*(:)/,
+                end: /$|(?=,|})/,
+                beginCaptures: [
+                    {
+                        name: 'variable.other.property meta.object-key.klon',
+                        patterns: [
+                            match(/\./, 'punctuation.separator.keypath.klon'),
+                            include('values'),
+                        ],
+                    },
+                    { name: 'punctuation.separator.colon.klar' },
+                ],
+                patterns: [include('values')],
+            },
+            include('objectEntries'),
         ],
     },
-    variables: {
+    stringInterpolations: include('variableRefs'),
+    variableRefs: {
         patterns: [
             {
-                match: /(\$)(\.?[-\p{L}\w_\\]+)/u,
+                match: /(\$)([\w\p{L}_]+)/v,
                 captures: [
                     { name: 'punctuation.definition.variable.klon' },
                     { name: 'variable.other.klon' },
                 ],
             },
             {
-                match: /(\$\{)\s*(\.?[-\p{L}\w_\\]+)\s*(\})/u,
+                match: /(\$\{)([\w\p{L}_]+)(\})/v,
                 captures: [
                     { name: 'punctuation.definition.variable.klon' },
                     { name: 'variable.other.klon' },
@@ -95,30 +170,44 @@ const repository = {
             },
         ],
     },
-    keys: {
-        patterns: [
-            include('stringLiterals'),
-            include('numbers'),
-            match('/', 'punctuation.separator.accessor.klon'),
-        ],
+    inlineLists: {
+        begin: /\[/,
+        end: /\]/,
+        captures: [{ name: 'meta.brace.square.klon' }],
+        patterns: [match(/,/, comma.name), include('values'), include('unquotedString')],
     },
     values: {
         patterns: [
-            'comments',
-            'objects',
-            'array',
-            'stringLiterals',
-            'namespaces',
-            'variables',
+            'inlineLists',
+            'strings',
             'numbers',
-            'rawStrings',
+            'variableRefs',
+            'inlineObjects',
         ].map(include),
+    },
+    punctuation: {
+        patterns: [
+            comma,
+            match(/<-/, 'keyword.operator.rest.klon'),
+            match(/\[|\]/, 'meta.brace.square.klon'),
+        ],
+    },
+    unquotedString: {
+        ...match(/.+?/, 'string.unquoted.klon'),
+        patterns: [include('stringEscapes'), include('stringInterpolations')],
     },
 } satisfies Repository
 
 export default {
     name: 'Klon',
     scopeName: 'source.klon',
-    patterns: ['comments', 'properties', 'values'].map(include),
+    patterns: [
+        'comments',
+        'variableDefinitions',
+        'objectEntries',
+        'punctuation',
+        'values',
+        'unquotedString',
+    ].map(include),
     repository,
-} satisfies TextMateLanguage
+}

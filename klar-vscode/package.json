@@ -2,16 +2,16 @@
     "name": "klar",
     "displayName": "Klar",
     "version": "0.0.1",
-    "description": "A programming language",
+    "description": "The progressive programming language",
     "categories": [
         "Programming Languages"
     ],
     "license": "Apache-2.0",
-    "publisher": "procode-software",
+    "publisher": "ProCode Software",
     "type": "module",
     "scripts": {
-        "watch": "vsxtools run",
-        "build": "vsce package --no-rewrite-relative-links --no-dependencies --allow-missing-repository",
+        "watch": "vsxtools run --watch",
+        "build": "vsxtools run && vsxtools pack",
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
     "devDependencies": {
