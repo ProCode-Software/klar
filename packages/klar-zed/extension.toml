@@ -4,7 +4,7 @@ version = "0.0.1"
 schema_version = 1
 authors = ["ProCode Software"]
 description = "Klar support."
-repository = "https://github.com/ProCode-Software/klar/tree/main/pkg/klar-zed"
+repository = "https://github.com/ProCode-Software/klar/tree/main/packages/klar-zed"
 
 [language_servers.klarls]
 name = "KlarLS"
@@ -12,15 +12,15 @@ languages = ["Klar", "Klon", "Glas Lockfile"]
 
 [grammars.klar]
 repository = 'https://github.com/ProCode-Software/klar'
-path = 'pkg/tree-sitter-klar'
+path = 'packages/tree-sitter-klar'
 rev = '30bf1ace89c013a9991cb75738a31d58e7d4839b'
 
 [grammars.klon]
 repository = 'https://github.com/ProCode-Software/klar'
-path = 'pkg/tree-sitter-klon'
+path = 'packages/tree-sitter-klon'
 rev = '30bf1ace89c013a9991cb75738a31d58e7d4839b'
 
 [grammars.glaslock]
 repository = 'https://github.com/ProCode-Software/klar'
-path = 'pkg/tree-sitter-glaslock'
+path = 'packages/tree-sitter-glaslock'
 rev = '30bf1ace89c013a9991cb75738a31d58e7d4839b'

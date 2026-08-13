@@ -333,7 +333,7 @@ func (l *Lockfile) WriteTo(w io.Writer) (int64, error) {
 	indent := char.Repeat(' ', indentSize)
 	buf := &bytes.Buffer{}
 
-	fmt.Fprintf(w, "lockfile %d\nklar %s\n", l.Version, l.Klar)
+	fmt.Fprintf(w, "lockfile v%d\nklar %s\n", l.Version, l.Klar)
 	for _, pkg := range l.Packages {
 		fmt.Fprintf(buf, "\npackage %s\n", pkg.PackageHeader.String())
 		if pkg.DevOnly {

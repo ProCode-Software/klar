@@ -10,7 +10,7 @@
     "author": "ProCode Software",
     "workspaces": [
         "klar-vscode",
-        "pkg/tree-sitter-*"
+        "packages/tree-sitter-*"
     ],
     "devDependencies": {
         "@types/bun": "latest",

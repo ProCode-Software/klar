@@ -1,0 +1,41 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "glaslock",
+      "camelcase": "GlasLock",
+      "title": "glas.lock",
+      "scope": "source.glaslock",
+      "file-types": [
+        "glas.lock"
+      ],
+      "injection-regex": "^glaslock$",
+      "class-name": "TreeSitterGlaslock"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Glaslock grammar for tree-sitter",
+    "authors": [
+      {
+        "name": "ProCode Software",
+        "url": ""
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-glaslock",
+      "funding": ""
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": true,
+    "python": false,
+    "rust": false,
+    "swift": false,
+    "zig": false
+  }
+}

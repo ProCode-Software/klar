@@ -14,7 +14,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+github.com/procode-software/klar.git"
+        "url": "git+github.com/ProCode-Software/klar.git"
     },
     "files": [
         "grammar.js",
@@ -31,7 +31,6 @@
     "types": "bindings/node",
     "scripts": {
         "generate": "tree-sitter generate && rm ./.editorconfig",
-        "install": "node-gyp-build",
         "prestart": "tree-sitter build --wasm",
         "build": "tree-sitter build --wasm",
         "start": "tree-sitter playground",

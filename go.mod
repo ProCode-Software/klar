@@ -21,8 +21,7 @@ require (
 ignore (
 	./docs
 	./klar-vscode
-	./pkg/klar-zed
-	./pkg/tree-sitter-klar
+	./packages
 	./samples
 	./std
 	node_modules
