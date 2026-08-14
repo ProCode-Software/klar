@@ -65,7 +65,7 @@ function build_binaries() {
                 echo -e '@echo off\n"%~dp0klar.exe" glas %*\nexit /b %errorlevel%' > "$out_dir/glas.cmd"
             else
                 # shellcheck disable=SC2016
-                echo -e '#!/usr/bin/env sh\n$(dirname "$0")/klar glas $@\nexit $?' > "$out_dir/glas"
+                echo -e '#!/usr/bin/env sh\n"$(dirname "$0")/klar" glas $@\nexit $?' > "$out_dir/glas"
                 chmod "$(stat --format='%a' "$out_dir/$name")" "$out_dir/glas"
             fi
 

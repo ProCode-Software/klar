@@ -202,7 +202,7 @@ build_from_source() {
         echo -e '@echo off\n"%~dp0klar.exe" glas %*\nexit /b %errorlevel%' > $glas_exec
     else
         # shellcheck disable=SC2016
-        echo -e '#!/usr/bin/env sh\n$(dirname "$0")/klar glas $@\nexit $?' > $glas_exec
+        echo -e '#!/usr/bin/env sh\n"$(dirname "$0")/klar" glas $@\nexit $?' > $glas_exec
         chmod +x "$glas_exec"
     fi
 }
