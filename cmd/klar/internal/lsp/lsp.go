@@ -14,9 +14,12 @@ func Run(*argparse.Parser) {
 	if err != nil {
 		width = 80
 	}
-	ansi.ColorFprintln(os.Stderr, ansi.CodeBold, "Hello human! 👋\n")
-	util.Wrap(description, util.WrapAllWriter(os.Stderr), width, width, 0)
-	ansi.TagFprintfln(os.Stderr, "\n\n<y!>If you have run 'klar lsp' manually, you can press <c!>Ctrl+C</c!> to exit.</y!>")
+	// Show a message if the user manually runs the command
+	if term.IsTerminal(int(os.Stderr.Fd())) {
+		ansi.ColorFprintln(os.Stderr, ansi.CodeBold, "Hello human! 👋\n")
+		util.Wrap(description, util.WrapAllWriter(os.Stderr), width, width, 0)
+		ansi.TagFprintfln(os.Stderr, "\n\n<y!>If you have run 'klar lsp' manually, you can press <c!>Ctrl+C</c!> to exit.</y!>")
+	}
 }
 
 const LongDescription = "Note: " + description
