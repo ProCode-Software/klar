@@ -64,7 +64,7 @@ export default grammar({
         package_url_directive: $ => seq('url', $.string),
 
         comment: () => seq('#', /.*/),
-        version: () => /v(\d+\.)*\d+/,
+        version: () => /v(\d+\.)*\d+/, // TODO: Support builds
         string: () => /[^\s\n#]+/,
         commit_number: () => /[a-f\d]+/,
     },

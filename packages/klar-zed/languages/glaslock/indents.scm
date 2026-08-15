@@ -1,0 +1,1 @@
+(full_package_directive) @indent
