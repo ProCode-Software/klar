@@ -102,6 +102,7 @@ var Commands = map[string]*command.Command{
 		ShortDescription: "Start the Klar Language Server (for IDEs only)",
 		Run:              lsp.Run,
 		LongDescription:  lsp.LongDescription,
+		Flags:            lsp.Flags,
 	},
 }
 

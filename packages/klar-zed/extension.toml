@@ -8,7 +8,7 @@ repository = "https://github.com/ProCode-Software/klar/tree/main/packages/klar-z
 
 [language_servers.klarls]
 name = "KlarLS"
-languages = ["Klar", "Klon", "Glas Lockfile"]
+languages = ["Klar", "Klon", "glas.lock"]
 
 [grammars.klar]
 repository = 'https://github.com/ProCode-Software/klar'

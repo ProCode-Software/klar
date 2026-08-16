@@ -215,6 +215,7 @@ func SetLogger(verbose, json bool) (l *slog.Logger, err error) {
 		logFile = os.Getenv("KLAR_LOG_FILE")
 		out     io.Writer
 		flags   logger.Flags
+		level   = slog.LevelInfo
 	)
 	switch {
 	case logFile != "":
@@ -228,11 +229,14 @@ func SetLogger(verbose, json bool) (l *slog.Logger, err error) {
 		flags |= logger.NoColor
 	case verbose || os.Getenv("KLAR_DEBUG") == "1":
 		out = os.Stderr
+		level = slog.LevelDebug
 	default:
 		return slog.New(slog.DiscardHandler), nil
 	}
 	if json {
-		return slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{})), nil
+		return slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{
+			Level: level,
+		})), nil
 	}
 	return slog.New(logger.NewLogHandler(out, flags)), nil
 }

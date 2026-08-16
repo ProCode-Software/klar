@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"golang.org/x/term"
 )
 
 type Flags uint8
@@ -53,7 +54,9 @@ type groupOrAttrs struct {
 
 // LogHandler implements [slog.Handler].
 //
-//	[2025-12-29 15:12:16] (main.go:1:1) Info: Hello, world | file: 1, length: 2
+// Example output:
+//
+//	[2025-12-29 15:12:16] (main.go:1:1) Info: Hello, world { file: 1, length: 2 }
 type LogHandler struct {
 	output io.Writer
 	mu     *sync.Mutex
@@ -87,6 +90,9 @@ func (h *LogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 
 func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 	// Color
+	if f, ok := h.output.(*os.File); ok && !term.IsTerminal(int(f.Fd())) {
+		h.flags |= NoColor
+	}
 	if h.flags.Has(NoColor) {
 		oldDisableColor := ansi.DisableColor
 		ansi.DisableColor = true

@@ -4,10 +4,13 @@ import (
 	"os"
 
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/lsp"
 	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/argparse"
 	"golang.org/x/term"
 )
+
+var Flags = lsp.Flags
 
 func Run(*argparse.Parser) {
 	width, _, err := term.GetSize(int(os.Stderr.Fd()))
@@ -15,11 +18,12 @@ func Run(*argparse.Parser) {
 		width = 80
 	}
 	// Show a message if the user manually runs the command
-	if term.IsTerminal(int(os.Stderr.Fd())) {
+	if term.IsTerminal(int(os.Stdin.Fd())) {
 		ansi.ColorFprintln(os.Stderr, ansi.CodeBold, "Hello human! 👋\n")
 		util.Wrap(description, util.WrapAllWriter(os.Stderr), width, width, 0)
 		ansi.TagFprintfln(os.Stderr, "\n\n<y!>If you have run 'klar lsp' manually, you can press <c!>Ctrl+C</c!> to exit.</y!>")
 	}
+	lsp.Main()
 }
 
 const LongDescription = "Note: " + description
