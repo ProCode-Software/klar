@@ -1,4 +1,4 @@
-name = "glas.lock"
+name = "glas.lock" # TODO: glas.lock or Glas Lockfile?
 grammar = "glaslock"
 path_suffixes = ["glas.lock"]
 line_comments = ["#"]
