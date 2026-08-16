@@ -21,6 +21,7 @@ See [../../samples/basic/all.klon](https://github.com/ProCode-Software/klar/tree
 
 ## Future Work
 
+- Standardise the meaning and API of classes (`@...`)
 - A formal specification. It may be released before or around the same time as Klar's.
 - A query language for making modifications to Klon ASTs
     ```go
@@ -44,5 +45,15 @@ See [../../samples/basic/all.klon](https://github.com/ProCode-Software/klar/tree
         - age: 32
     name: ${user.name}
     ```
+- References to the current object
+    ```glas.lock
+    name: klar/std
+    version: v0.0.1
+    klar: ${self.version} // Or `@self version`
+    ```
+- Referencing objects by variables and mutating them (e.g. `$user @with {...}`)
+- Allow objects as class parameters
+- Functions/mixins to return objects based on parameters
+- Builtin string utilities (e.g. case conversions, slicing, replace)
 
 ## Architecture
