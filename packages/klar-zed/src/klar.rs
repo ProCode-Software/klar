@@ -21,8 +21,7 @@ impl zed::Extension for KlarExtension {
         // `klar lsp`
         Ok(zed::Command {
             command: self.language_server_binary_path(language_server_id, worktree)?,
-            // Probably enable verbose logging so the user can see the logs in the editor
-            args: vec!["lsp".to_string(), "-v".to_string()],
+            args: vec!["lsp".to_string()],
             env: worktree.shell_env(),
         })
     }
