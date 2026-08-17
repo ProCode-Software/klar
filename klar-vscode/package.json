@@ -12,11 +12,11 @@
     },
     "publisher": "klar",
     "type": "module",
-    "main": "dist/index.js",
+    "main": "dist/index.cjs",
     "scripts": {
         "watch": "vsxtools run --watch",
         "build": "vsxtools run && bun run build-server && vsxtools pack",
-        "build-server": "esbuild src/extension/index.ts --bundle --outdir=dist --platform=node --external:vscode --format=cjs",
+        "build-server": "esbuild src/extension/index.ts --bundle --outfile=dist/index.cjs --platform=node --external:vscode --format=cjs",
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
     "dependencies": {

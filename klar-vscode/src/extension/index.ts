@@ -21,7 +21,7 @@ export async function activate({ subscriptions }: ExtensionContext) {
         }
         try {
             // oxlint-disable-next-line no-unused-expressions
-            client.isRunning() ? await client.restart() : await client.restart()
+            client.isRunning() ? await client.restart() : await client.start()
         } catch (err) {
             client.error('Failed to restart Klar language server', err, 'force')
         }
@@ -39,7 +39,7 @@ export async function activate({ subscriptions }: ExtensionContext) {
     const serverOptions: ServerOptions = {
         command,
         args: ['lsp'],
-        options: { shell: true, env: Object.assign(process.env, { NO_COLOR: 1 }) },
+        options: { env: Object.assign(process.env, { NO_COLOR: 1 }) },
     }
     const clientOptions: LanguageClientOptions = {
         documentSelector: ['klar', 'klon', 'glas.lock'].map(language => ({

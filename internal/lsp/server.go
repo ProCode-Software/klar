@@ -21,6 +21,7 @@ func (s *Server) Listen() {
 		msg, err := rpc.Decode(scanner.Bytes())
 		if err != nil {
 			s.Error("Error while decoding", slog.Any("error", err))
+			s.sendError("Decode error: "+err.Error(), nil, rpc.ParseError)
 			continue
 		}
 		switch msg := msg.(type) {
@@ -38,11 +39,13 @@ func (s *Server) Listen() {
 }
 
 // sendResponse sends a successful response to the output stream.
-func (s *Server) sendResponse(result any) (ok bool) {
+func (s *Server) sendResponse(result any, id rpc.ID) (ok bool) {
 	// TODO: Do we need an ID?
 	msg := &rpc.Response{
 		Result: result,
+		Id:     id,
 	}
+	msg.JSONRPC = rpc.JSON_RPCVersion
 	b, err := rpc.Encode(msg)
 	if err == nil {
 		_, err = s.out.Write(b)
@@ -54,10 +57,32 @@ func (s *Server) sendResponse(result any) (ok bool) {
 	return true
 }
 
-func decodeParams[T any](s *Server, val jsontext.Value) (T, bool) {
+func (s *Server) sendError(msg string, id rpc.ID, code rpc.ErrorCode) {
+	rpcMsg := &rpc.Response{
+		Id:     id,
+		Result: nil,
+		Error:  &rpc.ResponseError{Code: code, Message: msg},
+	}
+	rpcMsg.JSONRPC = rpc.JSON_RPCVersion
+	b, err := rpc.Encode(rpcMsg)
+	if err == nil {
+		_, err = s.out.Write(b)
+	}
+	if err != nil {
+		s.Error("Error while sending error", slog.Any("error", err))
+	} else {
+		s.Debug("Error response sent")
+	}
+}
+
+func decodeParams[T any](s *Server, id rpc.ID, val jsontext.Value) (T, bool) {
 	var result T
 	if err := json.Unmarshal(val, &result); err != nil {
 		s.Error("Failed to decode message params", slog.Any("error", err))
+		s.sendError(
+			fmt.Sprintf("Failed to decode message params: %v", err),
+			id, rpc.ParseError,
+		)
 		return result, false
 	}
 	return result, true
@@ -68,9 +93,11 @@ func (s *Server) handleRequest(req *rpc.Request) {
 	if req.Params != nil {
 		params = req.Params.(jsontext.Value)
 	}
+	s.Info("Got request", slog.Any("method", req.Method))
 	switch req.Method {
 	case "initialize":
-		params, ok := decodeParams[*lsp.InitializeParams](s, params)
+		s.Debug(string(params))
+		params, ok := decodeParams[*lsp.InitializeParams](s, req.Id, params)
 		if !ok {
 			return
 		}
@@ -80,7 +107,8 @@ func (s *Server) handleRequest(req *rpc.Request) {
 				Name:    "KlarLS",
 				Version: cli.KlarVersion,
 			},
-		})
+		}, req.Id)
+		s.Info("Server initialized", slog.String("clientName", params.ClientInfo.Name))
 	}
 }
 
@@ -98,6 +126,10 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		CompletionProvider: &lsp.CompletionOptions{},
 		CodeActionProvider: &rpc.Union2[bool, lsp.CodeActionOptions]{},
 		Workspace:          &lsp.WorkspaceOptions{},
+		NotebookDocumentSync: &rpc.Union2[
+			lsp.NotebookDocumentSyncOptions, lsp.NotebookDocumentSyncRegistrationOptions,
+		]{false}, // Jupyter notebooks not supported yet
+		HoverProvider: &rpc.Union2[bool, lsp.HoverOptions]{lsp.HoverOptions{}},
 	}
 	// Determine the position encoding the server should use.
 	//

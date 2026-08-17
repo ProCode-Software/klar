@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -25,18 +26,21 @@ type baseMessage struct {
 
 func (*baseMessage) lspMsg() {}
 
-type Method string
+type (
+	Method string
+	ID     = *Union2[int, string]
+)
 
 type Request struct {
 	baseMessage
-	Id     *Union2[int, string] `json:"id"`               // integer | string. The request id.
-	Method Method               `params:"method"`         // The method to be invoked.
-	Params any                  `json:"params,omitempty"` // object | array | null. The method's params.
+	Id     ID     `json:"id"`               // integer | string. The request id.
+	Method Method `params:"method"`         // The method to be invoked.
+	Params any    `json:"params,omitempty"` // object | array | null. The method's params.
 }
 type Response struct {
 	baseMessage
 	// The request id.
-	Id any `json:"id,omitempty"` // integer | string | null
+	Id ID `json:"id,omitempty"` // integer | string | null
 	/**
 	 * The result of a request. This member is REQUIRED on success.
 	 * This member MUST NOT exist if there was an error invoking the method.
@@ -70,26 +74,27 @@ func Encode(msg any) ([]byte, error) {
 }
 
 func Decode(b []byte) (Message, error) {
-	var content []byte
-	var ctLen int
-	_, err := fmt.Sscanf(
-		string(b), "Content-Length: %d\r\n\r\n%s",
-		&ctLen, &content,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("invalid RPC message: %v", err)
+	// Using [fmt.Sscanf] creates issues when decoding Klar source code in strings
+	header, body, ok := bytes.Cut(b, []byte("\r\n\r\n"))
+	if !ok {
+		return nil, errors.New("message is missing header")
 	}
+	ctLen, err := strconv.Atoi(string(header[len("Content-Length: "):]))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse content length: %v", err)
+	}
+	body = body[:ctLen]
 	// Go's JSON-RPC 2.0 implementation also uses a combined wire type
 	// https://github.com/golang/tools/blob/master/internal/jsonrpc2_v2/wire.go
 	var baseMsg struct {
-		JSONRPC string               `json:"jsonrpc"`
-		Id      *Union2[int, string] `json:"id"`
-		Method  Method               `json:"method"`
-		Params  jsontext.Value       `json:"params"`
-		Result  jsontext.Value       `json:"result"`
-		Error   *ResponseError       `json:"error,omitempty"`
+		JSONRPC string         `json:"jsonrpc"`
+		Id      ID             `json:"id"`
+		Method  Method         `json:"method"`
+		Params  jsontext.Value `json:"params"`
+		Result  jsontext.Value `json:"result"`
+		Error   *ResponseError `json:"error,omitempty"`
 	}
-	if err := json.Unmarshal(content, &baseMsg); err != nil {
+	if err := json.Unmarshal(body, &baseMsg); err != nil {
 		return nil, err
 	}
 	switch {

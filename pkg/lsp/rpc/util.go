@@ -7,7 +7,7 @@ import (
 
 type Union2[A, B any] struct{ Value any }
 
-func (u *Union2[A, B]) IsNil() bool { return u.Value == nil }
+func (u *Union2[A, B]) IsNil() bool { return u == nil || u.Value == nil }
 
 func (u *Union2[A, B]) Curr() int {
 	switch u.Value.(type) {
@@ -21,6 +21,8 @@ func (u *Union2[A, B]) Curr() int {
 		panic(fmt.Sprintf("unexpected type: %T", u.Value))
 	}
 }
+func (u Union2[A, B]) A() A { return u.Value.(A) }
+func (u Union2[A, B]) B() B { return u.Value.(B) }
 
 func (u *Union2[A, B]) UnmarshalJSON(data []byte) (err error) {
 	var a A
@@ -34,4 +36,8 @@ func (u *Union2[A, B]) UnmarshalJSON(data []byte) (err error) {
 		return nil
 	}
 	return err
+}
+
+func (u Union2[A, B]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(u.Value)
 }

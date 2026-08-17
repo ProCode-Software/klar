@@ -119,7 +119,6 @@ type (
 	WorkDoneProgressParams struct{}
 )
 
-
 type (
 	CallHierarchyClientCapabilities            struct{}
 	CallHierarchyOptions                       struct{}

@@ -1,13 +1,14 @@
 {
     "[typescript]": {
         "editor.fontLigatures": false,
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "[json]": {
         "editor.fontLigatures": false,
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
     },
     "npm.packageManager": "bun",
     "npm.scriptRunner": "bun",
-    "go.toolsEnvVars": { "GOEXPERIMENT": "jsonv2" }
+    "go.toolsEnvVars": { "GOEXPERIMENT": "jsonv2" },
+    "klar.path": "./klar",
 }
