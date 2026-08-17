@@ -150,7 +150,7 @@ type Enumeration struct {
 	/**
 	 * The type of the elements.
 	 */
-	Type BaseType // Representing string | integer | uinteger
+	Type BaseType `json:"type"` // Representing string | integer | uinteger
 
 	/**
 	 * The enum values.

@@ -18,8 +18,8 @@ type Type struct {
 	Name    string `json:"name,omitempty"`    // [BaseTypes] if 'base', string if 'reference'
 	Element *Type  `json:"element,omitempty"` // Array
 	// Map. Represents URI | DocumentUri | string | integer | ReferenceType
-	Key   *Type `json:"key,omitempty"`
-	Items []Type    `json:"items,omitempty"` // and | or | tuple
+	Key   *Type  `json:"key,omitempty"`
+	Items []Type `json:"items,omitempty"` // and | or | tuple
 	// 	- [Type] if map
 	// 	- [bool] if booleanLiteral
 	// 	- [string] if stringLiteral

@@ -33,20 +33,23 @@ func main() {
 	categorizeTypes(mm, types)
 
 	sortedSymbols := slices.Sorted(maps.Keys(types))
-	wr := writer{mm: mm, symbols: types, sortedSymbols: sortedSymbols}
+	w := writer{mm: mm, symbols: types, sortedSymbols: sortedSymbols}
 	// Always write structs first
-	wr.writeStructs()
+	w.writeStructs()
 	for _, name := range sortedSymbols {
-		entry := wr.symbols[name]
+		entry := w.symbols[name]
+		if entry.category != "" {
+			w.currCategory = entry.category
+		}
 		switch decl := entry.decl.(type) {
 		case *TypeAlias:
-			wr.writeTypeAlias(decl, wr.getFile(entry.category))
+			w.writeTypeAlias(decl, w.getFile(entry.category))
 		case *Enumeration:
-			wr.writeEnum(decl, wr.getFile(entry.category))
+			w.writeEnum(decl, w.getFile(entry.category))
 		}
 	}
 
-	for _, f := range wr.files {
+	for _, f := range w.files {
 		if err := f.Close(); err != nil {
 			panic(err)
 		}
@@ -133,6 +136,10 @@ func getCategory(method string) string {
 	}
 }
 
+func (sm symbolMap) setCategory(s, cat string) {
+	sm[s] = symbol{decl: sm[s].decl, category: cat}
+}
+
 func categorizeTypes(mm *MetaModel, sm symbolMap) {
 	type queueEntry struct {
 		method string
@@ -168,10 +175,6 @@ func categorizeTypes(mm *MetaModel, sm symbolMap) {
 		if typ == nil || typ.Name == "" || sm[typ.Name].category != "" {
 			continue
 		}
-		prev := sm[typ.Name]
-		sm[typ.Name] = symbol{
-			decl:     prev.decl,
-			category: getCategory(entry.method),
-		}
+		sm.setCategory(typ.Name, getCategory(entry.method))
 	}
 }

@@ -2,17 +2,21 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
 type goStruct struct {
-	name     string
-	inherits []string
-	fields   []*goStructField
-	comment  string
+	name       string
+	inherits   []string
+	fields     []*goStructField
+	desc       string
+	deprecated string
 }
 
 type goStructField struct {
@@ -20,7 +24,8 @@ type goStructField struct {
 	// Types can include Go slice syntax
 	typ         string
 	optional    bool // Declared with ?: in TS or a union with null
-	comment     string
+	docs        string
+	deprecated  string
 	sideComment string
 }
 
@@ -30,6 +35,7 @@ type writer struct {
 	sortedSymbols []string
 	files         map[string]*os.File // Keys don't have .go suffix
 	largeStructs  map[string]struct{}
+	currCategory  string
 }
 
 func (w *writer) writeStructs() {
@@ -40,15 +46,14 @@ func (w *writer) writeStructs() {
 			continue
 		}
 		file := w.getFile(entry.category)
+		w.currCategory = entry.category
 		goStr := w.toGoStruct(s)
 		writeGoStruct(goStr, file)
 	}
 }
 
 func (w *writer) getFile(baseName string) *os.File {
-	if baseName == "" {
-		baseName = "general"
-	}
+	baseName = cmp.Or(baseName, w.currCategory, "basic")
 	if w.files == nil {
 		w.files = make(map[string]*os.File)
 	}
@@ -100,9 +105,10 @@ var NullType = Type{Kind: KindBase, Name: string(Null)}
 
 func (w *writer) toGoStruct(s *Structure) *goStruct {
 	goStr := &goStruct{
-		name:    s.Name,
-		comment: toGoDocComment(s.Documentation, s.Deprecated),
-		fields:  make([]*goStructField, len(s.Properties)),
+		name:       s.Name,
+		desc:       s.Documentation,
+		deprecated: s.Deprecated,
+		fields:     make([]*goStructField, len(s.Properties)),
 	}
 	// Inherited types
 	for _, group := range [...][]Type{s.Extends, s.Mixins} {
@@ -117,9 +123,10 @@ func (w *writer) toGoStruct(s *Structure) *goStruct {
 	// Props
 	for i, prop := range s.Properties {
 		f := &goStructField{
-			name:     prop.Name,
-			comment:  toGoDocComment(prop.Documentation, prop.Deprecated),
-			optional: prop.Optional,
+			name:       prop.Name,
+			docs:       s.Documentation,
+			deprecated: s.Deprecated,
+			optional:   prop.Optional,
 		}
 		var needSideComment bool
 		if prop.Type.Kind == KindOr {
@@ -131,7 +138,7 @@ func (w *writer) toGoStruct(s *Structure) *goStruct {
 		} else {
 			f.typ = w.typeToGoType(prop.Type, &needSideComment)
 		}
-		if f.optional && f.typ[0] != '*' && !shouldIndirect(f.typ) {
+		if f.optional && f.typ[0] != '*' && shouldIndirect(f.typ) {
 			f.typ = "*" + f.typ
 		}
 		if needSideComment {
@@ -140,34 +147,6 @@ func (w *writer) toGoStruct(s *Structure) *goStruct {
 		goStr.fields[i] = f
 	}
 	return goStr
-}
-
-// Go doc lists need a newline before them, and each line indented.
-// If the object is deprecated, add "Deprecated: " at the beginning of
-// a new line.
-func toGoDocComment(comment, deprecated string) string {
-	var isList bool
-	var b strings.Builder
-	for line := range strings.Lines(comment) {
-		if strings.HasPrefix(line, "- ") {
-			line = "\t" + line
-			if !isList {
-				b.WriteByte('\n')
-			}
-			isList = true
-		} else {
-			isList = false
-		}
-		b.WriteString(line)
-	}
-	if deprecated != "" {
-		if b.Len() > 0 {
-			b.WriteByte('\n')
-		}
-		b.WriteString("Deprecated: ")
-		b.WriteString(deprecated)
-	}
-	return b.String()
 }
 
 func (w *writer) typeToGoType(t Type, needSideComment *bool) string {
@@ -315,17 +294,19 @@ func (w *writer) convertUnion(t Type, needSideCmt *bool) (s string, hasNull bool
 func shouldIndirect(typ string) bool {
 	switch typ {
 	case "string", "any", "int", "int32", "uint32", "float64":
-		return true
+		return false
 	default:
 		return true
 	}
 }
 
+func toGoName(s string) string {
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
 func writeGoStruct(s *goStruct, file *os.File) {
 	var buf bytes.Buffer
-	if s.comment != "" {
-		fmt.Fprintf(&buf, "/* %s */\n", s.comment)
-	}
+	writeComment(&buf, s.desc, s.deprecated, false)
 	fmt.Fprintf(&buf, "type %s struct {\n", s.name)
 	for _, inh := range s.inherits {
 		buf.WriteByte('\t')
@@ -333,11 +314,8 @@ func writeGoStruct(s *goStruct, file *os.File) {
 		buf.WriteByte('\n')
 	}
 	for _, f := range s.fields {
-		if s.comment != "" {
-			fmt.Fprintf(&buf, "\t/* %s */\n", s.comment)
-		}
-		goName := strings.ToUpper(f.name[:1]) + f.name[1:]
-		fmt.Fprintf(&buf, "\t%s %s", goName, f.typ)
+		writeComment(&buf, s.desc, s.deprecated, true)
+		fmt.Fprintf(&buf, "\t%s %s", toGoName(f.name), f.typ)
 
 		// JSON struct tags
 		jsonTags := f.name
@@ -405,9 +383,7 @@ func (w *writer) writeTypeAlias(a *TypeAlias, file *os.File) {
 		return
 	}
 	buf := &bytes.Buffer{}
-	if a.Documentation != "" || a.Deprecated != "" {
-		fmt.Fprintf(buf, "/* %s */\n", toGoDocComment(a.Documentation, a.Deprecated))
-	}
+	writeComment(buf, a.Documentation, a.Deprecated, false)
 	var needSideCmt bool
 	fmt.Fprintf(buf, "type %s = %s", a.Name, w.typeToGoType(a.Type, &needSideCmt))
 	if needSideCmt {
@@ -421,27 +397,77 @@ func (w *writer) writeTypeAlias(a *TypeAlias, file *os.File) {
 
 func (w *writer) writeEnum(e *Enumeration, file *os.File) {
 	buf := &bytes.Buffer{}
-	if e.Documentation != "" || e.Deprecated != "" {
-		fmt.Fprintf(buf, "/* %s */\n", toGoDocComment(e.Documentation, e.Deprecated))
-	}
-	if e.Type.Name == "" {
-		panic(fmt.Sprintf("empty base type for %q: %#v", e.Name, e.Type))
-	}
+	writeComment(buf, e.Documentation, e.Deprecated, false)
 	fmt.Fprintf(
 		buf, "type %s %s\n\nconst (\n", e.Name,
 		baseTypeToGoType(e.Type.Name),
 	)
 	for _, val := range e.Values {
-		if val.Documentation != "" || val.Deprecated != "" {
-			fmt.Fprintf(
-				buf, "\t/* %s */\n",
-				toGoDocComment(val.Documentation, val.Deprecated),
-			)
+		writeComment(buf, val.Documentation, val.Deprecated, true)
+		itemName := e.Name + toGoName(val.Name)
+		var valStr string
+		if s, ok := val.Value.(string); ok {
+			valStr = strconv.Quote(s)
+		} else {
+			valStr = fmt.Sprintf("%v", val.Value)
 		}
-		fmt.Fprintf(buf, "\t%s %s = %v\n", val.Name, e.Name, val.Value)
+		fmt.Fprintf(buf, "\t%s %s = %s\n", itemName, e.Name, valStr)
 	}
 	buf.WriteString(")\n")
 	if _, err := buf.WriteTo(file); err != nil {
 		panic(err)
 	}
+}
+
+var referenceRegex = regexp.MustCompile(`\{@link ([^}\s]+)([^}]*)(\})`)
+
+// Go doc lists need a newline before them, and each line indented.
+// If the object is deprecated, add "Deprecated: " at the beginning of
+// a new line.
+func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
+	if doc == "" && deprecated == "" {
+		return
+	}
+	writeIndent := func() {
+		if indent {
+			buf.WriteByte('\t')
+		}
+	}
+	buf.WriteString("/*\n")
+
+	var isList bool
+	var b strings.Builder
+	for line := range strings.Lines(doc) {
+		// Replace {@link Object} with [Object] syntax for Go docs
+		line = referenceRegex.ReplaceAllStringFunc(line, func(ref string) string {
+			subs := referenceRegex.FindStringSubmatchIndex(ref)
+			textI, bracketI := subs[2], subs[3]
+			symbol, text := line[subs[1]:textI], line[textI:bracketI]
+			if text != "" {
+				return fmt.Sprintf("%s ([%s])", text, symbol)
+			}
+			return "[" + symbol + "]"
+		})
+
+		writeIndent()
+		buf.WriteString("* ")
+		if strings.HasPrefix(line, "- ") {
+			line = "\t" + line
+			if !isList {
+				b.WriteByte('\n')
+			}
+			isList = true
+		} else {
+			isList = false
+		}
+		b.WriteString(line)
+	}
+	if deprecated != "" {
+		b.WriteString("*\n")
+		writeIndent()
+		b.WriteString("* Deprecated: ")
+		b.WriteString(deprecated)
+	}
+	writeIndent()
+	buf.WriteString("*/\n")
 }
