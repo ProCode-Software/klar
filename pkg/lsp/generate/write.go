@@ -402,9 +402,12 @@ func (w *writer) writeEnum(e *Enumeration, file *os.File) {
 		buf, "type %s %s\n\nconst (\n", e.Name,
 		baseTypeToGoType(e.Type.Name),
 	)
+	// Strip some common suffixes from each variant so the names are cleaner
+	shortVariantName := strings.NewReplacer("Kind", "", "Filter", "", "Mode", "").
+		Replace(e.Name)
 	for _, val := range e.Values {
 		writeComment(buf, val.Documentation, val.Deprecated, true)
-		itemName := e.Name + toGoName(val.Name)
+		itemName := shortVariantName + toGoName(val.Name)
 		var valStr string
 		if s, ok := val.Value.(string); ok {
 			valStr = strconv.Quote(s)
@@ -419,7 +422,7 @@ func (w *writer) writeEnum(e *Enumeration, file *os.File) {
 	}
 }
 
-var referenceRegex = regexp.MustCompile(`\{@link ([^}\s]+)([^}]*)(\})`)
+var referenceRegex = regexp.MustCompile(`\{@link ([^}\s]+)([^}]*)\}`)
 
 // Go doc lists need a newline before them, and each line indented.
 // If the object is deprecated, add "Deprecated: " at the beginning of
@@ -433,41 +436,60 @@ func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
 			buf.WriteByte('\t')
 		}
 	}
-	buf.WriteString("/*\n")
+	isSingleLine := !strings.ContainsRune(doc, '\n') &&
+		!strings.ContainsRune(deprecated, '\n')
+
+	writeIndent()
+	if isSingleLine {
+		buf.WriteString("// ")
+	} else {
+		buf.WriteString("/*\n")
+	}
 
 	var isList bool
-	var b strings.Builder
 	for line := range strings.Lines(doc) {
 		// Replace {@link Object} with [Object] syntax for Go docs
 		line = referenceRegex.ReplaceAllStringFunc(line, func(ref string) string {
 			subs := referenceRegex.FindStringSubmatchIndex(ref)
-			textI, bracketI := subs[2], subs[3]
-			symbol, text := line[subs[1]:textI], line[textI:bracketI]
+			symbol := ref[subs[2]:subs[3]]
+			text := ref[subs[4]:subs[5]]
 			if text != "" {
-				return fmt.Sprintf("%s ([%s])", text, symbol)
+				return fmt.Sprintf("%s [%s]", text, symbol)
 			}
 			return "[" + symbol + "]"
 		})
 
-		writeIndent()
-		buf.WriteString("* ")
+		if !isSingleLine {
+			writeIndent()
+		}
 		if strings.HasPrefix(line, "- ") {
 			line = "\t" + line
 			if !isList {
-				b.WriteByte('\n')
+				buf.WriteByte('\n')
 			}
 			isList = true
 		} else {
 			isList = false
 		}
-		b.WriteString(line)
+		buf.WriteString(line)
 	}
+
 	if deprecated != "" {
-		b.WriteString("*\n")
-		writeIndent()
-		b.WriteString("* Deprecated: ")
-		b.WriteString(deprecated)
+		if !isSingleLine {
+			buf.WriteByte('\n')
+			buf.WriteByte('\n')
+			writeIndent()
+			buf.WriteString("* ")
+		}
+		buf.WriteString("Deprecated: ")
+		buf.WriteString(deprecated)
 	}
-	writeIndent()
-	buf.WriteString("*/\n")
+
+	if !isSingleLine {
+		buf.WriteByte('\n')
+		writeIndent()
+		buf.WriteString("*/\n")
+	} else {
+		buf.WriteByte('\n')
+	}
 }

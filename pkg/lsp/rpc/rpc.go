@@ -13,7 +13,7 @@ import (
 
 const JSON_RPCVersion = "2.0"
 
-// Things that can be sent/recived
+// Things that can be sent/received
 // ========
 
 type Message interface {

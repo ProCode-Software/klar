@@ -119,7 +119,7 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		TextDocumentSync: &rpc.Union2[lsp.TextDocumentSyncOptions, lsp.TextDocumentSyncKind]{
 			lsp.TextDocumentSyncOptions{
 				OpenClose: new(true),
-				Change:    new(lsp.SyncFull),
+				Change:    new(lsp.TextDocumentSyncKindFull),
 			},
 		},
 		PositionEncoding:   nil, // Set below. If not, it should be utf-16
@@ -136,7 +136,10 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 	// The lexer encodes positions in UTF-32 (codepoints/runes). If the client
 	// supports it, prefer that. Otherwise, prefer uft8 if supported. There are
 	// better Go APIs for UTF-8 than UTF-16.
-	preferredEncoding := [...]lsp.PositionEncodingKind{lsp.UTF32, lsp.UTF8, lsp.UTF16}
+	preferredEncoding := [...]lsp.PositionEncodingKind{
+		lsp.PositionEncodingKindUTF32, lsp.PositionEncodingKindUTF8,
+		lsp.PositionEncodingKindUTF16,
+	}
 	clientEncodings := init.Capabilities.General.PositionEncodings
 	switch len(clientEncodings) {
 	case 0:

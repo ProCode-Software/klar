@@ -36,9 +36,9 @@ const (
 	KindReference TypeKind = "reference"
 	KindArray     TypeKind = "array"
 	KindMap       TypeKind = "map"
-	KindAnd       TypeKind = "and" // No occurences
+	KindAnd       TypeKind = "and" // No occurrences
 	KindOr        TypeKind = "or"
-	// As of LSP 3.18, 1 occurence (item types are commom)
+	// As of LSP 3.18, 1 occurrence (item types are commom)
 	KindTuple TypeKind = "tuple"
 	// As of LSP 3.18, 2 occurrences. Both empty objects
 	KindStructLiteral TypeKind = "literal"
