@@ -296,7 +296,7 @@ func shouldIndirect(typ string) bool {
 	case "string", "any", "int", "int32", "uint32", "float64":
 		return false
 	default:
-		return true
+		return !strings.HasPrefix(typ, "[]") // Don't indirect slices
 	}
 }
 

@@ -70,9 +70,9 @@ type ShowMessageRequestClientCapabilities struct {
 }
 
 type ShowMessageRequestParams struct {
-	Type    MessageType          `json:"type"`
-	Message string               `json:"message"`
-	Actions *[]MessageActionItem `json:"actions,omitempty"`
+	Type    MessageType         `json:"type"`
+	Message string              `json:"message"`
+	Actions []MessageActionItem `json:"actions,omitempty"`
 }
 
 /*

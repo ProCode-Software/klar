@@ -44,7 +44,7 @@ type CallHierarchyItem struct {
 
 		@since 3.16.0
 	*/
-	Tags *[]SymbolTag `json:"tags,omitempty"`
+	Tags []SymbolTag `json:"tags,omitempty"`
 	/*
 		Represents programming constructs like functions or constructors in the context
 		of call hierarchy.

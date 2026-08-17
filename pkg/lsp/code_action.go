@@ -28,7 +28,7 @@ type CodeAction struct {
 
 		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
 	*/
-	Diagnostics *[]*Diagnostic `json:"diagnostics,omitempty"`
+	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
 	/*
 		A code action represents a change that can be performed in code, e.g. to fix a problem or
 		to refactor code.
@@ -70,7 +70,7 @@ type CodeAction struct {
 
 		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
 	*/
-	Tags *[]CodeActionTag `json:"tags,omitempty"`
+	Tags []CodeActionTag `json:"tags,omitempty"`
 }
 
 // The Client Capabilities of a [CodeActionRequest].

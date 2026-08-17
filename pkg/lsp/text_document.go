@@ -114,7 +114,7 @@ type Command struct {
 		an array of arguments which will be passed to the command handler
 		function when invoked.
 	*/
-	Arguments *[]any `json:"arguments,omitempty"`
+	Arguments []any `json:"arguments,omitempty"`
 }
 
 // Completion parameters
@@ -505,7 +505,7 @@ type DocumentSymbol struct {
 		have two ranges: one that encloses its definition and one that points to
 		its most interesting range, e.g. the range of an identifier.
 	*/
-	Tags *[]SymbolTag `json:"tags,omitempty"`
+	Tags []SymbolTag `json:"tags,omitempty"`
 	/*
 		Represents programming constructs like variables, classes, interfaces etc.
 		that appear in a document. Document symbols can be hierarchical and they
@@ -533,7 +533,7 @@ type DocumentSymbol struct {
 		have two ranges: one that encloses its definition and one that points to
 		its most interesting range, e.g. the range of an identifier.
 	*/
-	Children *[]*DocumentSymbol `json:"children,omitempty"`
+	Children []*DocumentSymbol `json:"children,omitempty"`
 }
 
 // Parameters for a [DocumentSymbolRequest].
@@ -1046,7 +1046,7 @@ type SignatureInformation struct {
 		can have a label, like a function-name, a doc-comment, and
 		a set of parameters.
 	*/
-	Parameters *[]ParameterInformation `json:"parameters,omitempty"`
+	Parameters []ParameterInformation `json:"parameters,omitempty"`
 	/*
 		Represents the signature of something callable. A signature
 		can have a label, like a function-name, a doc-comment, and

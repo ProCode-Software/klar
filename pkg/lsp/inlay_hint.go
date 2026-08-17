@@ -32,7 +32,7 @@ type InlayHint struct {
 
 		@since 3.17.0
 	*/
-	TextEdits *[]TextEdit `json:"textEdits,omitempty"`
+	TextEdits []TextEdit `json:"textEdits,omitempty"`
 	/*
 		Inlay hint information.
 

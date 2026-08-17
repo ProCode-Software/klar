@@ -132,7 +132,7 @@ type ClientCompletionItemOptions struct {
 	// @since 3.18.0
 	CommitCharactersSupport *bool `json:"commitCharactersSupport,omitempty"`
 	// @since 3.18.0
-	DocumentationFormat *[]MarkupKind `json:"documentationFormat,omitempty"`
+	DocumentationFormat []MarkupKind `json:"documentationFormat,omitempty"`
 	// @since 3.18.0
 	DeprecatedSupport *bool `json:"deprecatedSupport,omitempty"`
 	// @since 3.18.0
@@ -152,7 +152,7 @@ type ClientCompletionItemOptions struct {
 // @since 3.18.0
 type ClientCompletionItemOptionsKind struct {
 	// @since 3.18.0
-	ValueSet *[]CompletionItemKind `json:"valueSet,omitempty"`
+	ValueSet []CompletionItemKind `json:"valueSet,omitempty"`
 }
 
 // @since 3.18.0
@@ -170,7 +170,7 @@ type ClientDiagnosticsTagOptions struct {
 // @since 3.18.0
 type ClientFoldingRangeKindOptions struct {
 	// @since 3.18.0
-	ValueSet *[]FoldingRangeKind `json:"valueSet,omitempty"`
+	ValueSet []FoldingRangeKind `json:"valueSet,omitempty"`
 }
 
 // @since 3.18.0
@@ -231,7 +231,7 @@ type ClientShowMessageActionItemOptions struct {
 // @since 3.18.0
 type ClientSignatureInformationOptions struct {
 	// @since 3.18.0
-	DocumentationFormat *[]MarkupKind `json:"documentationFormat,omitempty"`
+	DocumentationFormat []MarkupKind `json:"documentationFormat,omitempty"`
 	// @since 3.18.0
 	ParameterInformation *ClientSignatureParameterInformationOptions `json:"parameterInformation,omitempty"`
 	// @since 3.18.0
@@ -249,7 +249,7 @@ type ClientSignatureParameterInformationOptions struct {
 // @since 3.18.0
 type ClientSymbolKindOptions struct {
 	// @since 3.18.0
-	ValueSet *[]SymbolKind `json:"valueSet,omitempty"`
+	ValueSet []SymbolKind `json:"valueSet,omitempty"`
 }
 
 // @since 3.18.0
@@ -278,7 +278,7 @@ type CodeActionContext struct {
 		Contains additional diagnostic information about the context in which
 		a  code action [CodeActionProvider.provideCodeActions] is run.
 	*/
-	Only *[]CodeActionKind `json:"only,omitempty"`
+	Only []CodeActionKind `json:"only,omitempty"`
 	/*
 		Contains additional diagnostic information about the context in which
 		a  code action [CodeActionProvider.provideCodeActions] is run.
@@ -324,9 +324,9 @@ type CodeActionKindDocumentation struct {
 type CodeActionOptions struct {
 	WorkDoneProgressOptions
 	// Provider options for a [CodeActionRequest].
-	CodeActionKinds *[]CodeActionKind `json:"codeActionKinds,omitempty"`
+	CodeActionKinds []CodeActionKind `json:"codeActionKinds,omitempty"`
 	// Provider options for a [CodeActionRequest].
-	Documentation *[]CodeActionKindDocumentation `json:"documentation,omitempty"`
+	Documentation []CodeActionKindDocumentation `json:"documentation,omitempty"`
 	// Provider options for a [CodeActionRequest].
 	ResolveProvider *bool `json:"resolveProvider,omitempty"`
 }
@@ -373,9 +373,9 @@ type ColorInformation struct {
 }
 
 type ColorPresentation struct {
-	Label               string      `json:"label"`
-	TextEdit            *TextEdit   `json:"textEdit,omitempty"`
-	AdditionalTextEdits *[]TextEdit `json:"additionalTextEdits,omitempty"`
+	Label               string     `json:"label"`
+	TextEdit            *TextEdit  `json:"textEdit,omitempty"`
+	AdditionalTextEdits []TextEdit `json:"additionalTextEdits,omitempty"`
 }
 
 // Completion client capabilities
@@ -437,7 +437,7 @@ type CompletionItemDefaults struct {
 
 		@since 3.17.0
 	*/
-	CommitCharacters *[]string `json:"commitCharacters,omitempty"`
+	CommitCharacters []string `json:"commitCharacters,omitempty"`
 	/*
 		In many cases the items of an actual completion result share the same
 		value for properties like `commitCharacters` or the range of a text
@@ -578,7 +578,7 @@ type CompletionListCapabilities struct {
 
 		@since 3.17.0
 	*/
-	ItemDefaults *[]string `json:"itemDefaults,omitempty"`
+	ItemDefaults []string `json:"itemDefaults,omitempty"`
 	/*
 		The client supports the following `CompletionList` specific
 		capabilities.
@@ -592,9 +592,9 @@ type CompletionListCapabilities struct {
 type CompletionOptions struct {
 	WorkDoneProgressOptions
 	// Completion options.
-	TriggerCharacters *[]string `json:"triggerCharacters,omitempty"`
+	TriggerCharacters []string `json:"triggerCharacters,omitempty"`
 	// Completion options.
-	AllCommitCharacters *[]string `json:"allCommitCharacters,omitempty"`
+	AllCommitCharacters []string `json:"allCommitCharacters,omitempty"`
 	// Completion options.
 	ResolveProvider *bool `json:"resolveProvider,omitempty"`
 	// Completion options.
@@ -734,7 +734,7 @@ type DocumentOnTypeFormattingOptions struct {
 	// Provider options for a [DocumentOnTypeFormattingRequest].
 	FirstTriggerCharacter string `json:"firstTriggerCharacter"`
 	// Provider options for a [DocumentOnTypeFormattingRequest].
-	MoreTriggerCharacter *[]string `json:"moreTriggerCharacter,omitempty"`
+	MoreTriggerCharacter []string `json:"moreTriggerCharacter,omitempty"`
 }
 
 // Provider options for a [DocumentRangeFormattingRequest].
@@ -1122,7 +1122,7 @@ type GeneralClientCapabilities struct {
 
 		@since 3.16.0
 	*/
-	PositionEncodings *[]PositionEncodingKind `json:"positionEncodings,omitempty"`
+	PositionEncodings []PositionEncodingKind `json:"positionEncodings,omitempty"`
 }
 
 // The result of a hover request.
@@ -1134,8 +1134,8 @@ type Hover struct {
 }
 
 type HoverClientCapabilities struct {
-	DynamicRegistration *bool         `json:"dynamicRegistration,omitempty"`
-	ContentFormat       *[]MarkupKind `json:"contentFormat,omitempty"`
+	DynamicRegistration *bool        `json:"dynamicRegistration,omitempty"`
+	ContentFormat       []MarkupKind `json:"contentFormat,omitempty"`
 }
 
 // Hover options.
@@ -1692,7 +1692,7 @@ type NotebookCellArrayChange struct {
 
 		@since 3.17.0
 	*/
-	Cells *[]NotebookCell `json:"cells,omitempty"`
+	Cells []NotebookCell `json:"cells,omitempty"`
 }
 
 // @since 3.18.0
@@ -1779,13 +1779,13 @@ type NotebookDocumentCellChangeStructure struct {
 
 		@since 3.18.0
 	*/
-	DidOpen *[]TextDocumentItem `json:"didOpen,omitempty"`
+	DidOpen []TextDocumentItem `json:"didOpen,omitempty"`
 	/*
 		Structural changes to cells in a notebook document.
 
 		@since 3.18.0
 	*/
-	DidClose *[]TextDocumentIdentifier `json:"didClose,omitempty"`
+	DidClose []TextDocumentIdentifier `json:"didClose,omitempty"`
 }
 
 /*
@@ -1805,13 +1805,13 @@ type NotebookDocumentCellChanges struct {
 
 		@since 3.18.0
 	*/
-	Data *[]NotebookCell `json:"data,omitempty"`
+	Data []NotebookCell `json:"data,omitempty"`
 	/*
 		Cell changes to a notebook document.
 
 		@since 3.18.0
 	*/
-	TextContent *[]NotebookDocumentCellContentChanges `json:"textContent,omitempty"`
+	TextContent []NotebookDocumentCellContentChanges `json:"textContent,omitempty"`
 }
 
 /*
@@ -1959,7 +1959,7 @@ type NotebookDocumentFilterWithNotebook struct {
 	// @since 3.18.0
 	Notebook rpc.Union2[string, NotebookDocumentFilter] `json:"notebook"`
 	// @since 3.18.0
-	Cells *[]NotebookCellLanguage `json:"cells,omitempty"`
+	Cells []NotebookCellLanguage `json:"cells,omitempty"`
 }
 
 /*
@@ -2380,7 +2380,7 @@ type SemanticTokensEdit struct {
 	// @since 3.16.0
 	DeleteCount uint32 `json:"deleteCount"`
 	// @since 3.16.0
-	Data *[]uint32 `json:"data,omitempty"`
+	Data []uint32 `json:"data,omitempty"`
 }
 
 /*
@@ -2678,9 +2678,9 @@ type SignatureHelpContext struct {
 type SignatureHelpOptions struct {
 	WorkDoneProgressOptions
 	// Server Capabilities for a [SignatureHelpRequest].
-	TriggerCharacters *[]string `json:"triggerCharacters,omitempty"`
+	TriggerCharacters []string `json:"triggerCharacters,omitempty"`
 	// Server Capabilities for a [SignatureHelpRequest].
-	RetriggerCharacters *[]string `json:"retriggerCharacters,omitempty"`
+	RetriggerCharacters []string `json:"retriggerCharacters,omitempty"`
 }
 
 /*
@@ -2996,7 +2996,7 @@ type TypeHierarchyItem struct {
 	// @since 3.17.0
 	Kind SymbolKind `json:"kind"`
 	// @since 3.17.0
-	Tags *[]SymbolTag `json:"tags,omitempty"`
+	Tags []SymbolTag `json:"tags,omitempty"`
 	// @since 3.17.0
 	Detail string `json:"detail,omitempty"`
 	// @since 3.17.0
@@ -3136,7 +3136,7 @@ type WorkspaceEdit struct {
 		cause failure of the operation. How the client recovers from the failure is described by
 		the client capability: `workspace.workspaceEdit.failureHandling`
 	*/
-	DocumentChanges *[]any `json:"documentChanges,omitempty"` // TextDocumentEdit | CreateFile | RenameFile | DeleteFile[]
+	DocumentChanges []any `json:"documentChanges,omitempty"` // TextDocumentEdit | CreateFile | RenameFile | DeleteFile[]
 	/*
 		A workspace edit represents changes to many resources managed in the workspace. The edit
 		should either provide `changes` or `documentChanges`. If documentChanges are present
@@ -3156,7 +3156,7 @@ type WorkspaceEdit struct {
 
 type WorkspaceEditClientCapabilities struct {
 	DocumentChanges         *bool                            `json:"documentChanges,omitempty"`
-	ResourceOperations      *[]ResourceOperationKind         `json:"resourceOperations,omitempty"`
+	ResourceOperations      []ResourceOperationKind          `json:"resourceOperations,omitempty"`
 	FailureHandling         *FailureHandlingKind             `json:"failureHandling,omitempty"`
 	NormalizesLineEndings   *bool                            `json:"normalizesLineEndings,omitempty"`
 	ChangeAnnotationSupport *ChangeAnnotationsSupportOptions `json:"changeAnnotationSupport,omitempty"`
@@ -3195,7 +3195,7 @@ type WorkspaceFoldersChangeEvent struct {
 }
 
 type WorkspaceFoldersInitializeParams struct {
-	WorkspaceFolders *[]WorkspaceFolder `json:"workspaceFolders,omitempty"` // WorkspaceFolder[] | null
+	WorkspaceFolders []WorkspaceFolder `json:"workspaceFolders,omitempty"` // WorkspaceFolder[] | null
 }
 
 type WorkspaceFoldersServerCapabilities struct {

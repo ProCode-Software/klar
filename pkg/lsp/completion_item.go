@@ -27,7 +27,7 @@ type CompletionItem struct {
 		A completion item represents a text snippet that is
 		proposed to complete text that is being typed.
 	*/
-	Tags *[]CompletionItemTag `json:"tags,omitempty"`
+	Tags []CompletionItemTag `json:"tags,omitempty"`
 	/*
 		A completion item represents a text snippet that is
 		proposed to complete text that is being typed.
@@ -87,12 +87,12 @@ type CompletionItem struct {
 		A completion item represents a text snippet that is
 		proposed to complete text that is being typed.
 	*/
-	AdditionalTextEdits *[]TextEdit `json:"additionalTextEdits,omitempty"`
+	AdditionalTextEdits []TextEdit `json:"additionalTextEdits,omitempty"`
 	/*
 		A completion item represents a text snippet that is
 		proposed to complete text that is being typed.
 	*/
-	CommitCharacters *[]string `json:"commitCharacters,omitempty"`
+	CommitCharacters []string `json:"commitCharacters,omitempty"`
 	/*
 		A completion item represents a text snippet that is
 		proposed to complete text that is being typed.

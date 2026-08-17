@@ -61,7 +61,7 @@ type MarkdownClientCapabilities struct {
 
 		@since 3.16.0
 	*/
-	AllowedTags *[]string `json:"allowedTags,omitempty"`
+	AllowedTags []string `json:"allowedTags,omitempty"`
 }
 
 type ProgressParams struct {

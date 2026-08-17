@@ -46,7 +46,7 @@ type BaseSymbolInformation struct {
 	// A base for all symbol information.
 	Kind SymbolKind `json:"kind"`
 	// A base for all symbol information.
-	Tags *[]SymbolTag `json:"tags,omitempty"`
+	Tags []SymbolTag `json:"tags,omitempty"`
 	// A base for all symbol information.
 	ContainerName string `json:"containerName,omitempty"`
 }
@@ -147,12 +147,12 @@ type Diagnostic struct {
 		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
 		are only valid in the scope of a resource.
 	*/
-	Tags *[]DiagnosticTag `json:"tags,omitempty"`
+	Tags []DiagnosticTag `json:"tags,omitempty"`
 	/*
 		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
 		are only valid in the scope of a resource.
 	*/
-	RelatedInformation *[]DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
+	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
 	/*
 		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
 		are only valid in the scope of a resource.
@@ -194,7 +194,7 @@ type ExecuteCommandParams struct {
 	// The parameters of a [ExecuteCommandRequest].
 	Command string `json:"command"`
 	// The parameters of a [ExecuteCommandRequest].
-	Arguments *[]any `json:"arguments,omitempty"`
+	Arguments []any `json:"arguments,omitempty"`
 }
 
 // Registration options for a [ExecuteCommandRequest].
