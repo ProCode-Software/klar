@@ -188,7 +188,6 @@ build_from_source() {
     export GOARCH
 
     # Build Klar and Glas executables
-    export GOEXPERIMENT=jsonv2
     VERSION="0.0.1"
     COMMIT=$(git rev-parse --short HEAD)
     LDFLAGS=("-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")

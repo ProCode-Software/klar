@@ -21,8 +21,6 @@ declare -A OS_NAMES=(
     [arm64]=arm64
 )
 
-export GOEXPERIMENT=jsonv2
-
 VERSION="0.0.1"
 COMMIT=$(git rev-parse --short HEAD)
 [[ $COMMIT_VER -eq 1 ]] && ver_name=$COMMIT || ver_name=$VERSION

@@ -2,10 +2,6 @@ version: '2'
 formatters:
   enable: []
 
-run:
-  build-tags:
-    - goexperiment.jsonv2
-
 linters:
   enable: [
       misspell,

@@ -40,7 +40,7 @@ You may research online about new language and stdlib features. You can also use
 - Run `make gen` before submitting if AST types changed, or if objects/types that need to be generated have changed.
 - Run `./scripts/lint.sh` to validate code quality
 - Run `./scripts/format.sh` before submitting changes
-- Always run Go tools with `GOEXPERIMENT=jsonv2` when they accept it, unless I explicitly tell you not to. This project uses the experimental `encoding/json/v2` package, which is faster and more configurable than the standard `encoding/json` package. Note that the `./run` script automatically sets `GOEXPERIMENT=jsonv2` when running the CLI.
+- In no circumstance should you use the v1 `encoding/json` package. You must always use `encoding/json/v2`.
 - Never use `git restore` to restore your own changes, unless you stage yourself before you make changes! Don't undo MY changes!
 
 ## Architecture

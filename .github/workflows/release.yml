@@ -12,8 +12,6 @@ jobs:
     permissions:
       contents: write
 
-    env:
-      GOEXPERIMENT: jsonv2
     steps:
       - uses: actions/checkout@v7
 
