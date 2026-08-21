@@ -315,6 +315,7 @@ Always make use of the latest Go syntax and standard library features. Consult t
 - Use **`any`** instead of `interface{}` (never allowed except for stub interfaces).
 - Use **`range`** and iterators, including custom iterators (great examples include [Checker.followDestructure](../../internal/analysis/destructure.go) and [Tokenizer.Tokenize](../../internal/lexer/lexer.go)) to avoid creating slices solely for iteration.
 - Use **`min()`**, **`max()`**, and **`cmp.Or()`** where appropriate.
+- Never use the v1 `encoding/json` package. Always use `encoding/json/v2`.
 - Use **`new(expr)`** to return a pointer to an expression. This is best for calls, which can't directly be indirected in Go.
 
     ```go
