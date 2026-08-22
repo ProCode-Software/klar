@@ -5,11 +5,9 @@ type RegistrationParams struct {
 	Registrations []Registration `json:"registrations"`
 }
 
-/*
-Client capabilities specific to regular expressions.
-
-@since 3.16.0
-*/
+// Client capabilities specific to regular expressions.
+//
+// @since 3.16.0
 type RegularExpressionsClientCapabilities struct {
 	// The engine's name.
 	Engine RegularExpressionEngineKind `json:"engine"`
@@ -21,11 +19,9 @@ type UnregistrationParams struct {
 	Unregisterations []Unregistration `json:"unregisterations"`
 }
 
-/*
-A versioned notebook document identifier.
-
-@since 3.17.0
-*/
+// A versioned notebook document identifier.
+//
+// @since 3.17.0
 type VersionedNotebookDocumentIdentifier struct {
 	// The version number of this notebook document.
 	Version int `json:"version"`

@@ -13,9 +13,7 @@ type WorkDoneProgressCreateParams struct {
 
 type WorkDoneProgressEnd struct {
 	Kind string `json:"kind"` // end
-	/*
-		Optional, a final message indicating to for example indicate the outcome
-		of the operation.
-	*/
+	// Optional, a final message indicating to for example indicate the outcome
+	// of the operation.
 	Message string `json:"message,omitempty"`
 }

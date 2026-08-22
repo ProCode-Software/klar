@@ -8,26 +8,18 @@ type CancelParams struct {
 	Id rpc.Union2[int, string] `json:"id"`
 }
 
-/*
-Additional information that describes document changes.
-
-@since 3.16.0
-*/
+// Additional information that describes document changes.
+//
+// @since 3.16.0
 type ChangeAnnotation struct {
-	/*
-		A human-readable string describing the actual change. The string
-		is rendered prominent in the user interface.
-	*/
+	// A human-readable string describing the actual change. The string
+	// is rendered prominent in the user interface.
 	Label string `json:"label"`
-	/*
-		A flag which indicates that user confirmation is needed
-		before applying the change.
-	*/
+	// A flag which indicates that user confirmation is needed
+	// before applying the change.
 	NeedsConfirmation *bool `json:"needsConfirmation,omitempty"`
-	/*
-		A human-readable string which is rendered less prominent in
-		the user interface.
-	*/
+	// A human-readable string which is rendered less prominent in
+	// the user interface.
 	Description string `json:"description,omitempty"`
 }
 
@@ -36,22 +28,18 @@ type LogTraceParams struct {
 	Verbose string `json:"verbose,omitempty"`
 }
 
-/*
-Client capabilities specific to the used markdown parser.
-
-@since 3.16.0
-*/
+// Client capabilities specific to the used markdown parser.
+//
+// @since 3.16.0
 type MarkdownClientCapabilities struct {
 	// The name of the parser.
 	Parser string `json:"parser"`
 	// The version of the parser.
 	Version string `json:"version,omitempty"`
-	/*
-		A list of HTML tags that the client allows / supports in
-		Markdown.
-
-		@since 3.17.0
-	*/
+	// A list of HTML tags that the client allows / supports in
+	// Markdown.
+	//
+	// @since 3.17.0
 	AllowedTags []string `json:"allowedTags,omitempty"`
 }
 
@@ -65,12 +53,10 @@ type ProgressParams struct {
 // The publish diagnostic client capabilities.
 type PublishDiagnosticsClientCapabilities struct {
 	DiagnosticsCapabilities
-	/*
-		Whether the client interprets the version property of the
-		`textDocument/publishDiagnostics` notification's parameter.
-
-		@since 3.15.0
-	*/
+	// Whether the client interprets the version property of the
+	// `textDocument/publishDiagnostics` notification's parameter.
+	//
+	// @since 3.15.0
 	VersionSupport *bool `json:"versionSupport,omitempty"`
 }
 
@@ -78,47 +64,38 @@ type SetTraceParams struct {
 	Value TraceValue `json:"value"`
 }
 
-/*
-Client capabilities for the showDocument request.
-
-@since 3.16.0
-*/
+// Client capabilities for the showDocument request.
+//
+// @since 3.16.0
 type ShowDocumentClientCapabilities struct {
-	/*
-		The client has support for the showDocument
-		request.
-	*/
+	// The client has support for the showDocument
+	// request.
 	Support bool `json:"support"`
 }
 
 // An identifier to refer to a change annotation stored with a workspace edit.
 type ChangeAnnotationIdentifier = string
 
-/*
-MarkedString can be used to render human readable text. It is either a markdown string
-or a code-block that provides a language and a code snippet. The language identifier
-is semantically equal to the optional language identifier in fenced code blocks in GitHub
-issues. See https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
-
-The pair of a language and a value is an equivalent to markdown:
-```${language}
-${value}
-```
-
-Note that markdown strings will be sanitized - that means html will be escaped.
-@deprecated use MarkupContent instead.
-
-* Deprecated: use MarkupContent instead.
-*/
+// MarkedString can be used to render human readable text. It is either a markdown string
+// or a code-block that provides a language and a code snippet. The language identifier
+// is semantically equal to the optional language identifier in fenced code blocks in GitHub
+// issues. See https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
+//
+// The pair of a language and a value is an equivalent to markdown:
+// ```${language}
+// ${value}
+// ```
+//
+// Note that markdown strings will be sanitized - that means html will be escaped.
+// @deprecated use MarkupContent instead.
+// Deprecated: use MarkupContent instead.
 type MarkedString = rpc.Union2[string, MarkedStringWithLanguage]
 
-/*
-Describes the content type that a client supports in various
-result literals like `Hover`, `ParameterInfo` or `CompletionItem`.
-
-Please note that `MarkupKinds` must not start with a `$`. This kinds
-are reserved for internal usage.
-*/
+// Describes the content type that a client supports in various
+// result literals like `Hover`, `ParameterInfo` or `CompletionItem`.
+//
+// Please note that `MarkupKinds` must not start with a `$`. This kinds
+// are reserved for internal usage.
 type MarkupKind string
 
 const (
@@ -140,19 +117,15 @@ const (
 	MessageTypeInfo MessageType = 3
 	// A log message.
 	MessageTypeLog MessageType = 4
-	/*
-		A debug message.
-
-		@since 3.18.0
-	*/
+	// A debug message.
+	//
+	// @since 3.18.0
 	MessageTypeDebug MessageType = 5
 )
 
-/*
-The moniker kind.
-
-@since 3.16.0
-*/
+// The moniker kind.
+//
+// @since 3.16.0
 type MonikerKind string
 
 const (
@@ -160,10 +133,8 @@ const (
 	MonikerImport MonikerKind = "import"
 	// The moniker represents a symbol that is exported from a project
 	MonikerExport MonikerKind = "export"
-	/*
-		The moniker represents a symbol that is local to a project (e.g. a local
-		variable of a function, a class not visible outside the project, ...)
-	*/
+	// The moniker represents a symbol that is local to a project (e.g. a local
+	// variable of a function, a class not visible outside the project, ...)
 	MonikerLocal MonikerKind = "local"
 )
 

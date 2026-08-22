@@ -9,41 +9,31 @@ type LogMessageParams struct {
 	Message string `json:"message"`
 }
 
-/*
-Params to show a resource in the UI.
-
-@since 3.16.0
-*/
+// Params to show a resource in the UI.
+//
+// @since 3.16.0
 type ShowDocumentParams struct {
 	// The uri to show.
 	Uri URI `json:"uri"`
-	/*
-		Indicates to show the resource in an external program.
-		To show, for example, `https://code.visualstudio.com/`
-		in the default WEB browser set `external` to `true`.
-	*/
+	// Indicates to show the resource in an external program.
+	// To show, for example, `https://code.visualstudio.com/`
+	// in the default WEB browser set `external` to `true`.
 	External *bool `json:"external,omitempty"`
-	/*
-		An optional property to indicate whether the editor
-		showing the document should take focus or not.
-		Clients might ignore this property if an external
-		program is started.
-	*/
+	// An optional property to indicate whether the editor
+	// showing the document should take focus or not.
+	// Clients might ignore this property if an external
+	// program is started.
 	TakeFocus *bool `json:"takeFocus,omitempty"`
-	/*
-		An optional selection range if the document is a text
-		document. Clients might ignore the property if an
-		external program is started or the file is not a text
-		file.
-	*/
+	// An optional selection range if the document is a text
+	// document. Clients might ignore the property if an
+	// external program is started or the file is not a text
+	// file.
 	Selection *Range `json:"selection,omitempty"`
 }
 
-/*
-The result of a showDocument request.
-
-@since 3.16.0
-*/
+// The result of a showDocument request.
+//
+// @since 3.16.0
 type ShowDocumentResult struct {
 	// A boolean indicating if the show was successful.
 	Success bool `json:"success"`
@@ -72,46 +62,40 @@ type ShowMessageRequestParams struct {
 	Actions []MessageActionItem `json:"actions,omitempty"`
 }
 
-/*
-Signature help represents the signature of something
-callable. There can be multiple signature but only one
-active and only one active parameter.
-*/
+// Signature help represents the signature of something
+// callable. There can be multiple signature but only one
+// active and only one active parameter.
 type SignatureHelp struct {
 	// One or more signatures.
 	Signatures []SignatureInformation `json:"signatures"`
-	/*
-		The active signature. If omitted or the value lies outside the
-		range of `signatures` the value defaults to zero or is ignored if
-		the `SignatureHelp` has no signatures.
-
-		Whenever possible implementors should make an active decision about
-		the active signature and shouldn't rely on a default value.
-
-		In future version of the protocol this property might become
-		mandatory to better express this.
-	*/
+	// The active signature. If omitted or the value lies outside the
+	// range of `signatures` the value defaults to zero or is ignored if
+	// the `SignatureHelp` has no signatures.
+	//
+	// Whenever possible implementors should make an active decision about
+	// the active signature and shouldn't rely on a default value.
+	//
+	// In future version of the protocol this property might become
+	// mandatory to better express this.
 	ActiveSignature uint32 `json:"activeSignature,omitempty"`
-	/*
-		The active parameter of the active signature.
-
-		If `null`, no parameter of the signature is active (for example a named
-		argument that does not match any declared parameters). This is only valid
-		if the client specifies the client capability
-		`textDocument.signatureHelp.noActiveParameterSupport === true`
-
-		If omitted or the value lies outside the range of
-		`signatures[activeSignature].parameters` defaults to 0 if the active
-		signature has parameters.
-
-		If the active signature has no parameters it is ignored.
-
-		In future version of the protocol this property might become
-		mandatory (but still nullable) to better express the active parameter if
-		the active signature does have any.
-
-		Since version 3.16.0 the `SignatureInformation` itself provides a
-		`activeParameter` property and it should be used instead of this one.
-	*/
+	// The active parameter of the active signature.
+	//
+	// If `null`, no parameter of the signature is active (for example a named
+	// argument that does not match any declared parameters). This is only valid
+	// if the client specifies the client capability
+	// `textDocument.signatureHelp.noActiveParameterSupport === true`
+	//
+	// If omitted or the value lies outside the range of
+	// `signatures[activeSignature].parameters` defaults to 0 if the active
+	// signature has parameters.
+	//
+	// If the active signature has no parameters it is ignored.
+	//
+	// In future version of the protocol this property might become
+	// mandatory (but still nullable) to better express the active parameter if
+	// the active signature does have any.
+	//
+	// Since version 3.16.0 the `SignatureInformation` itself provides a
+	// `activeParameter` property and it should be used instead of this one.
 	ActiveParameter uint32 `json:"activeParameter,omitempty"` // uinteger | null
 }

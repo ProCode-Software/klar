@@ -3,27 +3,21 @@ package lsp
 
 import "github.com/ProCode-Software/klar/pkg/lsp/rpc"
 
-/*
-A special workspace symbol that supports locations without a range.
-
-See also SymbolInformation.
-
-@since 3.17.0
-*/
+// A special workspace symbol that supports locations without a range.
+//
+// See also SymbolInformation.
+//
+// @since 3.17.0
 type WorkspaceSymbol struct {
 	BaseSymbolInformation
-	/*
-		The location of the symbol. Whether a server is allowed to
-		return a location without a range depends on the client
-		capability `workspace.symbol.resolveSupport`.
-
-		See SymbolInformation#location for more details.
-	*/
+	// The location of the symbol. Whether a server is allowed to
+	// return a location without a range depends on the client
+	// capability `workspace.symbol.resolveSupport`.
+	//
+	// See SymbolInformation#location for more details.
 	Location rpc.Union2[Location, LocationUriOnly] `json:"location"`
-	/*
-		A data entry field that is preserved on a workspace symbol between a
-		workspace symbol request and a workspace symbol resolve request.
-	*/
+	// A data entry field that is preserved on a workspace symbol between a
+	// workspace symbol request and a workspace symbol resolve request.
 	Data any `json:"data,omitempty"`
 }
 
@@ -33,19 +27,15 @@ type WorkspaceSymbolClientCapabilities struct {
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
 	// Specific capabilities for the `SymbolKind` in the `workspace/symbol` request.
 	SymbolKind *ClientSymbolKindOptions `json:"symbolKind,omitempty"`
-	/*
-		The client supports tags on `SymbolInformation`.
-		Clients supporting tags have to handle unknown tags gracefully.
-
-		@since 3.16.0
-	*/
+	// The client supports tags on `SymbolInformation`.
+	// Clients supporting tags have to handle unknown tags gracefully.
+	//
+	// @since 3.16.0
 	TagSupport *ClientSymbolTagOptions `json:"tagSupport,omitempty"`
-	/*
-		The client support partial workspace symbols. The client will send the
-		request `workspaceSymbol/resolve` to the server to resolve additional
-		properties.
-
-		@since 3.17.0
-	*/
+	// The client support partial workspace symbols. The client will send the
+	// request `workspaceSymbol/resolve` to the server to resolve additional
+	// properties.
+	//
+	// @since 3.17.0
 	ResolveSupport *ClientSymbolResolveOptions `json:"resolveSupport,omitempty"`
 }

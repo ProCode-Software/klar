@@ -5,41 +5,31 @@ import "github.com/ProCode-Software/klar/pkg/lsp/rpc"
 
 // The parameters passed via an apply workspace edit request.
 type ApplyWorkspaceEditParams struct {
-	/*
-		An optional label of the workspace edit. This label is
-		presented in the user interface for example on an undo
-		stack to undo the workspace edit.
-	*/
+	// An optional label of the workspace edit. This label is
+	// presented in the user interface for example on an undo
+	// stack to undo the workspace edit.
 	Label string `json:"label,omitempty"`
 	// The edits to apply.
 	Edit WorkspaceEdit `json:"edit"`
-	/*
-		Additional data about the edit.
-
-		@since 3.18.0
-	*/
+	// Additional data about the edit.
+	//
+	// @since 3.18.0
 	Metadata *WorkspaceEditMetadata `json:"metadata,omitempty"`
 }
 
-/*
-The result returned from the apply workspace edit request.
-
-@since 3.17 renamed from ApplyWorkspaceEditResponse
-*/
+// The result returned from the apply workspace edit request.
+//
+// @since 3.17 renamed from ApplyWorkspaceEditResponse
 type ApplyWorkspaceEditResult struct {
 	// Indicates whether the edit was applied or not.
 	Applied bool `json:"applied"`
-	/*
-		An optional textual description for why the edit was not applied.
-		This may be used by the server for diagnostic logging or to provide
-		a suitable error for a request that triggered the edit.
-	*/
+	// An optional textual description for why the edit was not applied.
+	// This may be used by the server for diagnostic logging or to provide
+	// a suitable error for a request that triggered the edit.
 	FailureReason string `json:"failureReason,omitempty"`
-	/*
-		Depending on the client's failure handling strategy `failedChange` might
-		contain the index of the change that failed. This property is only available
-		if the client signals a `failureHandlingStrategy` in its client capabilities.
-	*/
+	// Depending on the client's failure handling strategy `failedChange` might
+	// contain the index of the change that failed. This property is only available
+	// if the client signals a `failureHandlingStrategy` in its client capabilities.
 	FailedChange uint32 `json:"failedChange,omitempty"`
 }
 
@@ -49,18 +39,14 @@ type BaseSymbolInformation struct {
 	Name string `json:"name"`
 	// The kind of this symbol.
 	Kind SymbolKind `json:"kind"`
-	/*
-		Tags for this symbol.
-
-		@since 3.16.0
-	*/
+	// Tags for this symbol.
+	//
+	// @since 3.16.0
 	Tags []SymbolTag `json:"tags,omitempty"`
-	/*
-		The name of the symbol containing this symbol. This information is for
-		user interface purposes (e.g. to render a qualifier in the user interface
-		if necessary). It can't be used to re-infer a hierarchy for the document
-		symbols.
-	*/
+	// The name of the symbol containing this symbol. This information is for
+	// user interface purposes (e.g. to render a qualifier in the user interface
+	// if necessary). It can't be used to re-infer a hierarchy for the document
+	// symbols.
 	ContainerName string `json:"containerName,omitempty"`
 }
 
@@ -80,12 +66,10 @@ type CreateFile struct {
 	Options *CreateFileOptions `json:"options,omitempty"`
 }
 
-/*
-The parameters sent in notifications/requests for user-initiated creation of
-files.
-
-@since 3.16.0
-*/
+// The parameters sent in notifications/requests for user-initiated creation of
+// files.
+//
+// @since 3.16.0
 type CreateFilesParams struct {
 	// An array of all files/folders created in this operation.
 	Files []FileCreate `json:"files"`
@@ -93,79 +77,59 @@ type CreateFilesParams struct {
 
 // @since 3.14.0
 type DeclarationClientCapabilities struct {
-	/*
-		Whether declaration supports dynamic registration. If this is set to `true`
-		the client supports the new `DeclarationRegistrationOptions` return value
-		for the corresponding server capability as well.
-	*/
+	// Whether declaration supports dynamic registration. If this is set to `true`
+	// the client supports the new `DeclarationRegistrationOptions` return value
+	// for the corresponding server capability as well.
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
 	// The client supports additional metadata in the form of declaration links.
 	LinkSupport *bool `json:"linkSupport,omitempty"`
 }
 
-/*
-The parameters sent in notifications/requests for user-initiated deletes of
-files.
-
-@since 3.16.0
-*/
+// The parameters sent in notifications/requests for user-initiated deletes of
+// files.
+//
+// @since 3.16.0
 type DeleteFilesParams struct {
 	// An array of all files/folders deleted in this operation.
 	Files []FileDelete `json:"files"`
 }
 
-/*
-Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-are only valid in the scope of a resource.
-*/
+// Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
+// are only valid in the scope of a resource.
 type Diagnostic struct {
 	// The range at which the message applies
 	Range Range `json:"range"`
-	/*
-		The diagnostic's severity. To avoid interpretation mismatches when a
-		server is used with different clients it is highly recommended that servers
-		always provide a severity value.
-	*/
+	// The diagnostic's severity. To avoid interpretation mismatches when a
+	// server is used with different clients it is highly recommended that servers
+	// always provide a severity value.
 	Severity *DiagnosticSeverity `json:"severity,omitempty"`
 	// The diagnostic's code, which usually appear in the user interface.
 	Code *rpc.Union2[int, string] `json:"code,omitempty"`
-	/*
-		An optional property to describe the error code.
-		Requires the code field (above) to be present/not null.
-
-		@since 3.16.0
-	*/
+	// An optional property to describe the error code.
+	// Requires the code field (above) to be present/not null.
+	//
+	// @since 3.16.0
 	CodeDescription *CodeDescription `json:"codeDescription,omitempty"`
-	/*
-		A human-readable string describing the source of this
-		diagnostic, e.g. 'typescript' or 'super lint'. It usually
-		appears in the user interface.
-	*/
+	// A human-readable string describing the source of this
+	// diagnostic, e.g. 'typescript' or 'super lint'. It usually
+	// appears in the user interface.
 	Source string `json:"source,omitempty"`
-	/*
-		The diagnostic's message. It usually appears in the user interface.
-
-		@since 3.18.0 - support for MarkupContent. This is guarded by the client
-		capability `textDocument.diagnostic.markupMessageSupport`.
-	*/
+	// The diagnostic's message. It usually appears in the user interface.
+	//
+	// @since 3.18.0 - support for MarkupContent. This is guarded by the client
+	// capability `textDocument.diagnostic.markupMessageSupport`.
 	Message rpc.Union2[string, MarkupContent] `json:"message"`
-	/*
-		Additional metadata about the diagnostic.
-
-		@since 3.15.0
-	*/
+	// Additional metadata about the diagnostic.
+	//
+	// @since 3.15.0
 	Tags []DiagnosticTag `json:"tags,omitempty"`
-	/*
-		An array of related diagnostic information, e.g. when symbol-names within
-		a scope collide all definitions can be marked via this property.
-	*/
+	// An array of related diagnostic information, e.g. when symbol-names within
+	// a scope collide all definitions can be marked via this property.
 	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
-	/*
-		A data entry field that is preserved between a `textDocument/publishDiagnostics`
-		notification and `textDocument/codeAction` request.
-
-		@since 3.16.0
-	*/
+	// A data entry field that is preserved between a `textDocument/publishDiagnostics`
+	// notification and `textDocument/codeAction` request.
+	//
+	// @since 3.16.0
 	Data any `json:"data,omitempty"`
 }
 
@@ -212,34 +176,26 @@ type ExecuteCommandRegistrationOptions struct {
 }
 
 type ExecutionSummary struct {
-	/*
-		A strict monotonically increasing value
-		indicating the execution order of a cell
-		inside a notebook.
-	*/
+	// A strict monotonically increasing value
+	// indicating the execution order of a cell
+	// inside a notebook.
 	ExecutionOrder uint32 `json:"executionOrder"`
-	/*
-		Whether the execution was successful or
-		not if known by the client.
-	*/
+	// Whether the execution was successful or
+	// not if known by the client.
 	Success *bool `json:"success,omitempty"`
 }
 
-/*
-The options to register for file operations.
-
-@since 3.16.0
-*/
+// The options to register for file operations.
+//
+// @since 3.16.0
 type FileOperationRegistrationOptions struct {
 	// The actual filters.
 	Filters []FileOperationFilter `json:"filters"`
 }
 
-/*
-Represents information on a file/folder rename.
-
-@since 3.16.0
-*/
+// Represents information on a file/folder rename.
+//
+// @since 3.16.0
 type FileRename struct {
 	// A URI for the original location of the file/folder being renamed.
 	OldUri DocumentURI `json:"oldUri"`
@@ -247,118 +203,92 @@ type FileRename struct {
 	NewUri DocumentURI `json:"newUri"`
 }
 
-/*
-The parameters sent in notifications/requests for user-initiated renames of
-files.
-
-@since 3.16.0
-*/
+// The parameters sent in notifications/requests for user-initiated renames of
+// files.
+//
+// @since 3.16.0
 type RenameFilesParams struct {
-	/*
-		An array of all files/folders renamed in this operation. When a folder is renamed, only
-		the folder will be included, and not its children.
-	*/
+	// An array of all files/folders renamed in this operation. When a folder is renamed, only
+	// the folder will be included, and not its children.
 	Files []FileRename `json:"files"`
 }
 
 // Provider options for a [RenameRequest].
 type RenameOptions struct {
 	WorkDoneProgressOptions
-	/*
-		Renames should be checked and tested before being executed.
-
-		@since version 3.12.0
-	*/
+	// Renames should be checked and tested before being executed.
+	//
+	// @since version 3.12.0
 	PrepareProvider *bool `json:"prepareProvider,omitempty"`
 }
 
-/*
-Parameters for the `workspace/textDocumentContent` request.
-
-@since 3.18.0
-*/
+// Parameters for the `workspace/textDocumentContent` request.
+//
+// @since 3.18.0
 type TextDocumentContentParams struct {
 	// The uri of the text document.
 	Uri DocumentURI `json:"uri"`
 }
 
-/*
-Text document content provider registration options.
-
-@since 3.18.0
-*/
+// Text document content provider registration options.
+//
+// @since 3.18.0
 type TextDocumentContentRegistrationOptions struct {
 	TextDocumentContentOptions
 	StaticRegistrationOptions
 }
 
-/*
-Result of the `workspace/textDocumentContent` request.
-
-@since 3.18.0
-*/
+// Result of the `workspace/textDocumentContent` request.
+//
+// @since 3.18.0
 type TextDocumentContentResult struct {
-	/*
-		The text content of the text document. Please note, that the content of
-		any subsequent open notifications for the text document might differ
-		from the returned content due to whitespace and line ending
-		normalizations done on the client
-	*/
+	// The text content of the text document. Please note, that the content of
+	// any subsequent open notifications for the text document might differ
+	// from the returned content due to whitespace and line ending
+	// normalizations done on the client
 	Text string `json:"text"`
 }
 
-/*
-Describes textual changes on a text document. A TextDocumentEdit describes all changes
-on a document version Si and after they are applied move the document to version Si+1.
-So the creator of a TextDocumentEdit doesn't need to sort the array of edits or do any
-kind of ordering. However the edits must be non overlapping.
-*/
+// Describes textual changes on a text document. A TextDocumentEdit describes all changes
+// on a document version Si and after they are applied move the document to version Si+1.
+// So the creator of a TextDocumentEdit doesn't need to sort the array of edits or do any
+// kind of ordering. However the edits must be non overlapping.
 type TextDocumentEdit struct {
 	// The text document to change.
 	TextDocument OptionalVersionedTextDocumentIdentifier `json:"textDocument"`
-	/*
-		The edits to be applied.
-
-		@since 3.16.0 - support for AnnotatedTextEdit. This is guarded using a
-		client capability.
-
-		@since 3.18.0 - support for SnippetTextEdit. This is guarded using a
-		client capability.
-	*/
+	// The edits to be applied.
+	//
+	// @since 3.16.0 - support for AnnotatedTextEdit. This is guarded using a
+	// client capability.
+	//
+	// @since 3.18.0 - support for SnippetTextEdit. This is guarded using a
+	// client capability.
 	Edits []rpc.Union3[TextEdit, AnnotatedTextEdit, SnippetTextEdit] `json:"edits"` // TextEdit | AnnotatedTextEdit | SnippetTextEdit[]
 }
 
-/*
-Parameters of the workspace diagnostic request.
-
-@since 3.17.0
-*/
+// Parameters of the workspace diagnostic request.
+//
+// @since 3.17.0
 type WorkspaceDiagnosticParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
 	// The additional identifier provided during registration.
 	Identifier string `json:"identifier,omitempty"`
-	/*
-		The currently known diagnostic reports with their
-		previous result ids.
-	*/
+	// The currently known diagnostic reports with their
+	// previous result ids.
 	PreviousResultIds []PreviousResultId `json:"previousResultIds"`
 }
 
-/*
-A workspace diagnostic report.
-
-@since 3.17.0
-*/
+// A workspace diagnostic report.
+//
+// @since 3.17.0
 type WorkspaceDiagnosticReport struct {
 	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
 }
 
-/*
-A partial result for a workspace diagnostic report.
-
-@since 3.17.0
-*/
+// A partial result for a workspace diagnostic report.
+//
+// @since 3.17.0
 type WorkspaceDiagnosticReportPartialResult struct {
 	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
 }
@@ -367,16 +297,14 @@ type WorkspaceDiagnosticReportPartialResult struct {
 type WorkspaceSymbolParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		A query string to filter symbols by. Clients may send an empty
-		string here to request all symbols.
-
-		The `query`-parameter should be interpreted in a *relaxed way* as editors
-		will apply their own highlighting and scoring on the results. A good rule
-		of thumb is to match case-insensitive and to simply check that the
-		characters of *query* appear in their order in a candidate symbol.
-		Servers shouldn't use prefix, substring, or similar strict matching.
-	*/
+	// A query string to filter symbols by. Clients may send an empty
+	// string here to request all symbols.
+	//
+	// The `query`-parameter should be interpreted in a *relaxed way* as editors
+	// will apply their own highlighting and scoring on the results. A good rule
+	// of thumb is to match case-insensitive and to simply check that the
+	// characters of *query* appear in their order in a candidate symbol.
+	// Servers shouldn't use prefix, substring, or similar strict matching.
 	Query string `json:"query"`
 }
 
@@ -385,59 +313,45 @@ type WorkspaceSymbolRegistrationOptions struct {
 	WorkspaceSymbolOptions
 }
 
-/*
-An unchanged document diagnostic report for a workspace diagnostic result.
-
-@since 3.17.0
-*/
+// An unchanged document diagnostic report for a workspace diagnostic result.
+//
+// @since 3.17.0
 type WorkspaceUnchangedDocumentDiagnosticReport struct {
 	UnchangedDocumentDiagnosticReport
 	// The URI for which diagnostic information is reported.
 	Uri DocumentURI `json:"uri"`
-	/*
-		The version number for which the diagnostics are reported.
-		If the document is not marked as open `null` can be provided.
-	*/
+	// The version number for which the diagnostics are reported.
+	// If the document is not marked as open `null` can be provided.
 	Version int `json:"version,omitempty"` // integer | null
 }
 
 // The declaration of a symbol representation as one or many  locations [Location].
 type Declaration = rpc.Union2[Location, []Location]
 
-/*
-Information about where a symbol is declared.
-
-Provides additional metadata over normal  location [Location] declarations, including the range of
-the declaring symbol.
-
-Servers should prefer returning `DeclarationLink` over `Declaration` if supported
-by the client.
-*/
+// Information about where a symbol is declared.
+//
+// Provides additional metadata over normal  location [Location] declarations, including the range of
+// the declaring symbol.
+//
+// Servers should prefer returning `DeclarationLink` over `Declaration` if supported
+// by the client.
 type DeclarationLink = LocationLink
 
 type FailureHandlingKind string
 
 const (
-	/*
-		Applying the workspace change is simply aborted if one of the changes provided
-		fails. All operations executed before the failing operation stay executed.
-	*/
+	// Applying the workspace change is simply aborted if one of the changes provided
+	// fails. All operations executed before the failing operation stay executed.
 	FailureHandlingAbort FailureHandlingKind = "abort"
-	/*
-		All operations are executed transactional. That means they either all
-		succeed or no changes at all are applied to the workspace.
-	*/
+	// All operations are executed transactional. That means they either all
+	// succeed or no changes at all are applied to the workspace.
 	FailureHandlingTransactional FailureHandlingKind = "transactional"
-	/*
-		If the workspace edit contains only textual file changes they are executed transactional.
-		If resource changes (create, rename or delete file) are part of the change the failure
-		handling strategy is abort.
-	*/
+	// If the workspace edit contains only textual file changes they are executed transactional.
+	// If resource changes (create, rename or delete file) are part of the change the failure
+	// handling strategy is abort.
 	FailureHandlingTextOnlyTransactional FailureHandlingKind = "textOnlyTransactional"
-	/*
-		The client tries to undo the operations already executed. But there is no
-		guarantee that this is succeeding.
-	*/
+	// The client tries to undo the operations already executed. But there is no
+	// guarantee that this is succeeding.
 	FailureHandlingUndo FailureHandlingKind = "undo"
 )
 
@@ -453,12 +367,10 @@ const (
 	FileChangeTypeDeleted FileChangeType = 3
 )
 
-/*
-A pattern kind describing if a glob pattern matches a file a folder or
-both.
-
-@since 3.16.0
-*/
+// A pattern kind describing if a glob pattern matches a file a folder or
+// both.
+//
+// @since 3.16.0
 type FileOperationPatternKind string
 
 const (
@@ -480,30 +392,26 @@ const (
 	FoldingRangeRegion FoldingRangeKind = "region"
 )
 
-/*
-A document filter denotes a document by different properties like
-the  language [TextDocument.languageId], the  scheme [Uri.scheme] of
-its resource, or a glob-pattern that is applied to the  path [TextDocument.fileName].
-
-Glob patterns can have the following syntax:
-
-  - `*` to match zero or more characters in a path segment
-  - `?` to match on one character in a path segment
-  - `**` to match any number of path segments, including none
-  - `{}` to group sub patterns into an OR expression. (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
-  - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
-  - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
-
-@sample A language filter that applies to typescript files on disk: `{ language: 'typescript', scheme: 'file' }`
-@sample A language filter that applies to all package.json paths: `{ language: 'json', pattern: '**package.json' }`
-
-@since 3.17.0
-*/
+// A document filter denotes a document by different properties like
+// the  language [TextDocument.languageId], the  scheme [Uri.scheme] of
+// its resource, or a glob-pattern that is applied to the  path [TextDocument.fileName].
+//
+// Glob patterns can have the following syntax:
+//
+//   - `*` to match zero or more characters in a path segment
+//   - `?` to match on one character in a path segment
+//   - `**` to match any number of path segments, including none
+//   - `{}` to group sub patterns into an OR expression. (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
+//   - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
+//   - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
+//
+// @sample A language filter that applies to typescript files on disk: `{ language: 'typescript', scheme: 'file' }`
+// @sample A language filter that applies to all package.json paths: `{ language: 'json', pattern: '**package.json' }`
+//
+// @since 3.17.0
 type TextDocumentFilter = rpc.Union3[TextDocumentFilterLanguage, TextDocumentFilterScheme, TextDocumentFilterPattern] // TextDocumentFilterLanguage | TextDocumentFilterScheme | TextDocumentFilterPattern
 
-/*
-A workspace diagnostic document report.
-
-@since 3.17.0
-*/
+// A workspace diagnostic document report.
+//
+// @since 3.17.0
 type WorkspaceDocumentDiagnosticReport = rpc.Union2[WorkspaceFullDocumentDiagnosticReport, WorkspaceUnchangedDocumentDiagnosticReport]

@@ -417,15 +417,6 @@ func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
 			buf.WriteByte('\t')
 		}
 	}
-	isSingleLine := !strings.ContainsRune(doc, '\n') &&
-		!strings.ContainsRune(deprecated, '\n')
-
-	writeIndent()
-	if isSingleLine {
-		buf.WriteString("// ")
-	} else {
-		buf.WriteString("/*\n")
-	}
 
 	var isList bool
 	for line := range strings.Lines(doc) {
@@ -440,13 +431,14 @@ func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
 			return "[" + symbol + "]"
 		})
 
-		if !isSingleLine {
-			writeIndent()
-		}
+		writeIndent()
+		buf.WriteString("// ")
 		if strings.HasPrefix(line, "- ") {
 			line = "\t" + line
 			if !isList {
 				buf.WriteByte('\n')
+				writeIndent()
+				buf.WriteString("// ")
 			}
 			isList = true
 		} else {
@@ -454,23 +446,14 @@ func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
 		}
 		buf.WriteString(line)
 	}
-
-	if deprecated != "" {
-		if !isSingleLine {
-			buf.WriteByte('\n')
-			buf.WriteByte('\n')
-			writeIndent()
-			buf.WriteString("* ")
-		}
-		buf.WriteString("Deprecated: ")
-		buf.WriteString(deprecated)
+	if doc != "" {
+		buf.WriteByte('\n') // Ending newline
 	}
 
-	if !isSingleLine {
-		buf.WriteByte('\n')
+	if deprecated != "" {
 		writeIndent()
-		buf.WriteString("*/\n")
-	} else {
+		buf.WriteString("// Deprecated: ")
+		buf.WriteString(deprecated)
 		buf.WriteByte('\n')
 	}
 }
