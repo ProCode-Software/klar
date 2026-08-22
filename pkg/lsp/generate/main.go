@@ -48,12 +48,8 @@ func main() {
 			w.writeEnum(decl, w.getFile(entry.category))
 		}
 	}
-
-	for _, f := range w.files {
-		if err := f.Close(); err != nil {
-			panic(err)
-		}
-	}
+	
+	w.writeFiles()
 }
 
 // https://github.com/microsoft/language-server-protocol/blob/8b9fab8f0912b694c795d05c1d5e9d357bee0193/_specifications/lsp/3.18/metaModel/metaModel.ts
