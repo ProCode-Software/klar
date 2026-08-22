@@ -2,14 +2,20 @@
 package lsp
 
 type WorkDoneProgressCancelParams struct {
+	// The token to be used to report progress.
 	Token ProgressToken `json:"token"`
 }
 
 type WorkDoneProgressCreateParams struct {
+	// The token to be used to report progress.
 	Token ProgressToken `json:"token"`
 }
 
 type WorkDoneProgressEnd struct {
-	Kind    string `json:"kind"` // end
+	Kind string `json:"kind"` // end
+	/*
+		Optional, a final message indicating to for example indicate the outcome
+		of the operation.
+	*/
 	Message string `json:"message,omitempty"`
 }

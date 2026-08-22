@@ -3,9 +3,9 @@ package lsp
 
 // The log message parameters.
 type LogMessageParams struct {
-	// The log message parameters.
+	// The message type. See [MessageType]
 	Type MessageType `json:"type"`
-	// The log message parameters.
+	// The actual message.
 	Message string `json:"message"`
 }
 
@@ -15,28 +15,26 @@ Params to show a resource in the UI.
 @since 3.16.0
 */
 type ShowDocumentParams struct {
-	/*
-		Params to show a resource in the UI.
-
-		@since 3.16.0
-	*/
+	// The uri to show.
 	Uri URI `json:"uri"`
 	/*
-		Params to show a resource in the UI.
-
-		@since 3.16.0
+		Indicates to show the resource in an external program.
+		To show, for example, `https://code.visualstudio.com/`
+		in the default WEB browser set `external` to `true`.
 	*/
 	External *bool `json:"external,omitempty"`
 	/*
-		Params to show a resource in the UI.
-
-		@since 3.16.0
+		An optional property to indicate whether the editor
+		showing the document should take focus or not.
+		Clients might ignore this property if an external
+		program is started.
 	*/
 	TakeFocus *bool `json:"takeFocus,omitempty"`
 	/*
-		Params to show a resource in the UI.
-
-		@since 3.16.0
+		An optional selection range if the document is a text
+		document. Clients might ignore the property if an
+		external program is started or the file is not a text
+		file.
 	*/
 	Selection *Range `json:"selection,omitempty"`
 }
@@ -47,31 +45,30 @@ The result of a showDocument request.
 @since 3.16.0
 */
 type ShowDocumentResult struct {
-	/*
-		The result of a showDocument request.
-
-		@since 3.16.0
-	*/
+	// A boolean indicating if the show was successful.
 	Success bool `json:"success"`
 }
 
 // The parameters of a notification message.
 type ShowMessageParams struct {
-	// The parameters of a notification message.
+	// The message type. See [MessageType]
 	Type MessageType `json:"type"`
-	// The parameters of a notification message.
+	// The actual message.
 	Message string `json:"message"`
 }
 
 // Show message request client capabilities
 type ShowMessageRequestClientCapabilities struct {
-	// Show message request client capabilities
+	// Capabilities specific to the `MessageActionItem` type.
 	MessageActionItem *ClientShowMessageActionItemOptions `json:"messageActionItem,omitempty"`
 }
 
 type ShowMessageRequestParams struct {
-	Type    MessageType         `json:"type"`
-	Message string              `json:"message"`
+	// The message type. See [MessageType]
+	Type MessageType `json:"type"`
+	// The actual message.
+	Message string `json:"message"`
+	// The message action items to present.
 	Actions []MessageActionItem `json:"actions,omitempty"`
 }
 
@@ -81,22 +78,40 @@ callable. There can be multiple signature but only one
 active and only one active parameter.
 */
 type SignatureHelp struct {
-	/*
-		Signature help represents the signature of something
-		callable. There can be multiple signature but only one
-		active and only one active parameter.
-	*/
+	// One or more signatures.
 	Signatures []SignatureInformation `json:"signatures"`
 	/*
-		Signature help represents the signature of something
-		callable. There can be multiple signature but only one
-		active and only one active parameter.
+		The active signature. If omitted or the value lies outside the
+		range of `signatures` the value defaults to zero or is ignored if
+		the `SignatureHelp` has no signatures.
+
+		Whenever possible implementors should make an active decision about
+		the active signature and shouldn't rely on a default value.
+
+		In future version of the protocol this property might become
+		mandatory to better express this.
 	*/
 	ActiveSignature uint32 `json:"activeSignature,omitempty"`
 	/*
-		Signature help represents the signature of something
-		callable. There can be multiple signature but only one
-		active and only one active parameter.
+		The active parameter of the active signature.
+
+		If `null`, no parameter of the signature is active (for example a named
+		argument that does not match any declared parameters). This is only valid
+		if the client specifies the client capability
+		`textDocument.signatureHelp.noActiveParameterSupport === true`
+
+		If omitted or the value lies outside the range of
+		`signatures[activeSignature].parameters` defaults to 0 if the active
+		signature has parameters.
+
+		If the active signature has no parameters it is ignored.
+
+		In future version of the protocol this property might become
+		mandatory (but still nullable) to better express the active parameter if
+		the active signature does have any.
+
+		Since version 3.16.0 the `SignatureInformation` itself provides a
+		`activeParameter` property and it should be used instead of this one.
 	*/
 	ActiveParameter uint32 `json:"activeParameter,omitempty"` // uinteger | null
 }

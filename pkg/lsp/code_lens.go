@@ -9,36 +9,26 @@ A code lens is _unresolved_ when no command is associated to it. For performance
 reasons the creation of a code lens and resolving should be done in two stages.
 */
 type CodeLens struct {
-	/*
-		A code lens represents a  command [Command] that should be shown along with
-		source text, like the number of references, a way to run tests, etc.
-
-		A code lens is _unresolved_ when no command is associated to it. For performance
-		reasons the creation of a code lens and resolving should be done in two stages.
-	*/
+	// The range in which this code lens is valid. Should only span a single line.
 	Range Range `json:"range"`
-	/*
-		A code lens represents a  command [Command] that should be shown along with
-		source text, like the number of references, a way to run tests, etc.
-
-		A code lens is _unresolved_ when no command is associated to it. For performance
-		reasons the creation of a code lens and resolving should be done in two stages.
-	*/
+	// The command this code lens represents.
 	Command *Command `json:"command,omitempty"`
 	/*
-		A code lens represents a  command [Command] that should be shown along with
-		source text, like the number of references, a way to run tests, etc.
-
-		A code lens is _unresolved_ when no command is associated to it. For performance
-		reasons the creation of a code lens and resolving should be done in two stages.
+		A data entry field that is preserved on a code lens item between
+		a [CodeLensRequest] and a [CodeLensResolveRequest]
 	*/
 	Data any `json:"data,omitempty"`
 }
 
 // The client capabilities  of a [CodeLensRequest].
 type CodeLensClientCapabilities struct {
-	// The client capabilities  of a [CodeLensRequest].
+	// Whether code lens supports dynamic registration.
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
-	// The client capabilities  of a [CodeLensRequest].
+	/*
+		Whether the client supports resolving additional code lens
+		properties via a separate `codeLens/resolve` request.
+
+		@since 3.18.0
+	*/
 	ResolveSupport *ClientCodeLensResolveOptions `json:"resolveSupport,omitempty"`
 }

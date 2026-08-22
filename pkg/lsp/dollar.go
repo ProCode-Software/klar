@@ -4,6 +4,7 @@ package lsp
 import "github.com/ProCode-Software/klar/pkg/lsp/rpc"
 
 type CancelParams struct {
+	// The request id to cancel.
 	Id rpc.Union2[int, string] `json:"id"`
 }
 
@@ -14,21 +15,18 @@ Additional information that describes document changes.
 */
 type ChangeAnnotation struct {
 	/*
-		Additional information that describes document changes.
-
-		@since 3.16.0
+		A human-readable string describing the actual change. The string
+		is rendered prominent in the user interface.
 	*/
 	Label string `json:"label"`
 	/*
-		Additional information that describes document changes.
-
-		@since 3.16.0
+		A flag which indicates that user confirmation is needed
+		before applying the change.
 	*/
 	NeedsConfirmation *bool `json:"needsConfirmation,omitempty"`
 	/*
-		Additional information that describes document changes.
-
-		@since 3.16.0
+		A human-readable string which is rendered less prominent in
+		the user interface.
 	*/
 	Description string `json:"description,omitempty"`
 }
@@ -44,35 +42,35 @@ Client capabilities specific to the used markdown parser.
 @since 3.16.0
 */
 type MarkdownClientCapabilities struct {
-	/*
-		Client capabilities specific to the used markdown parser.
-
-		@since 3.16.0
-	*/
+	// The name of the parser.
 	Parser string `json:"parser"`
-	/*
-		Client capabilities specific to the used markdown parser.
-
-		@since 3.16.0
-	*/
+	// The version of the parser.
 	Version string `json:"version,omitempty"`
 	/*
-		Client capabilities specific to the used markdown parser.
+		A list of HTML tags that the client allows / supports in
+		Markdown.
 
-		@since 3.16.0
+		@since 3.17.0
 	*/
 	AllowedTags []string `json:"allowedTags,omitempty"`
 }
 
 type ProgressParams struct {
+	// The progress token provided by the client or server.
 	Token ProgressToken `json:"token"`
-	Value any           `json:"value"`
+	// The progress data.
+	Value any `json:"value"`
 }
 
 // The publish diagnostic client capabilities.
 type PublishDiagnosticsClientCapabilities struct {
 	DiagnosticsCapabilities
-	// The publish diagnostic client capabilities.
+	/*
+		Whether the client interprets the version property of the
+		`textDocument/publishDiagnostics` notification's parameter.
+
+		@since 3.15.0
+	*/
 	VersionSupport *bool `json:"versionSupport,omitempty"`
 }
 
@@ -87,9 +85,8 @@ Client capabilities for the showDocument request.
 */
 type ShowDocumentClientCapabilities struct {
 	/*
-		Client capabilities for the showDocument request.
-
-		@since 3.16.0
+		The client has support for the showDocument
+		request.
 	*/
 	Support bool `json:"support"`
 }

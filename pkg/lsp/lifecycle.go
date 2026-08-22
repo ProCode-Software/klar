@@ -7,8 +7,10 @@ initialize request fails.
 */
 type InitializeError struct {
 	/*
-		The data type of the ResponseError if the
-		initialize request fails.
+		Indicates whether the client execute the following retry logic:
+		(1) show the message provided by the ResponseError to the user
+		(2) user selects retry or cancel
+		(3) if user selected retry the initialize method is sent again.
 	*/
 	Retry bool `json:"retry"`
 }
@@ -20,9 +22,13 @@ type InitializeParams struct {
 
 // The result returned from an initialize request.
 type InitializeResult struct {
-	// The result returned from an initialize request.
+	// The capabilities the language server provides.
 	Capabilities *ServerCapabilities `json:"capabilities"`
-	// The result returned from an initialize request.
+	/*
+		Information about the server.
+
+		@since 3.15.0
+	*/
 	ServerInfo *ServerInfo `json:"serverInfo,omitempty"`
 }
 

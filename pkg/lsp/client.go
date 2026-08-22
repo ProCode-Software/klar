@@ -11,17 +11,9 @@ Client capabilities specific to regular expressions.
 @since 3.16.0
 */
 type RegularExpressionsClientCapabilities struct {
-	/*
-		Client capabilities specific to regular expressions.
-
-		@since 3.16.0
-	*/
+	// The engine's name.
 	Engine RegularExpressionEngineKind `json:"engine"`
-	/*
-		Client capabilities specific to regular expressions.
-
-		@since 3.16.0
-	*/
+	// The engine's version.
 	Version string `json:"version,omitempty"`
 }
 
@@ -35,17 +27,9 @@ A versioned notebook document identifier.
 @since 3.17.0
 */
 type VersionedNotebookDocumentIdentifier struct {
-	/*
-		A versioned notebook document identifier.
-
-		@since 3.17.0
-	*/
+	// The version number of this notebook document.
 	Version int `json:"version"`
-	/*
-		A versioned notebook document identifier.
-
-		@since 3.17.0
-	*/
+	// The notebook document's uri.
 	Uri URI `json:"uri"`
 }
 

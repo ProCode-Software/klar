@@ -10,51 +10,53 @@ Inlay hint information.
 */
 type InlayHint struct {
 	/*
-		Inlay hint information.
+		The position of this hint.
 
-		@since 3.17.0
+		If multiple hints have the same position, they will be shown in the order
+		they appear in the response.
 	*/
 	Position Position `json:"position"`
 	/*
-		Inlay hint information.
+		The label of this hint. A human readable string or an array of
+		InlayHintLabelPart label parts.
 
-		@since 3.17.0
+		*Note* that neither the string nor the label part can be empty.
 	*/
 	Label rpc.Union2[string, []InlayHintLabelPart] `json:"label"`
 	/*
-		Inlay hint information.
-
-		@since 3.17.0
+		The kind of this hint. Can be omitted in which case the client
+		should fall back to a reasonable default.
 	*/
 	Kind *InlayHintKind `json:"kind,omitempty"`
 	/*
-		Inlay hint information.
+		Optional text edits that are performed when accepting this inlay hint.
 
-		@since 3.17.0
+		*Note* that edits are expected to change the document so that the inlay
+		hint (or its nearest variant) is now part of the document and the inlay
+		hint itself is now obsolete.
 	*/
 	TextEdits []TextEdit `json:"textEdits,omitempty"`
-	/*
-		Inlay hint information.
-
-		@since 3.17.0
-	*/
+	// The tooltip text when you hover over this item.
 	Tooltip *rpc.Union2[string, MarkupContent] `json:"tooltip,omitempty"`
 	/*
-		Inlay hint information.
+		Render padding before the hint.
 
-		@since 3.17.0
+		Note: Padding should use the editor's background color, not the
+		background color of the hint itself. That means padding can be used
+		to visually align/separate an inlay hint.
 	*/
 	PaddingLeft *bool `json:"paddingLeft,omitempty"`
 	/*
-		Inlay hint information.
+		Render padding after the hint.
 
-		@since 3.17.0
+		Note: Padding should use the editor's background color, not the
+		background color of the hint itself. That means padding can be used
+		to visually align/separate an inlay hint.
 	*/
 	PaddingRight *bool `json:"paddingRight,omitempty"`
 	/*
-		Inlay hint information.
-
-		@since 3.17.0
+		A data entry field that is preserved on an inlay hint between
+		a `textDocument/inlayHint` and a `inlayHint/resolve` request.
 	*/
 	Data any `json:"data,omitempty"`
 }
@@ -65,16 +67,11 @@ Inlay hint client capabilities.
 @since 3.17.0
 */
 type InlayHintClientCapabilities struct {
-	/*
-		Inlay hint client capabilities.
-
-		@since 3.17.0
-	*/
+	// Whether inlay hints support dynamic registration.
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
 	/*
-		Inlay hint client capabilities.
-
-		@since 3.17.0
+		Indicates which properties a client can resolve lazily on an inlay
+		hint.
 	*/
 	ResolveSupport *ClientInlayHintResolveOptions `json:"resolveSupport,omitempty"`
 }

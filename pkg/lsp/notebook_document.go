@@ -8,15 +8,27 @@ The params sent in a change notebook document notification.
 */
 type DidChangeNotebookDocumentParams struct {
 	/*
-		The params sent in a change notebook document notification.
-
-		@since 3.17.0
+		The notebook document that did change. The version number points
+		to the version after all provided changes have been applied. If
+		only the text document content of a cell changes the notebook version
+		doesn't necessarily have to change.
 	*/
 	NotebookDocument VersionedNotebookDocumentIdentifier `json:"notebookDocument"`
 	/*
-		The params sent in a change notebook document notification.
+		The actual changes to the notebook document.
 
-		@since 3.17.0
+		The changes describe single state changes to the notebook document.
+		So if there are two changes c1 (at array index 0) and c2 (at array
+		index 1) for a notebook in state S then c1 moves the notebook from
+		S to S' and c2 from S' to S''. So c1 is computed on the state S and
+		c2 is computed on the state S'.
+
+		To mirror the content of a notebook using change events use the following approach:
+
+		- start with the same initial content
+			- apply the 'notebookDocument/didChange' notifications in the order you receive them.
+			- apply the `NotebookChangeEvent`s in a single notification in the order
+		  you receive them.
 	*/
 	Change NotebookDocumentChangeEvent `json:"change"`
 }
@@ -27,16 +39,11 @@ The params sent in a close notebook document notification.
 @since 3.17.0
 */
 type DidCloseNotebookDocumentParams struct {
-	/*
-		The params sent in a close notebook document notification.
-
-		@since 3.17.0
-	*/
+	// The notebook document that got closed.
 	NotebookDocument NotebookDocumentIdentifier `json:"notebookDocument"`
 	/*
-		The params sent in a close notebook document notification.
-
-		@since 3.17.0
+		The text documents that represent the content
+		of a notebook cell that got closed.
 	*/
 	CellTextDocuments []TextDocumentIdentifier `json:"cellTextDocuments"`
 }
@@ -47,16 +54,11 @@ The params sent in an open notebook document notification.
 @since 3.17.0
 */
 type DidOpenNotebookDocumentParams struct {
-	/*
-		The params sent in an open notebook document notification.
-
-		@since 3.17.0
-	*/
+	// The notebook document that got opened.
 	NotebookDocument NotebookDocument `json:"notebookDocument"`
 	/*
-		The params sent in an open notebook document notification.
-
-		@since 3.17.0
+		The text documents that represent the content
+		of a notebook cell.
 	*/
 	CellTextDocuments []TextDocumentItem `json:"cellTextDocuments"`
 }
@@ -67,11 +69,7 @@ The params sent in a save notebook document notification.
 @since 3.17.0
 */
 type DidSaveNotebookDocumentParams struct {
-	/*
-		The params sent in a save notebook document notification.
-
-		@since 3.17.0
-	*/
+	// The notebook document that got saved.
 	NotebookDocument NotebookDocumentIdentifier `json:"notebookDocument"`
 }
 
@@ -88,7 +86,13 @@ type NotebookDocumentSyncRegistrationOptions struct {
 // A text document identifier to optionally denote a specific version of a text document.
 type OptionalVersionedTextDocumentIdentifier struct {
 	TextDocumentIdentifier
-	// A text document identifier to optionally denote a specific version of a text document.
+	/*
+		The version number of this document. If a versioned text document identifier
+		is sent from the server to the client and the file is not open in the editor
+		(the server has not received an open notification before) the server can send
+		`null` to indicate that the version is unknown and the content on disk is the
+		truth (as specified with document content ownership).
+	*/
 	Version int `json:"version,omitempty"` // integer | null
 }
 

@@ -5,11 +5,19 @@ import "github.com/ProCode-Software/klar/pkg/lsp/rpc"
 
 // The parameters passed via an apply workspace edit request.
 type ApplyWorkspaceEditParams struct {
-	// The parameters passed via an apply workspace edit request.
+	/*
+		An optional label of the workspace edit. This label is
+		presented in the user interface for example on an undo
+		stack to undo the workspace edit.
+	*/
 	Label string `json:"label,omitempty"`
-	// The parameters passed via an apply workspace edit request.
+	// The edits to apply.
 	Edit WorkspaceEdit `json:"edit"`
-	// The parameters passed via an apply workspace edit request.
+	/*
+		Additional data about the edit.
+
+		@since 3.18.0
+	*/
 	Metadata *WorkspaceEditMetadata `json:"metadata,omitempty"`
 }
 
@@ -19,52 +27,56 @@ The result returned from the apply workspace edit request.
 @since 3.17 renamed from ApplyWorkspaceEditResponse
 */
 type ApplyWorkspaceEditResult struct {
-	/*
-		The result returned from the apply workspace edit request.
-
-		@since 3.17 renamed from ApplyWorkspaceEditResponse
-	*/
+	// Indicates whether the edit was applied or not.
 	Applied bool `json:"applied"`
 	/*
-		The result returned from the apply workspace edit request.
-
-		@since 3.17 renamed from ApplyWorkspaceEditResponse
+		An optional textual description for why the edit was not applied.
+		This may be used by the server for diagnostic logging or to provide
+		a suitable error for a request that triggered the edit.
 	*/
 	FailureReason string `json:"failureReason,omitempty"`
 	/*
-		The result returned from the apply workspace edit request.
-
-		@since 3.17 renamed from ApplyWorkspaceEditResponse
+		Depending on the client's failure handling strategy `failedChange` might
+		contain the index of the change that failed. This property is only available
+		if the client signals a `failureHandlingStrategy` in its client capabilities.
 	*/
 	FailedChange uint32 `json:"failedChange,omitempty"`
 }
 
 // A base for all symbol information.
 type BaseSymbolInformation struct {
-	// A base for all symbol information.
+	// The name of this symbol.
 	Name string `json:"name"`
-	// A base for all symbol information.
+	// The kind of this symbol.
 	Kind SymbolKind `json:"kind"`
-	// A base for all symbol information.
+	/*
+		Tags for this symbol.
+
+		@since 3.16.0
+	*/
 	Tags []SymbolTag `json:"tags,omitempty"`
-	// A base for all symbol information.
+	/*
+		The name of the symbol containing this symbol. This information is for
+		user interface purposes (e.g. to render a qualifier in the user interface
+		if necessary). It can't be used to re-infer a hierarchy for the document
+		symbols.
+	*/
 	ContainerName string `json:"containerName,omitempty"`
 }
 
 // The parameters of a configuration request.
 type ConfigurationParams struct {
-	// The parameters of a configuration request.
 	Items []ConfigurationItem `json:"items"`
 }
 
 // Create file operation.
 type CreateFile struct {
 	ResourceOperation
-	// Create file operation.
+	// A create
 	Kind string `json:"kind"` // create
-	// Create file operation.
+	// The resource to create.
 	Uri DocumentURI `json:"uri"`
-	// Create file operation.
+	// Additional options
 	Options *CreateFileOptions `json:"options,omitempty"`
 }
 
@@ -75,20 +87,19 @@ files.
 @since 3.16.0
 */
 type CreateFilesParams struct {
-	/*
-		The parameters sent in notifications/requests for user-initiated creation of
-		files.
-
-		@since 3.16.0
-	*/
+	// An array of all files/folders created in this operation.
 	Files []FileCreate `json:"files"`
 }
 
 // @since 3.14.0
 type DeclarationClientCapabilities struct {
-	// @since 3.14.0
+	/*
+		Whether declaration supports dynamic registration. If this is set to `true`
+		the client supports the new `DeclarationRegistrationOptions` return value
+		for the corresponding server capability as well.
+	*/
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
-	// @since 3.14.0
+	// The client supports additional metadata in the form of declaration links.
 	LinkSupport *bool `json:"linkSupport,omitempty"`
 }
 
@@ -99,12 +110,7 @@ files.
 @since 3.16.0
 */
 type DeleteFilesParams struct {
-	/*
-		The parameters sent in notifications/requests for user-initiated deletes of
-		files.
-
-		@since 3.16.0
-	*/
+	// An array of all files/folders deleted in this operation.
 	Files []FileDelete `json:"files"`
 }
 
@@ -113,56 +119,59 @@ Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
 are only valid in the scope of a resource.
 */
 type Diagnostic struct {
-	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
-	*/
+	// The range at which the message applies
 	Range Range `json:"range"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		The diagnostic's severity. To avoid interpretation mismatches when a
+		server is used with different clients it is highly recommended that servers
+		always provide a severity value.
 	*/
 	Severity *DiagnosticSeverity `json:"severity,omitempty"`
-	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
-	*/
+	// The diagnostic's code, which usually appear in the user interface.
 	Code *rpc.Union2[int, string] `json:"code,omitempty"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		An optional property to describe the error code.
+		Requires the code field (above) to be present/not null.
+
+		@since 3.16.0
 	*/
 	CodeDescription *CodeDescription `json:"codeDescription,omitempty"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		A human-readable string describing the source of this
+		diagnostic, e.g. 'typescript' or 'super lint'. It usually
+		appears in the user interface.
 	*/
 	Source string `json:"source,omitempty"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		The diagnostic's message. It usually appears in the user interface.
+
+		@since 3.18.0 - support for MarkupContent. This is guarded by the client
+		capability `textDocument.diagnostic.markupMessageSupport`.
 	*/
 	Message rpc.Union2[string, MarkupContent] `json:"message"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		Additional metadata about the diagnostic.
+
+		@since 3.15.0
 	*/
 	Tags []DiagnosticTag `json:"tags,omitempty"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		An array of related diagnostic information, e.g. when symbol-names within
+		a scope collide all definitions can be marked via this property.
 	*/
 	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
 	/*
-		Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
-		are only valid in the scope of a resource.
+		A data entry field that is preserved between a `textDocument/publishDiagnostics`
+		notification and `textDocument/codeAction` request.
+
+		@since 3.16.0
 	*/
 	Data any `json:"data,omitempty"`
 }
 
 // The parameters of a change configuration notification.
 type DidChangeConfigurationParams struct {
-	// The parameters of a change configuration notification.
+	// The actual changed settings
 	Settings any `json:"settings"`
 }
 
@@ -172,28 +181,28 @@ type DidChangeConfigurationRegistrationOptions struct {
 
 // The watched files change notification's parameters.
 type DidChangeWatchedFilesParams struct {
-	// The watched files change notification's parameters.
+	// The actual file events.
 	Changes []FileEvent `json:"changes"`
 }
 
 // Describe options to be used when registered for text document change events.
 type DidChangeWatchedFilesRegistrationOptions struct {
-	// Describe options to be used when registered for text document change events.
+	// The watchers to register.
 	Watchers []FileSystemWatcher `json:"watchers"`
 }
 
 // The parameters of a `workspace/didChangeWorkspaceFolders` notification.
 type DidChangeWorkspaceFoldersParams struct {
-	// The parameters of a `workspace/didChangeWorkspaceFolders` notification.
+	// The actual workspace folder change event.
 	Event WorkspaceFoldersChangeEvent `json:"event"`
 }
 
 // The parameters of a [ExecuteCommandRequest].
 type ExecuteCommandParams struct {
 	WorkDoneProgressParams
-	// The parameters of a [ExecuteCommandRequest].
+	// The identifier of the actual command handler.
 	Command string `json:"command"`
-	// The parameters of a [ExecuteCommandRequest].
+	// Arguments that the command should be invoked with.
 	Arguments []any `json:"arguments,omitempty"`
 }
 
@@ -203,8 +212,17 @@ type ExecuteCommandRegistrationOptions struct {
 }
 
 type ExecutionSummary struct {
+	/*
+		A strict monotonically increasing value
+		indicating the execution order of a cell
+		inside a notebook.
+	*/
 	ExecutionOrder uint32 `json:"executionOrder"`
-	Success        *bool  `json:"success,omitempty"`
+	/*
+		Whether the execution was successful or
+		not if known by the client.
+	*/
+	Success *bool `json:"success,omitempty"`
 }
 
 /*
@@ -213,11 +231,7 @@ The options to register for file operations.
 @since 3.16.0
 */
 type FileOperationRegistrationOptions struct {
-	/*
-		The options to register for file operations.
-
-		@since 3.16.0
-	*/
+	// The actual filters.
 	Filters []FileOperationFilter `json:"filters"`
 }
 
@@ -227,17 +241,9 @@ Represents information on a file/folder rename.
 @since 3.16.0
 */
 type FileRename struct {
-	/*
-		Represents information on a file/folder rename.
-
-		@since 3.16.0
-	*/
+	// A URI for the original location of the file/folder being renamed.
 	OldUri DocumentURI `json:"oldUri"`
-	/*
-		Represents information on a file/folder rename.
-
-		@since 3.16.0
-	*/
+	// A URI for the new location of the file/folder being renamed.
 	NewUri DocumentURI `json:"newUri"`
 }
 
@@ -249,10 +255,8 @@ files.
 */
 type RenameFilesParams struct {
 	/*
-		The parameters sent in notifications/requests for user-initiated renames of
-		files.
-
-		@since 3.16.0
+		An array of all files/folders renamed in this operation. When a folder is renamed, only
+		the folder will be included, and not its children.
 	*/
 	Files []FileRename `json:"files"`
 }
@@ -260,7 +264,11 @@ type RenameFilesParams struct {
 // Provider options for a [RenameRequest].
 type RenameOptions struct {
 	WorkDoneProgressOptions
-	// Provider options for a [RenameRequest].
+	/*
+		Renames should be checked and tested before being executed.
+
+		@since version 3.12.0
+	*/
 	PrepareProvider *bool `json:"prepareProvider,omitempty"`
 }
 
@@ -270,11 +278,7 @@ Parameters for the `workspace/textDocumentContent` request.
 @since 3.18.0
 */
 type TextDocumentContentParams struct {
-	/*
-		Parameters for the `workspace/textDocumentContent` request.
-
-		@since 3.18.0
-	*/
+	// The uri of the text document.
 	Uri DocumentURI `json:"uri"`
 }
 
@@ -295,9 +299,10 @@ Result of the `workspace/textDocumentContent` request.
 */
 type TextDocumentContentResult struct {
 	/*
-		Result of the `workspace/textDocumentContent` request.
-
-		@since 3.18.0
+		The text content of the text document. Please note, that the content of
+		any subsequent open notifications for the text document might differ
+		from the returned content due to whitespace and line ending
+		normalizations done on the client
 	*/
 	Text string `json:"text"`
 }
@@ -309,18 +314,16 @@ So the creator of a TextDocumentEdit doesn't need to sort the array of edits or 
 kind of ordering. However the edits must be non overlapping.
 */
 type TextDocumentEdit struct {
-	/*
-		Describes textual changes on a text document. A TextDocumentEdit describes all changes
-		on a document version Si and after they are applied move the document to version Si+1.
-		So the creator of a TextDocumentEdit doesn't need to sort the array of edits or do any
-		kind of ordering. However the edits must be non overlapping.
-	*/
+	// The text document to change.
 	TextDocument OptionalVersionedTextDocumentIdentifier `json:"textDocument"`
 	/*
-		Describes textual changes on a text document. A TextDocumentEdit describes all changes
-		on a document version Si and after they are applied move the document to version Si+1.
-		So the creator of a TextDocumentEdit doesn't need to sort the array of edits or do any
-		kind of ordering. However the edits must be non overlapping.
+		The edits to be applied.
+
+		@since 3.16.0 - support for AnnotatedTextEdit. This is guarded using a
+		client capability.
+
+		@since 3.18.0 - support for SnippetTextEdit. This is guarded using a
+		client capability.
 	*/
 	Edits []rpc.Union3[TextEdit, AnnotatedTextEdit, SnippetTextEdit] `json:"edits"` // TextEdit | AnnotatedTextEdit | SnippetTextEdit[]
 }
@@ -333,16 +336,11 @@ Parameters of the workspace diagnostic request.
 type WorkspaceDiagnosticParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		Parameters of the workspace diagnostic request.
-
-		@since 3.17.0
-	*/
+	// The additional identifier provided during registration.
 	Identifier string `json:"identifier,omitempty"`
 	/*
-		Parameters of the workspace diagnostic request.
-
-		@since 3.17.0
+		The currently known diagnostic reports with their
+		previous result ids.
 	*/
 	PreviousResultIds []PreviousResultId `json:"previousResultIds"`
 }
@@ -353,11 +351,6 @@ A workspace diagnostic report.
 @since 3.17.0
 */
 type WorkspaceDiagnosticReport struct {
-	/*
-		A workspace diagnostic report.
-
-		@since 3.17.0
-	*/
 	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
 }
 
@@ -367,11 +360,6 @@ A partial result for a workspace diagnostic report.
 @since 3.17.0
 */
 type WorkspaceDiagnosticReportPartialResult struct {
-	/*
-		A partial result for a workspace diagnostic report.
-
-		@since 3.17.0
-	*/
 	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
 }
 
@@ -379,7 +367,16 @@ type WorkspaceDiagnosticReportPartialResult struct {
 type WorkspaceSymbolParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	// The parameters of a [WorkspaceSymbolRequest].
+	/*
+		A query string to filter symbols by. Clients may send an empty
+		string here to request all symbols.
+
+		The `query`-parameter should be interpreted in a *relaxed way* as editors
+		will apply their own highlighting and scoring on the results. A good rule
+		of thumb is to match case-insensitive and to simply check that the
+		characters of *query* appear in their order in a candidate symbol.
+		Servers shouldn't use prefix, substring, or similar strict matching.
+	*/
 	Query string `json:"query"`
 }
 
@@ -395,16 +392,11 @@ An unchanged document diagnostic report for a workspace diagnostic result.
 */
 type WorkspaceUnchangedDocumentDiagnosticReport struct {
 	UnchangedDocumentDiagnosticReport
-	/*
-		An unchanged document diagnostic report for a workspace diagnostic result.
-
-		@since 3.17.0
-	*/
+	// The URI for which diagnostic information is reported.
 	Uri DocumentURI `json:"uri"`
 	/*
-		An unchanged document diagnostic report for a workspace diagnostic result.
-
-		@since 3.17.0
+		The version number for which the diagnostics are reported.
+		If the document is not marked as open `null` can be provided.
 	*/
 	Version int `json:"version,omitempty"` // integer | null
 }

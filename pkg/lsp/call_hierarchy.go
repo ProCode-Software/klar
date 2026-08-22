@@ -9,11 +9,6 @@ The parameter of a `callHierarchy/incomingCalls` request.
 type CallHierarchyIncomingCallsParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		The parameter of a `callHierarchy/incomingCalls` request.
-
-		@since 3.16.0
-	*/
 	Item *CallHierarchyItem `json:"item"`
 }
 
@@ -24,60 +19,26 @@ of call hierarchy.
 @since 3.16.0
 */
 type CallHierarchyItem struct {
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// The name of this item.
 	Name string `json:"name"`
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// The kind of this item.
 	Kind SymbolKind `json:"kind"`
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// Tags for this item.
 	Tags []SymbolTag `json:"tags,omitempty"`
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// More detail for this item, e.g. the signature of a function.
 	Detail string `json:"detail,omitempty"`
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// The resource identifier of this item.
 	Uri DocumentURI `json:"uri"`
-	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
-	*/
+	// The range enclosing this symbol not including leading/trailing whitespace but everything else, e.g. comments and code.
 	Range Range `json:"range"`
 	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
+		The range that should be selected and revealed when this symbol is being picked, e.g. the name of a function.
+		Must be contained by the  `range` [CallHierarchyItem.range].
 	*/
 	SelectionRange Range `json:"selectionRange"`
 	/*
-		Represents programming constructs like functions or constructors in the context
-		of call hierarchy.
-
-		@since 3.16.0
+		A data entry field that is preserved between a call hierarchy prepare and
+		incoming calls or outgoing calls requests.
 	*/
 	Data any `json:"data,omitempty"`
 }
@@ -90,10 +51,5 @@ The parameter of a `callHierarchy/outgoingCalls` request.
 type CallHierarchyOutgoingCallsParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		The parameter of a `callHierarchy/outgoingCalls` request.
-
-		@since 3.16.0
-	*/
 	Item *CallHierarchyItem `json:"item"`
 }

@@ -5,15 +5,17 @@ package lsp
 type SemanticTokensDeltaParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	// @since 3.16.0
+	// The text document.
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
-	// @since 3.16.0
+	/*
+		The result id of a previous response. The result Id can either point to a full response
+		or a delta response depending on what was received last.
+	*/
 	PreviousResultId string `json:"previousResultId"`
 }
 
 // @since 3.16.0
 type SemanticTokensDeltaPartialResult struct {
-	// @since 3.16.0
 	Edits []SemanticTokensEdit `json:"edits"`
 }
 
@@ -21,13 +23,12 @@ type SemanticTokensDeltaPartialResult struct {
 type SemanticTokensParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	// @since 3.16.0
+	// The text document.
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
 // @since 3.16.0
 type SemanticTokensPartialResult struct {
-	// @since 3.16.0
 	Data []uint32 `json:"data"`
 }
 
@@ -35,9 +36,9 @@ type SemanticTokensPartialResult struct {
 type SemanticTokensRangeParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	// @since 3.16.0
+	// The text document.
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
-	// @since 3.16.0
+	// The range the semantic tokens are requested for.
 	Range Range `json:"range"`
 }
 
@@ -50,6 +51,14 @@ type SemanticTokensRegistrationOptions struct {
 
 // @since 3.16.0
 type SemanticTokensWorkspaceClientCapabilities struct {
-	// @since 3.16.0
+	/*
+		Whether the client implementation supports a refresh request sent from
+		the server to the client.
+
+		Note that this event is global and will force the client to refresh all
+		semantic tokens currently shown. It should be used with absolute care
+		and is useful for situation where a server for example detects a project
+		wide change that requires such a calculation.
+	*/
 	RefreshSupport *bool `json:"refreshSupport,omitempty"`
 }

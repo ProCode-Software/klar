@@ -9,11 +9,6 @@ The parameter of a `typeHierarchy/subtypes` request.
 type TypeHierarchySubtypesParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		The parameter of a `typeHierarchy/subtypes` request.
-
-		@since 3.17.0
-	*/
 	Item *TypeHierarchyItem `json:"item"`
 }
 
@@ -25,11 +20,6 @@ The parameter of a `typeHierarchy/supertypes` request.
 type TypeHierarchySupertypesParams struct {
 	WorkDoneProgressParams
 	PartialResultParams
-	/*
-		The parameter of a `typeHierarchy/supertypes` request.
-
-		@since 3.17.0
-	*/
 	Item *TypeHierarchyItem `json:"item"`
 }
 
@@ -41,17 +31,15 @@ report is still accurate.
 */
 type UnchangedDocumentDiagnosticReport struct {
 	/*
-		A diagnostic report indicating that the last returned
-		report is still accurate.
-
-		@since 3.17.0
+		A document diagnostic report indicating
+		no changes to the last result. A server can
+		only return `unchanged` if result ids are
+		provided.
 	*/
 	Kind string `json:"kind"` // unchanged
 	/*
-		A diagnostic report indicating that the last returned
-		report is still accurate.
-
-		@since 3.17.0
+		A result id which will be sent on the next
+		diagnostic request for the same document.
 	*/
 	ResultId string `json:"resultId"`
 }

@@ -8,90 +8,129 @@ to refactor code.
 A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
 */
 type CodeAction struct {
-	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
-
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
-	*/
+	// A short, human-readable, title for this code action.
 	Title string `json:"title"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
+		The kind of the code action.
 
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		Used to filter code actions.
 	*/
 	Kind *CodeActionKind `json:"kind,omitempty"`
-	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
-
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
-	*/
+	// The diagnostics that this code action resolves.
 	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
+		Marks this as a preferred action. Preferred actions are used by the `auto fix` command and can be targeted
+		by keybindings.
 
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		A quick fix should be marked preferred if it properly addresses the underlying error.
+		A refactoring should be marked preferred if it is the most reasonable choice of actions to take.
+
+		@since 3.15.0
 	*/
 	IsPreferred *bool `json:"isPreferred,omitempty"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
+		Marks that the code action cannot currently be applied.
 
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		Clients should follow the following guidelines regarding disabled code actions:
+
+		  - Disabled code actions are not shown in automatic [lightbulbs](https://code.visualstudio.com/docs/editor/editingevolved#_code-action)
+		    code action menus.
+
+		  - Disabled actions are shown as faded out in the code action menu when the user requests a more specific type
+		    of code action, such as refactorings.
+
+		  - If the user has a [keybinding](https://code.visualstudio.com/docs/editor/refactoring#_keybindings-for-code-actions)
+		    that auto applies a code action and only disabled code actions are returned, the client should show the user an
+		    error message with `reason` in the editor.
+
+		@since 3.16.0
 	*/
 	Disabled *CodeActionDisabled `json:"disabled,omitempty"`
-	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
-
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
-	*/
+	// The workspace edit this code action performs.
 	Edit *WorkspaceEdit `json:"edit,omitempty"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
-
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		A command this code action executes. If a code action
+		provides an edit and a command, first the edit is
+		executed and then the command.
 	*/
 	Command *Command `json:"command,omitempty"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
+		A data entry field that is preserved on a code action between
+		a `textDocument/codeAction` and a `codeAction/resolve` request.
 
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		@since 3.16.0
 	*/
 	Data any `json:"data,omitempty"`
 	/*
-		A code action represents a change that can be performed in code, e.g. to fix a problem or
-		to refactor code.
+		Tags for this code action.
 
-		A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is applied first, then the `command` is executed.
+		@since 3.18.0
 	*/
 	Tags []CodeActionTag `json:"tags,omitempty"`
 }
 
 // The Client Capabilities of a [CodeActionRequest].
 type CodeActionClientCapabilities struct {
-	// The Client Capabilities of a [CodeActionRequest].
+	// Whether code action supports dynamic registration.
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		The client support code action literals of type `CodeAction` as a valid
+		response of the `textDocument/codeAction` request. If the property is not
+		set the request can only return `Command` literals.
+
+		@since 3.8.0
+	*/
 	CodeActionLiteralSupport *ClientCodeActionLiteralOptions `json:"codeActionLiteralSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether code action supports the `isPreferred` property.
+
+		@since 3.15.0
+	*/
 	IsPreferredSupport *bool `json:"isPreferredSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether code action supports the `disabled` property.
+
+		@since 3.16.0
+	*/
 	DisabledSupport *bool `json:"disabledSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether code action supports the `data` property which is
+		preserved between a `textDocument/codeAction` and a
+		`codeAction/resolve` request.
+
+		@since 3.16.0
+	*/
 	DataSupport *bool `json:"dataSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether the client supports resolving additional code action
+		properties via a separate `codeAction/resolve` request.
+
+		@since 3.16.0
+	*/
 	ResolveSupport *ClientCodeActionResolveOptions `json:"resolveSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether the client honors the change annotations in
+		text edits and resource operations returned via the
+		`CodeAction#edit` property by for example presenting
+		the workspace edit in the user interface and asking
+		for confirmation.
+
+		@since 3.16.0
+	*/
 	HonorsChangeAnnotations *bool `json:"honorsChangeAnnotations,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Whether the client supports documentation for a class of
+		code actions.
+
+		@since 3.18.0
+	*/
 	DocumentationSupport *bool `json:"documentationSupport,omitempty"`
-	// The Client Capabilities of a [CodeActionRequest].
+	/*
+		Client supports the tag property on a code action. Clients
+		supporting tags have to handle unknown tags gracefully.
+
+		@since 3.18.0
+	*/
 	TagSupport *CodeActionTagOptions `json:"tagSupport,omitempty"`
 }
 

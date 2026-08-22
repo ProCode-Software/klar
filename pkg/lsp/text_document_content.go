@@ -7,10 +7,6 @@ Parameters for the `workspace/textDocumentContent/refresh` request.
 @since 3.18.0
 */
 type TextDocumentContentRefreshParams struct {
-	/*
-		Parameters for the `workspace/textDocumentContent/refresh` request.
-
-		@since 3.18.0
-	*/
+	// The uri of the text document to refresh.
 	Uri DocumentURI `json:"uri"`
 }

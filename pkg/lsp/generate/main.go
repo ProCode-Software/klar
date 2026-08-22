@@ -18,13 +18,9 @@ const integerIsInt32 = false
 // https://raw.githubusercontent.com/microsoft/language-server-protocol/gh-pages/_specifications/lsp/3.18/metaModel/metaModel.json
 const MetaModelURL = "https://raw.githubusercontent.com/microsoft/language-server-protocol/gh-pages/_specifications/lsp/" + lsp.ProtocolVersion + "/metaModel/metaModel.json"
 
-var (
-	exclude = [...]string{}
-	outDir  string
-)
+var exclude = [...]string{}
 
 func main() {
-	outDir = os.Args[1]
 	mm := fetchMetaModel()
 	types := makeSymbolMap(mm)
 	for _, exc := range exclude {
@@ -36,6 +32,7 @@ func main() {
 	w := writer{mm: mm, symbols: types, sortedSymbols: sortedSymbols}
 	// Always write structs first
 	w.writeStructs()
+	// Write other objects
 	for _, name := range sortedSymbols {
 		entry := w.symbols[name]
 		if entry.category != "" {
@@ -48,8 +45,8 @@ func main() {
 			w.writeEnum(decl, w.getFile(entry.category))
 		}
 	}
-	
-	w.writeFiles()
+	// Write to disk
+	w.writeFiles(os.Args[1])
 }
 
 // https://github.com/microsoft/language-server-protocol/blob/8b9fab8f0912b694c795d05c1d5e9d357bee0193/_specifications/lsp/3.18/metaModel/metaModel.ts

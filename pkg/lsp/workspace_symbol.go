@@ -13,31 +13,39 @@ See also SymbolInformation.
 type WorkspaceSymbol struct {
 	BaseSymbolInformation
 	/*
-		A special workspace symbol that supports locations without a range.
+		The location of the symbol. Whether a server is allowed to
+		return a location without a range depends on the client
+		capability `workspace.symbol.resolveSupport`.
 
-		See also SymbolInformation.
-
-		@since 3.17.0
+		See SymbolInformation#location for more details.
 	*/
 	Location rpc.Union2[Location, LocationUriOnly] `json:"location"`
 	/*
-		A special workspace symbol that supports locations without a range.
-
-		See also SymbolInformation.
-
-		@since 3.17.0
+		A data entry field that is preserved on a workspace symbol between a
+		workspace symbol request and a workspace symbol resolve request.
 	*/
 	Data any `json:"data,omitempty"`
 }
 
 // Client capabilities for a [WorkspaceSymbolRequest].
 type WorkspaceSymbolClientCapabilities struct {
-	// Client capabilities for a [WorkspaceSymbolRequest].
+	// Symbol request supports dynamic registration.
 	DynamicRegistration *bool `json:"dynamicRegistration,omitempty"`
-	// Client capabilities for a [WorkspaceSymbolRequest].
+	// Specific capabilities for the `SymbolKind` in the `workspace/symbol` request.
 	SymbolKind *ClientSymbolKindOptions `json:"symbolKind,omitempty"`
-	// Client capabilities for a [WorkspaceSymbolRequest].
+	/*
+		The client supports tags on `SymbolInformation`.
+		Clients supporting tags have to handle unknown tags gracefully.
+
+		@since 3.16.0
+	*/
 	TagSupport *ClientSymbolTagOptions `json:"tagSupport,omitempty"`
-	// Client capabilities for a [WorkspaceSymbolRequest].
+	/*
+		The client support partial workspace symbols. The client will send the
+		request `workspaceSymbol/resolve` to the server to resolve additional
+		properties.
+
+		@since 3.17.0
+	*/
 	ResolveSupport *ClientSymbolResolveOptions `json:"resolveSupport,omitempty"`
 }
