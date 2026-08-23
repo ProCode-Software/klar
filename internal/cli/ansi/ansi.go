@@ -186,7 +186,7 @@ func ColorBit8(c int) string {
 	return fmt.Sprintf("\x1b[38;5;%dm", c)
 }
 
-func ListSeparator(color string, s string) string {
+func ListSeparator(color, s string) string {
 	if DisableColor {
 		return s
 	}

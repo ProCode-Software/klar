@@ -43,11 +43,17 @@ impl KlarExtension {
         }
 
         // TODO: Download Klar binary from GitHub
-        _ = language_server_id;
-        Err(
-            "Klar isn't installed. Please install from https://github.com/ProCode-Software/klar"
-                .to_string(),
-        )
+        zed::set_language_server_installation_status(
+            language_server_id,
+            &zed_extension_api::LanguageServerInstallationStatus::CheckingForUpdate,
+        );
+        let error_message =
+            "Klar isn't installed. Please install from https://github.com/ProCode-Software/klar";
+        zed::set_language_server_installation_status(
+            language_server_id,
+            &zed_extension_api::LanguageServerInstallationStatus::Failed(error_message.to_string()),
+        );
+        Err(error_message.to_string())
     }
 }
 

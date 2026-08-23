@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-gofumpt -l -w .
+gofumpt -l -extra=group_params -w .

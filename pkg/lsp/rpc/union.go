@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-
 type Union2[A, B any] struct{ Value any }
 
 func (u *Union2[A, B]) IsNil() bool { return u == nil || u.Value == nil }

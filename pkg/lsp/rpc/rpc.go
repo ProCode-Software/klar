@@ -11,7 +11,15 @@ import (
 	"strconv"
 )
 
-const JSON_RPCVersion = "2.0"
+const JSONRPCVersion = "2.0"
+
+type explicitNull struct{}
+
+var ExplicitNull = explicitNull{}
+
+func (*explicitNull) MarshalJSON() ([]byte, error) {
+	return []byte("null"), nil
+}
 
 // Things that can be sent/received
 // ========
@@ -45,7 +53,7 @@ type Response struct {
 	 * The result of a request. This member is REQUIRED on success.
 	 * This member MUST NOT exist if there was an error invoking the method.
 	 */
-	Result any `json:"result,omitempty"` // LSPAny | null
+	Result any `json:"result,omitzero"` // LSPAny | null
 	/**
 	 * The error object in case a request fails.
 	 */
@@ -98,9 +106,9 @@ func Decode(b []byte) (Message, error) {
 		return nil, err
 	}
 	switch {
-	case baseMsg.JSONRPC != JSON_RPCVersion:
+	case baseMsg.JSONRPC != JSONRPCVersion:
 		return nil, fmt.Errorf(
-			"'jsonrpc' must be %q, got %q", JSON_RPCVersion, baseMsg.JSONRPC,
+			"'jsonrpc' must be %q, got %q", JSONRPCVersion, baseMsg.JSONRPC,
 		)
 	case baseMsg.Result != nil, baseMsg.Error != nil:
 		return &Response{

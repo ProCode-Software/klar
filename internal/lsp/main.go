@@ -10,22 +10,22 @@ import (
 	"github.com/ProCode-Software/klar/pkg/argparse"
 )
 
-type Server struct {
-	in  io.Reader // Usually stdin
-	out io.Writer // Usually stdout
-	*slog.Logger
-}
-
 func Main() {
 	l, err := util.SetLogger(Flags.Flag("verbose").Bool(), false)
 	if err != nil {
 		cli.Failure("Failed to enable logger:", err)
 	}
-	s := Server{
-		in: os.Stdin, out: os.Stdout,
-		Logger: l,
-	}
+	s := NewServer(os.Stdout, os.Stdout, l)
 	s.Listen()
+}
+
+func NewServer(in io.Reader, out io.Writer, l *slog.Logger) *Server {
+	return &Server{
+		in: in, out: out,
+		Logger: l,
+		fs:     &FileSystem{},
+		pkgs:   make(map[string]*Package),
+	}
 }
 
 var Flags = argparse.NewParser().

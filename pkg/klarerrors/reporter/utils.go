@@ -52,7 +52,7 @@ func (r *Reporter) appendRune(c rune, color string) {
 	r.buf.WriteString(ansi.Color(color, string(c)))
 }
 
-func (r *Reporter) appendString(s string, color string) {
+func (r *Reporter) appendString(s, color string) {
 	r.buf.WriteString(ansi.Color(color, s))
 }
 

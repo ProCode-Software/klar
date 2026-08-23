@@ -3,7 +3,7 @@ package ansi
 import "strings"
 
 // space is either "38" (foreground) or "48" (background).
-func gradient(space string, text string, colors ...[3]int) string {
+func gradient(space, text string, colors ...[3]int) string {
 	esc := func(color [3]int) string {
 		return RGBSpace(space, color[0], color[1], color[2])
 	}

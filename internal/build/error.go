@@ -270,11 +270,6 @@ func makeKlonTokens(content []byte) []lexer.Token {
 	}}
 }
 
-func IsMaxErrors(err error) bool {
-	ie, ok := err.(*InterfaceError)
-	return ok && ie.Code == ErrTooManyErrors
-}
-
 // IsKlonError returns true if the error was caused by a failure
 // to parse a Klon file such as a config.
 func IsKlonError(err error) bool {

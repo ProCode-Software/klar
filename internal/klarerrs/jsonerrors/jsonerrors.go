@@ -12,17 +12,17 @@ import (
 
 // WriteTo writes the build result and error information to w in JSON format.
 // A final newline is not appended to the output.
-func WriteTo(w io.Writer, res *build.Result, fatalErr error, isMaxErrors bool) error {
+func WriteTo(w io.Writer, res *build.Result, fatalErr error) error {
 	format := struct {
 		ElapsedTime time.Duration `json:"elapsedTime,format:units"`
 		ErrorCount  int           `json:"errorCount"`
-		IsMaxErrors bool          `json:"maxErrors,omitempty,omitzero"`
+		IsMaxErrors bool          `json:"maxErrors,omitempty"`
 		Errors      errorSlice    `json:"errors"`
 		Warnings    errorSlice    `json:"warnings"`
-		FatalError  error         `json:"fatalError,omitempty,omitzero"`
+		FatalError  error         `json:"fatalError,omitempty"`
 	}{
 		ElapsedTime: res.Elapsed,
-		IsMaxErrors: isMaxErrors,
+		IsMaxErrors: res.IsMaxErrors,
 		ErrorCount:  len(res.Errors),
 		Errors:      res.Errors,
 		Warnings:    res.Warnings,

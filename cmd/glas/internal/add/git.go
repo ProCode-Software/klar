@@ -197,7 +197,7 @@ func (p *gitPackage) validateSpec(ic *installContext) {
 	}
 }
 
-func listGitEntriesWithPrefix(s string, prefix string) (items []string) {
+func listGitEntriesWithPrefix(s, prefix string) (items []string) {
 	for line := range strings.Lines(s) {
 		_, path, _ := strings.Cut(line, "\t")
 		if after, ok := strings.CutPrefix(path, prefix); ok {

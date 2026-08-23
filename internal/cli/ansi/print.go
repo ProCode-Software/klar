@@ -45,7 +45,7 @@ func TagPrintfln(format string, a ...any) (n int, err error) {
 
 // Wrap is equivalent to [Color](color, s), but color is reapplied
 // whenever s has an ANSI reset.
-func Wrap(color string, s string) string {
+func Wrap(color, s string) string {
 	if DisableColor {
 		return s
 	}

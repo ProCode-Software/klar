@@ -7,16 +7,20 @@ import (
 	"encoding/json/v2"
 	"strings"
 	"syscall/js"
+	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
 	"github.com/ProCode-Software/klar/internal/klarerrs/jsonerrors"
+	"github.com/ProCode-Software/klar/internal/target"
 )
 
 func main() {
+	ansi.DisableColor = true
+	pc := makeCompiler()
 	var compile, freeCompiler js.Func
 	compile = js.FuncOf(func(this js.Value, args []js.Value) any {
-		s, report := Parse(args[0].String(), args[1].String())
+		s, report := Compile(pc, args[0].String(), args[1].String())
 		var getErrors js.Func
 		getErrors = js.FuncOf(func(this js.Value, args []js.Value) any {
 			getErrors.Release()
@@ -42,30 +46,52 @@ func main() {
 	select {} // Keep running
 }
 
-// Parse compiles the given source string and returns the result as a JSON string.
-func Parse(s string, fileName string) (data string, report func() string) {
-	var (
-		buf         strings.Builder
-		c, res, err = build.CompileString(s, fileName)
-		isMaxErrors = build.IsMaxErrors(err)
-	)
+func makeCompiler() *build.ProjectCompiler {
+	pc := build.NewProjectCompiler(build.NewCompiler(build.ModeBuild, ""))
+	pc.Parser = build.NewStaticParser(pc.FS, "", "", nil)
+	return pc
+}
+
+// Compile compiles the given source string and returns the result as a JSON string.
+// The returned function report can be called to return the CLI-style diagnostics.
+func Compile(
+	pc *build.ProjectCompiler, s, fileName string,
+) (data string, report func() string) {
+	// Load the file into the compiler's FS
+	sp := pc.Parser.(*build.StaticParser)
+	sp.LoadFile(fileName, &build.StaticParserFile{Reader: strings.NewReader(s)})
+
+	pc.Inputs = append(pc.Inputs, &build.Input{
+		Kind:    build.KindFile,
+		Path:    fileName,
+		Targets: []target.Target{target.JavaScript},
+	})
+
+	pc.StartTime = time.Now()
+	var resultJSONBuf strings.Builder
+	res, err := pc.Compile()
 	if err != nil || len(res.Errors) > 0 {
-		jsonerrors.WriteTo(&buf, res, err, isMaxErrors)
+		err = jsonerrors.WriteTo(&resultJSONBuf, res, err)
 	} else {
-		json.MarshalWrite(&buf, res)
+		err = json.MarshalWrite(&resultJSONBuf, res)
 	}
-	return buf.String(), func() string {
-		return ReportErrors(c, res, err, isMaxErrors)
+	// Error while writing JSON
+	if err != nil {
+		// TODO: Maybe we should return an error to JS instead
+		panic(err)
+	}
+	return resultJSONBuf.String(), func() string {
+		return ReportErrors(pc, res, err)
 	}
 }
 
-func ReportErrors(c *build.ProjectCompiler, res *build.Result, err error, isMaxErrors bool) string {
+func ReportErrors(pc *build.ProjectCompiler, res *build.Result, err error) string {
 	var buf strings.Builder
-	c.Reporter.UseColor = true
-	c.Reporter.Output = &buf
+	pc.Reporter.UseColor = true
+	pc.Reporter.Output = &buf
 
 	// Actual errors
-	c.PrintAllErrors(res.Errors)
+	pc.PrintAllErrors(res.Errors)
 
 	// Critical error
 	if err != nil {

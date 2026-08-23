@@ -123,11 +123,10 @@ func Build(r *argparse.Parser) {
 	}
 	switch {
 	case jsonOutput:
-		isMaxErrors := res != nil && res.IsMaxErrors
-		if err := jsonerrors.WriteTo(os.Stdout, res, err, isMaxErrors); err != nil {
+		if err := jsonerrors.WriteTo(os.Stdout, res, err); err != nil {
 			cli.Error("Failed to write JSON errors:", err)
 		}
-		fmt.Println()
+		fmt.Println() // jsonerrors doesn't append a newline
 		if err != nil || len(res.Errors) > 0 {
 			cli.Exit(1)
 		}

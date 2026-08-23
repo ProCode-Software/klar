@@ -40,6 +40,7 @@ func (pc *ProjectCompiler) ResetState() {
 	pc.Compiler.ResetState()
 }
 
+// The returned [*Result] will never be nil, even if an error occurs.
 func (pc *ProjectCompiler) Compile() (*Result, error) {
 	// Compile() may be called multiple times (such as by the LSP)
 	pc.ResetState()
@@ -48,9 +49,18 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 		pc.StartTime = time.Now()
 	}
 
+	// Ensure a nil result is never returned
+	res := &Result{}
+	defer func() {
+		res.AllModules = pc.Deps
+		res.Errors = pc.Errors
+		res.Warnings = pc.Warnings
+		res.Elapsed = time.Since(pc.StartTime)
+	}()
+
 	// We need to load the Klar directories before compiling
 	if err := module.LoadSystemDirs(); err != nil {
-		return nil, err
+		return res, err
 	}
 
 	// Set the target to JS for inputs with no provided target (no 'targets'
@@ -63,16 +73,9 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 		if !ok || ierr.Code != ErrInternalCompileError {
 			ierr = &InterfaceError{Code: ErrInternalCompileError, Err: err}
 		}
-		return nil, ierr
+		return res, ierr
 	}
 
-	res := &Result{}
-	defer func() {
-		res.AllModules = pc.Deps
-		res.Errors = pc.Errors
-		res.Warnings = pc.Warnings
-		res.Elapsed = time.Since(pc.StartTime)
-	}()
 	handleMaxErrors := func(err error) error {
 		if err == errMaxErrors {
 			res.IsMaxErrors = true
@@ -84,7 +87,7 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 	// Dependencies are compiled first
 	var err error
 	if res.DepModules, err = pc.CompileDeps(); handleMaxErrors(err) != nil {
-		return nil, err
+		return res, err
 	}
 	// Don't display errors and warnings from dependencies. When an input imports
 	// a dependency with errors, they will have their own error. And for
@@ -93,7 +96,7 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 
 	// Then, the inputs from the command line
 	if res.Modules, err = pc.CompileInputs(); handleMaxErrors(err) != nil {
-		return nil, err
+		return res, err
 	}
 	return res, nil
 }

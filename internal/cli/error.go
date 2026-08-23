@@ -16,7 +16,7 @@ func TitlePrefix(color, title string) string {
 var errorPrefix = TitlePrefix(ansi.CodeBoldBrightRed, "Error")
 
 // CustomError prints an error to [os.Stderr] with a custom title
-func CustomError(titleColor, title string, msg string, detail ...any) {
+func CustomError(titleColor, title, msg string, detail ...any) {
 	t := strings.TrimSuffix(TitlePrefix(titleColor, title), " ")
 	v := []any{t}
 	if msg != "" {
