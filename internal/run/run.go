@@ -17,19 +17,19 @@ func RunString(s, fileName string) (*build.Result, error) {
 
 // Errors are already reported to standard error
 func RunInput(r io.Reader, fileName string) (*build.Result, error) {
-	return compile(build.NewStaticParser("", fileName, &build.StaticParserFile{
-		ShortPath: fileName,
-		Reader:    r,
-	}), fileName)
+	return compile(build.NewStaticParser(
+		build.SystemFS, "", fileName,
+		&build.StaticParserFile{ShortPath: fileName, Reader: r},
+	), fileName)
 }
 
 // Errors are already reported to standard error
 func RunTokens(tokens []lexer.Token, fileName string) (*build.Result, error) {
 	// Don't need to resolve files
-	return compile(build.NewStaticParser("", fileName, &build.StaticParserFile{
-		ShortPath: fileName,
-		Tokens:    tokens,
-	}), fileName)
+	return compile(build.NewStaticParser(
+		build.SystemFS, "", fileName,
+		&build.StaticParserFile{ShortPath: fileName, Tokens: tokens},
+	), fileName)
 }
 
 func compile(parser build.Parser, fileName string) (*build.Result, error) {
