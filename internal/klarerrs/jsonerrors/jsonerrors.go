@@ -4,7 +4,6 @@ package jsonerrors
 import (
 	"encoding/json/v2"
 	"io"
-	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
@@ -14,14 +13,16 @@ import (
 // A final newline is not appended to the output.
 func WriteTo(w io.Writer, res *build.Result, fatalErr error) error {
 	format := struct {
-		ElapsedTime time.Duration `json:"elapsedTime,format:units"`
-		ErrorCount  int           `json:"errorCount"`
-		IsMaxErrors bool          `json:"maxErrors,omitempty"`
-		Errors      errorSlice    `json:"errors"`
-		Warnings    errorSlice    `json:"warnings"`
-		FatalError  error         `json:"fatalError,omitempty"`
+		ElapsedTime string     `json:"elapsedTime"`
+		ErrorCount  int        `json:"errorCount"`
+		IsMaxErrors bool       `json:"maxErrors,omitempty"`
+		Errors      errorSlice `json:"errors"`
+		Warnings    errorSlice `json:"warnings"`
+		FatalError  error      `json:"fatalError,omitempty"`
 	}{
-		ElapsedTime: res.Elapsed,
+		// JSON v2 doesn't have a default [time.Duration] representation
+		// See https://github.com/golang/go/issues/79071#issuecomment-5351571588
+		ElapsedTime: res.Elapsed.String(),
 		IsMaxErrors: res.IsMaxErrors,
 		ErrorCount:  len(res.Errors),
 		Errors:      res.Errors,
