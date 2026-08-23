@@ -24,7 +24,7 @@ declare -A OS_NAMES=(
 VERSION="0.0.1"
 COMMIT=$(git rev-parse --short HEAD)
 [[ $COMMIT_VER -eq 1 ]] && ver_name=$COMMIT || ver_name=$VERSION
-LDFLAGS=("-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")
+LDFLAGS=(-w "-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VERSION,Commit=$COMMIT}"'")
 
 function pre_build() {
     # Generate code
