@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -44,6 +43,10 @@ func (pc *ProjectCompiler) ResetState() {
 func (pc *ProjectCompiler) Compile() (*Result, error) {
 	// Compile() may be called multiple times (such as by the LSP)
 	pc.ResetState()
+	// Set the start time if it hasn't been set already
+	if pc.StartTime.IsZero() {
+		pc.StartTime = time.Now()
+	}
 
 	// We need to load the Klar directories before compiling
 	if err := module.LoadSystemDirs(); err != nil {
@@ -186,7 +189,7 @@ func (pc *ProjectCompiler) DownloadDeps() error {
 
 		// Load the input's lockfile
 		lockfilePath := filepath.Join(input.PkgInfo.ProjectDir, module.LockFile)
-		if f, err := os.Open(lockfilePath); err == nil {
+		if f, err := pc.FS.Open(lockfilePath); err == nil {
 			defer f.Close()
 			if input.Lockfile, err = glaslock.Parse(f); err != nil {
 				return fmt.Errorf("failed to parse lockfile at %s: %w", lockfilePath, err)
@@ -242,7 +245,7 @@ func (pc *ProjectCompiler) CompileDep(
 	if lockPkg.From == glaslock.NPM {
 		// TODO: load from cache if possible
 		// Locate the node_modules folder where the package is installed
-		nodeModules := locatePkgNodeModules(lockPkg, inputs)
+		nodeModules := locatePkgNodeModules(pc.FS, lockPkg, inputs)
 		if nodeModules == "" {
 			return nil, &InterfaceError{
 				Code:   ErrDepNotFound,
@@ -281,16 +284,16 @@ func (pc *ProjectCompiler) CompileDep(
 
 // locatePkgNodeModules returns the path to the node_modules directory that
 // contains the given package, or "" if it cannot be found.
-func locatePkgNodeModules(pkg *glaslock.Package, inputs []*Input) string {
+func locatePkgNodeModules(fs CompilerFS, pkg *glaslock.Package, inputs []*Input) string {
 	for _, inp := range inputs {
 		for _, dir := range [...]string{inp.PkgInfo.ProjectDir, inp.PkgInfo.Dir} {
 			joined := filepath.Join(dir, "node_modules")
-			if _, err := os.Stat(joined); err != nil {
+			if _, err := fs.Stat(joined); err != nil {
 				continue
 			}
 			// Multiple inputs may depend on their own NPM packages. Ensure this
 			// option has this dependency in it.
-			if _, err := os.Stat(filepath.Join(joined, pkg.Name)); err == nil {
+			if _, err := fs.Stat(filepath.Join(joined, pkg.Name)); err == nil {
 				return joined
 			}
 		}

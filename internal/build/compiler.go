@@ -34,12 +34,14 @@ type Compiler struct {
 	Parser    Parser
 	collectMu sync.Mutex
 	IsDebug   bool
+	FS        CompilerFS
 	*slog.Logger
 }
 
 func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	return &Compiler{
 		Mode:    mode,
+		FS:      SystemFS,
 		WorkDir: cwd,
 		Reporter: &reporter.Reporter{
 			MaxLines:     3,
@@ -57,7 +59,7 @@ func NewCompiler(mode BuildMode, cwd string) *Compiler {
 var DefaultStdParserOptions = &parser.Options{MaxErrors: MaxErrors + 1}
 
 func (c *Compiler) UseStdParser() {
-	c.Parser = NewStdParser(c.WorkDir, DefaultStdParserOptions)
+	c.Parser = NewStdParser(c.FS, c.WorkDir, DefaultStdParserOptions)
 }
 
 func (c *Compiler) ProgressHidden() bool {

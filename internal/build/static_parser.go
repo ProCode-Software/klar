@@ -14,6 +14,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/parser"
 )
 
+// TODO: The [Parser] interface and [StaticParser] could possibly be
+// replaced with [CompilerFS]
+
 // StaticParser is a [Parser] implementation that parses only a set of files.
 // A reader, tokens, or an [ast.Program] may be provided for each file.
 type StaticParser struct {
@@ -29,10 +32,10 @@ type StaticParserFile struct {
 }
 
 // NewStaticParser creates a new [StaticParser] that parses one file.
-func NewStaticParser(cwd, path string, f *StaticParserFile) *StaticParser {
+func NewStaticParser(fs CompilerFS, cwd, path string, f *StaticParserFile) *StaticParser {
 	return &StaticParser{
 		Files:    map[string]*StaticParserFile{path: f},
-		Fallback: NewStdParser(cwd, DefaultStdParserOptions),
+		Fallback: NewStdParser(fs, cwd, DefaultStdParserOptions),
 	}
 }
 

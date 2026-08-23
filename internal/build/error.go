@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
@@ -194,14 +193,15 @@ func (c *Compiler) PrintKlonError(ierr *InterfaceError) {
 func (c *Compiler) printKlonDiagnostic(err *klon.Error, file, title string) error {
 	// Load tokens for reporter
 	if !c.Reporter.FileLoaded(file) {
-		absPath, err := filepath.Abs(file)
-		if err != nil {
-			absPath = file
+		relPath := file
+		if filepath.IsAbs(file) {
+			relPath = util.RelPath(c.WorkDir, file)
 		}
-		c.Reporter.LoadFile(
-			file, util.RelPath(c.WorkDir, absPath),
-			makeKlonTokens(file),
-		)
+		content, err := fs.ReadFile(c.FS, file)
+		if err != nil {
+			return nil
+		}
+		c.Reporter.LoadFile(file, relPath, makeKlonTokens(content))
 	}
 	_, err2 := c.Reporter.Report(&errorWithFile{err, file, title})
 	return err2
@@ -249,11 +249,7 @@ func (e *errorWithFile) Title() string {
 	return e.Error.Title()
 }
 
-func makeKlonTokens(filePath string) []lexer.Token {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil
-	}
+func makeKlonTokens(content []byte) []lexer.Token {
 	var endCol int
 	lastNl := bytes.LastIndexByte(content, '\n')
 	switch {

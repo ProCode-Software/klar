@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -239,7 +238,7 @@ func (ld *Loader) loadFromCache(m *Module, reporterMu *sync.Mutex) (ok bool) {
 	}
 	for file := range m.Programs {
 		path := m.FilePath(file)
-		stat, err := os.Stat(path)
+		stat, err := ld.FS.Stat(path)
 		if err != nil {
 			ok = false // Idk
 			continue

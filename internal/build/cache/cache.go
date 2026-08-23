@@ -46,6 +46,8 @@ func dirFor(hashPath string) string {
 	return filepath.Join(hashPath[:2], hashPath)
 }
 
+// TODO: Should [Load] and [Save] take a [fs.FS]?
+
 // If the cache file doesn't exist, (nil, nil) is returned.
 func Load(cacheDir, modulePath string) (*Module, error) {
 	hashPath := HashPath(modulePath)

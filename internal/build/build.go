@@ -36,7 +36,9 @@ func CompileString(s, fileName string) (pc *ProjectCompiler, res *Result, err er
 	}
 	pc = NewProjectCompiler(NewCompiler(ModeBuild, cwd))
 	pc.Inputs = append(pc.Inputs, &Input{Path: fileName, Kind: KindFile})
-	pc.Parser = NewStaticParser(cwd, fileName, &StaticParserFile{Reader: strings.NewReader(s)})
+	pc.Parser = NewStaticParser(
+		pc.FS, cwd, fileName, &StaticParserFile{Reader: strings.NewReader(s)},
+	)
 	pc.StartTime = time.Now()
 	res, err = pc.Compile()
 	return

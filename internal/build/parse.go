@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"sync"
@@ -60,10 +61,15 @@ func (c *Compiler) parseFile(m *Module, file string,
 type StdParser struct {
 	*parsePool
 	cwd string
+	CompilerFS
 }
 
-func NewStdParser(cwd string, parseOpts *parser.Options) *StdParser {
-	return &StdParser{parsePool: newParsePool(parseOpts), cwd: cwd}
+func NewStdParser(fs CompilerFS, cwd string, parseOpts *parser.Options) *StdParser {
+	return &StdParser{
+		parsePool:  newParsePool(parseOpts),
+		cwd:        cwd,
+		CompilerFS: fs,
+	}
 }
 
 func (p *StdParser) Reset() {
@@ -78,7 +84,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger, stdin bool) (
 ) {
 	// Open file
 	// ==========
-	var f *os.File
+	var f fs.File
 	var sizeEst int64
 	res = &ParseResult{}
 	if stdin {
@@ -87,7 +93,7 @@ func (p *StdParser) Parse(filePath string, l *slog.Logger, stdin bool) (
 		shortPath = filePath
 		l.Info("Reading file from stdin")
 	} else {
-		f, err = os.Open(filePath)
+		f, err = p.Open(filePath)
 		if err != nil {
 			l.Error("Error while opening file", slog.Any("error", err))
 			return "", nil, &FilesystemError{"open", filePath, err}

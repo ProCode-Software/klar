@@ -2,7 +2,6 @@ package build
 
 import (
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -56,7 +55,7 @@ func (c *Compiler) ResolveInput(s string, klarBuildMode int) (i *Input, err erro
 		panic("module import paths are not supported yet")
 	}
 	s = c.Abs(s)
-	if info, err := os.Stat(s); err != nil {
+	if info, err := c.FS.Stat(s); err != nil {
 		return nil, &FilesystemError{"stat", s, err}
 	} else if info.IsDir() {
 		// Ensure the user isn't passing the 'test' folder as an input outside of test mode
@@ -84,7 +83,7 @@ func (c *Compiler) ResolveInput(s string, klarBuildMode int) (i *Input, err erro
 	// Find the klar.build file
 	switch klarBuildMode {
 	case 0:
-		if configPath := i.ResolveKlarBuild(); configPath != "" {
+		if configPath := i.ResolveKlarBuild(c); configPath != "" {
 			var warn []*klon.Error
 			if i.KlarBuild, warn, err = klarbuild.Parse(configPath); err != nil {
 				return nil, err
@@ -123,14 +122,14 @@ func (i *Input) ResolveManifest(c *Compiler) error {
 	return nil
 }
 
-func (i *Input) ResolveKlarBuild() (path string) {
+func (i *Input) ResolveKlarBuild(c *Compiler) (path string) {
 	dir := i.Path
 	if i.Kind == KindFile {
 		dir = filepath.Dir(i.Path)
 	}
 	checkDir := func(dir string) bool {
 		klarBuild := dir + sep + module.BuildFile
-		if _, err := os.Stat(klarBuild); err == nil {
+		if _, err := c.FS.Stat(klarBuild); err == nil {
 			path = klarBuild
 			return true
 		}
@@ -169,7 +168,7 @@ func (i *Input) resolveManifest(dir string, c *Compiler) (
 	m *glaspack.Manifest, pkgDir, projDir string, err error,
 ) {
 	exists := func(p string) bool {
-		_, err := os.Stat(p)
+		_, err := c.FS.Stat(p)
 		return err == nil
 	}
 	newKlonError := func(err error, path string) *InterfaceError {
@@ -260,7 +259,7 @@ func (ld *Loader) ResolveInputModules() (modules []*Module, klarFiles int, err e
 func (c *Compiler) moduleFromDir(
 	dir string, modules *[]*Module, depth int,
 ) (klarFiles int, err error) {
-	items, err := os.ReadDir(dir)
+	items, err := c.FS.ReadDir(dir)
 	if err != nil {
 		return klarFiles, &FilesystemError{"read", dir, err}
 	}
@@ -314,7 +313,7 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (
 			)
 		}
 	}()
-	items, err := os.ReadDir(path)
+	items, err := c.FS.ReadDir(path)
 	if err != nil {
 		return nil, klarFiles, &FilesystemError{"read", path, err}
 	}
@@ -336,7 +335,7 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (
 				err = &InterfaceError{Value: fullPath, Code: ErrNestedKlarFolder}
 				return
 			}
-			pkgs, err := os.ReadDir(fullPath)
+			pkgs, err := c.FS.ReadDir(fullPath)
 			if err != nil {
 				return modules, klarFiles, &FilesystemError{"read", fullPath, err}
 			}
@@ -397,7 +396,7 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (
 func (c *Compiler) resolveSrcDir(dir string, modules *[]*Module) (klarFiles int, err error) {
 	var srcMod *Module // Initialized only if there are assets in the src folder
 
-	items, err := os.ReadDir(dir)
+	items, err := c.FS.ReadDir(dir)
 	if err != nil {
 		return klarFiles, &FilesystemError{"read", dir, err}
 	}

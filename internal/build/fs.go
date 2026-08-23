@@ -14,7 +14,20 @@ type CompilerFS interface {
 	fs.ReadDirFS
 }
 
-var SystemFS = os.DirFS("/").(CompilerFS)
+type systemFS struct {
+	fs fs.FS
+}
+
+// SystemFS is the default filesystem that uses the host system's filesystem.
+var SystemFS CompilerFS = systemFS{}
+
+// We're using a custom implementation instead of [os.DirFS] so absolute paths
+// are supported. A DirFS would return "invalid argument".
+
+func (fs systemFS) Open(p string) (fs.File, error)          { return os.Open(p) }
+func (fs systemFS) ReadDir(p string) ([]fs.DirEntry, error) { return os.ReadDir(p) }
+func (fs systemFS) Stat(p string) (fs.FileInfo, error)      { return os.Stat(p) }
+func (fs systemFS) ReadFile(p string) ([]byte, error)       { return os.ReadFile(p) }
 
 var _ CompilerFS = (*VirtualFS)(nil)
 
@@ -45,6 +58,7 @@ func (vfs *VirtualFS) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (vfs *VirtualFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	return nil, nil
 }
 
 func (vf *VirtualFile) Close() error               { return nil }
