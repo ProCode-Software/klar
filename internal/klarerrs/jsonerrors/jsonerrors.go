@@ -14,7 +14,6 @@ import (
 func WriteTo(w io.Writer, res *build.Result, fatalErr error) error {
 	format := struct {
 		ElapsedTime string     `json:"elapsedTime"`
-		ErrorCount  int        `json:"errorCount"`
 		IsMaxErrors bool       `json:"maxErrors,omitempty"`
 		Errors      errorSlice `json:"errors"`
 		Warnings    errorSlice `json:"warnings"`
@@ -24,7 +23,6 @@ func WriteTo(w io.Writer, res *build.Result, fatalErr error) error {
 		// See https://github.com/golang/go/issues/79071#issuecomment-5351571588
 		ElapsedTime: res.Elapsed.String(),
 		IsMaxErrors: res.IsMaxErrors,
-		ErrorCount:  len(res.Errors),
 		Errors:      res.Errors,
 		Warnings:    res.Warnings,
 		FatalError:  fatalErr,
