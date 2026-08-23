@@ -68,7 +68,7 @@ func (rd *reader) parseValue() ast.Value {
 
 	// B. EOF
 	if tok.Kind == EOF {
-		return &ast.None{BaseNode: ast.BaseNode{Range: tok.Range()}}
+		return &ast.None{Range: tok.Range()}
 	}
 
 	// C. Read 1+ items in a group
@@ -148,14 +148,14 @@ loop:
 
 	switch len(items) {
 	case 0:
-		return &ast.None{BaseNode: ast.BaseNode{Range: tok.Range()}}
+		return &ast.None{Range: tok.Range()}
 	case 1:
 		return items[0]
 	default:
 		// More than 1 item should be in a StringGroup
 		return &ast.StringGroup{
-			BaseNode: ast.BaseNode{Range: sliceRange(items)},
-			Values:   items,
+			Range:  sliceRange(items),
+			Values: items,
 		}
 	}
 }
@@ -168,9 +168,9 @@ func (rd *reader) parseNumber(num Token) *ast.Number {
 	}
 	rd.advanceTok()
 	return &ast.Number{
-		BaseNode: ast.BaseNode{Range: num.Range()},
-		Source:   num.Src,
-		Value:    float,
+		Range:  num.Range(),
+		Source: num.Src,
+		Value:  float,
 	}
 }
 
@@ -210,9 +210,9 @@ func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 		rd.tokenError(err, vr, "A variable name can't start with a digit")
 	}
 	return &ast.VarRef{
-		BaseNode: ast.BaseNode{Range: vr.Range()},
-		Name:     name,
-		Braces:   braces,
+		Range:  vr.Range(),
+		Name:   name,
+		Braces: braces,
 	}
 }
 
@@ -331,11 +331,11 @@ func (rd *reader) parseString(str Token) *ast.String {
 	}
 
 	return &ast.String{
-		BaseNode: ast.BaseNode{Range: str.Range()},
-		Raw:      src,
-		Value:    segments,
-		Wrap:     wrap,
-		Quote:    quote,
+		Range: str.Range(),
+		Raw:   src,
+		Value: segments,
+		Wrap:  wrap,
+		Quote: quote,
 	}
 }
 
@@ -353,15 +353,15 @@ func getEscape(c byte) (byte, bool) {
 func (rd *reader) parseBoolean(b Token) *ast.Boolean {
 	rd.advanceTok()
 	return &ast.Boolean{
-		BaseNode: ast.BaseNode{Range: b.Range()},
-		Value:    b.Attrs["value"].(bool),
+		Range: b.Range(),
+		Value: b.Attrs["value"].(bool),
 	}
 }
 
 // parseNone parses a 'none' literal.
 func (rd *reader) parseNone(none Token) *ast.None {
 	rd.advanceTok()
-	return &ast.None{BaseNode: ast.BaseNode{Range: none.Range()}, Literal: true}
+	return &ast.None{Range: none.Range(), Literal: true}
 }
 
 // parseClass parses a class name (@identifier).
@@ -395,8 +395,8 @@ func (rd *reader) parseList(first ast.Value) *ast.List {
 		rd.resetParseFlags(old)
 	}
 	return &ast.List{
-		BaseNode: ast.BaseNode{Range: sliceRange(items)},
-		Items:    items,
+		Range: sliceRange(items),
+		Items: items,
 	}
 }
 
@@ -563,10 +563,10 @@ func (rd *reader) parseEntry(forceObject bool) (entry ast.Value, dashes int) {
 			return nil, dashes
 		}
 		return &ast.Field{
-			BaseNode: ast.BaseNode{Range: ranges.Range{Start: keyStart, End: value.Pos().End}},
-			Key:      singleKey,
-			KeyPath:  path,
-			Value:    value,
+			Range:   ranges.Range{Start: keyStart, End: value.Pos().End},
+			Key:     singleKey,
+			KeyPath: path,
+			Value:   value,
 		}, dashes
 	}
 

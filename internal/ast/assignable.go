@@ -47,8 +47,8 @@ func validateAssignable(node Expression, pred AssignableIter) bool {
 		return dest.Every(pred)
 	}
 	return pred(nil, &BadExpression{
-		BaseNode: BaseNode{Range: node.GetRange()},
-		Value:    node,
+		Range: node.GetRange(),
+		Value: node,
 	})
 }
 

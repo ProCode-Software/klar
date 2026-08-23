@@ -237,8 +237,8 @@ func (p *Parser) ParseBlock() *ast.Block {
 	}
 	end := p.Expect(lexer.RightCurlyBrace, noAdvance).Position
 	return &ast.Block{
-		Body:     body,
-		BaseNode: ast.BaseNode{Range: ranges.Range{start, end}},
+		Body:  body,
+		Range: ranges.Range{start, end},
 	}
 }
 

@@ -62,11 +62,9 @@ func (ic *installContext) updateManifests(pkg Package) {
 
 func (ic *installContext) updateLockfile(pkg Package, lockfile *glaslock.Lockfile) {
 	lockPkg := &glaslock.Package{
-		PackageHeader: glaslock.PackageHeader{
-			Name:    pkg.Name(),
-			Version: pkg.KlarVersion(),
-			From:    pkg.Source(),
-		},
+		Name:    pkg.Name(),
+		Version: pkg.KlarVersion(),
+		From:    pkg.Source(),
 	}
 	// TODO: Add 'for workspaces' and dependencies to lockfile package
 	if ic.Flag("dev").Bool() {
