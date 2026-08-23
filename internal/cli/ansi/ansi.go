@@ -120,6 +120,7 @@ func Gradient(text string, colors ...[3]int) string {
 func RGBSpace(space string, r, g, b int) string {
 	return fmt.Sprintf("\033[%s;2;%d;%d;%dm", space, r, g, b)
 }
+func RGB(r, g, b int) string { return RGBSpace("38", r, g, b) }
 
 var formatRegex = regexp.MustCompile(`(%[]\[#+.0-9]*[A-Za-z])`)
 

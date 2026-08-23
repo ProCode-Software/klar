@@ -1,6 +1,7 @@
 package util
 
 import (
+	"cmp"
 	"encoding/json/v2"
 	"fmt"
 	"io"
@@ -290,4 +291,20 @@ func (u *DecodeUnion[A, B]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	return fmt.Errorf("input couldn't be decoded into %T or %T: %w", a, b, err)
+}
+
+func HexToRGB(hex string) (r, g, b int) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) == 3 {
+		rs, gs, bs := string(hex[0]), string(hex[1]), string(hex[2])
+		hex = (rs + rs) + (gs + gs) + (bs + bs)
+	}
+	// Use bitSize 9 instead of 8 due to signedness
+	r64, err1 := strconv.ParseInt(hex[:2], 16, 9)
+	g64, err2 := strconv.ParseInt(hex[2:4], 16, 9)
+	b64, err3 := strconv.ParseInt(hex[4:6], 16, 9)
+	if err := cmp.Or(err1, err2, err3); err != nil {
+		panic(fmt.Sprintf("invalid hex %q: %v", hex, err))
+	}
+	return int(r64), int(g64), int(b64)
 }
