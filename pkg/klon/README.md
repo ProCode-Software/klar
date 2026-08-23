@@ -46,14 +46,14 @@ See [../../samples/basic/all.klon](https://github.com/ProCode-Software/klar/tree
     name: ${user.name}
     ```
 - References to the current object
-    ```glas.lock
+    ```klon
     name: klar/std
     version: v0.0.1
     klar: ${self.version} // Or `@self version`
     ```
-- Referencing objects by variables and mutating them (e.g. `$user @with {...}`)
 - Allow objects as class parameters
 - Functions/mixins to return objects based on parameters
 - Builtin string utilities (e.g. case conversions, slicing, replace)
+- An equivalent to Go's `encoding/json/jsontext.Value` (`json.RawMessage` in v1) so objects can be decoded later. As an implementation note, an indented object would be converted to inline (using braces).
 
 ## Architecture
