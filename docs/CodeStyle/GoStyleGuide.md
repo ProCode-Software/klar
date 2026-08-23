@@ -328,6 +328,7 @@ Always make use of the latest Go syntax and standard library features. Consult t
 
 - To initialize types, always use `&Type` instead of `new(Type)` when possible (e.g. `b := &strings.Builder{}`). Types without a valid composite syntax, such as Go builtins and interfaces, can use `new(Type)`.
 - Modernize whenever your LSP suggests it. Running the lint script `./scripts/lint.sh` can query Gopls for quick fixes.
+- Go 1.27 added support for generic methods, so don't be afraid to use them.
 - Use `(*testing.B).Loop()` instead of `b.N`.
 - Favor `slices` and `maps` packages over manual implementations.
 - Use `strings.Builder` for efficient string concatenation. Never concatenate to a string in a loop. If a string is concatenated to conditionally more than 3 times, use a Builder.

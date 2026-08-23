@@ -23,6 +23,8 @@ You may research online about new language and stdlib features. You can also use
 
 ## Code Style
 
+**ALWAYS FOLLOW THE STYLE GUIDE AT [./docs/CodeStyle/GoStyleGuide.md](./docs/CodeStyle/GoStyleGuide.md)!!**
+
 - **Line length**: Up to 90 columns for code; up to 94 is acceptable if parentheses exceed
 - Doc comments: Target 90 columns, up to 95 for single-line comments
 - **Formatter**: `gofumpt` (stricter than `gofmt`)
