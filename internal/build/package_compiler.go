@@ -204,3 +204,12 @@ func (pkc *PackageCompiler) WriteToCache(importPaths []string) error {
 	}
 	return nil
 }
+
+func (pkc *PackageCompiler) Reset() {
+	pkc.Compiler = nil
+	pkc.Input = nil
+	pkc.EnforceTargetSupport = false
+	pkc.Root = false
+	pkc.Deps = nil
+	pkc.importErrs = nil
+}

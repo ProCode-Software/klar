@@ -89,7 +89,10 @@ func Build(r *argparse.Parser) {
 		// Hide progress if stdin is an input
 		if input.Kind == build.KindStdin {
 			c.Progress = build.HiddenProgress{}
-			fmt.Print(ansi.ClearLine) // Clear the line created by ResolvingInput
+			// Clear the line created by ResolvingInput
+			if _, ok := c.Progress.(*BuildStatus); ok {
+				fmt.Print(ansi.ClearLine)
+			}
 		}
 	}
 	for i, path := range inputArgs {

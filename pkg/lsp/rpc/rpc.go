@@ -36,8 +36,11 @@ func (*baseMessage) lspMsg() {}
 
 type (
 	Method string
-	ID     = *Union2[int, string]
+	ID     = *jsontext.Value
 )
+
+// ID was previously *Union2[int, string]
+// The type of ID is trivial. We just need to distinguish the value
 
 type Request struct {
 	baseMessage
@@ -116,7 +119,7 @@ func Decode(b []byte) (Message, error) {
 			Result: baseMsg.Result,
 			Error:  baseMsg.Error,
 		}, nil
-	case baseMsg.Id.IsNil():
+	case baseMsg.Id == nil:
 		// A notification is like a request, but no id
 		return &Notification{
 			Method: baseMsg.Method,

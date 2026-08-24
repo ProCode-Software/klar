@@ -31,7 +31,7 @@ func TestDecode(t *testing.T) {
 	if !ok {
 		t.Errorf("expected *Request, got %T", msg)
 	}
-	if req.Id == nil || req.Id.Value != int(1) {
+	if req.Id == nil || string(*req.Id) != "1" {
 		t.Errorf("expected id 1, got %q", req.Id)
 	}
 	if req.Method != "x" {

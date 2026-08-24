@@ -14,15 +14,13 @@ type FileSystem struct {
 }
 
 type File struct {
-	Module   *Module
-	Content  []byte
-	Modified time.Time
+	Content    []byte
+	Modified   time.Time
+	Module     *Module
+	ModulePath string // TODO: Not needed if Module != nil
 }
 
 func (fs *FileSystem) WriteFile(path string, b []byte) {
-	if fs.Files == nil {
-		fs.Files = make(map[string]*File)
-	}
 	file := fs.Files[path]
 	if file == nil {
 		file = &File{}

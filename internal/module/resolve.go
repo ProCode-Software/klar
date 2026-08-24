@@ -19,24 +19,6 @@ func splitPath(p string) (string, string) {
 // for a given path, following the Klar Project Structure Spec. For accurate
 // results, p should be an absolute path.
 func PackageRoot(p string) (pkg, project string) {
-	// Check if a manifest is located in dir
-	if info, err := os.Stat(p); err == nil && !info.IsDir() {
-		p = filepath.Dir(p)
-		if info.Name() == ManifestFile {
-			proj := p
-			if maybePkg := DirFast(p); filepath.Base(maybePkg) == PkgDir {
-				proj = DirFast(maybePkg)
-			}
-			return p, proj
-		}
-	}
-	if _, err := os.Stat(p + sep + ManifestFile); err == nil {
-		proj := p
-		if maybePkg := filepath.Dir(p); filepath.Base(maybePkg) == PkgDir {
-			proj = DirFast(maybePkg)
-		}
-		return p, proj
-	}
 	// Walk up the directory tree
 	curr, prev := filepath.Clean(p), ""
 	var knownPkg string

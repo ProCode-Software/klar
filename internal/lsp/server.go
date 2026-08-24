@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
@@ -19,9 +20,21 @@ type Server struct {
 	out io.Writer // Usually stdout
 
 	// File store
-	pkgs map[string]*Package
-	fs   *FileSystem
+	pkgs    map[string]*Package
+	fs      *FileSystem
+	modules map[string]*Module
+	compiler *build.Compiler // Shared compiler. Lazy initialized
 	*slog.Logger
+}
+
+func NewServer(in io.Reader, out io.Writer, l *slog.Logger) *Server {
+	return &Server{
+		in: in, out: out,
+		Logger:  l,
+		fs:      &FileSystem{Files: make(map[string]*File)},
+		pkgs:    make(map[string]*Package),
+		modules: make(map[string]*Module),
+	}
 }
 
 func (s *Server) Listen() {
@@ -157,7 +170,6 @@ func (s *Server) handleNotification(not *rpc.Notification) {
 			return
 		}
 		s.didOpen(params)
-		s.compilePackages()
 	case "textDocument/didChange":
 		params, ok := s.decodeParams[lsp.DidChangeTextDocumentParams](nil, params)
 		if !ok {
@@ -165,7 +177,6 @@ func (s *Server) handleNotification(not *rpc.Notification) {
 		}
 		// TODO: Cancel previous compilation if still compiling
 		s.didChange(params)
-		s.compilePackages()
 	default:
 		s.Warn("Unhandled notification", slog.String("method", string(not.Method)))
 	}

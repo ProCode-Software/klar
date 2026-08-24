@@ -164,7 +164,7 @@ func (pc *ProjectCompiler) CompileInput(i *Input, root bool) (modules []*Module,
 	pkc := NewPackageCompiler(pc.Compiler, i)
 	pkc.Root = root
 	if pc.Deps[i] == nil {
-		pc.Deps[i] = new(make(Deps))
+		pc.Deps[i] = &Deps{}
 	}
 	pkc.Deps = pc.Deps[i]
 	pkc.EnforceTargetSupport = root
@@ -188,13 +188,13 @@ func (pc *ProjectCompiler) DownloadDeps() error {
 		if input.IsSingleFile() {
 			continue // Single-file inputs don't (can't) have dependencies
 		}
-		// TODO: glas install
-
 		// Load the input's lockfile
 		lockfilePath := filepath.Join(input.PkgInfo.ProjectDir, module.LockFile)
 		if f, err := pc.FS.Open(lockfilePath); err == nil {
 			defer f.Close()
 			if input.Lockfile, err = glaslock.Parse(f); err != nil {
+				// TODO: Error may be due to an incompatible lockfile version. Run
+				// `glas install` to regenerate.
 				return fmt.Errorf("failed to parse lockfile at %s: %w", lockfilePath, err)
 			}
 		}
@@ -245,6 +245,7 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 func (pc *ProjectCompiler) CompileDep(
 	inputs []*Input, lockPkg *glaslock.Package,
 ) (modules []*Module, err error) {
+	// TODO: `glas install` should be run if at least 1 dependency isn't found on disk.
 	if lockPkg.From == glaslock.NPM {
 		// TODO: load from cache if possible
 		// Locate the node_modules folder where the package is installed

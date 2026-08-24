@@ -48,9 +48,11 @@ func (c *Command) handleFlagError(err error) {
 	case *argparse.ExtraArgsError:
 		cli.ColorErrorfln(
 			"<**>Too many arguments provided:</**> <c!>%s</c!>\n"+
-				"Expected %s arguments, but %d were provided.\n\n%s",
-			strings.Join(err.Extra, " "), klarerrs.FormatCount(len(c.Usage), "argument"),
-			len(err.Extra), c.ArgUsage(),
+				"Expected %s, but %s provided.\n\n%s",
+			strings.Join(err.Extra, " "),
+			klarerrs.FormatCount(len(c.Usage), "argument"),
+			klarerrs.FormatCountCustom(len(err.Extra), "none were", "1 was", "%d were"),
+			c.ArgUsage(),
 		)
 		forMoreHelp()
 	case *argparse.RepeatedFlagError:
