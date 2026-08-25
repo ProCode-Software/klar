@@ -162,7 +162,7 @@ type DefinitionRegistrationOptions struct {
 type DeleteFile struct {
 	ResourceOperation
 	// A delete
-	Kind string `json:"kind"` // delete
+	Kind string `json:"kind"` // "delete"
 	// The file to delete.
 	Uri DocumentURI `json:"uri"`
 	// Delete options.

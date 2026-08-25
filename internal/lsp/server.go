@@ -23,18 +23,21 @@ type Server struct {
 	pkgs    map[string]*Package
 	fs      *FileSystem
 	modules map[string]*Module
-	compiler *build.Compiler // Shared compiler. Lazy initialized
+
+	compiler *build.Compiler // Shared compiler
 	*slog.Logger
 }
 
 func NewServer(in io.Reader, out io.Writer, l *slog.Logger) *Server {
-	return &Server{
+	s := &Server{
 		in: in, out: out,
 		Logger:  l,
 		fs:      &FileSystem{Files: make(map[string]*File)},
 		pkgs:    make(map[string]*Package),
 		modules: make(map[string]*Module),
 	}
+	s.initCompiler()
+	return s
 }
 
 func (s *Server) Listen() {
@@ -202,7 +205,7 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 			RetriggerCharacters: []string{")"},
 		},
 		ReferencesProvider: &rpc.Union2[bool, lsp.ReferenceOptions]{true},
-		PositionEncoding:   nil, // Set below. If not, it should be utf-16
+		PositionEncoding:   new(lsp.PositionEncodingUTF16), // Set below
 		CompletionProvider: &lsp.CompletionOptions{
 			TriggerCharacters: []string{".", "-", "@"},
 			CompletionItem:    nil, /* &lsp.ServerCompletionItemOptions{
@@ -217,6 +220,9 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		]{lsp.SemanticTokensOptions{
 			Full: &rpc.Union2[bool, lsp.SemanticTokensFullDelta]{true},
 		}},
+		CallHierarchyProvider: &rpc.Union3[bool,
+			lsp.CallHierarchyOptions, lsp.CallHierarchyRegistrationOptions]{true},
+		TypeHierarchyProvider:  nil, // Type hierarchy isn't applicable for Klar
 		CodeActionProvider:     &rpc.Union2[bool, lsp.CodeActionOptions]{},
 		Workspace:              &lsp.WorkspaceOptions{},
 		DocumentSymbolProvider: &rpc.Union2[bool, lsp.DocumentSymbolOptions]{true},
@@ -239,11 +245,21 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		ImplementationProvider: &rpc.Union3[bool,
 			lsp.ImplementationOptions, lsp.ImplementationRegistrationOptions]{true},
 		WorkspaceSymbolProvider: &rpc.Union2[bool, lsp.WorkspaceSymbolOptions]{true},
+		DeclarationProvider: &rpc.Union3[bool,
+			lsp.DeclarationOptions, lsp.DeclarationRegistrationOptions]{true},
+		DocumentLinkProvider:      &lsp.DocumentLinkOptions{},
+		DocumentHighlightProvider: &rpc.Union2[bool, lsp.DocumentHighlightOptions]{true},
+		InlayHintProvider: &rpc.Union3[bool,
+			lsp.InlayHintOptions, lsp.InlayHintRegistrationOptions]{true},
+		ExecuteCommandProvider: &lsp.ExecuteCommandOptions{
+			Commands: nil, // TODO
+		},
+		Experimental: nil,
 	}
 	// Determine the position encoding the server should use.
 	//
 	// The lexer encodes positions in UTF-32 (codepoints/runes). If the client
-	// supports it, prefer that. Otherwise, prefer uft8 if supported. There are
+	// supports it, prefer that. Otherwise, prefer UTF-8 if supported. There are
 	// better Go APIs for UTF-8 than UTF-16.
 	preferredEncoding := [...]lsp.PositionEncodingKind{
 		lsp.PositionEncodingUTF32, lsp.PositionEncodingUTF8, lsp.PositionEncodingUTF16,
@@ -251,8 +267,7 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 	clientEncodings := init.Capabilities.General.PositionEncodings
 	switch len(clientEncodings) {
 	case 0:
-		// Per the spec: If no positions are provided, assume utf16
-		caps.PositionEncoding = new(lsp.PositionEncodingUTF16)
+		// Per the spec: If no positions are provided, assume utf16 (set above)
 	case 1:
 		caps.PositionEncoding = &clientEncodings[0]
 	default:
@@ -263,5 +278,24 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 			}
 		}
 	}
+	// Code action support. Spec: CodeActionOptions may only be specified if the
+	// client states that it supports `codeActionLiteralSupport` in its initial
+	// `initialize` request.
+	var codeActionProv any = true
+	if tdCaps := init.Capabilities.TextDocument; tdCaps != nil &&
+		tdCaps.CodeAction != nil && tdCaps.CodeAction.CodeActionLiteralSupport != nil {
+		codeActionProv = lsp.CodeActionOptions{
+			ResolveProvider: new(true),
+			Documentation:   nil, // TODO: I don't understand the use of this
+			CodeActionKinds: []lsp.CodeActionKind{
+				// All code action kinds KlarLS supports
+				lsp.CodeActionEmpty, lsp.CodeActionQuickFix, lsp.CodeActionRefactor,
+				lsp.CodeActionRefactorExtract, lsp.CodeActionRefactorInline,
+				lsp.CodeActionRefactorMove, lsp.CodeActionRefactorRewrite,
+				lsp.CodeActionSource, lsp.CodeActionSourceOrganizeImports,
+			},
+		}
+	}
+	caps.CodeActionProvider.Value = codeActionProv
 	return caps
 }

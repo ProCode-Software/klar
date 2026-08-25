@@ -28,7 +28,7 @@ type UnchangedDocumentDiagnosticReport struct {
 	// no changes to the last result. A server can
 	// only return `unchanged` if result ids are
 	// provided.
-	Kind string `json:"kind"` // unchanged
+	Kind string `json:"kind"` // "unchanged"
 	// A result id which will be sent on the next
 	// diagnostic request for the same document.
 	ResultId string `json:"resultId"`

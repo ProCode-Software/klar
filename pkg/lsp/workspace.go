@@ -59,7 +59,7 @@ type ConfigurationParams struct {
 type CreateFile struct {
 	ResourceOperation
 	// A create
-	Kind string `json:"kind"` // create
+	Kind string `json:"kind"` // "create"
 	// The resource to create.
 	Uri DocumentURI `json:"uri"`
 	// Additional options

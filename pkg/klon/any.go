@@ -122,7 +122,7 @@ func (e *encoder) appendAny(val any) error {
 		str := Quote([]byte(val))
 		return e.writeSlice(str)
 	case []byte:
-		str := Quote([]byte(val))
+		str := Quote(val)
 		return e.writeSlice(str)
 	case float64:
 		return e.appendFloat(val, 64)

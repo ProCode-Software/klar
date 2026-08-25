@@ -20,7 +20,7 @@
         "@types/vscode": "1.99.0",
         "@vscode/vsce": "^3.9.2",
         "esbuild": "^0.28.2",
-        "vsxtools": "latest",
+        "vsxtools": "^0.2.2",
       },
     },
     "packages/tree-sitter-glaslock": {
@@ -56,6 +56,25 @@
       },
       "peerDependencies": {
         "tree-sitter": "^0.25.1",
+      },
+      "optionalPeers": [
+        "tree-sitter",
+      ],
+    },
+    "packages/tree-sitter-klon": {
+      "name": "tree-sitter-klon",
+      "version": "0.1.0",
+      "dependencies": {
+        "node-addon-api": "^8.5.0",
+        "node-gyp-build": "^4.8.4",
+      },
+      "devDependencies": {
+        "prebuildify": "^6.0.1",
+        "tree-sitter": "^0.25.0",
+        "tree-sitter-cli": "^0.26.11",
+      },
+      "peerDependencies": {
+        "tree-sitter": "^0.25.0",
       },
       "optionalPeers": [
         "tree-sitter",
@@ -702,6 +721,8 @@
     "tree-sitter-glaslock": ["tree-sitter-glaslock@workspace:packages/tree-sitter-glaslock"],
 
     "tree-sitter-klar": ["tree-sitter-klar@workspace:packages/tree-sitter-klar"],
+
+    "tree-sitter-klon": ["tree-sitter-klon@workspace:packages/tree-sitter-klon"],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 

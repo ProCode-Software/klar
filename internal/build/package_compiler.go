@@ -101,6 +101,7 @@ func (pkc *PackageCompiler) LoadStdlibDeps(stdDeps []imports.ImportPath) error {
 		compiler.Root = false
 		compiler.Deps = pkc.Deps
 		compiler.EnforceTargetSupport = false
+		// Compiled modules will be added to pkc.Deps
 		if _, err := compiler.Compile(); err != nil {
 			return err
 		}

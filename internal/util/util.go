@@ -220,7 +220,8 @@ func SetLogger(verbose, json bool) (l *slog.Logger, err error) {
 	)
 	switch {
 	case logFile != "":
-		file, err := os.Create(logFile) //nolint:gosec // G703 - internal env var only
+		//nolint:gosec // G703 - internal env var only
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to create file at %s set by $KLAR_LOG_FILE: %w", logFile, err,

@@ -43,17 +43,22 @@ func (s *Server) loadPackageFor(fileURI string) {
 
 	// Initialize its module
 	if _, ok := s.modules[file.ModulePath]; !ok {
-		// First file in the module loaded
+		// First time the module is opened
+		s.modules[file.ModulePath] = &Module{PkgPath: pkgDir}
+	}
+	// This is initialized when the module is, but the typechecked module
+	// may exist before this (from compiling this as a dependency)
+	if mod := s.modules[file.ModulePath]; mod.compilerInput == nil {
 		inp := &build.Input{
 			Kind:    build.KindModule,
 			Path:    file.ModulePath,
 			PkgInfo: pkg.PackageInfo,
 		}
-		if pkg.PackageInfo != nil {
+		if !isSingleFile {
 			inp.Manifest = pkg.Manifest
 			inp.Lockfile = s.readLockfile(pkg.PackageInfo.ProjectDir)
 		}
-		s.modules[file.ModulePath] = &Module{PkgPath: pkgDir, compilerInput: inp}
+		mod.compilerInput = inp
 	}
 	file.Module = s.modules[file.ModulePath]
 
@@ -61,6 +66,9 @@ func (s *Server) loadPackageFor(fileURI string) {
 		"Package loaded",
 		slog.String("file", fileURI), slog.String("packagePath", pkgDir),
 	)
+	if isSingleFile {
+		s.Info("File isn't in a package", slog.String("path", fileURI))
+	}
 }
 
 func (s *Server) readLockfile(projDir string) *glaslock.Lockfile {

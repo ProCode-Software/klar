@@ -14,7 +14,11 @@ func (s *Server) didOpen(params lsp.DidOpenTextDocumentParams) {
 	s.fs.WriteFile(uri, []byte(td.Text))
 	s.loadPackageFor(uri)
 	s.Debug("Opened file", slog.String("uri", uri))
-	s.compileModule(s.fs.Files[uri].ModulePath)
+	// The module may have been typechecked as a dependency, so don't
+	// recompile unless it has changed (didChange)
+	if file := s.fs.Files[uri]; file.Module == nil || file.Module.Module == nil {
+		s.compileModule(file.ModulePath)
+	}
 }
 
 var zeroRange = lsp.Range{lsp.Position{0, 0}, lsp.Position{0, 0}}
@@ -22,6 +26,7 @@ var zeroRange = lsp.Range{lsp.Position{0, 0}, lsp.Position{0, 0}}
 func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 	td := params.TextDocument
 	uri := string(td.Uri)
+	slog.Debug(uri)
 	for _, change := range params.ContentChanges {
 		// In our capabilities (see [Server.getCapabilities]), we said we
 		// support full document changes

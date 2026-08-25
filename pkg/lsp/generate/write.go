@@ -213,7 +213,7 @@ func (w *writer) typeToGoType(t Type, needSideComment *bool) string {
 }
 
 func baseTypeToGoType(typ BaseTypes) string {
-	switch BaseTypes(typ) {
+	switch typ {
 	case URI:
 		return "URI"
 	case DocumentUri:
@@ -332,9 +332,10 @@ func toTSType(t Type) string {
 		return t.Name
 	case KindOr:
 		return joinTypes(t.Items, " | ")
-	case KindStringLiteral, KindBooleanLiteral, KindIntegerLiteral:
-		b := t.Value.B()
-		return fmt.Sprintf("%v", b.B())
+	case KindStringLiteral:
+		return fmt.Sprintf("%q", t.Value.B().B())
+	case KindBooleanLiteral, KindIntegerLiteral:
+		return fmt.Sprintf("%v", t.Value.B().B())
 	case KindReference:
 		return t.Name
 	case KindArray:
@@ -460,6 +461,7 @@ func writeComment(buf *bytes.Buffer, doc, deprecated string, indent bool) {
 
 func (w *writer) writeFiles(dir string) {
 	for basename, buf := range w.files {
+		//nolint:gosec // G703 - this is a manually-run program
 		if err := os.WriteFile(
 			filepath.Join(dir, basename+".go"),
 			buf.Bytes(), 0o644,

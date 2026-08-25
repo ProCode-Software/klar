@@ -98,7 +98,7 @@ func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 		ansi.DisableColor = true
 		defer func() { ansi.DisableColor = oldDisableColor }()
 	}
-	b := new(bytes.Buffer)
+	b := &bytes.Buffer{}
 	// Time
 	if !r.Time.IsZero() {
 		b.WriteByte('[')

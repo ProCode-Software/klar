@@ -75,7 +75,7 @@ type checkerPool struct{ sync.Pool }
 
 func newCheckerPool() *checkerPool {
 	return &checkerPool{sync.Pool{
-		New: func() any { return new(analysis.Checker) },
+		New: func() any { return &analysis.Checker{} },
 	}}
 }
 

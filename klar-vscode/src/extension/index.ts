@@ -44,7 +44,7 @@ export async function activate({ subscriptions }: ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         documentSelector: ['klar', 'klon', 'glas.lock'].map(language => ({
             language,
-            scheme: 'file',
+            // scheme: 'file', // Disabled so untitled files are supported
         })),
         outputChannel: window.createOutputChannel('Klar', { log: true }),
     }

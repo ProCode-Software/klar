@@ -997,7 +997,7 @@ type FormattingOptions struct {
 // @since 3.17.0
 type FullDocumentDiagnosticReport struct {
 	// A full document diagnostic report.
-	Kind string `json:"kind"` // full
+	Kind string `json:"kind"` // "full"
 	// An optional result id. If provided it will
 	// be sent on the next diagnostic request for the
 	// same document.
@@ -1740,7 +1740,7 @@ type RenameClientCapabilities struct {
 type RenameFile struct {
 	ResourceOperation
 	// A rename
-	Kind string `json:"kind"` // rename
+	Kind string `json:"kind"` // "rename"
 	// The old (existing) location.
 	OldUri DocumentURI `json:"oldUri"`
 	// The new location.
@@ -2108,7 +2108,7 @@ type StaticRegistrationOptions struct {
 // @since 3.18.0
 type StringValue struct {
 	// The kind of string value.
-	Kind string `json:"kind"` // snippet
+	Kind string `json:"kind"` // "snippet"
 	// The snippet string.
 	Value string `json:"value"`
 }
@@ -2347,7 +2347,7 @@ type VersionedTextDocumentIdentifier struct {
 }
 
 type WorkDoneProgressBegin struct {
-	Kind string `json:"kind"` // begin
+	Kind string `json:"kind"` // "begin"
 	// Mandatory title of the progress operation. Used to briefly inform about
 	// the kind of operation being performed.
 	//
@@ -2382,7 +2382,7 @@ type WorkDoneProgressParams struct {
 }
 
 type WorkDoneProgressReport struct {
-	Kind string `json:"kind"` // report
+	Kind string `json:"kind"` // "report"
 	// Controls enablement state of a cancel button.
 	//
 	// Clients that don't support cancellation or don't support controlling the button's

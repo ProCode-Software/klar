@@ -23,22 +23,33 @@ func (uri *DocumentURI) UnmarshalText(text []byte) (err error) {
 
 // Code adapted from https://github.com/golang/tools/blob/master/gopls/internal/protocol/uri.go
 func ParseDocumentURI(s string) (DocumentURI, error) {
-	switch {
-	case s == "":
+	if s == "" {
 		return "", nil
-	case !strings.HasPrefix(s, "file://"):
-		return "", errors.New("DocumentURI scheme must be 'file', got " + s)
-	case !strings.HasPrefix(s, "file:///"):
+	}
+	// Valid schemes:
+	// 	- file://...
+	//  - untitled:...
+	scheme, after, ok := strings.Cut(s, ":")
+	after = strings.TrimPrefix(after, "//")
+	switch {
+	case !ok:
+		return "", errors.New("DocumentURI requires a scheme, got " + s)
+	case scheme != "file" && scheme != "untitled":
+		return "", errors.New(
+			"DocumentURI scheme must be 'file' or 'untitled', got " + scheme,
+		)
+
+		// Gopls has this, but I don't know if it's still necessary.
+		/* case !strings.HasPrefix(s, "file:///"):
 		// VS Code sends URLs with only two slashes, which are invalid.
-		s = "file:///" + s[len("file://"):]
+		s = "file:///" + s[len("file://"):] */
 	}
 	// Even though the input is a URI, it may not be in canonical form. VS Code
 	// in particular over-escapes :, @, etc. Unescape and re-encode to canonicalize.
-	path, err := url.PathUnescape(s[len("file://"):])
+	path, err := url.PathUnescape(after)
 	if err != nil {
 		return "", err
 	}
-
 	// File URIs from Windows may have lowercase drive letters.
 	// Since drive letters are guaranteed to be case insensitive,
 	// we change them to uppercase to remain consistent.
@@ -46,7 +57,7 @@ func ParseDocumentURI(s string) (DocumentURI, error) {
 	if isWindowsDriveURIPath(path) {
 		path = path[:1] + strings.ToUpper(string(path[1])) + path[2:]
 	}
-	return DocumentURI((&url.URL{Scheme: "file", Path: path}).String()), nil
+	return DocumentURI((&url.URL{Scheme: scheme, Path: path}).String()), nil
 }
 
 // isWindowsDriveURIPath returns true if the file URI is of the format used by

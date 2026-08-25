@@ -223,7 +223,7 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 		inp.Targets = append(inp.Targets, projInp.Targets...)
 	}
 	compiler := NewPackageCompiler(pc.Compiler, inp)
-	compiler.Deps = new(make(Deps))
+	compiler.Deps = &Deps{}
 	compiler.Root = false
 	compiler.EnforceTargetSupport = false
 	if _, err := compiler.Compile(); err != nil && err != errMaxErrors {

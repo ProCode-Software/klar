@@ -16,6 +16,7 @@
     "scripts": {
         "watch": "vsxtools run --watch",
         "build": "vsxtools run && bun run build-server && vsxtools pack",
+        "pack-vsce": "vsce package --no-dependencies --allow-missing-repository",
         "build-server": "esbuild src/extension/index.ts --bundle --outfile=dist/index.cjs --platform=node --external:vscode --format=cjs",
         "ext-install": "bun run build && code --install-extension ./klar-*.vsix"
     },
@@ -27,7 +28,7 @@
         "@types/vscode": "1.99.0",
         "@vscode/vsce": "^3.9.2",
         "esbuild": "^0.28.2",
-        "vsxtools": "latest"
+        "vsxtools": "^0.2.3"
     },
     "contributes": {
         "languages": [

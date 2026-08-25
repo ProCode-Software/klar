@@ -11,7 +11,7 @@ type cache[K comparable, V any] struct {
 
 func makeCache[K comparable, V any]() *cache[K, V] {
 	var a atomic.Pointer[map[K]V]
-	a.Store(new(make(map[K]V)))
+	a.Store(&map[K]V{})
 	return &cache[K, V]{Pointer: &a}
 }
 
