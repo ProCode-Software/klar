@@ -974,7 +974,7 @@ type TextDocumentClientCapabilities struct {
 type TextDocumentRegistrationOptions struct {
 	// A document selector to identify the scope of the registration. If set to null
 	// the document selector provided on the client side will be used.
-	DocumentSelector *DocumentSelector `json:"documentSelector,omitempty"` // DocumentSelector | null
+	DocumentSelector *DocumentSelector `json:"documentSelector"` // DocumentSelector | null
 }
 
 // Save registration options.

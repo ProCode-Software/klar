@@ -73,7 +73,7 @@ type OptionalVersionedTextDocumentIdentifier struct {
 	// (the server has not received an open notification before) the server can send
 	// `null` to indicate that the version is unknown and the content on disk is the
 	// truth (as specified with document content ownership).
-	Version int `json:"version,omitempty"` // integer | null
+	Version int `json:"version"` // integer | null
 }
 
 // The glob pattern to watch relative to the base path. Glob patterns can have the following syntax:

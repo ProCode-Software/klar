@@ -322,7 +322,7 @@ type WorkspaceUnchangedDocumentDiagnosticReport struct {
 	Uri DocumentURI `json:"uri"`
 	// The version number for which the diagnostics are reported.
 	// If the document is not marked as open `null` can be provided.
-	Version int `json:"version,omitempty"` // integer | null
+	Version int `json:"version"` // integer | null
 }
 
 // The declaration of a symbol representation as one or many  locations [Location].

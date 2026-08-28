@@ -2595,7 +2595,7 @@ type WorkspaceFullDocumentDiagnosticReport struct {
 	Uri DocumentURI `json:"uri"`
 	// The version number for which the diagnostics are reported.
 	// If the document is not marked as open `null` can be provided.
-	Version int `json:"version,omitempty"` // integer | null
+	Version int `json:"version"` // integer | null
 }
 
 // Defines workspace specific capabilities of the server.
@@ -2634,7 +2634,7 @@ type _InitializeParams struct {
 	//
 	// Is `null` if the process has not been started by another process.
 	// If the parent process is not alive then the server should exit.
-	ProcessId int `json:"processId,omitempty"` // integer | null
+	ProcessId int `json:"processId"` // integer | null
 	// Information about the client
 	//
 	// @since 3.15.0
@@ -2660,7 +2660,7 @@ type _InitializeParams struct {
 	//
 	// @deprecated in favour of workspaceFolders.
 	// Deprecated: in favour of workspaceFolders.
-	RootUri *DocumentURI `json:"rootUri,omitempty"` // DocumentUri | null
+	RootUri *DocumentURI `json:"rootUri"` // DocumentUri | null
 	// The capabilities provided by the client (editor or tool)
 	Capabilities *ClientCapabilities `json:"capabilities"`
 	// User provided initialization options.

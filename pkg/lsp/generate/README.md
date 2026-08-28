@@ -6,10 +6,11 @@ The LSP GitHub repo keeps a [`metaModel.json`](https://github.com/microsoft/lang
 
 Additional notes:
 
-- Nullable types are indirected as pointers, except for strings, numbers, and slices.
+- Nullable types (declared with `?:` or a union containing `null`) are indirected as pointers, except for strings, numbers, and slices.
 - When 2-/3-way unions are defined, the generator uses `rpc.Union2/3`. Unions with more types fall back to `any`.
 - List syntax and `@link`s in doc comments are converted to Go doc syntax.
 - Declarations are put into files based on the method request/notification that uses them as parameters.
+- The `omitempty` JSON struct tag is applied for TypeScript fields that can be undefined (declared in the spec with `?:`)
 
 ## Before finishing
 

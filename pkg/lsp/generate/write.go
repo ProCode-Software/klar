@@ -23,7 +23,8 @@ type goStructField struct {
 	name string
 	// Types can include Go slice syntax
 	typ         string
-	optional    bool // Declared with ?: in TS or a union with null
+	nullable    bool // Declared with ?: in TS or a union with null
+	optional    bool // Declared with ?:
 	docs        string
 	deprecated  string
 	sideComment string
@@ -126,12 +127,12 @@ func (w *writer) toGoStruct(s *Structure) *goStruct {
 			union, hasNull := w.convertUnion(prop.Type, &needSideComment)
 			f.typ = union
 			if hasNull {
-				f.optional = true
+				f.nullable = true
 			}
 		} else {
 			f.typ = w.typeToGoType(prop.Type, &needSideComment)
 		}
-		if f.optional && f.typ[0] != '*' && shouldIndirect(f.typ) {
+		if (f.nullable || f.optional) && f.typ[0] != '*' && shouldIndirect(f.typ) {
 			f.typ = "*" + f.typ
 		}
 		if needSideComment {
