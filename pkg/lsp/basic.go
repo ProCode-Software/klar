@@ -1680,7 +1680,7 @@ type RelatedFullDocumentDiagnosticReport struct {
 	// a.cpp and result in errors in a header file b.hpp.
 	//
 	// @since 3.17.0
-	RelatedDocuments *map[DocumentURI]struct{} `json:"relatedDocuments,omitempty"`
+	RelatedDocuments *map[DocumentURI]rpc.Union2[FullDocumentDiagnosticReport, UnchangedDocumentDiagnosticReport] `json:"relatedDocuments,omitempty"`
 }
 
 // An unchanged diagnostic report with a set of related documents.
@@ -1695,7 +1695,7 @@ type RelatedUnchangedDocumentDiagnosticReport struct {
 	// a.cpp and result in errors in a header file b.hpp.
 	//
 	// @since 3.17.0
-	RelatedDocuments *map[DocumentURI]struct{} `json:"relatedDocuments,omitempty"`
+	RelatedDocuments *map[DocumentURI]rpc.Union2[FullDocumentDiagnosticReport, UnchangedDocumentDiagnosticReport] `json:"relatedDocuments,omitempty"`
 }
 
 // A relative pattern is a helper to construct glob patterns that are matched
@@ -2480,7 +2480,7 @@ type WorkspaceClientCapabilities struct {
 // the client capability: `workspace.workspaceEdit.failureHandling`
 type WorkspaceEdit struct {
 	// Holds changes to existing resources.
-	Changes *map[DocumentURI]struct{} `json:"changes,omitempty"`
+	Changes *map[DocumentURI][]TextEdit `json:"changes,omitempty"`
 	// Depending on the client capability `workspace.workspaceEdit.resourceOperations` document changes
 	// are either an array of `TextDocumentEdit`s to express changes to n different text documents
 	// where each text document edit addresses a specific version of a text document. Or it can contain
@@ -2498,7 +2498,7 @@ type WorkspaceEdit struct {
 	// Whether clients honor this property depends on the client capability `workspace.changeAnnotationSupport`.
 	//
 	// @since 3.16.0
-	ChangeAnnotations *map[ChangeAnnotationIdentifier]struct{} `json:"changeAnnotations,omitempty"`
+	ChangeAnnotations *map[ChangeAnnotationIdentifier]ChangeAnnotation `json:"changeAnnotations,omitempty"`
 }
 
 type WorkspaceEditClientCapabilities struct {

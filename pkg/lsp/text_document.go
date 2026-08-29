@@ -302,7 +302,7 @@ type DocumentDiagnosticParams struct {
 //
 // @since 3.17.0
 type DocumentDiagnosticReportPartialResult struct {
-	RelatedDocuments map[DocumentURI]struct{} `json:"relatedDocuments"`
+	RelatedDocuments map[DocumentURI]rpc.Union2[FullDocumentDiagnosticReport, UnchangedDocumentDiagnosticReport] `json:"relatedDocuments"`
 }
 
 // The parameters of a [DocumentFormattingRequest].

@@ -1,6 +1,10 @@
 package main
 
-import "github.com/ProCode-Software/klar/pkg/lsp/rpc"
+import (
+	"encoding/json/v2"
+
+	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
+)
 
 type MessageDirection string
 
@@ -18,15 +22,16 @@ type Type struct {
 	Name    string `json:"name,omitempty"`    // [BaseTypes] if 'base', string if 'reference'
 	Element *Type  `json:"element,omitempty"` // Array
 	// Map. Represents URI | DocumentUri | string | integer | ReferenceType
-	Key   *Type  `json:"key,omitempty"`
-	Items []Type `json:"items,omitempty"` // and | or | tuple
+	Key        *Type      `json:"key,omitempty"`
+	Items      []Type     `json:"items,omitempty"`      // and | or | tuple
+	Properties []Property `json:"properties,omitempty"` // Object literal
 	// 	- [Type] if map
 	// 	- [bool] if booleanLiteral
 	// 	- [string] if stringLiteral
 	// 	- [int] if integerLiteral
 	// 	- [StructureLiteral] if literal
 	// Put StructureLiteral first so it is tried before a generic map
-	Value *rpc.Union2[*StructureLiteral, rpc.Union2[Type, any]] `json:"value,omitempty"`
+	Value *rpc.Union2[Type, any] `json:"value,omitempty"`
 }
 
 type TypeKind string
@@ -38,7 +43,7 @@ const (
 	KindMap       TypeKind = "map"
 	KindAnd       TypeKind = "and" // No occurrences
 	KindOr        TypeKind = "or"
-	// As of LSP 3.18, 1 occurrence (item types are commom)
+	// As of LSP 3.18, 1 occurrence (item types are common)
 	KindTuple TypeKind = "tuple"
 	// As of LSP 3.18, 2 occurrences. Both empty objects
 	KindStructLiteral TypeKind = "literal"
@@ -68,9 +73,15 @@ const (
 )
 
 type StructureLiteral struct {
-	BaseDecl
+	// BaseDecl // No occurences as of LSP 3.18
 	Name       struct{}   `json:"-"`
 	Properties []Property `json:"properties"`
+}
+
+// Because StructureLiteral is the first union option in [Type], there were
+// some incorrect values. This makes sure objects are actually struct literals.
+func (s *StructureLiteral) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &s.Properties, json.RejectUnknownMembers(true))
 }
 
 func (t Type) Equal(t2 Type) bool {

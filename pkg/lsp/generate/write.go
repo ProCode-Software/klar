@@ -187,14 +187,9 @@ func (w *writer) typeToGoType(t Type, needSideComment *bool) string {
 		}
 		return "int"
 	case KindMap:
-		var v string
-		if t.Value.Curr() == 0 {
-			v = "struct{}"
-		} else {
-			v = w.typeToGoType(t.Value.B().A(), needSideComment)
-		}
 		return fmt.Sprintf(
-			"map[%s]%s", w.typeToGoType(*t.Key, needSideComment), v,
+			"map[%s]%s", w.typeToGoType(*t.Key, needSideComment),
+			w.typeToGoType(t.Value.A(), needSideComment),
 		)
 	case KindTuple:
 		*needSideComment = true
@@ -334,9 +329,9 @@ func toTSType(t Type) string {
 	case KindOr:
 		return joinTypes(t.Items, " | ")
 	case KindStringLiteral:
-		return fmt.Sprintf("%q", t.Value.B().B())
+		return fmt.Sprintf("%q", t.Value.B())
 	case KindBooleanLiteral, KindIntegerLiteral:
-		return fmt.Sprintf("%v", t.Value.B().B())
+		return fmt.Sprintf("%v", t.Value.B())
 	case KindReference:
 		return t.Name
 	case KindArray:
@@ -344,13 +339,7 @@ func toTSType(t Type) string {
 	case KindTuple:
 		return "[" + joinTypes(t.Items, ", ") + "]"
 	case KindMap:
-		var v string
-		if t.Value.Curr() == 0 {
-			v = "{}"
-		} else {
-			v = toTSType(t.Value.B().A())
-		}
-		return fmt.Sprintf("Record<%s, %s>", t.Key.Name, v)
+		return fmt.Sprintf("Record<%s, %s>", t.Key.Name, toTSType(t.Value.A()))
 	case KindStructLiteral:
 		return "{}"
 	}
