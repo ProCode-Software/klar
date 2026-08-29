@@ -145,6 +145,8 @@ func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 		for range depth {
 			b.WriteString(" }")
 		}
+	} else if len(h.groups) > 0 {
+		b.WriteString(" }")
 	}
 	// Caller
 	if r.PC != 0 && h.flags.Has(ShowSource) {
@@ -240,15 +242,17 @@ func (h *LogHandler) writeState(b *bytes.Buffer, numAttrs int) (depth int) {
 	}
 	for _, ga := range gs {
 		if ga.group != "" {
+			// WithGroup
 			fmt.Fprintf(b, "%s: { ", ga.group)
 			depth++
-		} else {
-			for i, a := range ga.attrs {
-				h.writeAttr(b, a, i)
-			}
-			if numAttrs > 0 {
-				b.WriteString(", ")
-			}
+			continue
+		}
+		// WithAttrs
+		for i, a := range ga.attrs {
+			h.writeAttr(b, a, i)
+		}
+		if numAttrs > 0 {
+			b.WriteString(", ")
 		}
 	}
 	return

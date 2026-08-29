@@ -245,6 +245,8 @@ func (c *Checker) loadInternalModules() {
 	}
 }
 
+func BootstrappedModulesLoaded() bool { return builtinsLoaded }
+
 var builtinsLoaded bool
 
 func declareBuiltinTypes() {

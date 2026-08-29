@@ -119,8 +119,10 @@ func (c *Checker) checkCallArgs(
 		switch und2 := und.(type) {
 		case Kind:
 			isBuiltin = true
-			und = builtinModule.Context.Lookup(und2.String()).TypeName().
-				Type.(*bootstrapType).asDeclared
+			und = builtinModule.Context.Lookup(und2.String()).TypeName().Type
+			if u, ok := und.(*bootstrapType); ok {
+				und = u.asDeclared
+			}
 		case *bootstrapType:
 			isBuiltin = true
 			und = und2.asDeclared

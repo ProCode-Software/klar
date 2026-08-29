@@ -9,6 +9,8 @@ import (
 
 	klarast "github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/build"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/pkg/klon"
 	klonast "github.com/ProCode-Software/klar/pkg/klon/ast"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 )
@@ -29,13 +31,15 @@ type File struct {
 }
 
 type KlarFile struct {
-	AST        *klarast.Program
-	Module     *Module
-	ModulePath string // TODO: Not needed if Module != nil
+	AST         *klarast.Program
+	Module      *Module
+	ModulePath  string            // TODO: Not needed if Module != nil
+	Diagnostics []*klarerrs.Error // Errors and warnings
 }
 
 type KlonFile struct {
-	AST *klonast.Document
+	AST         *klonast.Document
+	Diagnostics []*klon.Error // Errors and warnings
 }
 
 func (fs *FileSystem) WriteFile(path string, b []byte) {

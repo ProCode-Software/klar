@@ -1,6 +1,166 @@
 package lsp
 
-import "github.com/ProCode-Software/klar/internal/klarerrs"
+import (
+	"cmp"
+	"log/slog"
+	"strings"
 
-func (s *Server) reportDiagnostics(errs, warns []*klarerrs.Error) {
+	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/pkg/klon"
+	"github.com/ProCode-Software/klar/pkg/lsp"
+	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
+)
+
+func (s *Server) documentDiagnostic(id rpc.ID, params lsp.DocumentDiagnosticParams) {
+	path := StripScheme(params.TextDocument.Uri)
+	diags := s.diagnosticsForFile(path)
+	if len(diags) > 0 && s.logEnabled() {
+		var firstMsg string
+		if first := diags[0]; first.Message.Curr() == 0 {
+			firstMsg = first.Message.A()
+		} else {
+			firstMsg = first.Message.B().Value
+		}
+		s.Error(
+			"File has errors", slog.String("path", path),
+			slog.Int("count", len(diags)), slog.String("first", firstMsg),
+		)
+	}
+	// Response: [lsp.DocumentDiagnosticReport]
+	// type DocumentDiagnosticReport = [lsp.RelatedFullDocumentDiagnosticReport]
+	//	| [lsp.RelatedUnchangedDocumentDiagnosticReport]
+	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#textDocument_diagnostic
+	s.sendResponse(lsp.RelatedFullDocumentDiagnosticReport{
+		Kind:             string(lsp.DocumentDiagnosticReportFull),
+		Items:            diags,
+		RelatedDocuments: nil, // TODO: Diagnostics for dependencies
+	}, id)
+}
+
+func (s *Server) diagnosticsForFile(path string) (diags []*lsp.Diagnostic) {
+	file, ok := s.fs.Files[path]
+	switch {
+	case !ok:
+		return nil
+	case file.IsKlar():
+		diags = make([]*lsp.Diagnostic, len(file.Klar.Diagnostics))
+		for i, err := range file.Klar.Diagnostics {
+			diags[i] = s.klarErrorToDiagnostic(err)
+		}
+	default:
+		diags = make([]*lsp.Diagnostic, len(file.Klon.Diagnostics))
+		for i, err := range file.Klon.Diagnostics {
+			diags[i] = s.klonErrorToDiagnostic(err, path)
+		}
+	}
+	return diags
+}
+
+func (s *Server) klarErrorToDiagnostic(e *klarerrs.Error) *lsp.Diagnostic {
+	sev := lsp.DiagnosticSeverityError
+	if e.IsWarning() {
+		sev = lsp.DiagnosticSeverityWarning
+	}
+	// The compiler only gives errors and warnings (LSP also has hint and info).
+	// Future linters can give hints and info.
+
+	// Message will include any label in parenthesis, as well as any hints
+	var msg strings.Builder
+	msg.WriteString(e.Message())
+	if false && e.Label != "" { // TODO: Reconsider if the label should be shown
+		msg.WriteString(" (")
+		msg.WriteString(e.Label)
+		msg.WriteByte(')')
+	}
+	for _, hint := range e.Hints {
+		msg.WriteString("\n\nHint: ")
+		msg.WriteString(hint.Message)
+	}
+
+	diag := &lsp.Diagnostic{
+		Source: "klar",
+		Range:  s.toLSPRange(e.Range, e.File),
+		// TODO: Consider using Markdown for messages
+		Message:  rpc.Union2[string, lsp.MarkupContent]{msg.String()},
+		Severity: &sev,
+		Code:     &rpc.Union2[int, string]{e.Code.Format()},
+	}
+	// More specific source for the type of error
+	switch e.Prefix() {
+	case klarerrs.TypeErrorPrefix, klarerrs.ReferenceErrorPrefix:
+		diag.Source = "klar/analysis"
+	case klarerrs.SyntaxErrorPrefix:
+		diag.Source = "klar/syntax"
+	case klarerrs.ModuleErrorPrefix:
+		diag.Source = "klar/module"
+	}
+
+	// Show a documentation link for the error code. In most editors, this makes
+	// the code clickable.
+	// TODO: Replace with documentation link. For now it displays the file where
+	// it is defined in the Klar compiler.
+	if basename, ok := prefixLinks[e.Prefix()]; ok {
+		diag.CodeDescription = &lsp.CodeDescription{
+			Href: "https://github.com/ProCode-Software/klar/tree/main/internal/klarerrs/" +
+				basename + ".go",
+		}
+	}
+
+	// Use diagnostic tags for deprecated/unused errors. This dims or
+	// strikethroughs the range in the editor
+	switch e.Code {
+	case klarerrs.WarnUnused:
+		diag.Tags = []lsp.DiagnosticTag{lsp.DiagnosticTagUnnecessary}
+	case -182234: // TODO: Change once a deprecated code is added
+		diag.Tags = []lsp.DiagnosticTag{lsp.DiagnosticTagDeprecated}
+	}
+
+	if len(e.Details) > 0 {
+		diag.RelatedInformation = make([]lsp.DiagnosticRelatedInformation, len(e.Details))
+		for i, det := range e.Details {
+			// The file in the detail may be outside the project, and not loaded by the LSP
+			var rang lsp.Range
+			if _, ok := s.fs.Files[det.File]; ok || det.File == "" {
+				rang = s.toLSPRange(det.Range, det.File)
+			}
+			diag.RelatedInformation[i] = lsp.DiagnosticRelatedInformation{
+				Location: lsp.Location{
+					// TODO: URI may be untitled (check if absolute)
+					Uri:   lsp.DocumentURI("file://" + cmp.Or(det.File, "")),
+					Range: rang,
+				},
+				Message: det.Message,
+			}
+		}
+	}
+
+	// rust-analyzer in VSCode provides links to the compiler message (with ANSI coloring)
+	// as a client-side decoration
+	// https://github.com/rust-lang/rust-analyzer/blob/master/editors/code/src/diagnostics.ts
+	return diag
+}
+
+var prefixLinks = map[klarerrs.Code]lsp.URI{
+	klarerrs.SyntaxErrorPrefix:         "syntax_error",
+	klarerrs.NoPrefix:                  "unprefixed",
+	klarerrs.WarningPrefix:             "warning",
+	klarerrs.TypeErrorPrefix:           "type_error",
+	klarerrs.ModuleErrorPrefix:         "module_error",
+	klarerrs.ReferenceErrorPrefix:      "reference_error",
+	klarerrs.ImplementationErrorPrefix: "", // No source file in klarerrs yet
+}
+
+func (s *Server) klonErrorToDiagnostic(e *klon.Error, file string) *lsp.Diagnostic {
+	diag := &lsp.Diagnostic{
+		Source:  "klon",
+		Range:   s.toLSPRange(e.Range, file),
+		Message: rpc.Union2[string, lsp.MarkupContent]{e.Text},
+		// Codes from Klon are just numbers (not so useful)
+		Code:     &rpc.Union2[int, string]{int(e.Code)},
+		Severity: new(lsp.DiagnosticSeverityError),
+	}
+	if e.Warning {
+		diag.Severity = new(lsp.DiagnosticSeverityWarning)
+	}
+	return diag
 }

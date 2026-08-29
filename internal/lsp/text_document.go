@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/ProCode-Software/klar/internal/lsp/klarast"
 	"github.com/ProCode-Software/klar/pkg/lsp"
+	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
 )
 
 func (s *Server) didOpen(params lsp.DidOpenTextDocumentParams) {
@@ -64,4 +66,26 @@ func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 		// TODO: Handle Klon changes
 	}
 	// It would be terrible to log each change
+}
+
+func (s *Server) documentColor(id rpc.ID, td lsp.TextDocumentIdentifier) {
+	file, ok := s.fs.Files[StripScheme(td.Uri)]
+	if !ok {
+		s.Error(
+			"File not found while responding to documentColor request",
+			slog.String("uri", string(td.Uri)),
+		)
+		return
+	}
+	var colors []lsp.Color
+	// TODO: Fix AST walker. It is currently panicking
+	if false && file.IsKlar() {
+		colorArray := klarast.GetColors(file.Klar.AST)
+		colors = make([]lsp.Color, len(colorArray))
+		for i, clr := range colorArray {
+			colors[i] = lsp.Color{clr[0], clr[1], clr[2], clr[3]}
+		}
+	}
+	// Won't provide colors for non-Klar files
+	s.sendResponse(colors, id)
 }

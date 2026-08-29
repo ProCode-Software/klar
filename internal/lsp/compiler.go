@@ -2,11 +2,13 @@ package lsp
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
+	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/lsp"
@@ -24,6 +26,7 @@ func (s *Server) compileKlarModule(path string) {
 		// First time compiling the package. Compile it to get the
 		// dependency packages. This only occurs once per *package*.
 		// For that reason, I don't think that a pool is needed.
+		s.Info("Compiling package for the first time", slog.String("module", path))
 		pc := build.NewProjectCompiler(s.compiler)
 		pc.Inputs = []*build.Input{mod.compilerInput}
 		var res *build.Result
@@ -49,7 +52,7 @@ func (s *Server) compileKlarModule(path string) {
 		// TODO: Send error notification to user
 	}
 
-	// The module's dependencies have been compiled, so we can apply them.
+	// 2. The module's dependencies have been compiled, so we can apply them.
 	// As a result, they don't have to be compiled when they're first opened.
 	//
 	// The deps map from the compiler includes the input, so this also applies
@@ -61,19 +64,28 @@ func (s *Server) compileKlarModule(path string) {
 		}
 		s.modules[mod.Path].Module = mod.Checked
 
-		// Set the AST for each file in the target module
-		if mod.Path == path {
-			for base, prog := range mod.Programs {
-				path := mod.FilePath(base)
-				if file, ok := s.fs.Files[path]; ok {
+		// 3. Clear previous diagnostics
+		isInput := mod.Path == path
+		for base, prog := range mod.Programs {
+			path := mod.FilePath(base)
+			if file, ok := s.fs.Files[path]; ok {
+				file.Klar.Diagnostics = file.Klar.Diagnostics[:0]
+				// 4. Set the AST for each file in the target module
+				if isInput {
 					file.Klar.AST = prog
 				}
 			}
 		}
 	}
 
-	// Report diagnostics
-	s.reportDiagnostics(s.compiler.Errors, s.compiler.Warnings)
+	// 5. Attach errors and warnings to their files
+	for _, group := range [...][]*klarerrs.Error{s.compiler.Errors, s.compiler.Warnings} {
+		for _, err := range group {
+			if file, ok := s.fs.Files[err.File]; ok {
+				file.Klar.Diagnostics = append(file.Klar.Diagnostics, err)
+			}
+		}
+	}
 }
 
 // initCompiler initializes the shared compiler instance.
@@ -81,6 +93,7 @@ func (s *Server) initCompiler() {
 	c := build.NewCompiler(build.ModeAnalyze, "")
 	c.FS = s.fs
 	c.Logger = s.Logger.With(slog.String("source", "compiler"))
+	c.Reporter.Output = io.Discard
 	c.UseStdParser()
 	s.compiler = c
 }
@@ -118,8 +131,10 @@ type PositionMapper struct {
 	}
 }
 
-// Map does not handle converting 1-based positions to the protocol's 0-based positions.
-func (pm *PositionMapper) Map(pos lexer.Position, enc lsp.PositionEncodingKind) lexer.Position {
+// ToLSPEncoding does not handle converting 1-based positions to the protocol's 0-based positions.
+func (pm *PositionMapper) ToLSPEncoding(
+	pos lexer.Position, enc lsp.PositionEncodingKind,
+) lexer.Position {
 	if pm == nil {
 		return pos
 	}
@@ -140,4 +155,30 @@ func (pm *PositionMapper) Map(pos lexer.Position, enc lsp.PositionEncodingKind) 
 		}
 	}
 	return pos.Add(0, addedCols)
+}
+
+func (s *Server) toLSPPosition(pos lexer.Position, file string) lsp.Position {
+	if pos.IsZero() {
+		return lsp.Position{0, 0}
+	}
+	pos = s.fs.Files[file].PosMapper.ToLSPEncoding(pos, s.caps.posEncoding)
+	// LSP positions are 0-based
+	return lsp.Position{pos.Line - 1, pos.Col - 1}
+}
+
+func (s *Server) toLSPRange(r ranges.Range, file string) lsp.Range {
+	return lsp.Range{
+		Start: s.toLSPPosition(r.Start, file),
+		End:   s.toLSPPosition(r.End, file),
+	}
+}
+
+func (pm *PositionMapper) ToASTEncoding(
+	pos lexer.Position, enc lsp.PositionEncodingKind,
+) lexer.Position {
+	if pm == nil {
+		return pos
+	}
+	// This does the opposite of [PositionMapper.ToLSPEncoding]
+	return pos
 }

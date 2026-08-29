@@ -232,6 +232,7 @@ func (c *Checker) reportTopLevelUnused() {
 	}
 }
 
+// TODO: Print elapsed time for each depth
 type debugLogger struct {
 	depth int
 	w     io.Writer

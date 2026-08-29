@@ -17,5 +17,12 @@
             "-X 'github.com/ProCode-Software/klar/internal/cli.KlarVersion=0.0.1'"
         ],
         "mode": "debug"
+    },
+    {
+        "label": "Debug LSP",
+        "request": "attach",
+        "adapter": "Delve",
+        "mode": "local",
+        "waitFor": "${ZED_WORKTREE_ROOT}/klar lsp",
     }
 ]

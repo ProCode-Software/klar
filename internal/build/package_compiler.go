@@ -168,6 +168,7 @@ typeCheckModules:
 			if isMax {
 				return succeededModules, errMaxErrors
 			}
+			pkc.Error("Module failed typechecking", slog.String("module", mod.Path))
 			continue
 		}
 		succeededModules = append(succeededModules, mod)

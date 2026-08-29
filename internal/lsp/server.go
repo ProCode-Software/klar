@@ -2,8 +2,8 @@ package lsp
 
 import (
 	"bufio"
+	"context"
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,6 +25,7 @@ type Server struct {
 	modules map[string]*Module
 
 	compiler *build.Compiler // Shared compiler
+	caps     *capabilities   // Capabilities decided on after initialization
 	*slog.Logger
 }
 
@@ -54,12 +55,22 @@ func (s *Server) Listen() {
 		}
 		switch msg := msg.(type) {
 		case *rpc.Request:
-			// Lifecycle methods
-			switch msg.Method {
-			case "shutdown":
+			switch {
+			case msg.Method == "shutdown":
 				isShutDown = true
 				s.sendResponse(nil, msg.Id) // Spec: Params: null
-			case "exit":
+				// The server still has to wait for an 'exit' notification
+				continue
+			case isShutDown:
+				// Spec: If a server receives requests after a shutdown request
+				// those requests should error with [rpc.InvalidRequest].
+				s.sendError("Server is shut down", msg.Id, rpc.InvalidRequest)
+			default:
+				s.handleRequest(msg)
+			}
+		case *rpc.Response:
+		case *rpc.Notification:
+			if msg.Method == "exit" {
 				// Spec: The server should exit with success code 0 if the shutdown
 				// request has been received before; otherwise with error code 1.
 				if !isShutDown {
@@ -67,11 +78,7 @@ func (s *Server) Listen() {
 				} else {
 					cli.Exit(0)
 				}
-			default:
-				s.handleRequest(msg)
 			}
-		case *rpc.Response:
-		case *rpc.Notification:
 			s.handleNotification(msg)
 		default:
 			s.Error(fmt.Sprintf("invalid rpc.Message type: %T", msg))
@@ -80,6 +87,10 @@ func (s *Server) Listen() {
 	if err := scanner.Err(); err != nil {
 		s.Error("Error while reading", slog.Any("error", err))
 	}
+}
+
+func (s *Server) logEnabled() bool {
+	return s.Logger.Enabled(context.Background(), slog.LevelInfo)
 }
 
 // sendResponse sends a successful response to the output stream.
@@ -141,67 +152,10 @@ func (s *Server) sendNotification(method rpc.Method, params any) (ok bool) {
 	return true
 }
 
-func (s *Server) decodeParams[T any](id rpc.ID, val jsontext.Value) (T, bool) {
-	var result T
-	if err := json.Unmarshal(val, &result); err != nil {
-		s.Error("Failed to decode message params", slog.Any("error", err))
-		s.sendError(
-			fmt.Sprintf("Failed to decode message params: %v", err),
-			id, rpc.ParseError,
-		)
-		return result, false
-	}
-	return result, true
-}
-
-func (s *Server) handleRequest(req *rpc.Request) {
-	var params jsontext.Value
-	if req.Params != nil {
-		params = req.Params.(jsontext.Value)
-	}
-	s.Info("Got request", slog.Any("method", req.Method))
-	switch req.Method {
-	case "initialize":
-		params, ok := s.decodeParams[*lsp.InitializeParams](req.Id, params)
-		if !ok {
-			return
-		}
-		s.sendResponse(lsp.InitializeResult{
-			Capabilities: s.getCapabilities(params),
-			ServerInfo: &lsp.ServerInfo{
-				Name:    "KlarLS",
-				Version: cli.KlarVersion,
-			},
-		}, req.Id)
-		s.Info("Server initialized", slog.String("clientName", params.ClientInfo.Name))
-	default:
-		s.Warn("Unhandled request", slog.String("method", string(req.Method)))
-	}
-}
-
-func (s *Server) handleNotification(not *rpc.Notification) {
-	var params jsontext.Value
-	if not.Params != nil {
-		params = not.Params.(jsontext.Value)
-	}
-	switch not.Method {
-	case "initialized": // Nothing to do
-	case "textDocument/didOpen":
-		params, ok := s.decodeParams[lsp.DidOpenTextDocumentParams](nil, params)
-		if !ok {
-			return
-		}
-		s.didOpen(params)
-	case "textDocument/didChange":
-		params, ok := s.decodeParams[lsp.DidChangeTextDocumentParams](nil, params)
-		if !ok {
-			return
-		}
-		// TODO: Cancel previous compilation if still compiling
-		s.didChange(params)
-	default:
-		s.Warn("Unhandled notification", slog.String("method", string(not.Method)))
-	}
+func (s *Server) showMessageToUser(typ lsp.MessageType, msg string) {
+	s.sendNotification("window/showMessage", lsp.ShowMessageParams{
+		Type: typ, Message: msg,
+	})
 }
 
 func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabilities {
@@ -332,11 +286,18 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		}
 	}
 	caps.CodeActionProvider.Value = codeActionProv
+	// KlarLS is implemented using pull diagnostics (only)
+	if init.Capabilities.TextDocument.Diagnostic == nil {
+		// Client doesn't support pull diagnostics (uses publishDiagnostics instead)
+		s.Error("Client doesn't support pull diagnostics")
+	}
+
+	s.caps = &capabilities{
+		posEncoding: *caps.PositionEncoding,
+	}
 	return caps
 }
 
-func (s *Server) showMessageToUser(typ lsp.MessageType, msg string) {
-	s.sendNotification("window/showMessage", lsp.ShowMessageParams{
-		Type: typ, Message: msg,
-	})
+type capabilities struct {
+	posEncoding lsp.PositionEncodingKind
 }

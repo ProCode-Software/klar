@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -206,7 +207,8 @@ func (pc *ProjectCompiler) DownloadDeps() error {
 var isBootstrapping bool
 
 func (pc *ProjectCompiler) CompileBootstrapped() error {
-	if isBootstrapping || pc.Mode == ModeParse { // Builtins not needed for parsing
+	if isBootstrapping || pc.Mode == ModeParse || // Builtins not needed for parsing
+		analysis.BootstrappedModulesLoaded() {
 		return nil
 	}
 	isBootstrapping = true
@@ -225,7 +227,7 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 				Code: ErrStdlibNotFound, Err: err, Value: modulePath,
 			}
 		}
-		
+
 		return err
 	}
 	// Set the targets for the builtin compiler
