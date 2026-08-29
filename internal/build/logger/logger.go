@@ -65,6 +65,9 @@ type LogHandler struct {
 }
 
 func NewLogHandler(w io.Writer, flags Flags) *LogHandler {
+	if f, ok := w.(*os.File); ok && !term.IsTerminal(int(f.Fd())) {
+		flags |= NoColor
+	}
 	return &LogHandler{
 		output: w,
 		mu:     &sync.Mutex{},
@@ -89,10 +92,6 @@ func (h *LogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *LogHandler) Handle(ctx context.Context, r slog.Record) error {
-	// Color
-	if f, ok := h.output.(*os.File); ok && !term.IsTerminal(int(f.Fd())) {
-		h.flags |= NoColor
-	}
 	if h.flags.Has(NoColor) {
 		oldDisableColor := ansi.DisableColor
 		ansi.DisableColor = true

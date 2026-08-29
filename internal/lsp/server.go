@@ -58,9 +58,7 @@ func (s *Server) Listen() {
 			switch msg.Method {
 			case "shutdown":
 				isShutDown = true
-				// Spec: Params: null
-				s.sendResponse(nil, msg.Id)
-				continue
+				s.sendResponse(nil, msg.Id) // Spec: Params: null
 			case "exit":
 				// Spec: The server should exit with success code 0 if the shutdown
 				// request has been received before; otherwise with error code 1.
@@ -69,8 +67,9 @@ func (s *Server) Listen() {
 				} else {
 					cli.Exit(0)
 				}
+			default:
+				s.handleRequest(msg)
 			}
-			s.handleRequest(msg)
 		case *rpc.Response:
 		case *rpc.Notification:
 			s.handleNotification(msg)
@@ -120,6 +119,26 @@ func (s *Server) sendError(msg string, id rpc.ID, code rpc.ErrorCode) {
 	if err != nil {
 		s.Error("Error while sending error", slog.Any("error", err))
 	}
+}
+
+func (s *Server) sendNotification(method rpc.Method, params any) (ok bool) {
+	if params == nil {
+		params = jsontext.Value("null")
+	}
+	msg := &rpc.Notification{
+		JSONRPC: rpc.JSONRPCVersion,
+		Method:  method,
+		Params:  params,
+	}
+	b, err := rpc.Encode(msg)
+	if err == nil {
+		_, err = s.out.Write(b)
+	}
+	if err != nil {
+		s.Error("Error while sending notification", slog.Any("error", err))
+		return false
+	}
+	return true
 }
 
 func (s *Server) decodeParams[T any](id rpc.ID, val jsontext.Value) (T, bool) {
@@ -193,6 +212,9 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 			lsp.TextDocumentSyncOptions{
 				OpenClose: new(true),
 				Change:    new(lsp.TextDocumentSyncFull),
+				Save: &rpc.Union2[bool, lsp.SaveOptions]{
+					lsp.SaveOptions{IncludeText: new(false)},
+				},
 			},
 		},
 		DocumentFormattingProvider: &rpc.Union2[bool, lsp.DocumentFormattingOptions]{true},
@@ -222,9 +244,17 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		}},
 		CallHierarchyProvider: &rpc.Union3[bool,
 			lsp.CallHierarchyOptions, lsp.CallHierarchyRegistrationOptions]{true},
-		TypeHierarchyProvider:  nil, // Type hierarchy isn't applicable for Klar
-		CodeActionProvider:     &rpc.Union2[bool, lsp.CodeActionOptions]{},
-		Workspace:              &lsp.WorkspaceOptions{},
+		TypeHierarchyProvider: nil, // Type hierarchy isn't applicable for Klar
+		CodeActionProvider:    &rpc.Union2[bool, lsp.CodeActionOptions]{},
+		Workspace: &lsp.WorkspaceOptions{
+			WorkspaceFolders: &lsp.WorkspaceFoldersServerCapabilities{
+				Supported:           new(true),
+				ChangeNotifications: &rpc.Union2[string, bool]{true},
+			},
+			// TODO: Do we need any of these? Gopls has didCreate only
+			FileOperations:      nil,
+			TextDocumentContent: nil, // TODO: Re-evaluate later
+		},
 		DocumentSymbolProvider: &rpc.Union2[bool, lsp.DocumentSymbolOptions]{true},
 		CodeLensProvider:       &lsp.CodeLensOptions{},
 		RenameProvider: &rpc.Union2[bool, lsp.RenameOptions]{lsp.RenameOptions{
@@ -244,7 +274,9 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 		}},
 		ImplementationProvider: &rpc.Union3[bool,
 			lsp.ImplementationOptions, lsp.ImplementationRegistrationOptions]{true},
-		WorkspaceSymbolProvider: &rpc.Union2[bool, lsp.WorkspaceSymbolOptions]{true},
+		// Commented out until implemented. It breaks my editor if enabled
+		// and not sending responses.
+		// WorkspaceSymbolProvider: &rpc.Union2[bool, lsp.WorkspaceSymbolOptions]{true},
 		DeclarationProvider: &rpc.Union3[bool,
 			lsp.DeclarationOptions, lsp.DeclarationRegistrationOptions]{true},
 		DocumentLinkProvider:      &lsp.DocumentLinkOptions{},
@@ -264,7 +296,10 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 	preferredEncoding := [...]lsp.PositionEncodingKind{
 		lsp.PositionEncodingUTF32, lsp.PositionEncodingUTF8, lsp.PositionEncodingUTF16,
 	}
-	clientEncodings := init.Capabilities.General.PositionEncodings
+	var clientEncodings []lsp.PositionEncodingKind
+	if init.Capabilities.General != nil {
+		clientEncodings = init.Capabilities.General.PositionEncodings
+	}
 	switch len(clientEncodings) {
 	case 0:
 		// Per the spec: If no positions are provided, assume utf16 (set above)
@@ -298,4 +333,10 @@ func (s *Server) getCapabilities(init *lsp.InitializeParams) *lsp.ServerCapabili
 	}
 	caps.CodeActionProvider.Value = codeActionProv
 	return caps
+}
+
+func (s *Server) showMessageToUser(typ lsp.MessageType, msg string) {
+	s.sendNotification("window/showMessage", lsp.ShowMessageParams{
+		Type: typ, Message: msg,
+	})
 }

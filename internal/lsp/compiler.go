@@ -1,14 +1,18 @@
 package lsp
 
 import (
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/ProCode-Software/klar/internal/build"
+	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/ranges"
+	"github.com/ProCode-Software/klar/pkg/lsp"
 )
 
-func (s *Server) compileModule(path string) {
+func (s *Server) compileKlarModule(path string) {
 	mod := s.modules[path]
 	deps := &s.pkgs[mod.PkgPath].deps
 
@@ -24,7 +28,9 @@ func (s *Server) compileModule(path string) {
 		pc.Inputs = []*build.Input{mod.compilerInput}
 		var res *build.Result
 		res, fatalErr = pc.Compile()
-		*deps = *res.AllModules[mod.compilerInput]
+		if inputDeps := res.AllModules[mod.compilerInput]; inputDeps != nil {
+			*deps = *inputDeps
+		}
 	} else {
 		// TODO: Should each module get its own permanent PackageCompiler?
 		// It could possibly be deleted when the module is closed.
@@ -35,6 +41,11 @@ func (s *Server) compileModule(path string) {
 	}
 	if fatalErr != nil {
 		s.Error("Fatal error while compiling modules", slog.Any("error", fatalErr))
+		// TODO: Have a timeout so this doesn't show every time the user types
+		s.showMessageToUser(lsp.MessageTypeError, fmt.Sprintf(
+			"A critical error occured while compiling %q:\n\n%v",
+			path, fatalErr,
+		))
 		// TODO: Send error notification to user
 	}
 
@@ -49,6 +60,16 @@ func (s *Server) compileModule(path string) {
 			s.modules[mod.Path] = &Module{PkgPath: mod.Path}
 		}
 		s.modules[mod.Path].Module = mod.Checked
+
+		// Set the AST for each file in the target module
+		if mod.Path == path {
+			for base, prog := range mod.Programs {
+				path := mod.FilePath(base)
+				if file, ok := s.fs.Files[path]; ok {
+					file.Klar.AST = prog
+				}
+			}
+		}
 	}
 
 	// Report diagnostics
@@ -82,4 +103,41 @@ func (pool *_compilerPool) Get() *build.PackageCompiler {
 func (pool *_compilerPool) Put(pkc *build.PackageCompiler) {
 	pkc.Reset()
 	pool.Pool.Put(pkc)
+}
+
+// Position mapping
+// =======
+
+// A PositionMapper is used for converting UTF-32 [lexer.Position]s from the
+// compiler to positions compatible with the LSP client.
+type PositionMapper struct {
+	// The Unicode code points in the file that take up more than 1 byte
+	nonASCII []struct {
+		Pos  lexer.Position
+		Size uint8 // Size of the character in bytes. Must be 2-4
+	}
+}
+
+// Map does not handle converting 1-based positions to the protocol's 0-based positions.
+func (pm *PositionMapper) Map(pos lexer.Position, enc lsp.PositionEncodingKind) lexer.Position {
+	if pm == nil {
+		return pos
+	}
+	var addedCols uint32
+	for _, c := range pm.nonASCII {
+		if ranges.ComparePos(c.Pos, pos) >= 1 {
+			break
+		}
+		switch enc {
+		case lsp.PositionEncodingUTF8:
+			addedCols += uint32(c.Size) - 1
+		case lsp.PositionEncodingUTF16:
+			// In UTF-32, only 4-byte characters are 2 UTF-16 code units long.
+			// Also remember we're always subtracting 1
+			if c.Size >= 4 {
+				addedCols += 1
+			}
+		}
+	}
+	return pos.Add(0, addedCols)
 }

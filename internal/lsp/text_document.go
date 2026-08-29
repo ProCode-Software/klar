@@ -9,24 +9,33 @@ import (
 
 func (s *Server) didOpen(params lsp.DidOpenTextDocumentParams) {
 	td := params.TextDocument
-	uri := string(td.Uri)
-	// TODO: I don't know how to handle file:// schemes
-	s.fs.WriteFile(uri, []byte(td.Text))
-	s.loadPackageFor(uri)
-	s.Debug("Opened file", slog.String("uri", uri))
-	// The module may have been typechecked as a dependency, so don't
-	// recompile unless it has changed (didChange)
-	if file := s.fs.Files[uri]; file.Module == nil || file.Module.Module == nil {
-		s.compileModule(file.ModulePath)
+	path := StripScheme(td.Uri)
+	s.fs.WriteFile(path, []byte(td.Text))
+	// Set the language to either Klar or Klon
+	file := s.fs.Files[path]
+	file.SetLanguage(td.LanguageId)
+
+	// Compile
+	if file.IsKlar() {
+		s.loadPackageFor(path)
+		// The module may have been typechecked as a dependency, so don't
+		// recompile unless it has changed (didChange)
+		if kf := file.Klar; kf.Module == nil || kf.Module.Module == nil {
+			s.compileKlarModule(kf.ModulePath)
+		}
 	}
+	s.Debug(
+		"Opened file",
+		slog.String("uri", string(td.Uri)),
+		slog.String("language", string(td.LanguageId)),
+	)
 }
 
 var zeroRange = lsp.Range{lsp.Position{0, 0}, lsp.Position{0, 0}}
 
 func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 	td := params.TextDocument
-	uri := string(td.Uri)
-	slog.Debug(uri)
+	path := StripScheme(td.Uri)
 	for _, change := range params.ContentChanges {
 		// In our capabilities (see [Server.getCapabilities]), we said we
 		// support full document changes
@@ -46,9 +55,13 @@ func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 		} else {
 			text = change.B().Text
 		}
-		s.fs.WriteFile(uri, []byte(text))
+		s.fs.WriteFile(path, []byte(text))
 	}
-	s.loadPackageFor(uri)
-	s.compileModule(s.fs.Files[uri].ModulePath)
+	if file := s.fs.Files[path]; file.IsKlar() {
+		// s.loadPackageFor(path)
+		s.compileKlarModule(file.Klar.ModulePath)
+	} else {
+		// TODO: Handle Klon changes
+	}
 	// It would be terrible to log each change
 }

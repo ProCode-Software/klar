@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"log/slog"
 	"maps"
 	"os"
@@ -180,8 +179,8 @@ func SetLogger(b *Compiler, verbose, json bool) error {
 		return err
 	}
 	b.Logger = l
-	if b.Logger.Enabled(context.Background(), slog.LevelDebug) {
+	/* if b.Logger.Enabled(context.Background(), slog.LevelDebug) {
 		b.IsDebug = true
-	}
+	} */
 	return nil
 }

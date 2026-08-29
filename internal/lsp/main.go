@@ -1,3 +1,5 @@
+// Package lsp implements the built-in Klar Language Server (KlarLS).
+// See README.md for more information.
 package lsp
 
 import (

@@ -17,7 +17,7 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 - 😀 **Fun.** Klar code is clean, short, and pretty, making it fun to write.
 - 🤏 **Small language.** In Klar, there is only one way to do something, resulting in a lower learning curve.
 - 🤓 **Beginner-friendly.** Klar is easy for non-developers to learn, making it a perfect first language.
-- 🚀 **Advanced tooling.** Klar comes with a fast compiler, formatter, linter, package manager, version manager, and more built-in.
+- 🚀 **Advanced tooling.** Klar comes with a fast compiler, formatter, linter, package manager, language server, and more built-in.
 - ♻️ **Interoperable.** Easy to include JavaScript and adopt incrementally.
 - ⚡ **Fast compile times.** The compiler makes great use of caching and incremental compilation, and its written in Go! 🐹
 

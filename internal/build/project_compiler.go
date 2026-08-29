@@ -70,7 +70,7 @@ func (pc *ProjectCompiler) Compile() (*Result, error) {
 	// Load the bootstrapped modules that are needed for typechecking
 	if err := pc.CompileBootstrapped(); err != nil {
 		ierr, ok := err.(*InterfaceError)
-		if !ok || ierr.Code != ErrInternalCompileError {
+		if !ok || (ierr.Code != ErrInternalCompileError && ierr.Code != ErrStdlibNotFound) {
 			ierr = &InterfaceError{Code: ErrInternalCompileError, Err: err}
 		}
 		return res, ierr
@@ -213,9 +213,19 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 	defer func() { isBootstrapping = false }()
 
 	importPath := imports.ImportPath{"klar", "_builtin"}
-	modulePath := module.SystemDirs.Std + sep + module.SrcDir + sep + filepath.Join(importPath...)
+	modulePath := module.SystemDirs.Std + sep +
+		module.SrcDir + sep + filepath.Join(importPath...)
 	inp, err := pc.ResolveInput(modulePath, 0)
 	if err != nil {
+		// TODO: In the future, automatically download the stdlib if not found.
+		// There are some valid reasons why it wouldn't be installed, such as if
+		// the Klar CLI alone was downloaded for an editor LSP.
+		if fserr, ok := err.(*FilesystemError); ok && fserr.IsNotExist() {
+			return &InterfaceError{
+				Code: ErrStdlibNotFound, Err: err, Value: modulePath,
+			}
+		}
+		
 		return err
 	}
 	// Set the targets for the builtin compiler

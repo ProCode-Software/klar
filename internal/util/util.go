@@ -206,6 +206,8 @@ func FastDelete[T any](s []T, i int) []T {
 	return s
 }
 
+const CreateLogFileMode = os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
+
 // SetLogger sets b's Logger and verbosity. If verbose is true, b.Logger is set
 // to [os.Stderr]. If the $KLAR_LOG_FILE environment variable is set, regardless
 // of the value of verbose, b.Logger is set to write to that file. Otherwise,
@@ -221,7 +223,7 @@ func SetLogger(verbose, json bool) (l *slog.Logger, err error) {
 	switch {
 	case logFile != "":
 		//nolint:gosec // G703 - internal env var only
-		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		file, err := os.OpenFile(logFile, CreateLogFileMode, 0o644)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to create file at %s set by $KLAR_LOG_FILE: %w", logFile, err,

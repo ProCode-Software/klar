@@ -9,6 +9,11 @@ import (
 
 const ProtocolVersion = "3.18"
 
+const (
+	LanguageKlar LanguageKind = "klar"
+	LanguageKlon LanguageKind = "klon"
+)
+
 // URIs. See:
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#uri
 type (
@@ -26,17 +31,20 @@ func ParseDocumentURI(s string) (DocumentURI, error) {
 	if s == "" {
 		return "", nil
 	}
-	// Valid schemes:
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	// Valid schemes supported by KlarLS:
 	// 	- file://...
 	//  - untitled:...
-	scheme, after, ok := strings.Cut(s, ":")
-	after = strings.TrimPrefix(after, "//")
-	switch {
-	case !ok:
+	switch u.Scheme {
+	case "":
 		return "", errors.New("DocumentURI requires a scheme, got " + s)
-	case scheme != "file" && scheme != "untitled":
+	case "file", "untitled":
+	default:
 		return "", errors.New(
-			"DocumentURI scheme must be 'file' or 'untitled', got " + scheme,
+			"DocumentURI scheme must be 'file' or 'untitled', got " + u.Scheme,
 		)
 
 		// Gopls has this, but I don't know if it's still necessary.
@@ -44,20 +52,14 @@ func ParseDocumentURI(s string) (DocumentURI, error) {
 		// VS Code sends URLs with only two slashes, which are invalid.
 		s = "file:///" + s[len("file://"):] */
 	}
-	// Even though the input is a URI, it may not be in canonical form. VS Code
-	// in particular over-escapes :, @, etc. Unescape and re-encode to canonicalize.
-	path, err := url.PathUnescape(after)
-	if err != nil {
-		return "", err
-	}
 	// File URIs from Windows may have lowercase drive letters.
 	// Since drive letters are guaranteed to be case insensitive,
 	// we change them to uppercase to remain consistent.
 	// For example, file:///c:/x/y/z becomes file:///C:/x/y/z.
-	if isWindowsDriveURIPath(path) {
-		path = path[:1] + strings.ToUpper(string(path[1])) + path[2:]
+	if isWindowsDriveURIPath(u.Path) && u.Scheme == "file" {
+		u.Path = u.Path[:1] + strings.ToUpper(string(u.Path[1])) + u.Path[2:]
 	}
-	return DocumentURI((&url.URL{Scheme: scheme, Path: path}).String()), nil
+	return DocumentURI(u.String()), nil
 }
 
 // isWindowsDriveURIPath returns true if the file URI is of the format used by

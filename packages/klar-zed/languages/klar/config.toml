@@ -1,7 +1,7 @@
 name = "Klar"
 grammar = "klar"
 path_suffixes = ["klar"]
-line_comments = ["//"]
+line_comments = ["// "]
 block_comment = ["/*", "*/"]
 tab_size = 4
 hard_tabs = false

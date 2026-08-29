@@ -4,20 +4,38 @@ import (
 	"bytes"
 	"io/fs"
 	"os"
+	"strings"
 	"time"
 
+	klarast "github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/build"
+	klonast "github.com/ProCode-Software/klar/pkg/klon/ast"
+	"github.com/ProCode-Software/klar/pkg/lsp"
 )
 
 type FileSystem struct {
+	// Files don't contain URI schemes
 	Files map[string]*File
 }
 
 type File struct {
-	Content    []byte
-	Modified   time.Time
+	Content  []byte
+	Modified time.Time
+	// Nil if the file is all-ASCII or the LSP is using UTF-32
+	PosMapper *PositionMapper
+	// Based on language ID. Exactly 1 is set
+	Klar *KlarFile
+	Klon *KlonFile
+}
+
+type KlarFile struct {
+	AST        *klarast.Program
 	Module     *Module
 	ModulePath string // TODO: Not needed if Module != nil
+}
+
+type KlonFile struct {
+	AST *klonast.Document
 }
 
 func (fs *FileSystem) WriteFile(path string, b []byte) {
@@ -34,6 +52,35 @@ func (fs *FileSystem) DeleteFromMemory(path string) {
 	if f, ok := fs.Files[path]; ok {
 		f.Content = nil
 	}
+}
+
+func (f *File) SetLanguage(langID lsp.LanguageKind) {
+	// Note that the language may be manually changed by the user in the editor
+	switch langID {
+	case lsp.LanguageKlar:
+		if f.Klar == nil {
+			f.Klar = &KlarFile{}
+		}
+		f.Klon = nil
+	case lsp.LanguageKlon:
+		if f.Klon == nil {
+			f.Klon = &KlonFile{}
+		}
+		f.Klar = nil
+	default: // Language isn't supposed to be handled by KlarLS. Includes glaslock
+	}
+}
+
+func (f *File) IsKlar() bool      { return f.Klar != nil }
+func (f *File) HasLanguage() bool { return f.Klar != nil || f.Klon != nil }
+
+func StripScheme(uri lsp.DocumentURI) string {
+	path := string(uri)
+	path, ok := strings.CutPrefix(path, "file://")
+	if ok {
+		return path
+	}
+	return strings.TrimPrefix(path, "untitled:")
 }
 
 // [build.CompilerFS] implementation

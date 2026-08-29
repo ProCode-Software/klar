@@ -23,51 +23,52 @@ type Module struct {
 	compilerInput *build.Input
 }
 
-func (s *Server) loadPackageFor(fileURI string) {
-	file := s.fs.Files[fileURI]
-	if file.ModulePath != "" {
+func (s *Server) loadPackageFor(filePath string) {
+	file := s.fs.Files[filePath]
+	if file.Klar.ModulePath != "" {
 		return // Already loaded
 	}
 	// Initialize the file's package
 	var (
-		pkgDir, _    = module.PackageRoot(fileURI)
-		isSingleFile = pkgDir == fileURI
+		pkgDir, _    = module.PackageRoot(filePath)
+		isSingleFile = pkgDir == filePath
 		pkg          = &Package{}
 	)
-	file.ModulePath = fileURI // For single-file modules
+	file.Klar.ModulePath = filePath // For single-file modules
 	if !isSingleFile {
 		pkg.PackageInfo = manifest.GetPackageInfo(pkgDir)
-		file.ModulePath = filepath.Dir(fileURI)
+		file.Klar.ModulePath = filepath.Dir(filePath)
 	}
 	s.pkgs[pkgDir] = pkg
 
 	// Initialize its module
-	if _, ok := s.modules[file.ModulePath]; !ok {
+	if _, ok := s.modules[file.Klar.ModulePath]; !ok {
 		// First time the module is opened
-		s.modules[file.ModulePath] = &Module{PkgPath: pkgDir}
+		s.modules[file.Klar.ModulePath] = &Module{PkgPath: pkgDir}
 	}
 	// This is initialized when the module is, but the typechecked module
 	// may exist before this (from compiling this as a dependency)
-	if mod := s.modules[file.ModulePath]; mod.compilerInput == nil {
+	if mod := s.modules[file.Klar.ModulePath]; mod.compilerInput == nil {
 		inp := &build.Input{
-			Kind:    build.KindModule,
-			Path:    file.ModulePath,
+			Kind:    build.KindFile,
+			Path:    file.Klar.ModulePath,
 			PkgInfo: pkg.PackageInfo,
 		}
 		if !isSingleFile {
+			inp.Kind = build.KindModule
 			inp.Manifest = pkg.Manifest
 			inp.Lockfile = s.readLockfile(pkg.PackageInfo.ProjectDir)
 		}
 		mod.compilerInput = inp
 	}
-	file.Module = s.modules[file.ModulePath]
+	file.Klar.Module = s.modules[file.Klar.ModulePath]
 
 	s.Info(
 		"Package loaded",
-		slog.String("file", fileURI), slog.String("packagePath", pkgDir),
+		slog.String("file", filePath), slog.String("packagePath", pkgDir),
 	)
 	if isSingleFile {
-		s.Info("File isn't in a package", slog.String("path", fileURI))
+		s.Info("File isn't in a package", slog.String("path", filePath))
 	}
 }
 

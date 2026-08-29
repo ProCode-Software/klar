@@ -1,7 +1,7 @@
 name = "Klon"
 grammar = "klon"
 path_suffixes = ["klon", "glas.pack", "klar.build"]
-line_comments = ["//"]
+line_comments = ["// "]
 block_comment = ["/*", "*/"]
 tab_size = 4
 hard_tabs = false

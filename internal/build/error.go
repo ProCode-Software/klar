@@ -59,6 +59,7 @@ const (
 	ErrDepNotFound          // Dependency not found or installed
 	ErrInternalCompileError // Internal modules failed to compile
 	ErrNoManifest           // No manifest found
+	ErrStdlibNotFound       // Standard library not found
 )
 
 type InterfaceError struct {
@@ -152,6 +153,12 @@ func (err *InterfaceError) PrettyError() (main, detail string) {
 	case ErrNoManifest:
 		return "Project not found: ", fmt.Sprintf(
 			"Can't find a <y>%s</y> file for <c>%s</c>", module.ManifestFile, err.Value,
+		)
+	case ErrStdlibNotFound:
+		return "I couldn't find the Klar standard library. Is it installed?", fmt.Sprintf(
+			"\n\nI expected to find it at <c>%s</c>.\n\n"+
+				"Please download <m>stdlib.zip</m> from <m>https://github.com/ProCode-Software/klar/releases</m> and install it to %[1]s.",
+			err.Value,
 		)
 	default:
 		panic(fmt.Sprintf("no InterfaceError message for %d", err.Code))

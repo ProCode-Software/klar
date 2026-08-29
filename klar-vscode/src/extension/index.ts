@@ -42,7 +42,7 @@ export async function activate({ subscriptions }: ExtensionContext) {
         options: { env: Object.assign(process.env, { NO_COLOR: 1 }) },
     }
     const clientOptions: LanguageClientOptions = {
-        documentSelector: ['klar', 'klon', 'glas.lock'].map(language => ({
+        documentSelector: ['klar', 'klon'].map(language => ({
             language,
             // scheme: 'file', // Disabled so untitled files are supported
         })),
