@@ -162,9 +162,15 @@ loop:
 
 // parseNumber parses a numeric literal.
 func (rd *reader) parseNumber(num Token) *ast.Number {
-	float, err := strconv.ParseFloat(num.Src, 64)
+	var float float64
+	// ParseFloat doesn't handle 0x prefixes. Try ParseInt before ParseFloat
+	// because I think it is faster.
+	integer, err := strconv.ParseInt(num.Src, 0, 64)
+	float = float64(integer)
 	if err != nil {
-		panic(err) // Shouldn't happen
+		if float, err = strconv.ParseFloat(num.Src, 64); err != nil {
+			panic(err) // Shouldn't happen
+		}
 	}
 	rd.advanceTok()
 	return &ast.Number{
@@ -633,9 +639,11 @@ func (rd *reader) parseKey(forceObject bool) (singleKey ast.Value, dotPath *[]as
 	start lexer.Position,
 ) {
 	validate := func(v ast.Value) bool {
-		switch v.(type) {
+		switch v := v.(type) {
 		case *ast.String, *ast.Number, *ast.Bad, *ast.Boolean:
 			return true
+		case *ast.None:
+			return v.Literal
 		default:
 			if !forceObject {
 				return false
@@ -697,7 +705,7 @@ func (rd *reader) checkDashes(n int) bool {
 	}
 	if n > rd.depth+1 {
 		// Too many dashes
-		if rd.depth == 0 {
+		if rd.depth == 0 && n == rd.depth+2 {
 			rd.tokenError(
 				klonerrs.ErrDashSkip, rd.currTok(),
 				"The top level object shouldn't include a dash",
@@ -705,7 +713,7 @@ func (rd *reader) checkDashes(n int) bool {
 		} else {
 			rd.tokenError(
 				klonerrs.ErrDashSkip, rd.currTok(),
-				"Too many dashes: expected up to %d, there are %d", rd.depth+1, n,
+				"Too many dashes: expected up to %d, but there are %d", rd.depth+1, n,
 			)
 		}
 		return true // For recovery
