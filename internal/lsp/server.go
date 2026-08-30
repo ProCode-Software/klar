@@ -59,6 +59,7 @@ func (s *Server) Listen() {
 			case msg.Method == "shutdown":
 				isShutDown = true
 				s.sendResponse(nil, msg.Id) // Spec: Params: null
+				s.Info("Server is shutting down")
 				// The server still has to wait for an 'exit' notification
 				continue
 			case isShutDown:
@@ -73,6 +74,7 @@ func (s *Server) Listen() {
 			if msg.Method == "exit" {
 				// Spec: The server should exit with success code 0 if the shutdown
 				// request has been received before; otherwise with error code 1.
+				s.Info("Exiting")
 				if !isShutDown {
 					cli.Exit(1)
 				} else {

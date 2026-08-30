@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
+	"github.com/ProCode-Software/klar/internal/lsp/klon"
 	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 )
@@ -70,6 +72,7 @@ func (s *Server) compileKlarModule(path string) {
 			path := mod.FilePath(base)
 			if file, ok := s.fs.Files[path]; ok {
 				file.Klar.Diagnostics = file.Klar.Diagnostics[:0]
+				file.Klar.Module.depsWithDiags = nil
 				// 4. Set the AST for each file in the target module
 				if isInput {
 					file.Klar.AST = prog
@@ -79,10 +82,15 @@ func (s *Server) compileKlarModule(path string) {
 	}
 
 	// 5. Attach errors and warnings to their files
+	if len(s.compiler.Errors) == 0 && len(s.compiler.Warnings) == 0 {
+		return
+	}
+	filesWithDiags := make(map[string]struct{})
 	for _, group := range [...][]*klarerrs.Error{s.compiler.Errors, s.compiler.Warnings} {
 		for _, err := range group {
 			if file, ok := s.fs.Files[err.File]; ok {
 				file.Klar.Diagnostics = append(file.Klar.Diagnostics, err)
+				file.Klar.Module.depsWithDiags = filesWithDiags
 			}
 		}
 	}
@@ -118,6 +126,17 @@ func (pool *_compilerPool) Put(pkc *build.PackageCompiler) {
 	pool.Pool.Put(pkc)
 }
 
+// Klon parsing
+// =======
+
+func (s *Server) compileKlonFile(path string) {
+	file := s.fs.Files[path]
+	parsed, errs := klon.Parse(file.Content)
+	file.Klon.AST = parsed
+	file.Klon.Diagnostics = errs
+	// TODO: Check for undeclared var references and unused vars (hint)
+}
+
 // Position mapping
 // =======
 
@@ -125,9 +144,37 @@ func (pool *_compilerPool) Put(pkc *build.PackageCompiler) {
 // compiler to positions compatible with the LSP client.
 type PositionMapper struct {
 	// The Unicode code points in the file that take up more than 1 byte
-	nonASCII []struct {
-		Pos  lexer.Position
-		Size uint8 // Size of the character in bytes. Must be 2-4
+	nonASCII []unicodeChar
+}
+
+type unicodeChar struct {
+	Pos  lexer.Position
+	Size uint8 // Size of the character in bytes. Must be 2-4
+}
+
+func (f *File) makePositionMap() {
+	var (
+		nonASCII []unicodeChar
+		i        int
+		pos      = lexer.Position{1, 1}
+	)
+	for i < len(f.Content) {
+		r, n := utf8.DecodeRune(f.Content[i:])
+		if n > 1 {
+			nonASCII = append(nonASCII, unicodeChar{Pos: pos, Size: uint8(n)})
+		}
+		i += n
+		if r == '\n' {
+			pos.Line++
+			pos.Col = 1
+		} else {
+			pos.Col++
+		}
+	}
+	if len(nonASCII) > 0 {
+		f.PosMapper = &PositionMapper{nonASCII: nonASCII}
+	} else {
+		f.PosMapper = nil
 	}
 }
 

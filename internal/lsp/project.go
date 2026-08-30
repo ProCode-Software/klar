@@ -21,6 +21,9 @@ type Module struct {
 	*analysis.Module
 	PkgPath       string
 	compilerInput *build.Input
+	// All files with diagnostics when this module was compiled. Includes
+	// files in this module.
+	depsWithDiags map[string]struct{}
 }
 
 func (s *Server) loadPackageFor(filePath string) {

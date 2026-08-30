@@ -31,9 +31,11 @@ func (s *Server) documentDiagnostic(id rpc.ID, params lsp.DocumentDiagnosticPara
 	//	| [lsp.RelatedUnchangedDocumentDiagnosticReport]
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#textDocument_diagnostic
 	s.sendResponse(lsp.RelatedFullDocumentDiagnosticReport{
-		Kind:             string(lsp.DocumentDiagnosticReportFull),
-		Items:            diags,
-		RelatedDocuments: nil, // TODO: Diagnostics for dependencies
+		Kind:  string(lsp.DocumentDiagnosticReportFull),
+		Items: diags,
+		// Diagnostics for dependencies and other files in the module.
+		// Only applicable to Klar files.
+		RelatedDocuments: s.getRelatedDiagnostics(path),
 	}, id)
 }
 
@@ -56,6 +58,39 @@ func (s *Server) diagnosticsForFile(path string) (diags []*lsp.Diagnostic) {
 	return diags
 }
 
+type relatedDiagostic = rpc.Union2[
+	lsp.FullDocumentDiagnosticReport, lsp.UnchangedDocumentDiagnosticReport,
+]
+
+func (s *Server) getRelatedDiagnostics(filePath string) *map[lsp.DocumentURI]relatedDiagostic {
+	file := s.fs.Files[filePath]
+	if !file.IsKlar() {
+		return nil
+	}
+	// TODO: I think depsWithDiags may be needed later. Otherwise, I would like to unset it.
+	relatedDiags := file.Klar.Module.depsWithDiags
+	if len(relatedDiags) == 0 {
+		return nil
+	}
+	lspRelatedDiags := make(map[lsp.DocumentURI]relatedDiagostic, len(relatedDiags)-1)
+	for depPath := range relatedDiags {
+		if depPath == filePath {
+			continue
+		}
+		if _, ok := s.fs.Files[depPath]; !ok {
+			// Module not loaded in workspace. Won't make a difference to the user
+			continue
+		}
+		lspRelatedDiags[lsp.DocumentURI("file://"+depPath)] = relatedDiagostic{
+			lsp.FullDocumentDiagnosticReport{
+				Kind:  string(lsp.DocumentDiagnosticReportFull),
+				Items: s.diagnosticsForFile(depPath),
+			},
+		}
+	}
+	return &lspRelatedDiags
+}
+
 func (s *Server) klarErrorToDiagnostic(e *klarerrs.Error) *lsp.Diagnostic {
 	sev := lsp.DiagnosticSeverityError
 	if e.IsWarning() {
@@ -67,7 +102,9 @@ func (s *Server) klarErrorToDiagnostic(e *klarerrs.Error) *lsp.Diagnostic {
 	// Message will include any label in parenthesis, as well as any hints
 	var msg strings.Builder
 	msg.WriteString(e.Message())
-	if false && e.Label != "" { // TODO: Reconsider if the label should be shown
+	// TODO: Reconsider if the label should be shown
+	// It is needed for [klarerrs.ErrOperandTypeMismatch]
+	if false && e.Label != "" {
 		msg.WriteString(" (")
 		msg.WriteString(e.Label)
 		msg.WriteByte(')')
@@ -147,7 +184,7 @@ var prefixLinks = map[klarerrs.Code]lsp.URI{
 	klarerrs.TypeErrorPrefix:           "type_error",
 	klarerrs.ModuleErrorPrefix:         "module_error",
 	klarerrs.ReferenceErrorPrefix:      "reference_error",
-	klarerrs.ImplementationErrorPrefix: "", // No source file in klarerrs yet
+	klarerrs.ImplementationErrorPrefix: "implementation_error",
 }
 
 func (s *Server) klonErrorToDiagnostic(e *klon.Error, file string) *lsp.Diagnostic {

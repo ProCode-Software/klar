@@ -50,6 +50,9 @@ func (fs *FileSystem) WriteFile(path string, b []byte) {
 	}
 	file.Content = b
 	file.Modified = time.Now() // May not be exact
+	// TODO: I'm not currently seeing encoding issues without this
+	// If this has to be reenabled, calculate concurrently
+	// file.makePositionMap()
 }
 
 func (fs *FileSystem) DeleteFromMemory(path string) {
@@ -76,7 +79,6 @@ func (f *File) SetLanguage(langID lsp.LanguageKind) {
 }
 
 func (f *File) IsKlar() bool      { return f.Klar != nil }
-func (f *File) HasLanguage() bool { return f.Klar != nil || f.Klon != nil }
 
 func StripScheme(uri lsp.DocumentURI) string {
 	path := string(uri)

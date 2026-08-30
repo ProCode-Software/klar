@@ -25,11 +25,12 @@ func (s *Server) didOpen(params lsp.DidOpenTextDocumentParams) {
 		if kf := file.Klar; kf.Module == nil || kf.Module.Module == nil {
 			s.compileKlarModule(kf.ModulePath)
 		}
+	} else {
+		s.compileKlonFile(path)
 	}
 	s.Debug(
 		"Opened file",
-		slog.String("uri", string(td.Uri)),
-		slog.String("language", string(td.LanguageId)),
+		slog.String("uri", string(td.Uri)), slog.String("language", string(td.LanguageId)),
 	)
 }
 
@@ -48,13 +49,16 @@ func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 		if change.Curr() == 0 {
 			partial := change.A()
 			if partial.Range != zeroRange {
-				panic(fmt.Sprintf(
-					"textDocument/didChange: change must not be partial: got range %+v",
-					partial.Range,
-				))
+				if s.logEnabled() {
+					s.Error(fmt.Sprintf(
+						"textDocument/didChange: change must not be partial: got range %+v",
+						partial.Range,
+					))
+				}
+				return
 			}
 			text = change.A().Text
-		} else {
+		} else { // Full change
 			text = change.B().Text
 		}
 		s.fs.WriteFile(path, []byte(text))
@@ -64,6 +68,7 @@ func (s *Server) didChange(params lsp.DidChangeTextDocumentParams) {
 		s.compileKlarModule(file.Klar.ModulePath)
 	} else {
 		// TODO: Handle Klon changes
+		s.compileKlonFile(path)
 	}
 	// It would be terrible to log each change
 }
@@ -85,7 +90,8 @@ func (s *Server) documentColor(id rpc.ID, td lsp.TextDocumentIdentifier) {
 		for i, clr := range colorArray {
 			colors[i] = lsp.Color{clr[0], clr[1], clr[2], clr[3]}
 		}
+	} else {
+		// TODO: Colors for Klon files
 	}
-	// Won't provide colors for non-Klar files
 	s.sendResponse(colors, id)
 }
