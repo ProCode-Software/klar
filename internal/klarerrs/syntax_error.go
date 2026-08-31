@@ -143,6 +143,7 @@ const (
 	ErrAlwaysUnreachable      // Unreachable statement after return/stop/next/crashout
 	ErrUnusedValue            // Unused expression statement
 	ErrReturnOutsideFunc      // Return statement not allowed outside of function
+	ErrTryOutsideFunc         // Try expression not allowed outside of function
 	ErrImportShadow           // Import shadows top-level object
 	ErrVarConstMixInDecl      // Var and const declared in the same declaration
 	ErrMultipleVariadicParam  // More than 1 unlabelled variadic parameter defined
@@ -161,6 +162,8 @@ const (
 	ErrStringInSegmentMatch   // Expression in '...expr' when pattern must be a string
 	ErrLabelledParamLast      // Positional params must go before labelled params
 	ErrInvalidWhenPattern     // Invalid when pattern syntax used
+	ErrFuncNoBody             // Function has neither a body nor @external attribute
+	ErrAssertionsRestricted   // '!!' not allowed due to 'allowAssertions' setting in klar.build
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -227,17 +230,11 @@ func (e *Error) handleSyntaxError() string {
 			return "I didn't expect " + NameToken(tok)
 		}
 	case ErrUnterminatedString:
-		return fmt.Sprintf(
-			"The string starting at %s was left open",
-			e.Params["start"].(lexer.Position),
-		)
+		return "This string was left open"
 	case ErrMultilineQuotedString:
 		return "Only strings quoted with backticks '`' can contain line breaks"
 	case ErrUnterminatedRegex:
-		return fmt.Sprintf(
-			"The regular expression starting at %s was left open",
-			e.Params["start"].(lexer.Position),
-		)
+		return "This regular expression was left open"
 	case ErrExpectedTypeAssignment:
 		if kind == lexer.Newline {
 			return "A type must be assigned a value"
@@ -457,7 +454,7 @@ func (e *Error) handleSyntaxError() string {
 	case ErrPositiveSign:
 		e.Hint(
 			"A leading '+' sign doesn't affect a number's value. Remove it.\n" +
-				"To convert a number to an integer or float, use the 'Int()' or 'Float()' function.",
+				"To convert a value to an Int or Float, pass it to the 'Int()' or 'Float()' function.",
 		)
 		return "A '+' prefix isn't allowed in Klar"
 	case ErrDoubleNot:
@@ -559,5 +556,17 @@ func (e *Error) handleSyntaxError() string {
 		return "A rest can only be used in a call or collection"
 	case ErrInvalidWhenPattern:
 		return e.StringParam("msg") // Message defined by sender
+	case ErrFuncNoBody:
+		e.Hint(
+			"A body isn't required if the function is '@external', but can still be provided as a fallback implementation.",
+		)
+		return "Function " + Quote(e.Name) + " is missing a body"
+	case ErrTryOutsideFunc:
+		return "A 'try' expression can only be used inside functions"
+	case ErrAssertionsRestricted:
+		if e.BoolParam("allowedWithComment") {
+			return "The '!!' operator can't be used without a comment explaining why it's safe"
+		}
+		return "The '!!' operator is banned within this module"
 	}
 }

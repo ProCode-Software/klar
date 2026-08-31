@@ -138,11 +138,10 @@ func (e *Error) Message() string {
 	case ModuleErrorPrefix:
 		return e.handleModuleError()
 	case ImplementationErrorPrefix:
-		// TODO: implementation errors
+		return e.handleImplementationError()
 	default:
 		panic(fmt.Sprintf("unhandled error prefix %d", e.Prefix()))
 	}
-	return ""
 }
 
 // Title returns the type of the error.

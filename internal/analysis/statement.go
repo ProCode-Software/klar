@@ -272,7 +272,7 @@ func (c *Checker) validateExprStmt(stmt *ast.ExpressionStatement, expr *Expr) {
 		}
 		hintWithDiff(
 			err, "If you don't need this value, assign it to '_'",
-			klarerrs.AddedString{Pos: stmt.Range.Start, String: "_ ="},
+			klarerrs.AddedString{Pos: stmt.Range.Start, String: "_ = "},
 		)
 	}
 	switch {
@@ -324,6 +324,19 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 	} else {
 		c.checkExpr(stmt.Value, e)
 		pos = stmt.Value.GetRange()
+		// 'return try ...' is redundant, similar to an error check as a return value
+		if try, ok := stmt.Value.(*ast.TryExpression); ok {
+			tryRange := ranges.Offset(try.Range.Start, 0, uint32(len(lexer.Try.String())))
+			warn := klarerrs.Range(klarerrs.WarnRedundantReturnTry, tryRange).MarkWarning()
+			warn.Label = "This 'try' is redundant"
+			hintWithDiff(
+				warn, "Remove the 'try' and return the function directly.",
+				klarerrs.DeletedRange{tryRange},
+			)
+			// Wording inspired from https://ziglang.org/documentation/master/#toc-try
+			warn.Hint("A 'try' returns from the surrounding function with the error that occurred from the expression, if one occurs; otherwise, it results in the successful value. Either way, the surrounding function is returning at the same time, making the 'try' redundant.")
+			c.fileError(warn, sctx.fid())
+		}
 	}
 	sctx.flags |= unreachableStmt
 	*sctx.returns = append(*sctx.returns, returnStmt{expr: e, pos: pos})
@@ -572,7 +585,8 @@ func (c *Checker) isIterable(t Type, numVars int) (varTypes []Type, err *klarerr
 func isAllowedAsStmt(expr ast.Expression) bool {
 	switch expr.(type) {
 	case *ast.WhenExpression, *ast.CallExpression, *ast.PipelineExpression,
-		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression:
+		*ast.ObjectPipeline, *ast.GoExpression, *ast.AwaitExpression,
+		*ast.TryExpression:
 		return true
 	case *ast.BadExpression:
 		panic("typechecking invalid AST")

@@ -361,5 +361,7 @@ func (e *Error) handleTypeError() string {
 		return "A type cast must be called with an explicit type"
 	case ErrTooManyInitFields:
 		return "Too many parameters in this initializer; there are only "
+	case ErrNonGenericType:
+		return "Type " + e.Name + " doesn't take any generic parameters"
 	}
 }

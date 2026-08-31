@@ -8,6 +8,8 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
+	_ = x[ErrMissingImpl-801]
+	_ = x[ErrUnsupportedTarget-802]
 	_ = x[NoPrefix-0]
 	_ = x[SyntaxErrorPrefix-100]
 	_ = x[WarningPrefix-300]
@@ -139,24 +141,27 @@ func _() {
 	_ = x[ErrAlwaysUnreachable-201]
 	_ = x[ErrUnusedValue-202]
 	_ = x[ErrReturnOutsideFunc-203]
-	_ = x[ErrImportShadow-204]
-	_ = x[ErrVarConstMixInDecl-205]
-	_ = x[ErrMultipleVariadicParam-206]
-	_ = x[ErrVariadicNotLast-207]
-	_ = x[ErrDuplicateInheritedType-208]
-	_ = x[ErrNoDeclAfterAttr-209]
-	_ = x[ErrMisplacedControlStmt-210]
-	_ = x[ErrRedeclaredLoopLabel-211]
-	_ = x[ErrRedeclaredOverload-212]
-	_ = x[ErrVariadicDefault-213]
-	_ = x[ErrBlockInWhenExpr-214]
-	_ = x[ErrMisplacedRest-215]
-	_ = x[ErrReturnInPipelineExpr-216]
-	_ = x[ErrOptionalOptional-217]
-	_ = x[ErrMultipleDefault-218]
-	_ = x[ErrStringInSegmentMatch-219]
-	_ = x[ErrLabelledParamLast-220]
-	_ = x[ErrInvalidWhenPattern-221]
+	_ = x[ErrTryOutsideFunc-204]
+	_ = x[ErrImportShadow-205]
+	_ = x[ErrVarConstMixInDecl-206]
+	_ = x[ErrMultipleVariadicParam-207]
+	_ = x[ErrVariadicNotLast-208]
+	_ = x[ErrDuplicateInheritedType-209]
+	_ = x[ErrNoDeclAfterAttr-210]
+	_ = x[ErrMisplacedControlStmt-211]
+	_ = x[ErrRedeclaredLoopLabel-212]
+	_ = x[ErrRedeclaredOverload-213]
+	_ = x[ErrVariadicDefault-214]
+	_ = x[ErrBlockInWhenExpr-215]
+	_ = x[ErrMisplacedRest-216]
+	_ = x[ErrReturnInPipelineExpr-217]
+	_ = x[ErrOptionalOptional-218]
+	_ = x[ErrMultipleDefault-219]
+	_ = x[ErrStringInSegmentMatch-220]
+	_ = x[ErrLabelledParamLast-221]
+	_ = x[ErrInvalidWhenPattern-222]
+	_ = x[ErrFuncNoBody-223]
+	_ = x[ErrAssertionsRestricted-224]
 	_ = x[ErrTypeMismatch-401]
 	_ = x[ErrUnwrapRequired-402]
 	_ = x[ErrAliasSelfType-403]
@@ -254,34 +259,36 @@ func _() {
 	_ = x[WarnUnreachable-303]
 	_ = x[WarnUnused-304]
 	_ = x[WarnOverloadResolve-305]
+	_ = x[WarnRedundantReturnTry-306]
 }
 
 const (
 	_Code_name_0 = "NoPrefix"
-	_Code_name_1 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrDotBeforeUnqualifiedImpErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrNumberTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrIdentMustHaveLetterErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidMethodAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrRedeclaredGenericErrNonNameInGenericErrRedeclaredParamLabelErrRespecifiedParamLabelErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrWrongSubjectCountErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrMethodInOtherScopeErrAlwaysUnreachableErrUnusedValueErrReturnOutsideFuncErrImportShadowErrVarConstMixInDeclErrMultipleVariadicParamErrVariadicNotLastErrDuplicateInheritedTypeErrNoDeclAfterAttrErrMisplacedControlStmtErrRedeclaredLoopLabelErrRedeclaredOverloadErrVariadicDefaultErrBlockInWhenExprErrMisplacedRestErrReturnInPipelineExprErrOptionalOptionalErrMultipleDefaultErrStringInSegmentMatchErrLabelledParamLastErrInvalidWhenPattern"
-	_Code_name_2 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnusedWarnOverloadResolve"
+	_Code_name_1 = "SyntaxErrorPrefixErrUnexpectedTokenErrExpectedTokenErrImportExpectedModuleErrImportInvalidWildcardErrDotBeforeUnqualifiedImpErrWildcardWithUnqualifiedErrEmptyUnqualifiedImportErrImportsGoFirstErrUnterminatedStringErrMultilineQuotedStringErrUnterminatedCommentErrUnterminatedRegexErrMisplacedShebangErrInvalidCommaErrCurlyQuoteErrInvalidCharacterErrMisplacedBOMErrStringEscapeErrUnicodeEscapeTooBigErrNumberTooBigErrConsecutiveSeparatorErrMisplacedSeparatorErrTrailingSeparatorErrExpectedHexErrExpectedBinaryErrExpectedDecimalErrInvalidVersionErrUnderscoreValueErrEmptyRegexInterpolationErrInvalidDecimalPointErrIdentMustHaveLetterErrColonEqualErrAssignmentAsExprErrEmptyDestructureErrInvalidAssignmentErrNonNameDeclarationErrInvalidTypeAnnotationErrDestructPatAfterColonErrDestructInvalidEqualErrMismatchedAssignmentErrGenericInFuncAliasErrSelfLabelInFuncAliasErrMissingFuncParamTypeErrNonNameFuncAliasErrComputedFuncAliasErrInvalidMethodAliasErrInvalidPublicErrPublicGoesFirstErrDuplicateModifierErrFuncDotAfterSelfErrSelfNameDiscardErrChainedDefaultErrDiscardIntfFieldErrReservedKeywordErrInvalidLabelShorthandErrNumericLabelErrUnderscoreLabelErrReturnPipelineNotLastErrInvalidObjectPipeStepErrMultipleKeysInMapRestErrExpectedExprAfterOpenRangeErrEllipsisForOpenRangeStepErrMustBeFuncCallErrSelfExecFuncErrParenAroundLambdaTypeErrParenAroundLambdaDefaultErrChainedNotEqualErrMultiDirectionCompareChainErrStepInListSliceErrExpectedInterpolationEndErrInvalidForExprOperatorErrExpectedTypeAssignmentErrRequiredStructFieldTypeErrEmptyGenericErrParenFuncTypeParamsErrIntfDefaultValueErrMixTypeTupleLabelsErrMissingLabelsTypeErrIntfMultiKeyMethodErrInvalidGenericTypeErrInvalidArrowErrRedeclaredFieldErrRedeclaredGenericErrNonNameInGenericErrRedeclaredParamLabelErrRespecifiedParamLabelErrNoForIteratorErrUnderscoreWithRestErrNotAllowedInWhenErrRequiredBracesErrWrongSubjectCountErrTryBlockErrIfStatementErrTripleEqualErrInvalidLoopErrPositiveSignErrDoubleNotErrRedeclaredErrTopLevelErrMethodInOtherScopeErrAlwaysUnreachableErrUnusedValueErrReturnOutsideFuncErrTryOutsideFuncErrImportShadowErrVarConstMixInDeclErrMultipleVariadicParamErrVariadicNotLastErrDuplicateInheritedTypeErrNoDeclAfterAttrErrMisplacedControlStmtErrRedeclaredLoopLabelErrRedeclaredOverloadErrVariadicDefaultErrBlockInWhenExprErrMisplacedRestErrReturnInPipelineExprErrOptionalOptionalErrMultipleDefaultErrStringInSegmentMatchErrLabelledParamLastErrInvalidWhenPatternErrFuncNoBodyErrAssertionsRestricted"
+	_Code_name_2 = "WarningPrefixWarnNotEqualOrWarnEqualAndWarnUnreachableWarnUnusedWarnOverloadResolveWarnRedundantReturnTry"
 	_Code_name_3 = "TypeErrorPrefixErrTypeMismatchErrUnwrapRequiredErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrFieldAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUnknownAttributeErrInvalidAttributeTargetErrUnsupportedAttributeErrGenericTypeAliasErrDepCycleErrMismatchTupleDestructErrTupleRestDestructErrOverloadReturnMismatchErrInvalidInitReturnErrInvalidListInitReturnErrMissingReturnErrPrivateAttributesErrNotATypeErrTypeAsValueErrInvalidRestTypeErrNotANamespaceErrGenericParamsRequiredErrNonGenericTypeErrInvalidGenericCountErrOptionalMapErrNotIterableErrNonBoolWhileCondErrOver2LoopVarsErrMultipleIntIterVarsErrAssignToConstErrInvalidAssignTypeErrAssignToIntfFieldErrUncommonReturnTypeErrInvalidNothingRetErrResultMustBeCheckedErrUntypedStructErrUntypedEnumErrUntypedEmptyListErrUntypedEmptyMapErrUntypedNilErrUntypedLambdaErrUnknownRegexFlagErrNotOptionalTypeErrInvalidCollectionTypeErrInvalidStructShorthandErrInvalidRangeTypeErrStepWithStringRangeErrNonConstStringRangeErrOpenStringRangeErrNonLetterStringRangeErrMultiCharStringRangeErrInvalidIndexTypeErrNilMapIndexErrNonNumericIndexErrInvalidMapIndexErrInvalidComputedIndexErrDotIndexRequiredErrNothingAsValueErrNonResultInTryErrInvalidAssertTypeErrNotAFunctionErrIndexEnumMethodErrEnumItemNoParamsErrInvalidRestValueErrMisplacedMapRestErrMisplacedListRestErrRestUncommonTupleErrForExprResMismatchErrNegateNonNumericErrNonBoolLogicalOperandErrInvalidOperationErrInvalidArithTypeErrInvalidAdditionTypeErrIntTimesStringErrInvalidStringMultErrNonBoolLogicalErrInvalidInOperandErrOperandTypeMismatchErrInvalidStrMatchTypeErrNestedTupleStrMatchErrRedundantStrMatchErrWhenTrueMismatchErrWhenSubjectRequiredErrWrongParamCountErrMissingParamLabelErrTooManyInitFieldsErrPositionalFieldProvided"
 	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycleErrExportUndefinedErrNotExportedErrLoopLabelUndefinedErrParamLabelUndefinedErrFieldNotFound"
 	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmptyErrImportPathConflictErrNoPublicExports"
-	_Code_name_6 = "ImplementationErrorPrefix"
+	_Code_name_6 = "ImplementationErrorPrefixErrMissingImplErrUnsupportedTarget"
 )
 
 var (
-	_Code_index_1 = [...]uint16{0, 17, 35, 51, 74, 98, 124, 150, 175, 192, 213, 237, 259, 279, 298, 313, 326, 345, 360, 375, 397, 412, 435, 456, 476, 490, 507, 525, 542, 560, 586, 608, 630, 643, 662, 681, 701, 722, 746, 770, 793, 816, 837, 860, 883, 902, 922, 943, 959, 977, 997, 1016, 1034, 1051, 1070, 1088, 1112, 1127, 1145, 1169, 1193, 1217, 1246, 1273, 1290, 1305, 1329, 1356, 1374, 1403, 1421, 1448, 1473, 1498, 1524, 1539, 1561, 1580, 1601, 1621, 1642, 1663, 1678, 1696, 1716, 1735, 1758, 1782, 1798, 1819, 1838, 1855, 1875, 1886, 1900, 1914, 1928, 1943, 1955, 1968, 1979, 2000, 2020, 2034, 2054, 2069, 2089, 2113, 2131, 2156, 2174, 2197, 2219, 2240, 2258, 2276, 2292, 2315, 2334, 2352, 2375, 2395, 2416}
-	_Code_index_2 = [...]uint8{0, 13, 27, 39, 54, 64, 83}
+	_Code_index_1 = [...]uint16{0, 17, 35, 51, 74, 98, 124, 150, 175, 192, 213, 237, 259, 279, 298, 313, 326, 345, 360, 375, 397, 412, 435, 456, 476, 490, 507, 525, 542, 560, 586, 608, 630, 643, 662, 681, 701, 722, 746, 770, 793, 816, 837, 860, 883, 902, 922, 943, 959, 977, 997, 1016, 1034, 1051, 1070, 1088, 1112, 1127, 1145, 1169, 1193, 1217, 1246, 1273, 1290, 1305, 1329, 1356, 1374, 1403, 1421, 1448, 1473, 1498, 1524, 1539, 1561, 1580, 1601, 1621, 1642, 1663, 1678, 1696, 1716, 1735, 1758, 1782, 1798, 1819, 1838, 1855, 1875, 1886, 1900, 1914, 1928, 1943, 1955, 1968, 1979, 2000, 2020, 2034, 2054, 2071, 2086, 2106, 2130, 2148, 2173, 2191, 2214, 2236, 2257, 2275, 2293, 2309, 2332, 2351, 2369, 2392, 2412, 2433, 2446, 2469}
+	_Code_index_2 = [...]uint8{0, 13, 27, 39, 54, 64, 83, 105}
 	_Code_index_3 = [...]uint16{0, 15, 30, 47, 63, 85, 107, 130, 155, 180, 196, 218, 237, 262, 285, 304, 315, 339, 359, 384, 404, 428, 444, 464, 475, 489, 507, 523, 547, 564, 586, 600, 614, 633, 649, 671, 687, 707, 727, 748, 768, 790, 806, 820, 839, 857, 870, 886, 905, 923, 947, 972, 991, 1013, 1035, 1053, 1076, 1099, 1118, 1132, 1150, 1168, 1191, 1210, 1227, 1244, 1264, 1279, 1297, 1316, 1335, 1354, 1374, 1394, 1415, 1434, 1458, 1477, 1496, 1518, 1535, 1555, 1572, 1591, 1613, 1635, 1657, 1677, 1696, 1718, 1736, 1756, 1776, 1802}
 	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60, 78, 92, 113, 135, 151}
 	_Code_index_5 = [...]uint16{0, 17, 34, 47, 66, 82, 101, 122, 138, 157, 183, 203, 217, 238, 256}
+	_Code_index_6 = [...]uint8{0, 25, 39, 59}
 )
 
 func (i Code) String() string {
 	switch {
 	case i == 0:
 		return _Code_name_0
-	case 100 <= i && i <= 221:
+	case 100 <= i && i <= 224:
 		i -= 100
 		return _Code_name_1[_Code_index_1[i]:_Code_index_1[i+1]]
-	case 300 <= i && i <= 305:
+	case 300 <= i && i <= 306:
 		i -= 300
 		return _Code_name_2[_Code_index_2[i]:_Code_index_2[i+1]]
 	case 400 <= i && i <= 492:
@@ -293,8 +300,9 @@ func (i Code) String() string {
 	case 700 <= i && i <= 713:
 		i -= 700
 		return _Code_name_5[_Code_index_5[i]:_Code_index_5[i+1]]
-	case i == 800:
-		return _Code_name_6
+	case 800 <= i && i <= 802:
+		i -= 800
+		return _Code_name_6[_Code_index_6[i]:_Code_index_6[i+1]]
 	default:
 		return "Code(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

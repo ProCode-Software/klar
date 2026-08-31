@@ -31,6 +31,7 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 - Enums and pattern matching from Gleam and Rust
 - Tooling from Go and JavaScript
 - Compiler from Go and Gleam
+- `try` from [Zig](https://ziglang.org)
 
 ## Installation & Quickstart
 

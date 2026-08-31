@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
 	"github.com/ProCode-Software/klar/internal/ranges"
@@ -824,9 +825,54 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 		t.Type = lhs.Type
 		return
 	}
+	// Check assertion settings from klar.build
+	newError := func() (err *klarerrs.Error, crashVal string) {
+		opRange := ranges.Range{
+			Start: expr.Range.End.Sub(0, uint32(len(lexer.NotNot.String()))),
+			End:   expr.Range.End,
+		}
+		crashVal = "an error"
+		if lhs.Kind() == KindOptional {
+			crashVal = "'none'"
+		}
+		err = klarerrs.Range(klarerrs.ErrAssertionsRestricted, opRange)
+		return err, crashVal
+	}
+	switch c.Options.AllowAssertions {
+	case klarbuild.DisallowAssertions:
+		err, crashVal := newError()
+		err.Label = "The use of '!!' is forbidden"
+		err.Hint(
+			"This is because 'checker.allowAssertions' is set to 'false' in your klar.build config.\nConsider manually checking the expression for " + crashVal + ".",
+		)
+		c.fileError(err, t.Context.File)
+	case klarbuild.AllowAssertionsWithComments:
+		c.queue(func() {
+			// TODO: Look for a comment around this line stating
+			// - "I know what I'm doing"
+			// - "I know what I am doing"
+			// - "Safety: [...]"
+			// - "Safety - [...]"
+			err, crashVal := newError()
+			err.Label = "You must explain why this is safe"
+			err.Hint(
+				"This is because 'checker.allowAssertions' is set to 'withComments' in your klar.build config.\nConsider manually checking the expression for " +
+					crashVal + ", or adding a comment on this line explaining:\n\n" +
+					"* // Safety: <why this assertion is safe>, or\n" +
+					"* // I know what I'm doing",
+			)
+			c.fileError(err, t.Context.File)
+		}, true)
+	}
 }
 
 func (c *Checker) checkTryExpr(expr *ast.TryExpression, t *Expr) {
+	isREPL := c.Module.Flags.Has(REPLModule)
+	// Allow top-level 'try' expressions in REPL
+	if (t.stmtCtx == nil || t.stmtCtx.flags&allowReturn == 0) && !isREPL {
+		err := klarerrs.Node(klarerrs.ErrTryOutsideFunc, expr)
+		c.fileError(err, t.Context.File)
+	}
 	rhs := c.checkExprFrom(expr.Expression, t)
 	if rhs.Kind() == InvalidType {
 		t.Type = InvalidType
@@ -841,6 +887,15 @@ func (c *Checker) checkTryExpr(expr *ast.TryExpression, t *Expr) {
 	}
 	res := Underlying(rhs.Type).(*Result)
 	t.Type = res.Success
+	// Add a virtual return to the function so the error type is typechecked
+	// against the function
+	if t.stmtCtx != nil {
+		errExpr := t.NewChild()
+		errExpr.Type = res.Error
+		*t.stmtCtx.returns = append(*t.stmtCtx.returns, returnStmt{
+			expr: errExpr, pos: expr.Range,
+		})
+	}
 }
 
 func (c *Checker) checkListCastExpr(expr *ast.ListCastExpression, t *Expr) {

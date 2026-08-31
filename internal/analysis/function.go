@@ -271,6 +271,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 			}
 		}, true)
 	}
+
+	// 6. Ensure the function is implemented on all targets
+	c.checkFunctionImpls(ov, stmt)
 }
 
 func (c *Checker) checkFuncDeclParams(
@@ -512,7 +515,7 @@ func (fn *Function) Underlying() Type {
 }
 
 func (o *Overload) Underlying() Type {
-	if o.InnerContext == nil {
+	if o.Return == nil {
 		return nil
 	}
 	return o

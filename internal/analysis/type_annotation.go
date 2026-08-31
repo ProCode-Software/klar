@@ -197,6 +197,9 @@ func genericParamsCountError(
 
 func (c *Checker) parseGenericType(expr *ast.GenericType, ctx *Context) Type {
 	lhs := c.parseType(expr.Name, ctx, genericLHS)
+	if lhs.Kind() == InvalidType {
+		return lhs
+	}
 	// Validate the count of required generic parameters
 	minCt, maxCt := numGenerics(lhs)
 	if len(expr.Parameters) < minCt || len(expr.Parameters) > maxCt {
