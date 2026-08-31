@@ -78,7 +78,7 @@ func (f *File) SetLanguage(langID lsp.LanguageKind) {
 	}
 }
 
-func (f *File) IsKlar() bool      { return f.Klar != nil }
+func (f *File) IsKlar() bool { return f.Klar != nil }
 
 func StripScheme(uri lsp.DocumentURI) string {
 	path := string(uri)

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/ProCode-Software/klar/internal/lsp/klarast"
+	"github.com/ProCode-Software/klar/internal/lsp/klon"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
 )
@@ -85,13 +86,9 @@ func (s *Server) documentColor(id rpc.ID, td lsp.TextDocumentIdentifier) {
 	var colors []lsp.Color
 	// TODO: Fix AST walker. It is currently panicking
 	if false && file.IsKlar() {
-		colorArray := klarast.GetColors(file.Klar.AST)
-		colors = make([]lsp.Color, len(colorArray))
-		for i, clr := range colorArray {
-			colors[i] = lsp.Color{clr[0], clr[1], clr[2], clr[3]}
-		}
-	} else {
-		// TODO: Colors for Klon files
+		colors = klarast.GetColors(file.Klar.AST)
+	} else if !file.IsKlar() {
+		colors = klon.GetColors(file.Klon.AST)
 	}
 	s.sendResponse(colors, id)
 }

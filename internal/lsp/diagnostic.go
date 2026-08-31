@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	klonls "github.com/ProCode-Software/klar/internal/lsp/klon"
+	"github.com/ProCode-Software/klar/internal/ranges"
 	"github.com/ProCode-Software/klar/pkg/klon"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 	"github.com/ProCode-Software/klar/pkg/lsp/rpc"
@@ -188,6 +190,7 @@ var prefixLinks = map[klarerrs.Code]lsp.URI{
 }
 
 func (s *Server) klonErrorToDiagnostic(e *klon.Error, file string) *lsp.Diagnostic {
+	doc := s.fs.Files[file].Klon.AST
 	diag := &lsp.Diagnostic{
 		Source:  "klon",
 		Range:   s.toLSPRange(e.Range, file),
@@ -195,9 +198,21 @@ func (s *Server) klonErrorToDiagnostic(e *klon.Error, file string) *lsp.Diagnost
 		// Codes from Klon are just numbers (not so useful)
 		Code:     &rpc.Union2[int, string]{int(e.Code)},
 		Severity: new(lsp.DiagnosticSeverityError),
+		RelatedInformation: klonls.GetRelatedErrorInfo(
+			e, doc, func(r ranges.Range) lsp.Location {
+				return lsp.Location{
+					Uri:   lsp.DocumentURI("file://" + file), // TODO: file may be untitled
+					Range: s.toLSPRange(r, file),
+				}
+			},
+		),
 	}
 	if e.Warning {
 		diag.Severity = new(lsp.DiagnosticSeverityWarning)
 	}
 	return diag
+}
+
+func (s *Server) klonErrorRelatedInfo(e *klon.Error, file string) []lsp.DiagnosticRelatedInformation {
+	return nil
 }

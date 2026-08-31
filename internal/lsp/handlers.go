@@ -56,6 +56,14 @@ func (s *Server) handleRequest(req *rpc.Request) {
 			return
 		}
 		s.documentDiagnostic(req.Id, params)
+	case "textDocument/colorPresentation":
+		_, ok := s.decodeParams[lsp.ColorPresentationParams](req.Id, params)
+		if !ok {
+			return
+		}
+		// TODO: This is only applicable if RGB/HSV colors are detected by
+		// textDocument/documentColor. Currently, it only supports hex.
+		s.sendResponse([]lsp.ColorPresentation(nil), req.Id)
 	default:
 		s.Warn("Unhandled request", slog.String("method", string(req.Method)))
 		// Spec: [JSONRPC] requires that every request sends a response back

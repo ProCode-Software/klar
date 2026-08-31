@@ -11,8 +11,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/build"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/lexer"
-	"github.com/ProCode-Software/klar/internal/lsp/klon"
+
 	"github.com/ProCode-Software/klar/internal/ranges"
+	"github.com/ProCode-Software/klar/pkg/klon"
 	"github.com/ProCode-Software/klar/pkg/lsp"
 )
 
@@ -22,7 +23,7 @@ func (s *Server) compileKlarModule(path string) {
 
 	defer s.compiler.ResetState()
 	s.compiler.StartTime = time.Now()
-	// TODO: Remove the compilation error limit
+	// TODO: Remove the compilation error limit (or set it to 500)
 	var fatalErr error
 	if *deps == nil {
 		// First time compiling the package. Compile it to get the
@@ -39,8 +40,11 @@ func (s *Server) compileKlarModule(path string) {
 	} else {
 		// TODO: Should each module get its own permanent PackageCompiler?
 		// It could possibly be deleted when the module is closed.
-		pkc := compilerPool.Get()
-		defer compilerPool.Put(pkc)
+		pkc := projCompilerPool.Get().(*build.PackageCompiler)
+		defer func() {
+			pkc.Reset()
+			projCompilerPool.Put(pkc)
+		}()
 		pkc.Compiler, pkc.Input, pkc.Deps = s.compiler, mod.compilerInput, deps
 		_, fatalErr = pkc.Compile()
 	}
@@ -48,7 +52,7 @@ func (s *Server) compileKlarModule(path string) {
 		s.Error("Fatal error while compiling modules", slog.Any("error", fatalErr))
 		// TODO: Have a timeout so this doesn't show every time the user types
 		s.showMessageToUser(lsp.MessageTypeError, fmt.Sprintf(
-			"A critical error occured while compiling %q:\n\n%v",
+			"A critical error occurred while compiling %q:\n\n%v",
 			path, fatalErr,
 		))
 		// TODO: Send error notification to user
@@ -96,6 +100,10 @@ func (s *Server) compileKlarModule(path string) {
 	}
 }
 
+var projCompilerPool = sync.Pool{New: func() any {
+	return build.NewPackageCompiler(nil, nil)
+}}
+
 // initCompiler initializes the shared compiler instance.
 func (s *Server) initCompiler() {
 	c := build.NewCompiler(build.ModeAnalyze, "")
@@ -104,26 +112,6 @@ func (s *Server) initCompiler() {
 	c.Reporter.Output = io.Discard
 	c.UseStdParser()
 	s.compiler = c
-}
-
-// Pool for module compilers
-// ======
-
-var compilerPool = _compilerPool{New: func() any {
-	return build.NewPackageCompiler(nil, nil)
-}}
-
-type _compilerPool struct {
-	sync.Pool
-}
-
-func (pool *_compilerPool) Get() *build.PackageCompiler {
-	return pool.Pool.Get().(*build.PackageCompiler)
-}
-
-func (pool *_compilerPool) Put(pkc *build.PackageCompiler) {
-	pkc.Reset()
-	pool.Pool.Put(pkc)
 }
 
 // Klon parsing
