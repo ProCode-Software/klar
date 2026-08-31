@@ -73,7 +73,7 @@ const (
 )
 
 type StructureLiteral struct {
-	// BaseDecl // No occurences as of LSP 3.18
+	// BaseDecl // No occurrences as of LSP 3.18
 	Name       struct{}   `json:"-"`
 	Properties []Property `json:"properties"`
 }
