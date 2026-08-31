@@ -41,6 +41,11 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 			return nil, err
 		}
 	}
+	/* defer func() {
+		if err == errMaxErrors && !pkc.Root {
+			err = nil
+		}
+	}() */
 	// Load modules from cache or parse their files
 	ld := NewLoader(pkc.Compiler, pkc.Input, pkc.Deps)
 	ld.Root = pkc.Root

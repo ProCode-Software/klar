@@ -144,3 +144,8 @@ func (p *Parser) parseVariableDeclaration() *VariableDeclaration {
 ## Identifiers
 
 - [`identifier.go`](./identifier.go)
+
+## Future Work
+
+- Rework the EOS system, allowing for dynamic EOS rules based on where parsing is occurring. For example, in when-expressions, operators can't start on a new line unless they are indented. I am currently inspired by indentation-based rules suggested by https://terts.dev/blog/no-semicolons-needed/
+- **Error recovery!!!** The parser is being used for the LSP and it should not hang or crash.

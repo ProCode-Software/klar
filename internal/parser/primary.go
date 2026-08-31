@@ -65,7 +65,7 @@ func (p *Parser) ParseNumber() ast.Expression {
 		val, err := strconv.ParseFloat(src, 64)
 		return &ast.FloatLiteral{
 			Source: src,
-			Value:  tryStrconv(p, tok, val, err),
+			Value:  p.tryStrconv(tok, val, err),
 			Flags:  a.Flags,
 		}
 	// Go parses 0 prefix as octal (including '0_386')
@@ -77,14 +77,14 @@ func (p *Parser) ParseNumber() ast.Expression {
 	return &ast.IntegerLiteral{
 		Format: a.Format,
 		Source: src,
-		Value:  tryStrconv(p, tok, val, err),
+		Value:  p.tryStrconv(tok, val, err),
 		Flags:  a.Flags,
 	}
 }
 
 // tryStrconv returns res after handling any error. If there is a value overflow,
 // an error is reported to the parser. If any other error occurs, tryStrconv panics.
-func tryStrconv[T int64 | float64](p *Parser, tok lexer.Token, res T, err error) T {
+func (p *Parser) tryStrconv[T int64 | float64](tok lexer.Token, res T, err error) T {
 	if err == nil {
 		return res
 	}
@@ -119,10 +119,7 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 		full = src[1:]
 		if a.QuoteStyle != '`' && src[len(src)-1] == '\n' {
 			// Use a better error for quoted strings with newline
-			p.Error(klarerrs.Position(
-				klarerrs.ErrMultilineQuotedString,
-				token.End(),
-			))
+			p.Error(klarerrs.Position(klarerrs.ErrMultilineQuotedString, token.End()))
 		} else {
 			// TODO: End() is wrong
 			err := klarerrs.Position(klarerrs.ErrUnterminatedString, token.End() /* .Add(0, 1) */)
@@ -131,7 +128,6 @@ func (p *Parser) ParseString() *ast.StringLiteral {
 				Range:   ranges.Offset(token.Position, 0, 1),
 				Message: "It was started here",
 			})
-			err.SetParam("start", token.Position)
 			p.Error(err)
 		}
 	} else {
@@ -159,13 +155,12 @@ func (p *Parser) ParseRegexLiteral() *ast.RegexLiteral {
 	re := p.Advance()
 	params := re.Attributes["params"].(lexer.RegexAttrs)
 	if params.Unterminated {
-		// TODO: End() is wrong
+		// TODO: End() is wrong, similar to strings
 		err := klarerrs.Position(klarerrs.ErrUnterminatedRegex, re.End())
 		err.Highlights = append(err.Highlights, klarerrs.Highlight{
 			Range:   ranges.SingleChar(re.Position),
 			Message: "It was started here",
 		})
-		err.SetParam("start", re.Position)
 		p.ErrorLabelled(err, "Expected closing '/'")
 	}
 	frags := make([]ast.StringFragment, len(params.Fragments))

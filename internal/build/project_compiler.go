@@ -227,7 +227,6 @@ func (pc *ProjectCompiler) CompileBootstrapped() error {
 				Code: ErrStdlibNotFound, Err: err, Value: modulePath,
 			}
 		}
-
 		return err
 	}
 	// Set the targets for the builtin compiler
