@@ -72,6 +72,7 @@ func makeStructFields(rt reflect.Type, flag klonflags.Flags) (structFields, erro
 				// Check struct tags for name
 				name, ok := f.Tag.Lookup("klon")
 				// Check for json: struct tag and extract the name (1st before comma) only
+				// omitempty and omitzero will have no effect in Klon
 				if !ok && flag.Has(klonflags.AllowJSONStructTags) {
 					name, _, _ = strings.Cut(f.Tag.Get("json"), ",")
 				}

@@ -20,7 +20,10 @@ func (rd *reader) parseDocument() (*ast.Document, []*Error) {
 	// Check for EOF
 	rd.skipLines()
 	if tok := rd.currTok(); tok.Kind != EOF {
-		rd.tokenError(klonerrs.ErrExpectedEOF, tok, "Expected end of file")
+		rd.tokenError(
+			klonerrs.ErrExpectedEOF, tok,
+			"Only 1 top-level value is allowed in a Klon document",
+		)
 	}
 
 	return &ast.Document{
@@ -198,9 +201,9 @@ func (rd *reader) parseRest(arrow Token) *ast.ArrowRef {
 func (rd *reader) parseVariable(vr Token) *ast.VarRef {
 	rd.advanceTok()
 	var (
-		name   string
-		err    = vr.Attrs["err"].(klonerrs.Code)
-		braces = vr.Attrs["brace"].(bool)
+		name      string
+		err       = vr.Attrs["err"].(klonerrs.Code)
+		braces, _ = vr.Attrs["brace"].(bool)
 	)
 	if braces {
 		if err == klonerrs.ErrUnterminatedVar {
@@ -615,7 +618,7 @@ func (rd *reader) declareVariable(name *ast.VarRef, value ast.Value) {
 		existing := rd.vars[name.Name]
 		rd.rangeError(
 			klonerrs.ErrVarAlreadyDeclared, name.Range,
-			"Variable '%s' was already declared at %s", name.Name, existing.Pos(),
+			"Variable '%s' was already declared at %s", name.Name, existing.Pos().Start,
 		)
 	default:
 		if rd.vars == nil {
