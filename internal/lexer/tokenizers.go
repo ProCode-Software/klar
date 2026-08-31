@@ -161,7 +161,12 @@ loop:
 			continue
 		case '{':
 			// Interpolation
-			if !isEscape {
+			// Because '{' is a qunatifier in PCRE, it will only be read as an
+			// interpolation if it doesn't start with a digit
+			// 	/_{3}/, /_{,2}/ - Quantifier (literal)
+			//  /_{x}/, /_{(6 + 8)}/ - Interpolation
+			if b, err := l.Reader.Peek(1); !isEscape && err == nil &&
+				!IsDigit(rune(b[0])) && b[0] != ',' {
 				endTextFragment()
 
 				startPos := l.prevCol()
