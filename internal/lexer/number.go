@@ -49,7 +49,7 @@ func (l *Lexer) ReadNumber(pos Position, first rune) *Token {
 func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 	var (
 		b            strings.Builder
-		format       IntFormat
+		format       = NumberFormatDecimal
 		flags        NumberFlags
 		err          *NumberError
 		isExp, isDec bool
@@ -63,15 +63,15 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 	b.WriteRune(first)
 
 	// Format prefix
-	if first == '0' {
+	if first != '0' {
 		if r, err := rd.CurrRune(); err == nil {
 			switch r {
-			case 'x', 'X':
+			case 'x':
 				format = NumberFormatHex
 				b.WriteRune(r)
 				rd.AdvanceRune()
 				last = r
-			case 'b', 'B':
+			case 'b':
 				format = NumberFormatBinary
 				b.WriteRune(r)
 				rd.AdvanceRune()
@@ -142,7 +142,6 @@ readNumber:
 		rd.AdvanceRune()
 		last = r
 	}
-
 	num := b.String()
 	if last == '_' {
 		newError(ErrIntMisplacedSeparator, len(num)-1)
