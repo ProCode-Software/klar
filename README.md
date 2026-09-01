@@ -12,18 +12,18 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 - ⏩ **Progressive.** Unafraid to redesign features from other languages and pioneer new approaches. _Klar is not like the other languages!_
 - 👓 **Clear.** What you read is what it does.
-- 🛡️ **Safe.** All errors must be handled. Minimal runtime crashes. Type-safe. No null exceptions.
-- 🔮 **Modern.** Klar is a language designed from scratch, without weird C-derived features.
+- 🛡️ **Safe.** All errors must be handled. Minimal runtime crashes. Klar has type safety enforced by the compiler. Built-in optionals mean no null exceptions.
+- 🔮 **Modern.** Klar is a language designed from scratch, without weird C-derived features. Configuration is written in [Klon](./pkg/klon), our homegrown markup language.
 - 😀 **Fun.** Klar code is clean, short, and pretty, making it fun to write.
-- 🤏 **Small language.** In Klar, there is only one way to do something, resulting in a lower learning curve.
-- 🤓 **Beginner-friendly.** Klar is easy for non-developers to learn, making it a perfect first language.
-- 🚀 **Advanced tooling.** Klar comes with a fast compiler, formatter, linter, package manager, language server, and more built-in.
+- 🤏 **Small language.** In Klar, there is only one way to do something, resulting in a lower learning curve. Klar has a type system with only 7 primitive types.
+- 🤓 **Beginner-friendly.** Klar is easy for non-developers to learn, making it a perfect first language. The compiler provides helpful, easy-to-understand errors.
+- 🚀 **Advanced tooling.** Klar comes with a fast compiler, formatter, linter, package manager (Glas), language server, and more built-in.
 - ♻️ **Interoperable.** Easy to include JavaScript and adopt incrementally.
-- ⚡ **Fast compile times.** The compiler makes great use of caching and incremental compilation, and its written in Go! 🐹
+- ⚡ **Fast compile times.** The compiler makes great use of caching and incremental compilation, and it's written in Go! 🐹
 
 ## Inspiration
 
-- Idioms from Go
+- Idioms and opinionation from Go
 - Error handling from Rust and [Gleam](https://gleam.run/)
 - Type system from TypeScript
 - Syntax from Swift and Go
