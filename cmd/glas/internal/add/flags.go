@@ -16,13 +16,13 @@ var Flags = argparse.NewParser("[packages...]").
 	// BoolFlag("quiet", "Don't show output while installing (also applies '-y')", false, "q").
 	BoolFlag("postinstall", "Run postinstall scripts when installing NPM packages", false).
 	BoolFlag("run", "Run the installed command", false, "x").
-	BoolFlag("test", "Test the dependencies after installing", false)
+	BoolFlag("test", "Run the dependencies' tests after installing", false)
 
 var LongDescription = `Installs a package as a dependency. Glas can install packages from Git repositories, NPM, and on the local filesystem. As Glas doesn't have a registry, packages must be installed from a Git repository, such as one hosted on GitHub.
 
 The syntax below can be used to specify where each package should be installed from. To install a package from:
-- A Git repository: '<url>'
-- A package from NPM: 'npm:<package>' (all NPM syntax is supported after 'npm:')
-- A local package: './<dir>'
-- A package in the project's workspace: './pkg/<subpackage>'
-`
+
+ - A Git repository: '<url>'
+ - A package from NPM: 'npm:<package>' (all NPM syntax is supported after 'npm:')
+ - A local package: './<dir>'
+ - A package in the project's workspace: './pkg/<subpackage>'`

@@ -114,9 +114,8 @@ func IsOptionalParam(p *Object) bool {
 }
 
 // tryCheckInitializer attempts to resolve an initializer from inits. If
-// successful, the initialized type is returned, possibly wrapped in an optional
-// or result, following the rules of custom initializers. The inferred parameters
-// are returned for use in default initializer checking.
+// successful, t's Type is set to the initialized type, possibly wrapped
+// in an optional or result, following the rules of custom initializers.
 func (c *Checker) tryCheckInitializer(
 	inits []*Overload, ps paramSet, args []*ast.CallParam,
 	parens ranges.Range, t *Expr,
@@ -133,6 +132,7 @@ func (c *Checker) tryCheckInitializer(
 		panic("exact overload found, but resolveOverload returned a warning")
 	}
 	c.checkOverloadParams(ov, ps, args, parens, t)
+	t.Type = ov.Return
 	return true
 }
 

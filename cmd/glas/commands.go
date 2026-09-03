@@ -52,6 +52,9 @@ var Commands = map[string]*command.Command{
 	"audit": {
 		ShortDescription: "Perform a security audit on the project's dependencies",
 	},
+	"clone": {
+		ShortDescription: "Clone a package's source code into a project",
+	},
 }
 
 type s = []string

@@ -11,6 +11,7 @@ import (
 
 // TODO: Should these be bright?
 var RandomDescriptions = []string{
+	ansi.Blue("The programming language for everyone"),
 	ansi.Magenta("✨ A simple, modern, and clean programming language"),
 	ansi.Green("⏩ The progressive programming language"),
 	ansi.Yellow("Not another C-based programming language"),

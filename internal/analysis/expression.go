@@ -3,6 +3,7 @@ package analysis
 import (
 	"cmp"
 	"fmt"
+	"regexp"
 
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
@@ -826,7 +827,7 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 		return
 	}
 	// Check assertion settings from klar.build
-	newError := func() (err *klarerrs.Error, crashVal string) {
+	newError := func() (err *klarerrs.Error, crashVal, hint string) {
 		opRange := ranges.Range{
 			Start: expr.Range.End.Sub(0, uint32(len(lexer.NotNot.String()))),
 			End:   expr.Range.End,
@@ -836,24 +837,24 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 			crashVal = "'none'"
 		}
 		err = klarerrs.Range(klarerrs.ErrAssertionsRestricted, opRange)
-		return err, crashVal
+		// Don't call err.Hint now because I want this hint to be after the
+		// hint given by the caller
+		hint = "Assertions are discouraged in Klar because they crash the program when the value is " + crashVal + ". When a crash is intended, it is recommended that you explicitly check the value and call 'crashout()'."
+		return err, crashVal, hint
 	}
 	switch c.Options.AllowAssertions {
 	case klarbuild.DisallowAssertions:
-		err, crashVal := newError()
+		err, crashVal, hint := newError()
 		err.Label = "The use of '!!' is forbidden"
 		err.Hint(
 			"This is because 'checker.allowAssertions' is set to 'false' in your klar.build config.\nConsider manually checking the expression for " + crashVal + ".",
 		)
+		err.Hint(hint)
 		c.fileError(err, t.Context.File)
 	case klarbuild.AllowAssertionsWithComments:
 		c.queue(func() {
-			// TODO: Look for a comment around this line stating
-			// - "I know what I'm doing"
-			// - "I know what I am doing"
-			// - "Safety: [...]"
-			// - "Safety - [...]"
-			err, crashVal := newError()
+			// TODO: Look for a comment around this line
+			err, crashVal, hint := newError()
 			err.Label = "You must explain why this is safe"
 			err.Hint(
 				"This is because 'checker.allowAssertions' is set to 'withComments' in your klar.build config.\nConsider manually checking the expression for " +
@@ -861,8 +862,28 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 					"* // Safety: <why this assertion is safe>, or\n" +
 					"* // I know what I'm doing",
 			)
+			err.Hint(hint)
+			err.SetParam("allowedWithComment", true)
 			c.fileError(err, t.Context.File)
 		}, true)
+	}
+}
+
+// Comments must start with this in order to use the '!!' operator if
+// 'checker.allowAssertions' is set to 'withComments'. The regex matches:
+//   - "I know what I'm doing"
+//   - "I know what I am doing"
+//   - "Safety: [...]"
+//   - "Safety - [...]"
+//
+// The regex is lazy-initialized by [makeAssertSafetyCommentRegex]
+var assertSafetyCommentRegex *regexp.Regexp
+
+func makeAssertSafetyCommentRegex() {
+	if assertSafetyCommentRegex == nil {
+		assertSafetyCommentRegex = regexp.MustCompile(
+			`(?im)^(?:Safety(?:\:|\s*-) |I know what I(?:'m| am) doing)`,
+		)
 	}
 }
 

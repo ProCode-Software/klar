@@ -136,8 +136,7 @@ func (c *Checker) checkCallArgs(
 			ps := c.inferCallParams(args, t)
 			// Custom initializers have priority over default initializers
 			if ok := c.tryCheckInitializer(und.Initializers, ps, args, parens, t); ok {
-				// TODO: t.Type may be set to an optional or result
-				// t.Type = lhs // Preserve type name given in LHS
+				// t.Type was set by tryCheckInitializer
 				return
 			}
 			// Now try using a default initializer

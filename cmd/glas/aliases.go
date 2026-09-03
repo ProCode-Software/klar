@@ -15,6 +15,7 @@ var Aliases = map[string]string{
 	"pub":       "publish",
 	"up":        "update",
 	"show":      "info",
+	"prune":     "clean",
 }
 
 // Set command aliases

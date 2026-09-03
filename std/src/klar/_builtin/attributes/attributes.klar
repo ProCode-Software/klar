@@ -50,7 +50,15 @@ public func external(
 
     // The name of the exported object implementing this. If omitted
     // (or set to 'default'), the default export will be used.
-    export _: Any?,
+    export _: String?,
+) {}
+
+public func external(
+    // The targets to provide an implementation for.
+    targets: Target | [Target],
+    
+    // The name of the object from `globalThis` to use as the implementation.
+    jsGlobal _: String,
 ) {}
 
 // Override the name of this export on other targets. Useful if for example,

@@ -11,7 +11,7 @@ public func Set(list: [Any]) {
 }
 
 public func List(set: Set) -> [Any] = set.items()
-public func Set.items() -> [Any] = for item in set._map -> item
+public func Set.items() -> [Any] = for item in self._map -> item
 
 public func Set.add(items: ...Any) {
     for item in items {

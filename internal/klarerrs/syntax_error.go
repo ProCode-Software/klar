@@ -565,8 +565,8 @@ func (e *Error) handleSyntaxError() string {
 		return "A 'try' expression can only be used inside functions"
 	case ErrAssertionsRestricted:
 		if e.BoolParam("allowedWithComment") {
-			return "The '!!' operator can't be used without a comment explaining why it's safe"
+			return "An assertion can't be used without a comment explaining why it's safe"
 		}
-		return "The '!!' operator is banned within this module"
+		return "Assertions are banned within this module"
 	}
 }

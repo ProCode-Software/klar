@@ -36,3 +36,40 @@ func (c *Checker) checkFunctionImpls(ov *Overload, stmt *ast.FunctionDeclaration
 		_ = definedImpls
 	}
 }
+
+// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar
+var jsKeywords = map[string]struct{}{
+	"arguments": {}, "async": {}, "await": {}, "break": {}, "case": {}, "catch": {},
+	"class": {}, "const": {}, "continue": {}, "debugger": {}, "default": {}, "delete": {},
+	"do": {}, "else": {}, "enum": {}, "eval": {}, "export": {}, "extends": {},
+	"false": {}, "finally": {}, "for": {}, "function": {}, "if": {}, "implements": {},
+	"import": {}, "in": {}, "instanceof": {}, "interface": {}, "let": {}, "new": {},
+	"null": {}, "package": {}, "private": {}, "protected": {}, "public": {}, "return": {},
+	"static": {}, "super": {}, "switch": {}, "this": {}, "throw": {}, "true": {},
+	"try": {}, "typeof": {}, "undefined": {}, "var": {}, "void": {}, "while": {},
+	"with": {}, "yield": {},
+	// Added myself
+	"using": {},
+}
+
+// Public declarations can't be named after JavaScript keywords when compiling
+// to the JS target. The `@name(js:)` attribute can be used to change the name
+// of the object for JS.
+func (c *Checker) validateJSNames(ctx *Context) {
+	for _, obj := range ctx.SortedDecls() {
+		// @name attribute already checked
+		if !obj.Public || (obj.attrs != nil && obj.attrs.Name[target.JavaScript] != "") {
+			continue
+		}
+		if _, ok := jsKeywords[obj.Name]; ok {
+			err := klarerrs.Range(klarerrs.ErrReservedJSKeyword, obj.Range)
+			err.Name = obj.Name
+			err.Label = quote(obj.Name) + " is reserved in JavaScript"
+			hintWithDiff(
+				err,
+				"Choose a different name, or apply the '@target(js:)' attribute to override the name used in the compiled JavaScript.",
+			)
+			c.fileError(err, obj.File)
+		}
+	}
+}

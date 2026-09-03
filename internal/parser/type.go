@@ -102,7 +102,7 @@ func (p *Parser) ParseFunctionType() *ast.FunctionType {
 	} else {
 		p.Error(klarerrs.Token(klarerrs.ErrParenFuncTypeParams, p.Curr()))
 		// Parse without parentheses
-		fn.Parameters.Values = p.parseFuncTypeWithoutParen()
+		fn.Parameters = &ast.TupleType{Values: p.parseFuncTypeWithoutParen()}
 	}
 	if p.CurrKind() == lexer.Arrow {
 		p.Advance()
@@ -113,6 +113,9 @@ func (p *Parser) ParseFunctionType() *ast.FunctionType {
 
 func (p *Parser) parseFuncTypeWithoutParen() (values []*ast.TypePair) {
 	for p.HasTokens() {
+		if p.CurrKind() == lexer.Arrow || p.CurrKind() == lexer.Comma {
+			break
+		}
 		pair := &ast.TypePair{}
 		if p.PeekKind() == lexer.Colon {
 			pair.Keys = append(pair.Keys, p.ParseIdentOrDiscard())

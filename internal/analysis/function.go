@@ -375,7 +375,7 @@ func (c *Checker) checkInitReturnType(
 			changeFromResultNothing(&ret.Elem)
 		case *Result:
 			if *typ == ResultNothing {
-				ov.Return = info.receiver.Type
+				ov.Return = &Result{info.receiver.Type, ErrorType}
 			}
 		}
 	}

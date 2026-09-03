@@ -10,6 +10,7 @@ func _() {
 	var x [1]struct{}
 	_ = x[ErrMissingImpl-801]
 	_ = x[ErrUnsupportedTarget-802]
+	_ = x[ErrReservedJSKeyword-803]
 	_ = x[NoPrefix-0]
 	_ = x[SyntaxErrorPrefix-100]
 	_ = x[WarningPrefix-300]
@@ -269,7 +270,7 @@ const (
 	_Code_name_3 = "TypeErrorPrefixErrTypeMismatchErrUnwrapRequiredErrAliasSelfTypeErrUnsupportedSelfTypeErrUnsupportedInitTypeErrInvalidInheritedTypeErrAliasAndMethodSameNameErrFieldAndMethodSameNameErrEnumSameValueErrCantInferStringEnumErrUnknownAttributeErrInvalidAttributeTargetErrUnsupportedAttributeErrGenericTypeAliasErrDepCycleErrMismatchTupleDestructErrTupleRestDestructErrOverloadReturnMismatchErrInvalidInitReturnErrInvalidListInitReturnErrMissingReturnErrPrivateAttributesErrNotATypeErrTypeAsValueErrInvalidRestTypeErrNotANamespaceErrGenericParamsRequiredErrNonGenericTypeErrInvalidGenericCountErrOptionalMapErrNotIterableErrNonBoolWhileCondErrOver2LoopVarsErrMultipleIntIterVarsErrAssignToConstErrInvalidAssignTypeErrAssignToIntfFieldErrUncommonReturnTypeErrInvalidNothingRetErrResultMustBeCheckedErrUntypedStructErrUntypedEnumErrUntypedEmptyListErrUntypedEmptyMapErrUntypedNilErrUntypedLambdaErrUnknownRegexFlagErrNotOptionalTypeErrInvalidCollectionTypeErrInvalidStructShorthandErrInvalidRangeTypeErrStepWithStringRangeErrNonConstStringRangeErrOpenStringRangeErrNonLetterStringRangeErrMultiCharStringRangeErrInvalidIndexTypeErrNilMapIndexErrNonNumericIndexErrInvalidMapIndexErrInvalidComputedIndexErrDotIndexRequiredErrNothingAsValueErrNonResultInTryErrInvalidAssertTypeErrNotAFunctionErrIndexEnumMethodErrEnumItemNoParamsErrInvalidRestValueErrMisplacedMapRestErrMisplacedListRestErrRestUncommonTupleErrForExprResMismatchErrNegateNonNumericErrNonBoolLogicalOperandErrInvalidOperationErrInvalidArithTypeErrInvalidAdditionTypeErrIntTimesStringErrInvalidStringMultErrNonBoolLogicalErrInvalidInOperandErrOperandTypeMismatchErrInvalidStrMatchTypeErrNestedTupleStrMatchErrRedundantStrMatchErrWhenTrueMismatchErrWhenSubjectRequiredErrWrongParamCountErrMissingParamLabelErrTooManyInitFieldsErrPositionalFieldProvided"
 	_Code_name_4 = "ReferenceErrorPrefixErrUndefinedErrEnumUndefinedErrEnumCycleErrExportUndefinedErrNotExportedErrLoopLabelUndefinedErrParamLabelUndefinedErrFieldNotFound"
 	_Code_name_5 = "ModuleErrorPrefixErrModuleNotFoundErrSelfImportErrModuleKlarTooNewErrImporterErrorErrImporterNotFoundErrModuleCompileErrorErrPrivateImportErrSingleFileImportErrUnsupportedImportTargetErrImportPathAliasedErrImportEmptyErrImportPathConflictErrNoPublicExports"
-	_Code_name_6 = "ImplementationErrorPrefixErrMissingImplErrUnsupportedTarget"
+	_Code_name_6 = "ImplementationErrorPrefixErrMissingImplErrUnsupportedTargetErrReservedJSKeyword"
 )
 
 var (
@@ -278,7 +279,7 @@ var (
 	_Code_index_3 = [...]uint16{0, 15, 30, 47, 63, 85, 107, 130, 155, 180, 196, 218, 237, 262, 285, 304, 315, 339, 359, 384, 404, 428, 444, 464, 475, 489, 507, 523, 547, 564, 586, 600, 614, 633, 649, 671, 687, 707, 727, 748, 768, 790, 806, 820, 839, 857, 870, 886, 905, 923, 947, 972, 991, 1013, 1035, 1053, 1076, 1099, 1118, 1132, 1150, 1168, 1191, 1210, 1227, 1244, 1264, 1279, 1297, 1316, 1335, 1354, 1374, 1394, 1415, 1434, 1458, 1477, 1496, 1518, 1535, 1555, 1572, 1591, 1613, 1635, 1657, 1677, 1696, 1718, 1736, 1756, 1776, 1802}
 	_Code_index_4 = [...]uint8{0, 20, 32, 48, 60, 78, 92, 113, 135, 151}
 	_Code_index_5 = [...]uint16{0, 17, 34, 47, 66, 82, 101, 122, 138, 157, 183, 203, 217, 238, 256}
-	_Code_index_6 = [...]uint8{0, 25, 39, 59}
+	_Code_index_6 = [...]uint8{0, 25, 39, 59, 79}
 )
 
 func (i Code) String() string {
@@ -300,7 +301,7 @@ func (i Code) String() string {
 	case 700 <= i && i <= 713:
 		i -= 700
 		return _Code_name_5[_Code_index_5[i]:_Code_index_5[i+1]]
-	case 800 <= i && i <= 802:
+	case 800 <= i && i <= 803:
 		i -= 800
 		return _Code_name_6[_Code_index_6[i]:_Code_index_6[i+1]]
 	default:
