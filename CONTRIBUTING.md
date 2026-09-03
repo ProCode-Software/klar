@@ -114,7 +114,21 @@ If there's a typo in a Markdown file or documentation in the repo, you're welcom
 
 ## Using AI
 
-You may use AI to write code and tests, including those submitted in PRs. However, **you may not use AI to write the _text_ of issues, PRs, or discussions in this project.** We want thoughts from, and interactions and collaboration between, humans in the Klar project. Remember that this programming language is targeted to humans and beginners, not computers and AI agents. Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly. Violators may be banned from contributing in the Klar project at the discretion of the maintainers.
+In the Klar project, we care about quality and learnability of our code. The code should stay maintainable for a long time, living past the AI era; and educational for other developers learning about compilers and tooling.
+
+You may use AI to write code and tests, including those submitted in PRs. However, **you may not use AI to write the _text_ of issues, PRs, or discussions in this project.** Descriptions must be written by a human. Thoughts, interactions, and communication are to be between humans in the Klar project. Remember that this programming language is targeted for humans and everyday people, not computers and AI agents. Humans maintain the Klar project and read and review PRs and issues.
+
+Additionally:
+
+- **All AI usage to write code must be disclosed.** If AI wrote any code. It's not required if you asked an LLM for ideas or implementation suggestions only. You must state:
+    - The tool you used (e.g. Claude Code), and
+    - How much of the work was AI-assisted
+- **You claim responsibility over all work**. You cannot blame an AI for incorrect code you submitted.
+- Absolutely no discussions may be written by an LLM.
+- Issues, PRs, or discussions opened by autonomous agents (such as those containing `codex` in the username) will be closed.
+- Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly.
+- PRs containing AI slop code can get you banned. If you're unsure if the code is slop, be honest and let us know, and we'll give you grace.
+- Violators may be banned from contributing in the Klar project at the discretion of the maintainers.
 
 ### Writing Code with AI
 
@@ -217,7 +231,7 @@ Klar's project structure is based on Go's, with packages internal to the compile
 Below are some packages you're likely to work on when working on the compiler. Some of the listed folders may have an additional readme for more specific explanations of the architectures.
 
 - [`cmd/klar`](./cmd/klar), [`cmd/glas`](./cmd/glas) - Entry points for the Klar and Glas CLIs
-    - [`cmd/klar/internal/klarcmd`](./cmd/klar/internal/klarcmd), [`cmd/glas/internal/glascmd`]() - Contain the list of CLI commands
+    - [`cmd/klar/internal/klarcmd`](./cmd/klar/internal/klarcmd), [`cmd/glas/internal/glascmd`](<>) - Contain the list of CLI commands
     - `cmd/{klar,glas}/internal/[command]` - Entry points for individual commands, such as `klar build` located in [`cmd/klar/internal/klarcmd/build`](./cmd/klar/internal/klarcmd/build). Each package also contains descriptions for each command, and flags for the commands.
 - [`internal/lexer`](./internal/lexer) - Implementation of the Klar lexer, which reads tokens from a file stream.
 - [`internal/parser`](./internal/parser) - The Klar parser, which converts a list of tokens to an abstract syntax tree (AST), validating the language's syntax and reporting syntax errors.
@@ -253,7 +267,7 @@ Lint your Go code by running the `./scripts/lint.sh` script. Also, ensure commen
 
 ### Standard Library (Klar)
 
-It is recommended to compile the standard library using a custom-built Klar compiler, as what will happen in our release pipeline. See the [compiler development guide]() on information about building the Klar compiler.
+It is recommended to compile the standard library using a custom-built Klar compiler, as what will happen in our release pipeline. See the [compiler development guide](<>) on information about building the Klar compiler.
 
 To use your modified standard library after making changes, **set the `$KLAR_STD` environment variable to the path of the `std` folder.** If you run the Klar CLI using the `./run` script at the root, `$KLAR_STD` is automatically set to the `std` folder located in the Klar repo. If you forget to do this, the globally-installed standard library will be used instead of your modified one!
 

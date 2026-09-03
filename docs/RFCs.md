@@ -175,6 +175,7 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
     - Using 1-based indexing allows the list's `length` to be used as a valid index, avoiding off-by-one bugs.
     - Lua, Julia, MATLAB, R, and Fortran are examples of languages with 1-based indexing.
     - Using 1-based indexing means the `..<` operator will be removed, so only `...` is needed.
+    - The only downside is JavaScript interopability. When compiling to JavaScript, a subtraction operation is needed for any array index operation; and may break compatibility with JavaScript interfaces that implement Klar interfaces and contain indexing methods.
 19. **Errors**
     - **My goal is for error objects to have codes attached**. My preferred way is one defined by the module creating the error, which may be an enum.
 
@@ -223,10 +224,10 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
         _ -> myResult
     }
 
-    func Result.mapSuccess<U>(to successValue: U) -> Result<U, E>
+    func Result.mapSuccess<U>(to successValue: U) -> Result<U, E> // Could also be called 'Result.and()'
     func Result.mapSuccess<U>(with mapper: func(successValue: T) -> U) -> Result<U, E>
 
-    func Result.mapError<U>(to errValue: U) -> Result<T, U> // Could also be called 'Result.and()'
+    func Result.mapError<U>(to errValue: U) -> Result<T, U>
     func Result.mapError<U>(with mapper: func(errValue: E) -> U) -> Result<T, U>
 
     func Result.swap() -> Result<E, T> // Could also be called 'Result.invert()'
