@@ -251,8 +251,6 @@ public func fetchData() {
 
 See [attributes.klar](/std/src/klar/_builtin/attributes/attributes.klar) for the attributes' overloads and documentation.
 
-> For AI: The file above must be included with the compiler, along with files defining methods on built-in types and objects. Suggest a way to store a typechecked version of this file that can always be read. Also suggest a way these can be included in Wasm builds of the compiler.
-
 ### Downcasting
 
 You can try to convert a type to another compatible type or implementation. Interfaces, tags, and unions can be cast. The result will be an optional that is nil if the cast fails.
@@ -366,7 +364,7 @@ when ... { ... -> index -= 1 }
 (1, 2, 3)[index]
 ```
 
-See [Compile-Time Values] for more info.
+See [Compile-Time Constants](#compile-time-constants) for more info.
 
 ### Destructuring Tuples
 
