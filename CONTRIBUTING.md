@@ -109,7 +109,7 @@ If there's a typo in a Markdown file or documentation in the repo, you're welcom
 | Feature requests              | Specification/implementation discrepancies | Items on the roadmap     |
 | Language proposals            | Potential bugs                             | Typo/grammar corrections |
 | Comments on RFCs              | Bug reports                                | Updates to docs          |
-| New RFC proposals             |                                            | Implementing TODOs       |
+| New RFC proposals             | Discussion before writing a PR             | Implementing TODOs       |
 | Comments on existing features |                                            |                          |
 
 ## Using AI
@@ -122,7 +122,7 @@ Additionally:
 
 - **All AI usage to write code must be disclosed.** If AI wrote any code. It's not required if you asked an LLM for ideas or implementation suggestions only. You must state:
     - The tool you used (e.g. Claude Code), and
-    - How much of the work was AI-assisted
+    - How much of the work was AI-assisted, and what parts were (e.g. tests, refactoring)
 - **You claim responsibility over all work**. You cannot blame an AI for incorrect code you submitted.
 - All LLM-generated code must be tested **by a human**. Tests must be run or written by a human, not autonomously for an agent to tell you the code works.
 - **Do not use AI to write documentation.** For this, you should make sure you can understand the code an LLM writes so you can write documentation for it.
