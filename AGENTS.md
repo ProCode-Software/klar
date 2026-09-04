@@ -2,6 +2,16 @@
 
 This file contains rules for AI agents working with this codebase.
 
+## Klar Project AI Policy
+
+See our AI policy in the [contributing guide](https://github.com/ProCode-Software/klar/blob/24f2ef392ec631b10f856180f38d75ddf92f5445/CONTRIBUTING.md#using-ai).
+
+**YOU MUST NOT WRITE:**
+
+- GitHub discussions
+- Issue or PR descriptions or comments
+- Documentation
+
 ## Development Conventions
 
 - Always use the latest Go syntax and features (from the Go version defined in `go.mod`). This includes:

@@ -75,7 +75,7 @@ As this project is still in early development, **do not file bug reports on unim
 Examples of incomplete features you shouldn't report bugs on:
 
 - The type checker
-- Incomplete features from the [roadmap](https://github.com/klar-lang/klar/tree/main/ROADMAP.md)
+- Incomplete features from the [roadmap](https://github.com/ProCode-Software/klar/tree/main/ROADMAP.md)
 - Stubs, placeholders, and code with TODO comments
 
 Examples of complete features you can report bugs on:
@@ -124,10 +124,13 @@ Additionally:
     - The tool you used (e.g. Claude Code), and
     - How much of the work was AI-assisted
 - **You claim responsibility over all work**. You cannot blame an AI for incorrect code you submitted.
+- All LLM-generated code must be tested **by a human**. Tests must be run or written by a human, not autonomously for an agent to tell you the code works.
+- **Do not use AI to write documentation.** For this, you should make sure you can understand the code an LLM writes so you can write documentation for it.
 - Absolutely no discussions may be written by an LLM.
 - Issues, PRs, or discussions opened by autonomous agents (such as those containing `codex` in the username) will be closed.
 - Low-effort or AI-generated PRs, issues, comments, or discussions will be closed quickly.
 - PRs containing AI slop code can get you banned. If you're unsure if the code is slop, be honest and let us know, and we'll give you grace.
+- AI-generated code will be judged to the same standards as code written by humans. Because many LLMs are paid and are able to generate more code, **higher standards may be expected for AI-generated code**.
 - Violators may be banned from contributing in the Klar project at the discretion of the maintainers.
 
 ### Writing Code with AI
@@ -135,7 +138,7 @@ Additionally:
 If you choose to write code with AI, make sure it follows the same style as the rest of the project's code. The author should be responsible for checking; don't put it on us. We're more likely to close issues with poor code style if they contain more AI-generated content. We do not want to be disgusted by AI slop code that will make us immediately close your PR.
 
 > [!TIP]
-> Use the [AGENTS.md](./AGENTS.md) and this contributing guide (CONTRIBUING.md) as steering guides for LLMs
+> Use the [AGENTS.md](./AGENTS.md) and this contributing guide (CONTRIBUING.md) as steering guides for LLMs. Also ensure you follow the [style guide](./docs/CodeStyle/index.md) for the appropriate languages.
 
 Some common signs of LLM-generated code that violate our code style (for Go code), based on my personal experiences with AI agents:
 
@@ -174,7 +177,7 @@ In recent months (as of 2026), in various open-source projects, maintainers have
 
 We're welcome to security reports discovered by AI (with the human-written report requirement), but we ask that **if you can use AI to find a bug, you should also use it to suggest (and implement) a fix.** You should not fully rely on maintainers to fix them.
 
-Be aware that many open-source contributors work on this project in their freetimes, and pressure to fix vulnerabilities take time and can lead to burnout. We would also like to prioritize and reward vulnerabilities filed by humans that took their time to investigate.
+Be aware that many open-source contributors work on this project in their freetimes, and pressure to fix vulnerabilities take time and can lead to burnout. We would also like to prioritize and reward vulnerabilities filed by humans that took their time to investigate. Additionally, not every maintainer has the money to use the same frontier LLMs that are finding the vulnerabilities.
 
 ## Development Guide
 
@@ -184,6 +187,7 @@ Be aware that many open-source contributors work on this project in their freeti
 - `docs` - Documentation related to the project's architecture. We plan for the public-facing docs website to be in its own repo.
 - `internal` - Go packages internal to Klar.
 - `klar-vscode` - The VSCode extension for Klar, containing language definitions and syntax highlighting, and an LSP for Klar and Klon in the future.
+- `packages` - Non-Go, publicly available packages for Klar tooling
 - `pkg` - Go packages publicly available for other projects to import
 - `samples` - Klar project samples
 - `scripts` - Scripts for project development
@@ -308,7 +312,7 @@ In the Klar codebase, we want the source code to be **understandable and maintai
 - **Go:** [gofumpt](https://github.com/mvdan/gofumpt) (a more opinionated version of gofmt) via `./scripts/format.sh`
 - **JavaScript, TypeScript, JSON**: [oxfmt](https://oxc.rs/) via `bun oxfmt`
 
-Ensure you format your code before submitting your PR. Never file a PR just to format unformatted files.
+Ensure you format your code before submitting your PR. Never file a PR just to format unformatted files. I may occasionally run formatters on the entire source tree.
 
 ## Contributing to Documentation
 
@@ -325,3 +329,5 @@ When submitting your changes, you're allowed to:
 
 - Update multiple files with information about the same topic, or
 - Update a single file with information about multiple topics
+
+**Do not write ANY documentation with AI.** All documentation in this project must be written by humans.
