@@ -36,3 +36,11 @@ type FunctionParam struct {
 	Type    TSType     // TypeScript only
 	Default Expression // Can be nil
 }
+
+type ClassDeclaration struct {
+	Name    string // Can be empty if expression
+	Extends string // Can be empty
+	Fields  []*BindingDeclaration
+	Methods []*FunctionDeclaration // Includes 'constructor'
+	// TODO: Static fields/methods, getters/setters, 'implements' for TS?
+}
