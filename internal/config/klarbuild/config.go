@@ -39,8 +39,9 @@ type Configuration struct {
 	// Klar source files and directories that should be compiled. Glob patterns are
 	// allowed. If omitted, the entire package is compiled.
 	Input []string
-	// Output file or directory paths compiled files should be written inside. A file
-	// pattern can be provided, otherwise the outputs must match the number of inputs.
+	// Output file or directory paths compiled files should be written inside. A single
+	// directory or file pattern can be provided, otherwise the outputs must match the
+	// number of inputs.
 	Output []string
 
 	// Whether a full package structure with a package.json file should be generated.
@@ -49,10 +50,10 @@ type Configuration struct {
 	Watch bool
 	// Whether comments in source files should be removed from built files. This value
 	// does not influence JSDoc comment generation.
-	StripComments bool
+	StripComments bool // TODO: Add option to preserve only doc comments
 	// Whether all files in output folders should be deleted before build. Disabled
-	// if the output folder is the project root. Compiled files overwrite existing
-	// files regardless.
+	// if the output folder is the project root, but if manually enabled, Klar input
+	// files are always preserved. Compiled files overwrite existing files regardless.
 	CleanOutputDir bool
 	// Output symbolic link to files that are being copied, such as assets and
 	// `node_modules`. These save space by avoiding duplicating files, but output
@@ -80,7 +81,9 @@ type JSOptions struct {
 	TypeScriptLibs []string `klon:"typescriptLibs"`
 	// Whether TypeScript declarations (.d.ts files) should be generated for
 	// all public exports. Recommended for all JavaScript libraries so users
-	// can get code completion for your library in supporting IDEs.
+	// can get code completion for your library in supporting IDEs. If disabled,
+	// it is recommended to enable the `jsDoc` setting to generate type hints
+	// directly in JavaScript files.
 	Declaration bool
 	// Directory that *.d.ts files should be built to. If `bundleDeclaration` is on,
 	// a single file will be generated here, otherwise a file for each input
@@ -105,10 +108,12 @@ type JSOptions struct {
 	// set to `native`, these features will be ignored and JavaScript semantics will be
 	// used instead, such as returning decimals as-is.
 	Semantics JSSemanticsMode `options:"JSSemanticsMode"`
-	// Add JSDoc comments to exports in the resulting JavaScript files.
+	// Add JSDoc comments to exports in the resulting JavaScript files. The JSDoc
+	// comments include `@param` and `@type` directives.
 	JSDoc bool
-	// Enable experimental ECMAScript libraries. If enabled, generated JavaScript files
-	// may also use experimental ECMAScript syntax.
+	// Enable experimental ECMAScript libraries, or libraries that aren't widely supported
+	// by browsers. If enabled, generated JavaScript files may also use experimental
+	// ECMAScript language features.
 	ESNext bool
 	// Whether files should be printed by minimizing whitespace and line breaks,
 	// reducing the size of JavaScript files.
@@ -199,7 +204,8 @@ const (
 type JSSemanticsMode int
 
 const (
-	// Prefer Klar semantics for language features.
+	// Prefer Klar-defined semantics for language features, which are safer
+	// and have less quirks than JavaScript.
 	KlarSemantics JSSemanticsMode = iota
 	// Use native JavaScript semantics and avoid generating wrapper code.
 	NativeSemantics
