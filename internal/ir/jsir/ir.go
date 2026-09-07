@@ -1,22 +1,28 @@
 package jsir
 
-import "github.com/ProCode-Software/klar/internal/lexer"
-
 type Module struct {
 	Statements []Statement
 	Comments   []Comment
+	Decls      map[string]Statement // Top-level declarations
+}
+
+type NodeAnchor int
+
+type Offset struct {
+	AnchorNode            NodeAnchor
+	OffsetUp, OffsetRight uint32
 }
 
 type Comment struct {
-	Position lexer.Position
-	Text     string
-	Kind     CommentKind
+	Offset Offset
+	Text   string
+	Kind   CommentKind
 }
 
 type CommentKind uint8
 
 const (
-	LineComment CommentKind = iota
-	BlockComment
-	Hashbang
+	LineComment  CommentKind = iota // //
+	BlockComment                    // /*
+	Hashbang                        // #!
 )

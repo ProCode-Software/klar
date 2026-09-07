@@ -6,7 +6,17 @@ type (
 )
 
 type BindingDeclaration struct {
+	Kind BindingKind
+	Binding
+}
+
+// let x = 1, y = 2
+type MultiBindingDeclaration struct {
 	Kind     BindingKind
+	Bindings []*Binding
+}
+
+type Binding struct {
 	Variable Destructure
 	Type     TSType     // TypeScript only
 	Value    Expression // Can be nil if 'var'/'let'
@@ -43,4 +53,17 @@ type ClassDeclaration struct {
 	Fields  []*BindingDeclaration
 	Methods []*FunctionDeclaration // Includes 'constructor'
 	// TODO: Static fields/methods, getters/setters, 'implements' for TS?
+}
+
+// JS has several types of 'export' statements. We will try to separate them
+// into different IR nodes for efficiency.
+// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
+
+// ExportModifier exports a declaration statement.
+//
+//	export default function ...
+//	export const ...
+type ExportModifier struct {
+	Default     bool
+	Declaration Statement
 }

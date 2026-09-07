@@ -81,3 +81,13 @@ type TryStatement struct {
 }
 
 // 'with' statements are intentionally not supported as they are deprecated by ECMAScript
+
+type AssignmentStatement struct {
+	Assignee Expression // [Destructure] or index
+	Operator Operator
+	Value    Expression
+}
+
+type ExpressionStatement struct {
+	Expression Expression
+}

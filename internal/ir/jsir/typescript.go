@@ -1,3 +1,3 @@
 package jsir
 
-type TSType interface{_tsType()}
+type TSType interface{ _tsType() }
