@@ -9,7 +9,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
-	"github.com/ProCode-Software/klar/internal/target"
 )
 
 type methodInfo struct {
@@ -205,11 +204,6 @@ func (c *Checker) checkContextDecls(
 	}
 	for _, typeName := range slices.Sorted(maps.Keys(collector.inits)) {
 		c.collectInitializers(ctx, typeName, collector.inits[typeName])
-	}
-
-	// Check if any public declarations are named after JavaScript keywords
-	if target.Supports(c.Options.Targets, target.JavaScript) {
-		c.queue(func() { c.validateJSNames(ctx) }, true)
 	}
 }
 

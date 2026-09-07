@@ -21,7 +21,7 @@ func (c *Checker) checkCallExpr(expr *ast.CallExpression, t *Expr) {
 		if t.Type == nil {
 			t.Type = InvalidType
 		}
-		c.Info.Expressions[expr] = t
+		c.Module.Info.Expressions[expr] = t
 	} else {
 		c.checkExpr(expr.Callee, lhs)
 	}
@@ -394,7 +394,7 @@ func (c *Checker) checkOverloadParams(
 		// they won't be set.
 		switch Underlying(got).(type) {
 		case *UntypedLambda, *UntypedInit:
-			if e := c.Info.Expressions[getNode()]; e != nil {
+			if e := c.Module.Info.Expressions[getNode()]; e != nil {
 				e.Type = exp
 			}
 		}

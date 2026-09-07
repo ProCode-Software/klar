@@ -215,7 +215,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		_ = kind
 	}
 	// Record the expression node and its *Expr
-	c.Info.Expressions[expr] = t
+	c.Module.Info.Expressions[expr] = t
 	return t
 }
 

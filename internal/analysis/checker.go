@@ -18,7 +18,6 @@ import (
 type Checker struct {
 	Programs map[string]*ast.Program // Files in the module that is being checked.
 	Errors   []*klarerrs.Error       // Errors reported while type checking.
-	Info     *Info
 	Options  *Options // Options for type checking.
 	Module   *Module
 
@@ -58,7 +57,7 @@ type Options struct {
 	MaxErrors int
 	// Whether to skip type checking function bodies.
 	IgnoreFuncBodies bool
-	// Whether to enforce that objects are supported on all targets in [Options.Target].
+	// Whether to enforce that objects are supported on all targets in [Options.Targets].
 	EnforceTargetSupport bool
 	// Type checker options from klar.build
 	*klarbuild.CheckerOptions
@@ -88,11 +87,11 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	if opts.CheckerOptions == nil {
 		opts.CheckerOptions = DefaultCheckerOptions
 	}
-	c.Info = &Info{
+	c.Module.Info = &Info{
 		Expressions: make(map[ast.Expression]*Expr),
 		Blocks:      make(map[ast.Node]*stmtContext),
 	}
-	mod.Info = c.Info
+	mod.Info = c.Module.Info
 	c.Module = mod
 	c.Programs = mod.Programs
 	c.Options = opts
@@ -121,6 +120,13 @@ func (c *Checker) Check() {
 	c.checkDirectCycles(c.Module.Context)
 	// Typecheck those declarations, but not function bodies
 	c.checkContextDecls(c.Module.Context, collector, nil)
+
+	// Check if any public declarations are named after JavaScript keywords
+	if target.Supports(c.Options.Targets, target.JavaScript) {
+		// TODO: Run in parallel
+		c.validateJSNames(c.Module.Context.SortedDecls())
+		// TODO: Ensure fields and methods in all structs aren't named 'constructor'
+	}
 
 	// Run delayed actions, including checking function bodies & top-level statements
 	c.runDelayed(0)

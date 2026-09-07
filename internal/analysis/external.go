@@ -55,8 +55,10 @@ var jsKeywords = map[string]struct{}{
 // Public declarations can't be named after JavaScript keywords when compiling
 // to the JS target. The `@name(js:)` attribute can be used to change the name
 // of the object for JS.
-func (c *Checker) validateJSNames(ctx *Context) {
-	for _, obj := range ctx.SortedDecls() {
+//
+// Object fields may be named after keywords, except 'constructor'.
+func (c *Checker) validateJSNames(items []*Object) {
+	for _, obj := range items {
 		// @name attribute already checked
 		if !obj.Public || (obj.attrs != nil && obj.attrs.Name[target.JavaScript] != "") {
 			continue
@@ -72,4 +74,11 @@ func (c *Checker) validateJSNames(ctx *Context) {
 			c.fileError(err, obj.File)
 		}
 	}
+}
+
+func (c *Checker) checkRedeclaredJSNames() {
+	// This function also has to be used inside structs, interfaces, and
+	// enums, not just top-level declarations.
+	// TODO: Handle how no custom JS name is provided, and names defined for different JS targets
+	// Ex: A name on all targets, a name on JS, and a name on Bun.
 }

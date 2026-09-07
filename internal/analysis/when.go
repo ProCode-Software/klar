@@ -154,7 +154,7 @@ func (c *Checker) checkWhenOptions(expr *ast.WhenExpression, subjects []*whenSub
 			// Record the type of the pattern expression as a [*WhenPattern]
 			e := ws.NewChild()
 			e.Type = pat
-			c.Info.Expressions[patExpr] = e
+			c.Module.Info.Expressions[patExpr] = e
 			// If the pattern is a nil literal, record the nil check
 			if _, ok := patExpr.(*ast.NilLiteral); ok {
 				nilChecks[subjI] = caseI
@@ -542,7 +542,7 @@ func (c *Checker) findWhenPattern(
 	for _, cs := range when.Cases {
 		for _, opts := range cs.Options {
 			for _, pat := range opts {
-				if c.Info.Expressions[pat].Type == target {
+				if c.Module.Info.Expressions[pat].Type == target {
 					return pat
 				}
 			}
@@ -557,13 +557,13 @@ func (pc *patternChecker) checkExprAdvanced(expr ast.Expression, hint Type, litP
 	switch expr := expr.(type) {
 	case *ast.SubOptions:
 		t.Type = pc.checkOptions(expr)
-		pc.Info.Expressions[expr] = t
+		pc.Module.Info.Expressions[expr] = t
 	case *ast.AsExpression:
 		t = pc.checkExprAdvanced(expr.Expression, hint, litPattern) // Could be sub-options
 		if err := pc.pat.declareVar(expr.Name, t.Type, expr.Expression); err != nil {
 			pc.fileError(err, pc.fid())
 		}
-		pc.Info.Expressions[expr] = t
+		pc.Module.Info.Expressions[expr] = t
 	case *ast.ListLiteral:
 		if !litPattern {
 			return pc.checkExpr(expr, t)
