@@ -13,8 +13,7 @@ import (
 // A Module describes a Klar module.
 type Module struct {
 	Name, Path  string // Base name, dir/file path
-	Programs    map[string]*ast.Program
-	fileID      map[FileID]string   // File ID to key in Programs
+	fileID      map[FileID]string   // File ID to file base name
 	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath
 	Imports     []*Module
@@ -38,7 +37,6 @@ func NewModule(
 		Name:        name,
 		Path:        path,
 		ImportPath:  importPath,
-		Programs:    programs,
 		Targets:     targets,
 		KlarVersion: klarVersion,
 		Context:     ctx,

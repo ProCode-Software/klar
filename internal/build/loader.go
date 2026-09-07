@@ -3,9 +3,7 @@ package build
 import (
 	"fmt"
 	"log/slog"
-	"maps"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -204,7 +202,7 @@ func (ld *Loader) loadOrParseModule(m *Module,
 
 	var mu sync.Mutex
 	// Sort files for reproducible error outputs
-	for _, file := range slices.Sorted(maps.Keys(m.Programs)) {
+	for _, file := range m.SortedFiles() {
 		if m.Programs[file] != nil {
 			// That individual file was unchanged, though some other place in the module
 			// was. If that was the case, [Loader.loadFromCache] set this file already.

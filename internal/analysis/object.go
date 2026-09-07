@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
@@ -139,6 +140,9 @@ func (o *Object) Clone(mod *Module, fid FileID, rang ranges.Range) *Object {
 	}
 	return cloned
 }
+
+// Node returns the AST node that represents o's declaration.
+func (o *Object) Node() ast.Node { return o.info.node }
 
 type ObjectKind interface {
 	Type

@@ -13,6 +13,9 @@ import (
 	"github.com/ProCode-Software/klar/internal/version"
 )
 
+// For [PackageCompiler.TypeCheckModules]. TODO: Remove when type checker is mostly done
+const noTypecheckEnv = "NO_TYPECHECK"
+
 type PackageCompiler struct {
 	*Compiler
 	*Input
@@ -21,8 +24,9 @@ type PackageCompiler struct {
 	// import paths (keys).
 	importErrs map[string]error
 
+	// False if compiling a dependency or bootstrapping. Codegen won't be run.
 	Root                 bool
-	EnforceTargetSupport bool
+	EnforceTargetSupport bool // Should be false for dependencies
 	// TODO: should we add codegen options
 }
 
@@ -62,13 +66,25 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 	if modules, err = pkc.TypeCheckModules(loaded); err != nil {
 		return
 	}
-	// TODO: Codegen?
 
 	// Save succeeded modules to cache
 	// TODO: Cache is unimplemented
 	/* if err = pkc.WriteToCache(loaded.sortedDeps); err != nil {
 		return modules, err
 	} */
+
+	// This is the beginning of the backend: optimize, lower, and codegen
+	if !pkc.Root || !pkc.Mode.ShouldCodegen() || len(pkc.Errors) > 0 {
+		// There will be no (zero) codegen if any module has errors. This is a major
+		// restriction, so this decision can be revisited if needed (depending
+		// on the bundling mode).
+		return modules, nil
+	}
+	// TODO: Optimize (can mostly be parallelized)
+
+	// Handles lowering, bundling, and writing to disk
+	pkc.CodegenJS(modules)
+
 	return modules, nil
 }
 
@@ -127,7 +143,7 @@ func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	// If the build mode is parse-only, we don't need to typecheck. Just return
 	// the modules without syntax errors.
-	if pkc.Mode == ModeParse || os.Getenv("NO_TYPECHECK") == "1" {
+	if !pkc.Mode.ShouldTypecheck() || os.Getenv(noTypecheckEnv) == "1" {
 		for _, importPathStr := range loaded.sortedDeps {
 			if mod, ok := pkc.Deps.TryGet(importPathStr); ok && !mod.Failed {
 				succeededModules = append(succeededModules, mod)
@@ -181,6 +197,8 @@ typeCheckModules:
 	return succeededModules, nil
 }
 
+// ASTs must be written to cache before optimization so nodes stay accurate
+// (for formatting) when they need to be typechecked later.
 func (pkc *PackageCompiler) WriteToCache(importPaths []string) error {
 	for _, importPath := range importPaths {
 		m, ok := pkc.Deps.TryGet(importPath)

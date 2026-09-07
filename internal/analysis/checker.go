@@ -87,13 +87,11 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 	if opts.CheckerOptions == nil {
 		opts.CheckerOptions = DefaultCheckerOptions
 	}
-	c.Module.Info = &Info{
+	mod.Info = &Info{
 		Expressions: make(map[ast.Expression]*Expr),
 		Blocks:      make(map[ast.Node]*stmtContext),
 	}
-	mod.Info = c.Module.Info
 	c.Module = mod
-	c.Programs = mod.Programs
 	c.Options = opts
 	c.loadInternalModules()
 }

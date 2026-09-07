@@ -76,15 +76,28 @@ const (
 	ModeTest                     // Resolve test files
 )
 
+func (mode BuildMode) ShouldTypecheck() bool { return mode != ModeParse }
+func (mode BuildMode) ShouldCodegen() bool {
+	return mode != ModeParse && mode != ModeAnalyze
+}
+
 type Module struct {
-	Assets     []string
-	Path       string                  // Directory path, or file if single-file
-	Programs   map[string]*ast.Program // Keys are file basenames (with extensions)
-	ModTimes   map[string]time.Time    // Same basenames as Programs
-	Checked    *analysis.Module        // Typechecked module
-	SingleFile bool
-	Stdin      bool
-	Failed     bool // Has errors
+	Assets      []string
+	Path        string                  // Directory path, or file if single-file
+	Programs    map[string]*ast.Program // Keys are file basenames (with extensions)
+	ModTimes    map[string]time.Time    // Same basenames as Programs
+	Checked     *analysis.Module        // Typechecked module
+	SingleFile  bool
+	Stdin       bool
+	Failed      bool // Has errors
+	sortedFiles []string // Don't access directly; use [Module.SortedFiles]()
+}
+
+func (m *Module) SortedFiles() []string {
+	if m.sortedFiles == nil {
+		m.sortedFiles = slices.Sorted(maps.Keys(m.Programs))
+	}
+	return m.sortedFiles
 }
 
 // Includes the file extension
@@ -106,7 +119,7 @@ func (m *Module) Name() string {
 
 func (m *Module) Deps(yield func(imports.ImportPath) bool) {
 	// Sort the file names for reproducible debugging results
-	for _, file := range slices.Sorted(maps.Keys(m.Programs)) {
+	for _, file := range m.SortedFiles() {
 		for dep := range m.Programs[file].Deps {
 			if !yield(dep) {
 				return
