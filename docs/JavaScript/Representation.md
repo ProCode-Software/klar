@@ -2,7 +2,7 @@
 
 For libraries, the compiler tries to produce JavaScript that can easily and cleanly be called from outside of Klar. Klar's goal is not to replace JavaScript or TypeScript, but to provide a better development experience while still supporting the large JavaScript ecosystem. Klar provides many features to use JavaScript libraries in Klar; and in order not to split the ecosystem, the case should be similar vice-versa.
 
-For research purposes, some possible outputs are available in the [jstest](./jstest) folder. Please send feedback and suggest changes on GitHub. We want Klar to produce the most efficient JavaScript possible, by file size and runtime performance.
+For research purposes, some possible outputs are available in the [internal/codegen/jstest](./internal/codegen/jstest) folder. Please send feedback and suggest changes on GitHub. We want Klar to produce the most efficient JavaScript possible, by file size and runtime performance.
 
 The generated representation for Klar types may not pass TypeScript typechecking. When using Klar and TypeScript in your project, it is recommended you configure TypeScript to avoid checking files generated from Klar.
 
@@ -10,13 +10,16 @@ The generated representation for Klar types may not pass TypeScript typechecking
 
 - Labelled parameters are passed as positional in JavaScript
 - Structs are compiled to ES6 classes
+- Tuples are converted to arrays
+- Maps are JavaScript `Map`s
+- Assertions call a function to throw an error when the value is nil
 
 ## Structs
 
 <table>
 <tr><th>Klar</th> <th>JavaScript</th></tr>
 <tr>
-<th>
+<td>
 
 ```klar
 type Person {
@@ -26,8 +29,8 @@ type Person {
 }
 ```
 
-</th>
-<th>
+</td>
+<td>
 
 ```js
 class Person {
@@ -43,8 +46,8 @@ class Person {
 }
 ```
 
-</th>
-<tr>
+</td>
+</tr>
 </table>
 
 ## Tags
@@ -54,7 +57,7 @@ Tags are JavaScript `Symbol`s. Structs and enums that implement tags have the ta
 <table>
 <tr><th>Klar</th> <th>JavaScript</th></tr>
 <tr>
-<th>
+<td>
 
 ```klar
 public type #Expression
@@ -63,8 +66,8 @@ public type BinaryExpression: Expression {}
 public type VariableDeclaration {}
 ```
 
-</th>
-<th>
+</td>
+<td>
 
 ```js
 // The string argument to Symbol() is trivial, but is set for debugging purposes
@@ -85,8 +88,8 @@ export class VariableDeclaration {
 }
 ```
 
-</th>
-<tr>
+</td>
+</tr>
 </table>
 
 To check if a class implements an interface from JavaScript:
@@ -106,7 +109,7 @@ Functions with multiple overloads and custom initializers will be defined with o
 <table>
 <tr><th>Klar</th> <th>JavaScript</th></tr>
 <tr>
-<th>
+<td>
 
 ```klar
 public func replace(old: String, with new: String, in str: String) -> String {
@@ -117,8 +120,8 @@ public func replace(old: text.Regex, with new: String, in str: String) -> String
 }
 ```
 
-</th>
-<th>
+</td>
+<td>
 
 ```js
 /**
@@ -140,8 +143,8 @@ function replace2(old, new_, in_) {
 }
 ```
 
-</th>
-<tr>
+</td>
+</tr>
 </table>
 
 Custom initializers are similar, but the base function would be `constructor`.
@@ -151,7 +154,7 @@ When the overloads define many uncommon parameters, those uncommon parameters wi
 <table>
 <tr><th>Klar</th> <th>JavaScript</th></tr>
 <tr>
-<th>
+<td>
 
 ```klar
 public func String(num: Float) // #1
@@ -169,8 +172,8 @@ public func String(
 ) // #7
 ```
 
-</th>
-<th>
+</td>
+<td>
 
 ```ts
 class Float {
@@ -211,8 +214,8 @@ class Float {
 }
 ```
 
-</th>
-<tr>
+</td>
+</tr>
 </table>
 
 For more information on how initializers/casts for builtin types are represented in JS, see the [Custom Initializers for Builtins](#custom-initializers-for-builtins) section.
@@ -237,7 +240,7 @@ type TokenType {
 }
 ```
 
-For the JavaScript representation, see [jstest/enum.js](./jstest/enum.js)
+For the JavaScript representation, see [internal/codegen/jstest/enum.js](./internal/codegen/jstest/enum.js)
 
 ## Custom Initializers for Builtins
 
