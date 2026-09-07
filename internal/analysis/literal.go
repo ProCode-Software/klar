@@ -248,7 +248,7 @@ var RegexFlags = map[target.Target]map[byte]struct{}{
 	target.JavaScript: {
 		'u': struct{}{}, 'v': struct{}{}, 'd': struct{}{}, 's': struct{}{}, 'y': struct{}{},
 	},
-	target.KlarVM: {},
+	// target.KlarVM: {},
 	target.Unknown: { // Shared among all platforms
 		'g': struct{}{}, 'i': struct{}{}, 'm': struct{}{},
 	},

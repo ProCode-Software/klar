@@ -21,7 +21,7 @@ type Target {
     .deno // [Deno](https://deno.land) (JavaScript)
     .bun // [Bun](https://bun.com) (JavaScript)
 
-    .klarvm // The Klar interpreter
+    // .klarvm // The Klar interpreter
 }
 
 // Information on when this was added to show on documentation.

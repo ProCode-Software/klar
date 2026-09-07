@@ -9,7 +9,7 @@ type Target int
 const (
 	Unknown    Target = iota
 	JavaScript        // Any JavaScript environment
-	KlarVM
+	// KlarVM
 	// Specifc JavaScript runtimes
 	Browser
 	Node
@@ -22,7 +22,7 @@ const Default = JavaScript
 var Names = map[string]any{
 	"unknown": Unknown,
 	"js":      JavaScript,
-	"klarvm":  KlarVM,
+	// "klarvm":  KlarVM,
 	"browser": Browser,
 	"node":    Node,
 	"deno":    Deno,
@@ -33,11 +33,11 @@ func (t Target) String() string {
 	return []string{
 		Unknown:    "unknown",
 		JavaScript: "js",
-		KlarVM:     "klarvm",
-		Browser:    "browser",
-		Node:       "node",
-		Deno:       "deno",
-		Bun:        "bun",
+		// KlarVM:     "klarvm",
+		Browser: "browser",
+		Node:    "node",
+		Deno:    "deno",
+		Bun:     "bun",
 	}[t]
 }
 
@@ -45,11 +45,11 @@ func (t Target) Name() string {
 	return []string{
 		Unknown:    "unknown",
 		JavaScript: "JavaScript",
-		KlarVM:     "KlarVM",
-		Browser:    "browser",
-		Node:       "Node.js",
-		Deno:       "Deno",
-		Bun:        "Bun",
+		// KlarVM:     "KlarVM",
+		Browser: "browser",
+		Node:    "Node.js",
+		Deno:    "Deno",
+		Bun:     "Bun",
 	}[t]
 }
 
