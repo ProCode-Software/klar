@@ -8,11 +8,13 @@ The generated representation for Klar types may not pass TypeScript typechecking
 
 **Some basic things to know when converting Klar language features to JS:**
 
+- **Klar always produces ES modules.** When running in a browser, pass `type="module"` to the `<script>` tag when importing generated code.
 - Labelled parameters are passed as positional in JavaScript
 - Structs are compiled to ES6 classes
 - Tuples are converted to arrays
-- Maps are JavaScript `Map`s
+- Maps are JavaScript `Map`
 - Assertions call a function to throw an error when the value is nil
+- Bools, Ints, and Floats are converted to JavaScript `Boolean` and `Number`
 
 ## Structs
 
@@ -245,3 +247,9 @@ For the JavaScript representation, see [internal/codegen/jstest/enum.js](./inter
 ## Custom Initializers for Builtins
 
 ## Interface Checking
+
+## Top-Level Code
+
+Top-level code in `main.klar` is run only if [`import.meta.main`](https://nodejs.org/api/esm.html#importmetamain) is true. `import.meta.main` is pretty new in Node.js, and is unavailable in the browser.
+
+If the module containing `main.klar` is an input to the `klar build` command, and library mode is disabled, top-level code is always run.
