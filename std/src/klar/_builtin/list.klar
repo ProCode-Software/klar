@@ -35,11 +35,14 @@ public func List.allIndices(of item: T) -> [Int]
 
 // Returns whether `predicate` returns true for each item in the list.
 // If there are no items in the list, returns `true`.
-public func List.all(satisfy predicate: func(T) -> Bool)
+public func List.all(satisfy predicate: func(T) -> Bool) -> Bool
 
 // Returns whether `predicate` returns true for at least 1 item in the list.
 // If there are no items in the list, returns `false`.
-public func List.some(satisfy predicate: func(T) -> Bool)
+public func List.some(satisfy predicate: func(T) -> Bool) -> Bool
+
+// Groups the items in the list by whether they satisfy the function.
+public func List.groupSatisfying(predicate: func(T) -> Bool) -> (satisfying, non: [T])
 
 public func List.sort()
 public func List.sorted() -> [T]
@@ -66,4 +69,3 @@ public func List.withoutAll(of item: T) -> [T]
 // Returns a new list from the current one, but without the items
 // that satisfy `pred`.
 public func List.withoutAll(satisfying pred: func(T) -> Bool) -> [T]
-
