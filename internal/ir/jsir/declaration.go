@@ -33,7 +33,15 @@ const (
 
 type Destructure interface{ _destructure() }
 
+type FunctionModifiers uint
+
+const (
+	AsyncFunction FunctionModifiers = 1 << iota
+	GeneratorFunction
+)
+
 type FunctionDeclaration struct {
+	Modifiers     FunctionModifiers
 	Name          string // Can be empty if used as an expression
 	Params        []*FunctionParam
 	VariadicParam *FunctionParam // If variadic (declared with '...')
@@ -55,15 +63,65 @@ type ClassDeclaration struct {
 	// TODO: Static fields/methods, getters/setters, 'implements' for TS?
 }
 
+// Per [ECMAScript spec]:
+//
+//	ImportedDefaultBinding
+//	NameSpaceImport
+//	NamedImports
+//	ImportedDefaultBinding , NameSpaceImport
+//	ImportedDefaultBinding , NamedImports
+//
+// All 3 can be nil if the import is 'import "..."'
+//
+// [ECMAScript spec]: https://tc39.es/ecma262/multipage/ecmascript-language-scripts-and-modules.html#sec-exports
+type ImportStatement struct {
+	DefaultImport   *string
+	NamespaceImport *string // * as name
+	// import { ... } from '...'. If empty braces, pointer can't be nil
+	NamedImports *[]ImportName
+
+	From string
+	// Per spec, keys may be quoted, values must be string literals
+	With map[string]string
+}
+
+type ImportName struct {
+	Name string // May be 'default'
+	As   string // Can be empty
+}
+
 // JS has several types of 'export' statements. We will try to separate them
-// into different IR nodes for efficiency.
-// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
+// into different IR nodes for efficiency. See:
+// 	https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
+//  https://tc39.es/ecma262/multipage/ecmascript-language-scripts-and-modules.html#sec-exports
 
 // ExportModifier exports a declaration statement.
 //
 //	export default function ...
 //	export const ...
 type ExportModifier struct {
-	Default     bool
-	Declaration Statement
+	Default bool
+	// If not Default, must be [BindingDeclaration], [FunctionDeclaration],
+	// or [ClassDeclaration]
+	Declaration Expression
+}
+
+// Uses braces
+//
+//	export { x, y as z }
+type NamedExportsStatement struct {
+	Exports []ImportName
+}
+
+// Per ECMAScript spec, also allowed:
+//
+//	export * from '...'
+//	export { ... } from '...'
+//	export * as _ from '...'
+//
+// All may have a 'with' clause
+type ExportFromStatement struct {
+	Star         *string // Empty string if `export *`, name if `export * as name`
+	NamedExports *[]ImportName
+	With         map[string]string
 }

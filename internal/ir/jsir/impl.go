@@ -26,6 +26,10 @@ func (*NumericLiteral) _expr()   {}
 func (*StringLiteral) _expr()    {}
 func (*TemplateLiteral) _expr()  {}
 
+// Functions and classes are also expressions in JS, even with names
+func (*FunctionDeclaration) _expr() {}
+func (*ClassDeclaration) _expr()    {}
+
 func (*SpreadExpression) _expr() {}
 func (*ArrayLiteral) _expr()     {}
 func (*ObjectLiteral) _expr()    {}
