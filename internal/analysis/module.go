@@ -12,7 +12,7 @@ import (
 
 // A Module describes a Klar module.
 type Module struct {
-	Name, Path  string // Base name, dir/file path
+	Name, Path  string              // Base name, dir/file path
 	fileID      map[FileID]string   // File ID to file base name
 	fileContext map[FileID]*Context // File ID to fctx
 	ImportPath  imports.ImportPath

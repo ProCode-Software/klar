@@ -161,11 +161,9 @@ func (c *Checker) collectTopLevelObjects(
 	return collector
 }
 
-// checkContextDecls typechecks all declarations in the
-// given context, but not function bodies.
-func (c *Checker) checkContextDecls(
-	ctx *Context, collector *stmtCollector, sctx *stmtContext,
-) {
+// checkContextDecls typechecks all declarations in the given context,
+// but not function bodies.
+func (c *Checker) checkContextDecls(ctx *Context, collector *stmtCollector) {
 	var (
 		typeAliases []*Object // [*TypeName]
 		nonTypes    []*Object // Variable/function declaration

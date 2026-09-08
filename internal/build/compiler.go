@@ -89,7 +89,7 @@ type Module struct {
 	Checked     *analysis.Module        // Typechecked module
 	SingleFile  bool
 	Stdin       bool
-	Failed      bool // Has errors
+	Failed      bool     // Has errors
 	sortedFiles []string // Don't access directly; use [Module.SortedFiles]()
 }
 

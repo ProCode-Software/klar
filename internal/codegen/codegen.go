@@ -68,7 +68,7 @@ func (g *Generator) generateFile(f *File) {
 	for _, obj := range g.Module.Context.SortedDecls() {
 		if fid == 0 && obj.FileName() == f.Name {
 			fid = obj.File // Set the initial file ID for this file
-	} else if fid == 0 || obj.File != fid {
+		} else if fid == 0 || obj.File != fid {
 			continue
 		}
 		node := obj.Node().(ast.Statement)

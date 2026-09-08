@@ -18,7 +18,7 @@ import (
 type Checker struct {
 	Programs map[string]*ast.Program // Files in the module that is being checked.
 	Errors   []*klarerrs.Error       // Errors reported while type checking.
-	Options  *Options // Options for type checking.
+	Options  *Options                // Options for type checking.
 	Module   *Module
 
 	// For tracking cycles
@@ -117,7 +117,8 @@ func (c *Checker) Check() {
 	// Check for direct cycles among those objects
 	c.checkDirectCycles(c.Module.Context)
 	// Typecheck those declarations, but not function bodies
-	c.checkContextDecls(c.Module.Context, collector, nil)
+	var ctx *Context = c.Module.Context
+	c.checkContextDecls(ctx, collector)
 
 	// Check if any public declarations are named after JavaScript keywords
 	if target.Supports(c.Options.Targets, target.JavaScript) {

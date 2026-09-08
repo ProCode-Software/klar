@@ -116,7 +116,7 @@ func (c *Checker) checkBlock(stmts []ast.Statement, sctx *stmtContext) {
 		// Actually check the declarations. Similar to [Checker.Check]. Variables
 		// are checked before these so functions can forward-reference them.
 		c.checkDirectCycles(sctx.ctx)
-		c.checkContextDecls(sctx.ctx, sctx.collector, sctx)
+		c.checkContextDecls(sctx.ctx, sctx.collector)
 	}
 
 	var unreachableReported bool
@@ -253,7 +253,7 @@ func (c *Checker) checkStmt(stmt ast.Statement, sctx *stmtContext) {
 	// allowed, so we need to typecheck declarations immediately.
 	if sctx.flags&allowForwardDecl == 0 && canForwardDeclareInFunc(stmt) {
 		c.checkDirectCycles(sctx.ctx) // Only self-cycles are reachable here
-		c.checkContextDecls(sctx.ctx, sctx.collector, sctx)
+		c.checkContextDecls(sctx.ctx, sctx.collector)
 	}
 }
 
