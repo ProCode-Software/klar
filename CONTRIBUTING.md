@@ -186,8 +186,6 @@ Be aware that many open-source contributors work on this project in their freeti
 - `cmd` - Entry points for CLI commands, including `klar` and `glas`.
 - `docs` - Documentation related to the project's architecture. We plan for the public-facing docs website to be in its own repo.
 - `internal` - Go packages internal to Klar.
-- `klar-vscode` - The VSCode extension for Klar, containing language definitions and syntax highlighting, and an LSP for Klar and Klon in the future.
-- `packages` - Non-Go, publicly available packages for Klar tooling
 - `pkg` - Go packages publicly available for other projects to import
 - `samples` - Klar project samples
 - `scripts` - Scripts for project development
@@ -294,6 +292,10 @@ We use the `./scripts/build.sh` to build Klar binaries for production. It involv
 - No vendor-specific LLM instruction files (`CLAUDE.md`, `GEMINI.md`, `copilot-instructions.md`, `.gemini/`). You may gradually add them to `.gitignore`. Creating `AGENTS.md` files are allowed as they will work with most LLMs.
 - No JavaScript lockfiles other than `bun.lock` (including `package-lock.json`, `yarn.lock`)
 - Don't add new top-level files or folders without explaining to the maintainers in a PR.
+
+## Editor Extensions
+
+Extensions for Klar support in VSCode and Zed, as well as Tree-sitter grammars, can be found in other repositories in the [klarlanguage](https://github.com/orgs/klarlanguage/repositories) GitHub org.
 
 ## Code Style
 

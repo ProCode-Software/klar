@@ -86,7 +86,6 @@ Klon is a markup language that will be Klar's flagship configuration format. `gl
 - `internal/*` - Core compiler
 - `pkg/*` - Public APIs
 - `std/` - Standard library written in Klar
-- `klar-vscode/` - VSCode extension for Klar
 
 ## Important Notes
 

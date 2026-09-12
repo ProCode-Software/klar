@@ -20,8 +20,6 @@ require (
 
 ignore (
 	./docs
-	./klar-vscode
-	./packages
 	./samples
 	./std
 	node_modules

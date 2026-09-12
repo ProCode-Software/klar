@@ -8,10 +8,6 @@
     ],
     "license": "Apache-2.0",
     "author": "ProCode Software",
-    "workspaces": [
-        "klar-vscode",
-        "packages/tree-sitter-*"
-    ],
     "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^7.0.2"

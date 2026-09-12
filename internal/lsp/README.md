@@ -11,8 +11,8 @@ KlarLS can be started by running the `klar lsp` command on the normal Klar binar
 
 ## Installation
 
-- **VSCode:** See the [klar-vscode](../../klar-vscode) extension
-- **Zed:** See [packages/klar-zed](../../packages/klar-zed)
+- **VSCode:** See the [klar-vscode](https://github.com/klarlanguage/klar-vscode) repo
+- **Zed:** See the [klar-zed](https://github.com/klarlanguage/klar-zed) repo
 - **Other editors:** Set the `klar lsp` command for `.klar` and `.klon` files.
 
 The `klar-zed` and `klar-vscode` extensions also provide syntax highlighting for Klar, Klon, and `glas.lock` files.

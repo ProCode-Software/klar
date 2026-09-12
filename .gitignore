@@ -7,7 +7,6 @@
 *.dylib
 /klar
 /klar*
-!/klar-vscode
 /bin/
 
 # Test binary, built with `go test -c`
@@ -64,9 +63,3 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .klar
 
 _artifacts/
-
-# tree-sitter bindings
-/packages/tree-sitter-*/bindings/
-/packages/tree-sitter-*/binding.gyp
-/packages/tree-sitter-*/src/
-/packages/tree-sitter-*/.editorconfig
