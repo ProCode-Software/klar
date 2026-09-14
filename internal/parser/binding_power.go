@@ -8,7 +8,7 @@ import (
 type BindingPower int
 
 // TypeScript Reference:
-// 	https://github.com/microsoft/typescript-go/blob/main/internal/ast/precedence.go
+// 	https://github.com/microsoft/TypeScript/blob/main/tsc/internal/ast/precedence.go
 
 const (
 	DefaultBindingPower BindingPower = iota // Zero
