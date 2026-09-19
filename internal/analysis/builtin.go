@@ -245,7 +245,9 @@ func (c *Checker) loadInternalModules() {
 	}
 }
 
-func BootstrappedModulesLoaded() bool { return builtinsLoaded }
+func BootstrappedModulesChecked() bool {
+	return builtinModule != nil && attributesModule != nil
+}
 
 var builtinsLoaded bool
 

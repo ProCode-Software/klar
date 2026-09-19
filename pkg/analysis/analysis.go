@@ -19,10 +19,10 @@ type CheckOptions struct {
 func CheckProgram(prog *ast.Program, opts CheckOptions) []*klarerrs.Error {
 	mod := analysis.NewModule(
 		opts.File, opts.Path, nil,
-		map[string]*ast.Program{opts.File: prog},
 		opts.KlarVersion, []target.Target{opts.Target},
 	)
-	c := analysis.NewChecker(mod, opts.Options)
+	files := map[string]*ast.Program{opts.File: prog}
+	c := analysis.NewChecker(mod, files, opts.Options)
 	c.Check()
 	return c.Errors
 }

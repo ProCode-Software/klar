@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/version"
@@ -28,7 +27,6 @@ type Module struct {
 func NewModule(
 	name, path string,
 	importPath imports.ImportPath,
-	programs map[string]*ast.Program,
 	klarVersion version.Version,
 	targets []target.Target,
 ) *Module {

@@ -207,8 +207,8 @@ func (pc *ProjectCompiler) DownloadDeps() error {
 var isBootstrapping bool
 
 func (pc *ProjectCompiler) CompileBootstrapped() error {
-	if isBootstrapping || pc.Mode == ModeParse || // Builtins not needed for parsing
-		analysis.BootstrappedModulesLoaded() {
+	// Builtins aren't needed for parsing
+	if isBootstrapping || pc.Mode == ModeParse || analysis.BootstrappedModulesChecked() {
 		return nil
 	}
 	isBootstrapping = true

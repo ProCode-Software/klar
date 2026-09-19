@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
+	"github.com/ProCode-Software/klar/internal/ast"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/module/imports"
@@ -25,7 +26,6 @@ func (pkc *PackageCompiler) TypeCheckModule(
 	// Initialized the typed module
 	typedMod := analysis.NewModule(
 		m.Name(), m.Path, importPath,
-		m.Programs,
 		opts.KlarVersion, opts.Targets,
 	)
 	if m.SingleFile {
@@ -38,7 +38,7 @@ func (pkc *PackageCompiler) TypeCheckModule(
 		typedMod.Flags |= analysis.BootstrapModule
 	}
 
-	c := typeCheckerPool.Get(typedMod, opts)
+	c := typeCheckerPool.Get(typedMod, m.Programs, opts)
 	defer typeCheckerPool.Put(c)
 	if pkc.IsDebug {
 		c.EnableDebug(os.Stderr)
@@ -81,10 +81,10 @@ func newCheckerPool() *checkerPool {
 
 // Get returns an [analysis.Checker] from the pool, initializing it with mod and opts.
 func (p *checkerPool) Get(
-	mod *analysis.Module, opts *analysis.Options,
+	mod *analysis.Module, files map[string]*ast.Program, opts *analysis.Options,
 ) *analysis.Checker {
 	ch := p.Pool.Get().(*analysis.Checker)
-	ch.Init(mod, opts)
+	ch.Init(mod, files, opts)
 	return ch
 }
 

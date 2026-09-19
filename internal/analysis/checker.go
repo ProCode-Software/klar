@@ -32,9 +32,9 @@ type Checker struct {
 
 // NewChecker returns an initialized Checker that checks the programs in mod.
 // If opts == nil, default options are used.
-func NewChecker(mod *Module, opts *Options) *Checker {
+func NewChecker(mod *Module, files map[string]*ast.Program, opts *Options) *Checker {
 	c := &Checker{}
-	c.Init(mod, opts)
+	c.Init(mod, files, opts)
 	return c
 }
 
@@ -80,7 +80,7 @@ var DefaultCheckerOptions = &klarbuild.CheckerOptions{
 	UseAllValues:           false,
 }
 
-func (c *Checker) Init(mod *Module, opts *Options) {
+func (c *Checker) Init(mod *Module, files map[string]*ast.Program, opts *Options) {
 	if opts == nil {
 		opts = &Options{}
 	}
@@ -92,6 +92,7 @@ func (c *Checker) Init(mod *Module, opts *Options) {
 		Blocks:      make(map[ast.Node]*stmtContext),
 	}
 	c.Module = mod
+	c.Programs = files
 	c.Options = opts
 	c.loadInternalModules()
 }
@@ -117,8 +118,7 @@ func (c *Checker) Check() {
 	// Check for direct cycles among those objects
 	c.checkDirectCycles(c.Module.Context)
 	// Typecheck those declarations, but not function bodies
-	var ctx *Context = c.Module.Context
-	c.checkContextDecls(ctx, collector)
+	c.checkContextDecls(c.Module.Context, collector)
 
 	// Check if any public declarations are named after JavaScript keywords
 	if target.Supports(c.Options.Targets, target.JavaScript) {
