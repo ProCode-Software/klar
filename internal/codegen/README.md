@@ -39,4 +39,14 @@ See [docs/JavaScript/Representation.md](..//../docs/JavaScript/Representation.md
 
 The `jswriter` package knows nothing about the original Klar code.
 
+Proper formatting of generated files isn't a goal for `jswriter`.
+
+### Parallel Writing
+
+The `jswriter` can write JavaScript in parallel. This is useful for writing top-level functions and arrays with objects inside. This is done by creating separate writers for each element, and they will be concatenated when they all finish.
+
 ### TypeScript Declarations
+
+`jsir.TSType` values should always be nil when generating JavaScript.
+
+Methods that start with `writeTS...` are related to TypeScript type declarations and annotations.

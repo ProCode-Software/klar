@@ -2,6 +2,12 @@ package jsir
 
 type Expression interface{ _expr() }
 
+type AssignmentExpression struct {
+	Assignee Expression // [Destructure] or index
+	Operator Operator
+	Value    Expression
+}
+
 type BinaryExpression struct {
 	Left, Right Expression
 	Operator    Operator

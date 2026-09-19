@@ -15,7 +15,13 @@ type Block struct {
 type IfStatement struct {
 	Condition Expression
 	Then      *Block
+	ElseIf    *[]ElseIf
 	Else      *Block // Can be nil
+}
+
+type ElseIf struct {
+	Condition Expression
+	Then      *Block
 }
 
 type (
@@ -53,7 +59,7 @@ const (
 
 type ForStatement struct {
 	Kind     ForLoopKind
-	CForLoop *[3]Statement
+	CForLoop *[3]Statement // Second item must be [ExpressionStatement]
 
 	// Specific to for-of/for-in loops
 	BindingKind BindingKind
@@ -82,12 +88,16 @@ type TryStatement struct {
 
 // 'with' statements are intentionally not supported as they are deprecated by ECMAScript
 
-type AssignmentStatement struct {
-	Assignee Expression // [Destructure] or index
-	Operator Operator
-	Value    Expression
-}
-
 type ExpressionStatement struct {
 	Expression Expression
 }
+
+type DoWhileStatement struct {
+	Do    *Block
+	While Expression
+}
+
+type EmptyStatement struct{}
+
+// TODO: await using, for await, import defer, import source
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements

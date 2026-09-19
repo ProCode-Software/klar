@@ -83,9 +83,9 @@ func (pkc *PackageCompiler) Compile() (modules []*Module, err error) {
 	// TODO: Optimize (can mostly be parallelized)
 
 	// Handles lowering, bundling, and writing to disk
-	pkc.CodegenJS(modules)
+	err = pkc.CodegenJS(modules)
 
-	return modules, nil
+	return modules, err
 }
 
 func CheckCompilerCompatibility(spec version.Specifier) error {
