@@ -99,7 +99,12 @@ func (jsc *jsCompiler) bundleModule(mod loweredModule) (bundled []*codegen.File,
 }
 
 func (jsc *jsCompiler) writeFile(jsFile *codegen.File, mod *Module, indent int) error {
-	outPath := filepath.Join(mod.Path, strings.TrimSuffix(jsFile.Name, ".klar")+".js")
+	var outPath string
+	if mod.SingleFile {
+		outPath = strings.TrimSuffix(mod.Path, ".klar")+".js"
+	} else {
+		outPath = filepath.Join(mod.Path, strings.TrimSuffix(jsFile.Name, ".klar")+".js")
+	}
 	// TODO: Use the configured build output. If none and bundled,
 	// use the name of the module.
 	f, err := os.Create(outPath)
