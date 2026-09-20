@@ -1,6 +1,6 @@
 # Klar Analysis / Type Checker
 
-## Grammar
+## Compatibility Grammar
 
 In [compatibility.go](./compatibility.go), you'll see syntax in comments that describe typing properties.
 
