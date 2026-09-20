@@ -18,6 +18,7 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 		w.writeBinding(&stmt.Binding)
 	case *jsir.MultiBindingDeclaration:
 		w.writeString(stmt.Kind.String())
+		w.writeByte(' ')
 		for i, binding := range stmt.Bindings {
 			if i > 0 {
 				w.writeString(", ")
@@ -55,14 +56,15 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 			w.writeString(stmt.Label)
 		}
 	case *jsir.ForStatement:
+		w.writeForStmt(stmt)
 	case *jsir.WhileStatement:
 		w.writeString("while (")
 		w.writeExpression(stmt.Condition)
 		w.writeString(") ")
-		w.writeControlBlock(stmt.Body, false)
+		w.writeControlBlock(stmt.Body)
 	case *jsir.DoWhileStatement:
 		w.writeString("do ")
-		w.writeControlBlock(stmt.Do, false)
+		w.writeControlBlock(stmt.Do)
 		// In JS, this braces aren't required if the body is block or semicolon
 		// Invalid: do f() while (x > 0) -- Add a newline before 'while'
 		if len(stmt.Do.Statements) == 1 {
@@ -85,6 +87,7 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 
 	// Import/Export
 	case *jsir.ImportStatement:
+		w.writeImportStmt(stmt)
 	case *jsir.ExportModifierStatement:
 		w.writeString("export ")
 		if stmt.Default {
@@ -92,8 +95,10 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 		}
 		w.writeExpression(stmt.Declaration)
 	case *jsir.NamedExportsStatement:
+		w.writeString("export ")
+		w.writeImportNames(stmt.Exports)
 	case *jsir.ExportFromStatement:
-
+		w.writeExportFromStmt(stmt)
 	// TODO: TypeScript .dts statements
 	default:
 		panic(fmt.Sprintf("unhandled statement: %T", stmt))
@@ -122,19 +127,12 @@ func (w *Writer) writeStatementList(stmts []jsir.Statement) {
 }
 
 // writeControlBlock adds braces conditionally to the block for use in
-// an if/while/for-statement. If ifSafe is true, braces will be added
-// if the body is a single if-statement.
-func (w *Writer) writeControlBlock(body *jsir.Block, ifSafe bool) {
+// an if/while/for-statement.
+func (w *Writer) writeControlBlock(body *jsir.Block) {
 	switch len(body.Statements) {
 	case 0:
 		w.writeByte(';')
 	case 1:
-		if ifSafe && len(body.Statements) == 1 {
-			if _, ok := body.Statements[0].(*jsir.IfStatement); ok {
-				w.writeBlock(body)
-				return
-			}
-		}
 		w.writeStatement(body.Statements[0])
 	default:
 		w.writeBlock(body)
@@ -207,19 +205,154 @@ func (w *Writer) writeIfStmt(s *jsir.IfStatement) {
 	w.writeString("if (")
 	w.writeExpression(s.Condition)
 	w.writeString(") ")
-	// Always add braces if the body is an if-statement. Dangling 'else'
-	w.writeControlBlock(s.Then, true)
+	// Always add braces if the body is an if/for/while-statement. Dangling 'else'.
+	// 'for' and 'while' statements are also checked because we may have this:
+	//
+	// 	if (user.username == 'admin')
+	// 		for (const [key, value] of user.options)
+	// 			if (key == 'firstLoginDate') ...
+	// 			else ...
+	writeBlock := func(b *jsir.Block) {
+		if len(b.Statements) == 1 {
+			switch b.Statements[0].(type) {
+			case *jsir.IfStatement, *jsir.WhileStatement, *jsir.ForStatement:
+				w.writeBlock(b)
+				return
+			}
+		}
+		w.writeControlBlock(b)
+	}
+
+	writeBlock(s.Then)
 
 	if s.ElseIf != nil && len(*s.ElseIf) > 0 {
 		for _, elif := range *s.ElseIf {
 			w.writeString(" else if (")
 			w.writeExpression(elif.Condition)
 			w.writeString(") ")
-			w.writeControlBlock(elif.Then, true)
+			writeBlock(elif.Then)
 		}
 	}
 	if s.Else != nil {
 		w.writeString(" else ")
-		w.writeControlBlock(s.Else, true)
+		writeBlock(s.Else)
 	}
+}
+
+func (w *Writer) writeForStmt(stmt *jsir.ForStatement) {
+	w.writeString("for (")
+	switch stmt.Kind {
+	case jsir.ForOfLoop, jsir.ForInLoop:
+		w.writeString(stmt.BindingKind.String())
+		w.writeByte(' ')
+		w.writeDestructure(stmt.Variable)
+		if stmt.Kind == jsir.ForOfLoop {
+			w.writeString(" of ")
+		} else {
+			w.writeString(" in ")
+		}
+		w.writeExpression(stmt.Iterator)
+	case jsir.ForCLoop:
+		for i, inner := range stmt.CForLoop {
+			if i > 0 {
+				w.writeString("; ")
+			}
+			if i == 1 {
+				if exprStmt, ok := inner.(*jsir.ExpressionStatement); ok {
+					w.writeExpression(exprStmt.Expression) // Optimization
+					continue
+				}
+				panic(fmt.Sprintf(
+					"jsir.ForStatement.CForLoop[1] must be an ExpressionStatement, got %T",
+					inner,
+				))
+			}
+			w.writeStatement(inner)
+		}
+	default:
+		panic(fmt.Sprintf("unknown ForLoopKind: %d", stmt.Kind))
+	}
+	w.writeString(") ")
+	w.writeControlBlock(stmt.Body)
+}
+
+func (w *Writer) writeImportName(imp jsir.ImportName) {
+	w.writeString(imp.Name)
+	if imp.As != "" {
+		w.writeString(" as ")
+		w.writeString(imp.As)
+	}
+}
+
+func (w *Writer) writeImportNames(names []jsir.ImportName) {
+	if len(names) == 0 {
+		w.writeString("{}")
+		return
+	}
+	w.writeString("{ ")
+	for i, imp := range names {
+		if i > 0 {
+			w.writeString(", ")
+		}
+		w.writeImportName(imp)
+	}
+	w.writeString(" }")
+}
+
+func (w *Writer) writeImportStmt(stmt *jsir.ImportStatement) {
+	w.writeString("import ")
+	if stmt.DefaultImport != nil {
+		w.writeString(*stmt.DefaultImport)
+		if stmt.NamedImports != nil || stmt.NamespaceImport != nil {
+			w.writeString(", ")
+		}
+	}
+	switch {
+	case stmt.NamedImports != nil:
+		w.writeImportNames(*stmt.NamedImports)
+	case stmt.NamespaceImport != nil:
+		w.writeString("* as ")
+		w.writeString(*stmt.NamespaceImport)
+	case stmt.DefaultImport == nil:
+		panic(
+			"no type of import (default, namespace, or named) set for jsir.ImportStatement",
+		)
+	}
+
+	// 'from' isn't needed for 'import "..."'
+	if needsFrom := stmt.NamedImports != nil || stmt.NamespaceImport != nil ||
+		stmt.DefaultImport != nil; needsFrom {
+		w.writeString(" from ")
+	}
+	w.writeString("'" + stmt.From + "'") // TODO: Quote
+	if len(stmt.With) > 0 {
+		w.writeImportWith(stmt.With)
+	}
+}
+
+func (w *Writer) writeExportFromStmt(stmt *jsir.ExportFromStatement) {
+	w.writeString("export ")
+	switch {
+	case stmt.Star != nil && *stmt.Star == "":
+		w.writeByte('*')
+	case stmt.Star != nil:
+		w.writeString("* as ")
+		w.writeString(*stmt.Star)
+	case stmt.NamedExports != nil:
+		w.writeImportNames(*stmt.NamedExports)
+	default:
+		panic(
+			"jsir.ExportFromStatement.Star and jsir.ExportFromStatement.NamedExports are both nil",
+		)
+	}
+	w.writeString(" from ")
+	w.writeString("'" + stmt.From + "'") // TODO: Quote
+	if len(stmt.With) > 0 {
+		w.writeImportWith(stmt.With)
+	}
+}
+
+func (w *Writer) writeImportWith(with map[string]jsir.StringLiteral) {
+	w.writeString(" with { ")
+	w.writeString(" }")
 }

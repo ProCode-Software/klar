@@ -76,9 +76,18 @@ type ClassDeclaration struct {
 	Name    string // Can be empty if expression
 	Extends string // Can be empty
 	Fields  []*BindingDeclaration
-	Methods []*FunctionDeclaration // Includes 'constructor'
-	// TODO: Static fields/methods, getters/setters, 'implements' for TS?
+	Methods []*FunctionDeclaration     // Includes 'constructor'
+	Flags   map[any]ClassPropertyFlags // Keys must be in Fields or Methods
+	// TODO: 'implements' for TS?
 }
+
+type ClassPropertyFlags uint8
+
+const (
+	Static ClassPropertyFlags = 1 << iota
+	Getter
+	Setter
+)
 
 // Per [ECMAScript spec]:
 //
@@ -140,6 +149,7 @@ type NamedExportsStatement struct {
 type ExportFromStatement struct {
 	Star         *string // Empty string if `export *`, name if `export * as name`
 	NamedExports *[]ImportName
+	From         string
 	With         map[string]StringLiteral
 }
 
