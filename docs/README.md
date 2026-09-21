@@ -1,6 +1,6 @@
 # Klar Project Documentation
 
-The `docs` folder contains documentation related to the internals of the Klar project. The user-facing documentation and guides are located in a different repository (TODO: provide the link).
+The `docs` folder contains documentation related to the internals of the Klar project. The user-facing documentation and guides are available on our [website](https://klarlanguage.github.io/docs).
 
 - **Compiler:** [`internal/build`](../internal/build/README.md)
     - Lexer: [`internal/lexer`](../internal/lexer/README.md)
