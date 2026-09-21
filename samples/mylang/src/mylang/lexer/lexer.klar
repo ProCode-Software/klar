@@ -12,7 +12,7 @@ public type Lexer {
 }
 
 // Returns a new lexer that reads from `input`
-func Lexer(input: String) {
+public func Lexer(input: String) {
     self = Lexer(:input, index: 0)
 }
 
@@ -36,7 +36,7 @@ func Lexer.backup() {
 func Lexer.hasTokens() = self.index < self.input.length
 
 // Reads all of [self.input] into a list of tokens. 
-func Lexer.tokenize() -> [Token] {
+public func Lexer.tokenize() -> [Token] {
     while self.hasTokens() {
         self.tokens += [self.readToken()]
     }

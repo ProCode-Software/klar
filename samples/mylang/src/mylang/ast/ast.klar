@@ -27,7 +27,7 @@ public type #Value
 
 // A list of characters in single `'` or double `"` quotes.
 public type StringValue: Value {
-    value: String
+    value: String // Escapes are included
     singleQuote: Bool
 }
 
