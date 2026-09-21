@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"github.com/ProCode-Software/klar/internal/ast"
+	"github.com/ProCode-Software/klar/internal/ir/jsir"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
 	"github.com/ProCode-Software/klar/internal/target"
 )
@@ -37,20 +38,7 @@ func (c *Checker) checkFunctionImpls(ov *Overload, stmt *ast.FunctionDeclaration
 	}
 }
 
-// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar
-var jsKeywords = map[string]struct{}{
-	"arguments": {}, "async": {}, "await": {}, "break": {}, "case": {}, "catch": {},
-	"class": {}, "const": {}, "continue": {}, "debugger": {}, "default": {}, "delete": {},
-	"do": {}, "else": {}, "enum": {}, "eval": {}, "export": {}, "extends": {},
-	"false": {}, "finally": {}, "for": {}, "function": {}, "if": {}, "implements": {},
-	"import": {}, "in": {}, "instanceof": {}, "interface": {}, "let": {}, "new": {},
-	"null": {}, "package": {}, "private": {}, "protected": {}, "public": {}, "return": {},
-	"static": {}, "super": {}, "switch": {}, "this": {}, "throw": {}, "true": {},
-	"try": {}, "typeof": {}, "undefined": {}, "var": {}, "void": {}, "while": {},
-	"with": {}, "yield": {},
-	// Added myself
-	"using": {},
-}
+
 
 // Public declarations can't be named after JavaScript keywords when compiling
 // to the JS target. The `@name(js:)` attribute can be used to change the name
@@ -63,7 +51,7 @@ func (c *Checker) validateJSNames(items []*Object) {
 		if !obj.Public || (obj.attrs != nil && obj.attrs.Name[target.JavaScript] != "") {
 			continue
 		}
-		if _, ok := jsKeywords[obj.Name]; ok {
+		if _, ok := jsir.JSKeywords[obj.Name]; ok {
 			err := klarerrs.Range(klarerrs.ErrReservedJSKeyword, obj.Range)
 			err.Name = obj.Name
 			err.Label = quote(obj.Name) + " is reserved in JavaScript"
