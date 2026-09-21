@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
-	"github.com/ProCode-Software/klar/internal/config/glaslock"
 	"github.com/ProCode-Software/klar/internal/config/glaspack"
 	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/module"
@@ -15,20 +14,6 @@ import (
 )
 
 const sep = string(filepath.Separator)
-
-type Input struct {
-	Path      string
-	Kind      InputKind
-	Manifest  *glaspack.Manifest
-	PkgInfo   *module.PackageInfo
-	Lockfile  *glaslock.Lockfile
-	KlarBuild *klarbuild.File
-	Targets   []target.Target
-}
-
-func (i *Input) IsSingleFile() bool {
-	return i.Kind == KindFile || i.Kind == KindStdin
-}
 
 // IsKlarFile returns true if file's extension is '.klar' or it doesn't have an extension.
 func IsKlarFile(file string) bool {
@@ -240,7 +225,7 @@ func (ld *Loader) ResolveInputModules() (modules []*Module, klarFiles int, err e
 			Stdin:      true,
 		}}, 1, nil
 	case KindModule:
-		ld.Info("Resolving module", slog.String("modulePath", ld.Path))
+		ld.Info("Resolving input module", slog.String("modulePath", ld.Path))
 		klarFiles, err = ld.moduleFromDir(ld.Path, &modules, 0)
 	}
 	if klarFiles == 0 && ld.Root && err == nil {
@@ -372,7 +357,7 @@ func (c *Compiler) resolvePackage(path string, nesting bool) (
 			}
 			// The only Klar project directories that contain buildable modules,
 			// inclding shared/, other than src/
-			c.Info("Resolving modules in", slog.String("path", fullPath))
+			c.Debug("Resolving modules in", slog.String("path", fullPath))
 			n, err := c.moduleFromDir(fullPath, &modules, 0)
 			klarFiles += n
 			if err != nil {
@@ -405,7 +390,7 @@ func (c *Compiler) resolveSrcDir(dir string, modules *[]*Module) (klarFiles int,
 		path := dir + sep + name
 		switch {
 		case d.IsDir(): // Module
-			c.Info("Resolving module", slog.String("modulePath", path))
+			c.Debug("Resolving module", slog.String("modulePath", path))
 			n, err := c.moduleFromDir(path, modules, 0)
 			klarFiles += n
 			if err != nil {

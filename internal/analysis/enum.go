@@ -43,7 +43,7 @@ var _ = [...]EnumParenter{&Enum{}, &EnumItem{}, &EnumRef{}, &EnumFunction{}}
 type EnumItem struct {
 	*Object  // Type is [*EnumItem]
 	Params   []Type
-	paramMap map[string]int
+	ParamMap map[string]int
 	Value    ConstValue
 	Enum     *Enum // For access to value type and methods
 }
@@ -134,7 +134,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 			continue
 		}
 		ei.Params = make([]Type, 0, len(entry.Parameters.Values))
-		ei.paramMap = make(map[string]int, len(entry.Parameters.Values))
+		ei.ParamMap = make(map[string]int, len(entry.Parameters.Values))
 		for _, pair := range entry.Parameters.Values {
 			typ := c.parseType(pair.Value, fctx) // TODO: Context should include the generic
 			for _, key := range pair.Keys {
@@ -142,7 +142,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 				if key.IsDiscard() {
 					continue
 				}
-				if _, ok := ei.paramMap[key.Name]; ok {
+				if _, ok := ei.ParamMap[key.Name]; ok {
 					err := klarerrs.Node(klarerrs.ErrRedeclaredParamLabel, key)
 					err.Name = key.Name
 					err.Label = "A parameter named " + quote(key.Name) + " already exists"
@@ -152,7 +152,7 @@ func (c *Checker) checkEnumDecl(o *Object, node *ast.EnumDeclaration) {
 					)
 					c.fileError(err, o.File)
 				} else {
-					ei.paramMap[key.Name] = len(ei.Params) - 1
+					ei.ParamMap[key.Name] = len(ei.Params) - 1
 				}
 			}
 			if len(pair.Keys) == 0 {
@@ -309,15 +309,17 @@ func (c *Checker) checkEnumValueExpr(expr ast.Expression, ctx *Context) ConstVal
 }
 
 func (item *EnumItem) ParamByName(label string) Type {
-	if item.paramMap == nil {
+	if item.ParamMap == nil {
 		return nil
 	}
-	i, ok := item.paramMap[label]
+	i, ok := item.ParamMap[label]
 	if !ok {
 		return nil
 	}
 	return item.Params[i]
 }
+
+func (e *Enum) LookupItem(name string) *EnumItem { return e.itemMap[name] }
 
 func (e *Enum) Index(name string, t *Expr) *klarerrs.Error {
 	if item, ok := e.itemMap[name]; ok {

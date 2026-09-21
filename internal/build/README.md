@@ -9,3 +9,12 @@ Welcome to the Klar compiler! The `build` package implements everything you thin
 5. **Optimization:** This begins the _backend_ of the compiler, mainly focused on converting high-level Klar to low-level JavaScript. When building for production, optimizations are run on the Klar code so the produced JavaScript is more efficient. We do eventually want to support more targets, so most optimizations occur on the Klar AST rather than the JavaScript IR (more on that later). The optimizations run by the compiler include inlining, dead code elimination, and constant folding. See [`internal/optimize`](../optimize/README.md) for more info.
 6. **Lowering:** High-level Klar code is lowered to JavaScript immediate representation (IR), yet another tree. The JavaScript IR is similar to the final JS produced by the compiler. For example, `when` statements are lowered to JavaScript `if` or `switch` statements.
 7. **Code generation (codegen):** The JavaScript IR is written to human-readable `.js` that JavaScript engines execute. See the [`internal/codegen`](../codegen/README.md) package to learn more.
+
+## Features in Progress
+
+- If a project root is an input, each of its packages should be compiled
+- `klar.build` support and path normalization
+
+## klar.build
+
+For each module, a `klar.build` will be resolved in the module's folder or its parents.

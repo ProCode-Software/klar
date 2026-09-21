@@ -826,12 +826,12 @@ func (pc *patternChecker) checkEnum(expr *ast.CallExpression) {
 				err := klarerrs.Node(klarerrs.ErrParamLabelUndefined, param.Label)
 				err.Name = param.Label.Name
 				err.Desc = "These params are defined: " + strings.Join(
-					slices.Sorted(maps.Keys(e.paramMap)), ", ",
+					slices.Sorted(maps.Keys(e.ParamMap)), ", ",
 				)
 				pc.fileError(err, pc.fid())
 				actualType = InvalidType
 			} else {
-				provided[e.paramMap[param.Label.Name]] = struct{}{}
+				provided[e.ParamMap[param.Label.Name]] = struct{}{}
 			}
 			// withParams(:a)
 			if param.Shorthand {

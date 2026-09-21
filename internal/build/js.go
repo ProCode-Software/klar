@@ -1,7 +1,7 @@
 package build
 
 import (
-	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/ProCode-Software/klar/internal/codegen"
 	"github.com/ProCode-Software/klar/internal/codegen/jswriter"
-	"github.com/sanity-io/litter"
+	"github.com/ProCode-Software/klar/internal/module"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -70,14 +70,18 @@ func (pkc *PackageCompiler) CodegenJS(mods []*Module) error {
 	var eg errgroup.Group
 	bundledModCh := make(chan loweredModule, len(mods))
 	for mod := range loweredModCh {
-		for _, file := range mod.ir {
+		/* for _, file := range mod.ir {
 			fmt.Printf("%s:\n", mod.FilePath(file.Name))
 			litter.Dump(file.IR)
 		}
-		fmt.Println()
+		fmt.Println() */
 
 		eg.Go(func() (err error) {
 			if mod.ir, err = jsc.bundleModule(mod); err != nil {
+				jsc.Logger.Error(
+					"Failed to bundle module",
+					slog.String("module", mod.Path), slog.Any("error", err),
+				)
 				return err
 			}
 			bundledModCh <- mod
@@ -96,29 +100,67 @@ func (pkc *PackageCompiler) CodegenJS(mods []*Module) error {
 		indent = 0
 	}
 	for mod := range bundledModCh {
+		// TODO: This has to be set earlier. Ensure this is correct,
+		// and whether the output is a file or directory is validated.
+		var outDir string
+		if false && pkc.KlarBuild != nil &&
+			len(pkc.KlarBuild.Output) > 0 && pkc.KlarBuild.Output[0] != "" {
+			// TODO: Make the output path relative to the location of the klar.build
+			outDir = pkc.KlarBuild.Output[0]
+		} else if pkc.PkgInfo != nil {
+			outDir = filepath.Join(append(
+				[]string{pkc.PkgInfo.Dir, module.DistDir},
+				mod.Checked.ImportPath...,
+			)...)
+		}
+		if outDir != "" {
+			if err := os.MkdirAll(outDir, 0o755); err != nil {
+				jsc.Logger.Error(
+					"Failed to create module output directory",
+					slog.String("module", mod.Path), slog.String("output", outDir),
+					slog.Any("error", err),
+				)
+				eg.Go(func() error { return err })
+				continue
+			}
+		}
+		jsc.Logger.Debug(
+			"Writing JavaScript for module",
+			slog.String("module", mod.Path), slog.Int("numFiles", len(mod.ir)),
+			slog.String("to", outDir),
+		)
 		for _, jsFile := range mod.ir {
-			eg.Go(func() error { return jsc.writeFile(jsFile, mod.Module, indent) })
+			eg.Go(func() error {
+				return jsc.writeFile(jsFile, mod.Module, outDir, indent)
+			})
 		}
 	}
 	return eg.Wait()
 }
 
 func (jsc *jsCompiler) lowerModule(mod *Module) []*codegen.File {
+	jsc.Logger.Debug("Lowering module to JavaScript", slog.String("module", mod.Path))
 	gen := codegen.NewGenerator(mod.Programs, mod.SortedFiles(), mod.Checked)
 	gen.Run()
 	return gen.Files
 }
 
 func (jsc *jsCompiler) bundleModule(mod loweredModule) (bundled []*codegen.File, err error) {
+	jsc.Logger.Debug("Bundling module", slog.String("module", mod.Path))
 	return mod.ir, nil
 }
 
-func (jsc *jsCompiler) writeFile(jsFile *codegen.File, mod *Module, indent int) error {
+func (jsc *jsCompiler) writeFile(
+	jsFile *codegen.File, mod *Module, outDir string, indent int,
+) error {
 	var outPath string
-	if mod.SingleFile {
-		outPath = strings.TrimSuffix(mod.Path, ".klar") + ".js"
+	if outDir != "" {
+		outPath = filepath.Join(
+			outDir,
+			strings.TrimSuffix(jsFile.Name, ".klar")+".js",
+		)
 	} else {
-		outPath = filepath.Join(mod.Path, strings.TrimSuffix(jsFile.Name, ".klar")+".js")
+		outPath = strings.TrimSuffix(mod.Path, ".klar") + ".js"
 	}
 	// TODO: Use the configured build output. If none and bundled,
 	// use the name of the module.
@@ -130,14 +172,18 @@ func (jsc *jsCompiler) writeFile(jsFile *codegen.File, mod *Module, indent int) 
 	if err := jswriter.WriteModule(jsFile.IR, f, indent); err != nil {
 		return &FilesystemError{"write to", outPath, err}
 	}
+	// TODO: Banner
 	return nil
 }
 
 func (jsc *jsCompiler) loweringProgress(ch chan struct{}) {
-	var done int
-	jsc.Progress.GeneratingJS(0, cap(ch))
+	total := cap(ch)
+	curr := 1
+	jsc.Progress.GeneratingJS(curr, total)
 	for range ch {
-		done++
-		jsc.Progress.GeneratingJS(done, cap(ch))
+		curr++
+		if curr <= cap(ch) {
+			jsc.Progress.GeneratingJS(curr, total)
+		}
 	}
 }

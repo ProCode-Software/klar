@@ -15,9 +15,14 @@ import (
 	"github.com/ProCode-Software/klar/internal/build/logger"
 	"github.com/ProCode-Software/klar/internal/cli"
 	"github.com/ProCode-Software/klar/internal/cli/ansi"
+	"github.com/ProCode-Software/klar/internal/config/glaslock"
+	"github.com/ProCode-Software/klar/internal/config/glaspack"
+	"github.com/ProCode-Software/klar/internal/config/klarbuild"
 	"github.com/ProCode-Software/klar/internal/klarerrs"
+	"github.com/ProCode-Software/klar/internal/module"
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/parser"
+	"github.com/ProCode-Software/klar/internal/target"
 	"github.com/ProCode-Software/klar/internal/util"
 	"github.com/ProCode-Software/klar/pkg/klarerrors/reporter"
 )
@@ -39,19 +44,23 @@ type Compiler struct {
 
 func NewCompiler(mode BuildMode, cwd string) *Compiler {
 	return &Compiler{
-		Mode:    mode,
-		FS:      SystemFS,
-		WorkDir: cwd,
-		Reporter: &reporter.Reporter{
-			MaxLines:     3,
-			Output:       os.Stderr,
-			ColorPalette: reporter.DefaultColorPalette(),
-			CharacterSet: reporter.DefaultCharacterSet(),
-			UseColor:     !ansi.DisableColor,
-		},
+		Mode:     mode,
+		FS:       SystemFS,
+		WorkDir:  cwd,
+		Reporter: DefaultReporter(),
 		Logger:   slog.New(slog.DiscardHandler),
 		Progress: HiddenProgress{},
 		IsDebug:  cli.Debug,
+	}
+}
+
+func DefaultReporter() *reporter.Reporter {
+	return &reporter.Reporter{
+		MaxLines:     3,
+		Output:       os.Stderr,
+		ColorPalette: reporter.DefaultColorPalette(),
+		CharacterSet: reporter.DefaultCharacterSet(),
+		UseColor:     !ansi.DisableColor,
 	}
 }
 
@@ -81,6 +90,22 @@ func (mode BuildMode) ShouldCodegen() bool {
 	return mode != ModeParse && mode != ModeAnalyze
 }
 
+type Input struct {
+	Path      string
+	Kind      InputKind
+	Manifest  *glaspack.Manifest
+	PkgInfo   *module.PackageInfo
+	Lockfile  *glaslock.Lockfile
+	KlarBuild *klarbuild.File // Deprecated: use [Module.KlarBuild]
+	Targets   []target.Target
+}
+
+func (i *Input) IsSingleFile() bool {
+	return i.Kind == KindFile || i.Kind == KindStdin
+}
+
+// TODO: Refactor this to optimize struct size
+
 type Module struct {
 	Assets      []string
 	Path        string                  // Directory path, or file if single-file
@@ -91,6 +116,12 @@ type Module struct {
 	Stdin       bool
 	Failed      bool     // Has errors
 	sortedFiles []string // Don't access directly; use [Module.SortedFiles]()
+	KlarBuild   *KlarBuildConfig
+}
+
+type KlarBuildConfig struct {
+	*klarbuild.File
+	Path string
 }
 
 func (m *Module) SortedFiles() []string {

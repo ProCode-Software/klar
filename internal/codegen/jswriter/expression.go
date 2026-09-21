@@ -142,7 +142,9 @@ func (w *Writer) writeFunction(fn *jsir.FunctionDeclaration, funcKeyword bool) {
 		}
 	}
 	if fn.Name != "" {
-		w.writeByte(' ')
+		if funcKeyword {
+			w.writeByte(' ')
+		}
 		w.writeString(fn.Name)
 	}
 
