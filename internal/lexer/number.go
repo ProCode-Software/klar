@@ -63,7 +63,7 @@ func ReadNumber(rd RuneReader, first rune) (string, NumberAttrs) {
 	b.WriteRune(first)
 
 	// Format prefix
-	if first != '0' {
+	if first == '0' {
 		if r, err := rd.CurrRune(); err == nil {
 			switch r {
 			case 'x':
