@@ -499,7 +499,7 @@ type FunctionParam struct {
 // func x = module.y
 type FuncAliasDeclaration struct {
 	BaseNode
-	Struct     *Identifier
+	SelfType   *Identifier
 	Identifier Identifier
 	Target     Expression
 }

@@ -9,6 +9,8 @@ import (
 )
 
 type DeclarationInfo struct {
+	// [*ast.FunctionDeclaration], [*ast.FuncAliasDeclaration],
+	// [ast.TypeDeclaration], or [ast.VariableDeclaration]
 	node     ast.Statement
 	varInfo  *varInfo // For var/const declaration.
 	funcKind funcKind // For function declaration.
@@ -275,7 +277,7 @@ func (c *Checker) validateReceiver(name string, self *Object,
 		if meth.decl != nil {
 			return meth.decl.SelfType.Range()
 		} else {
-			return meth.alias.Struct.Range()
+			return meth.alias.SelfType.Range()
 		}
 	}
 	// Error if:

@@ -23,20 +23,29 @@ func (*ExportModifierStatement) _stmt() {}
 func (*NamedExportsStatement) _stmt()   {}
 func (*ExportFromStatement) _stmt()     {}
 
-func (*BinaryExpression) _expr()     {}
-func (*UnaryExpression) _expr()      {}
-func (*NullLiteral) _expr()          {}
-func (*UndefinedLiteral) _expr()     {}
-func (*Symbol) _expr()               {}
-func (*BooleanLiteral) _expr()       {}
-func (*NumericLiteral) _expr()       {}
-func (*StringLiteral) _expr()        {}
-func (*TemplateLiteral) _expr()      {}
-func (*AssignmentExpression) _expr() {}
-func (*SpreadExpression) _expr()     {}
-func (*ArrayLiteral) _expr()         {}
-func (*ObjectLiteral) _expr()        {}
+func (*BinaryExpression) _expr()       {}
+func (*UnaryExpression) _expr()        {}
+func (*PostfixUnaryExpression) _expr() {}
+func (*NullLiteral) _expr()            {}
+func (*UndefinedLiteral) _expr()       {}
+func (*Symbol) _expr()                 {}
+func (*BooleanLiteral) _expr()         {}
+func (*NumericLiteral) _expr()         {}
+func (*RegExpLiteral) _expr()          {}
+func (*StringLiteral) _expr()          {}
+func (*TemplateLiteral) _expr()        {}
+func (*AssignmentExpression) _expr()   {}
+func (*SpreadExpression) _expr()       {}
+func (*ArrayLiteral) _expr()           {}
+func (*ObjectLiteral) _expr()          {}
+func (*MemberExpression) _expr()       {}
+func (*CallExpression) _expr()         {}
+func (*TernaryExpression) _expr()      {}
+func (*CommaExpression) _expr()        {}
+func (*ArrowFunction) _expr()          {}
 
 // Functions and classes are also expressions in JS, even with names
 func (*FunctionDeclaration) _expr() {}
 func (*ClassDeclaration) _expr()    {}
+func (*FunctionDeclaration) _stmt() {}
+func (*ClassDeclaration) _stmt()    {}

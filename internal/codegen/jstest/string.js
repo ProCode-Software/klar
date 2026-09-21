@@ -4,7 +4,8 @@ class KlarString extends String {
     constructor(str) {
         super(str)
     }
-    get length() { // Unreachable
+    get length() {
+        // Unreachable
         if (this.#cachedSegments == null) this.#makeSegments()
         return this.#cachedSegments.length
     }
@@ -29,7 +30,7 @@ for (const str of strings) {
         ks instanceof String,
         typeof ks,
         ks + ' world',
-        [...ks],
+        [...ks]
     )
     console.log('JS String:', str.length)
     console.log()

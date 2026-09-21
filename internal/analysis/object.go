@@ -142,7 +142,7 @@ func (o *Object) Clone(mod *Module, fid FileID, rang ranges.Range) *Object {
 }
 
 // Node returns the AST node that represents o's declaration.
-func (o *Object) Node() ast.Node { return o.info.node }
+func (o *Object) Node() ast.Statement { return o.info.node }
 
 type ObjectKind interface {
 	Type

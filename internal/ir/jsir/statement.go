@@ -59,7 +59,7 @@ const (
 
 type ForStatement struct {
 	Kind     ForLoopKind
-	CForLoop *[3]Statement // Second item must be [ExpressionStatement]
+	CForLoop *CForLoop
 
 	// Specific to for-of/for-in loops
 	BindingKind BindingKind
@@ -67,6 +67,13 @@ type ForStatement struct {
 	Iterator    Expression
 
 	Body *Block
+}
+
+// All fields may be nil
+type CForLoop struct {
+	Init   Statement
+	Test   Expression
+	Update Expression
 }
 
 type WhileStatement struct {

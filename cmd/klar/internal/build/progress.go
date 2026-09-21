@@ -39,6 +39,19 @@ func (s *BuildStatus) CheckingModule(path string, curr, total int) {
 	s.printf("🧠 Typechecking module <c>%s</c> </><d>%d/%d</d>", s.rel(path), curr, total)
 }
 
+func (s *BuildStatus) GeneratingJS(curr, total int) {
+	// 🔁
+	s.printf("✏️ Converting modules to JavaScript </><d>%d/%d</d>", curr, total)
+}
+
+func (s *BuildStatus) OptimizingModule(module string, curr, total int) {
+	s.printf("⚡ Optimizing module <c>%s</c> </><d>%d/%d</d>", s.rel(module), curr, total)
+}
+
+func (s *BuildStatus) WritingModules() {
+	s.printf("🖨️ Writing modules") // 🔁
+}
+
 func (s *BuildStatus) printf(f string, args ...any) {
 	s.loading = false
 	fmt.Print(ansi.ClearLine)

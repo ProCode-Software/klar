@@ -295,14 +295,14 @@ func (c *Checker) declareFuncAlias(stmt *ast.FuncAliasDeclaration, sc *stmtColle
 		sc.fid, stmt.Range, c.Module, &FunctionAlias{},
 	)
 	obj.Public = public
-	if stmt.Struct != nil {
+	if stmt.SelfType != nil {
 		// Method alias
-		sc.declareMethod(stmt.Struct, methodInfo{alias: stmt, obj: obj})
+		sc.declareMethod(stmt.SelfType, methodInfo{alias: stmt, obj: obj})
 	}
 	// Both methods and normal aliases have their info recorded.
 	obj.info = &DeclarationInfo{node: stmt}
 	obj.Order = sc.nextOrder()
-	c.declareWithInfo(obj, sc.ctx, attrs, stmt.Struct == nil)
+	c.declareWithInfo(obj, sc.ctx, attrs, stmt.SelfType == nil)
 }
 
 // declareType declares a [TypeName] object for the given type declaration.

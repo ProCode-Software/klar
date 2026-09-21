@@ -510,7 +510,7 @@ func (p *Parser) ParseFuncAlias(f *ast.FunctionDeclaration) *ast.FuncAliasDeclar
 	}
 	return &ast.FuncAliasDeclaration{
 		Identifier: f.Identifier,
-		Struct:     f.SelfType,
+		SelfType:   f.SelfType,
 		Target:     target,
 	}
 }

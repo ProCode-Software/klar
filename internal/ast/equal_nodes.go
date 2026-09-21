@@ -413,7 +413,7 @@ func (a *FuncAliasDeclaration) Equal(b2 Node) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if !a.Struct.Equal(b.Struct) {
+	if !a.SelfType.Equal(b.SelfType) {
 		return false
 	}
 	if !a.Identifier.Equal(b.Identifier) {

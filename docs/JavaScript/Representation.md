@@ -15,6 +15,7 @@ The generated representation for Klar types may not pass TypeScript typechecking
 - Maps are JavaScript `Map`
 - Assertions call a function to throw an error when the value is nil
 - Bools, Ints, and Floats are converted to JavaScript `Boolean` and `Number`
+- All variables and constants are declared with `let`, except for public top-level constants, which will use `const`. This is because the keyword `let` is less bytes than `const`, and mutability doesn't matter for generated code.
 
 ## Structs
 
@@ -253,3 +254,38 @@ For the JavaScript representation, see [internal/codegen/jstest/enum.js](./inter
 Top-level code in `main.klar` is run only if [`import.meta.main`](https://nodejs.org/api/esm.html#importmetamain) is true. `import.meta.main` is pretty new in Node.js, and is unavailable in the browser.
 
 If the module containing `main.klar` is an input to the `klar build` command, and library mode is disabled, top-level code is always run.
+
+## Type Aliases
+
+Type aliases are only included in the compiled JavaScript if they:
+
+- Are public
+- Refer to a concrete type name, and
+- Don't refer to an interface.
+
+Type aliases are declared as JavaScript variables.
+
+These will be included:
+
+```klar
+type Greeter {
+    name: String
+}
+
+public type HelloGreeter = Greeter
+```
+
+These won't included:
+
+```klar
+type #Greeting {
+    greet(name: String) -> String
+}
+
+type HelloGreeter = Greeter // Not public
+public type CanGreet = Greeting // Refers to an interface
+public type BuiltinGreeter = Greeter | FancyGreeter // Not a concrete type
+// Not user-declared types
+public type GreeterGetter = func() -> Greeter
+public type GreeterStylePair = (GreeterStyle, Greeter)
+```

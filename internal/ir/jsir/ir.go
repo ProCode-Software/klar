@@ -26,3 +26,9 @@ const (
 	BlockComment                    // /*
 	Hashbang                        // #!
 )
+
+// This is to avoid allocating new [NullLiteral]s for each null value
+var (
+	Null      = &NullLiteral{}
+	Undefined = &UndefinedLiteral{}
+)

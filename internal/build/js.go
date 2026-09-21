@@ -41,16 +41,30 @@ func (pkc *PackageCompiler) CodegenJS(mods []*Module) error {
 	// safely be name-mangled.
 
 	// 1. Lower each module and reorganize JS IR
-	var wg sync.WaitGroup
-	loweredModCh := make(chan loweredModule, len(mods))
+	var (
+		wg           sync.WaitGroup
+		loweredModCh = make(chan loweredModule, len(mods))
+		progressCh   chan struct{}
+	)
+	if !pkc.ProgressHidden() {
+		// Show progress to the user
+		progressCh = make(chan struct{}, len(mods))
+		go jsc.loweringProgress(progressCh)
+	}
 	for _, mod := range mods {
 		wg.Go(func() {
 			files := jsc.lowerModule(mod)
 			loweredModCh <- loweredModule{Module: mod, ir: files}
+			if progressCh != nil {
+				progressCh <- struct{}{}
+			}
 		})
 	}
 	wg.Wait()
 	close(loweredModCh)
+	if progressCh != nil {
+		close(progressCh)
+	}
 
 	// 2. Bundle
 	var eg errgroup.Group
@@ -76,6 +90,7 @@ func (pkc *PackageCompiler) CodegenJS(mods []*Module) error {
 	close(bundledModCh)
 
 	// 3. Write to disk
+	pkc.Progress.WritingModules()
 	indent := JavaScriptIndentSize
 	if pkc.KlarBuild != nil && pkc.KlarBuild.JS != nil && pkc.KlarBuild.JS.Minify {
 		indent = 0
@@ -89,7 +104,7 @@ func (pkc *PackageCompiler) CodegenJS(mods []*Module) error {
 }
 
 func (jsc *jsCompiler) lowerModule(mod *Module) []*codegen.File {
-	gen := codegen.NewGenerator(mod.Programs, mod.Checked)
+	gen := codegen.NewGenerator(mod.Programs, mod.SortedFiles(), mod.Checked)
 	gen.Run()
 	return gen.Files
 }
@@ -101,7 +116,7 @@ func (jsc *jsCompiler) bundleModule(mod loweredModule) (bundled []*codegen.File,
 func (jsc *jsCompiler) writeFile(jsFile *codegen.File, mod *Module, indent int) error {
 	var outPath string
 	if mod.SingleFile {
-		outPath = strings.TrimSuffix(mod.Path, ".klar")+".js"
+		outPath = strings.TrimSuffix(mod.Path, ".klar") + ".js"
 	} else {
 		outPath = filepath.Join(mod.Path, strings.TrimSuffix(jsFile.Name, ".klar")+".js")
 	}
@@ -116,4 +131,13 @@ func (jsc *jsCompiler) writeFile(jsFile *codegen.File, mod *Module, indent int) 
 		return &FilesystemError{"write to", outPath, err}
 	}
 	return nil
+}
+
+func (jsc *jsCompiler) loweringProgress(ch chan struct{}) {
+	var done int
+	jsc.Progress.GeneratingJS(0, cap(ch))
+	for range ch {
+		done++
+		jsc.Progress.GeneratingJS(done, cap(ch))
+	}
 }

@@ -9,13 +9,24 @@ import (
 // A newline isn't appended.
 func (w *Writer) writeStatement(stmt jsir.Statement) {
 	switch stmt := stmt.(type) {
-	// Generic
+	// Basic
 	case *jsir.ExpressionStatement:
+		// Ensure a semicolon is put before an array destructure
+		// TODO: Any type of an expression can start with parentheses.
+		// Ensure a semicolon is added before it.
+		if assign, ok := stmt.Expression.(*jsir.AssignmentExpression); ok {
+			w.writeAssignmentExpr(assign, true)
+			break
+		}
 		w.writeExpression(stmt.Expression)
 	case *jsir.BindingDeclaration:
 		w.writeString(stmt.Kind.String())
 		w.writeByte(' ')
 		w.writeBinding(&stmt.Binding)
+	case *jsir.FunctionDeclaration:
+		w.writeFunction(stmt, true)
+	case *jsir.ClassDeclaration:
+		w.writeClass(stmt)
 	case *jsir.MultiBindingDeclaration:
 		w.writeString(stmt.Kind.String())
 		w.writeByte(' ')
@@ -76,6 +87,8 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 		w.writeString("while (")
 		w.writeExpression(stmt.While)
 		w.writeString(")")
+	case *jsir.TryStatement:
+		w.writeTryStmt(stmt)
 	case *jsir.ContinueStatement:
 		w.writeString("continue")
 		if stmt.Label != "" {
@@ -93,7 +106,14 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 		if stmt.Default {
 			w.writeString("default ")
 		}
-		w.writeExpression(stmt.Declaration)
+		switch obj := stmt.Declaration.(type) {
+		case jsir.Statement:
+			w.writeStatement(obj)
+		case jsir.Expression:
+			w.writeExpression(obj)
+		default:
+			panic(fmt.Sprintf("invalid ExportModifierStatement declaration: %T", obj))
+		}
 	case *jsir.NamedExportsStatement:
 		w.writeString("export ")
 		w.writeImportNames(stmt.Exports)
@@ -108,8 +128,9 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 func (w *Writer) writeBlock(body *jsir.Block) {
 	if len(body.Statements) == 0 {
 		w.writeString("{}")
+		return
 	}
-
+	// TODO: Should we put a single statement on the same line as the braces?
 	w.writeString("{\n")
 	w.increaseLevel()
 	w.writeStatementList(body.Statements)
@@ -140,7 +161,7 @@ func (w *Writer) writeControlBlock(body *jsir.Block) {
 }
 
 func (w *Writer) writeBinding(b *jsir.Binding) {
-	w.writeDestructure(b.Variable)
+	w.writeExpression(b.Variable)
 	if b.Type != nil {
 		w.writeString(": ")
 		w.writeTSType(b.Type)
@@ -148,15 +169,6 @@ func (w *Writer) writeBinding(b *jsir.Binding) {
 	if b.Value != nil {
 		w.writeString(" = ")
 		w.writeExpression(b.Value)
-	}
-}
-
-func (w *Writer) writeDestructure(dest jsir.Destructure) {
-	switch dest := dest.(type) {
-	case jsir.Expression:
-		w.writeExpression(dest)
-	default:
-		panic(fmt.Sprintf("unhandled destructure: %T", dest))
 	}
 }
 
@@ -245,7 +257,7 @@ func (w *Writer) writeForStmt(stmt *jsir.ForStatement) {
 	case jsir.ForOfLoop, jsir.ForInLoop:
 		w.writeString(stmt.BindingKind.String())
 		w.writeByte(' ')
-		w.writeDestructure(stmt.Variable)
+		w.writeExpression(stmt.Variable)
 		if stmt.Kind == jsir.ForOfLoop {
 			w.writeString(" of ")
 		} else {
@@ -253,27 +265,44 @@ func (w *Writer) writeForStmt(stmt *jsir.ForStatement) {
 		}
 		w.writeExpression(stmt.Iterator)
 	case jsir.ForCLoop:
-		for i, inner := range stmt.CForLoop {
-			if i > 0 {
-				w.writeString("; ")
-			}
-			if i == 1 {
-				if exprStmt, ok := inner.(*jsir.ExpressionStatement); ok {
-					w.writeExpression(exprStmt.Expression) // Optimization
-					continue
-				}
-				panic(fmt.Sprintf(
-					"jsir.ForStatement.CForLoop[1] must be an ExpressionStatement, got %T",
-					inner,
-				))
-			}
-			w.writeStatement(inner)
+		if stmt.CForLoop.Init != nil {
+			w.writeStatement(stmt.CForLoop.Init)
+		}
+		w.writeString("; ")
+		if stmt.CForLoop.Test != nil {
+			w.writeExpression(stmt.CForLoop.Test)
+		}
+		w.writeString("; ")
+		if stmt.CForLoop.Update != nil {
+			w.writeExpression(stmt.CForLoop.Update)
 		}
 	default:
 		panic(fmt.Sprintf("unknown ForLoopKind: %d", stmt.Kind))
 	}
 	w.writeString(") ")
 	w.writeControlBlock(stmt.Body)
+}
+
+func (w *Writer) writeTryStmt(stmt *jsir.TryStatement) {
+	// Braces are always required around the blocks
+	w.writeString("try ")
+	w.writeBlock(stmt.Try)
+	if stmt.Catch != nil {
+		w.writeString(" catch ")
+		if stmt.CatchExpr != nil {
+			w.writeByte('(')
+			w.writeExpression(stmt.CatchExpr)
+			w.writeString(") ")
+		}
+		w.writeBlock(stmt.Catch)
+	}
+	if stmt.Finally != nil {
+		w.writeString(" finally ")
+		w.writeBlock(stmt.Finally)
+	}
+	if stmt.Catch == nil && stmt.Finally == nil {
+		panic("both Catch and Finally are nil in jsir.TryStatement")
+	}
 }
 
 func (w *Writer) writeImportName(imp jsir.ImportName) {
@@ -324,7 +353,7 @@ func (w *Writer) writeImportStmt(stmt *jsir.ImportStatement) {
 		stmt.DefaultImport != nil; needsFrom {
 		w.writeString(" from ")
 	}
-	w.writeString("'" + stmt.From + "'") // TODO: Quote
+	w.writeStringLiteral(&jsir.StringLiteral{jsir.AutoQuote, stmt.From})
 	if len(stmt.With) > 0 {
 		w.writeImportWith(stmt.With)
 	}
@@ -346,7 +375,7 @@ func (w *Writer) writeExportFromStmt(stmt *jsir.ExportFromStatement) {
 		)
 	}
 	w.writeString(" from ")
-	w.writeString("'" + stmt.From + "'") // TODO: Quote
+	w.writeStringLiteral(&jsir.StringLiteral{jsir.AutoQuote, stmt.From})
 	if len(stmt.With) > 0 {
 		w.writeImportWith(stmt.With)
 	}
@@ -354,5 +383,15 @@ func (w *Writer) writeExportFromStmt(stmt *jsir.ExportFromStatement) {
 
 func (w *Writer) writeImportWith(with map[string]jsir.StringLiteral) {
 	w.writeString(" with { ")
+	var once bool
+	for k, v := range with {
+		if once {
+			w.writeString(", ")
+		}
+		w.writeString(k) // TODO: Quote
+		w.writeString(": ")
+		w.writeStringLiteral(&v)
+		once = true
+	}
 	w.writeString(" }")
 }

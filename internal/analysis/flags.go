@@ -16,7 +16,9 @@ const (
 	ImplicitVar
 	// Passed to [Checker.parseType] to avoid errors for a generic without params
 	genericLHS
-	UsageOptional // No warnings if unused0
+	UsageOptional     // No warnings if unused
+	EnumFromNameUsed  // Enum(withName: String) initializer used for type
+	EnumFromValueUsed // Enum(withValue: V) initializer used for type
 )
 
 func parseFlags[T ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](flags []T) (flag T) {

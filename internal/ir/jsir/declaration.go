@@ -48,37 +48,40 @@ func (k BindingKind) String() string {
 	}
 }
 
-type Destructure interface{ _destructure() }
+type Destructure Expression
 
-type FunctionModifiers uint
+type FunctionDeclaration struct {
+	Modifiers     FunctionModifiers
+	Name          string           // Can be empty if used as an expression
+	Params        []*FunctionParam // Excluding variadic param
+	VariadicParam *FunctionParam   // If variadic (declared with '...')
+	ReturnType    TSType
+	Body          *Block // Can be nil in TypeScript
+}
+
+type FunctionModifiers uint8
 
 const (
 	AsyncFunction FunctionModifiers = 1 << iota
 	GeneratorFunction
 )
 
-type FunctionDeclaration struct {
-	Modifiers     FunctionModifiers
-	Name          string // Can be empty if used as an expression
-	Params        []*FunctionParam
-	VariadicParam *FunctionParam // If variadic (declared with '...')
-	ReturnType    TSType
-	Body          *Block // Can be nil in TypeScript
-}
-
 type FunctionParam struct {
-	Name    string
+	Name    Destructure
 	Type    TSType     // TypeScript only
 	Default Expression // Can be nil
 }
 
 type ClassDeclaration struct {
-	Name    string // Can be empty if expression
-	Extends string // Can be empty
-	Fields  []*BindingDeclaration
-	Methods []*FunctionDeclaration     // Includes 'constructor'
-	Flags   map[any]ClassPropertyFlags // Keys must be in Fields or Methods
+	Name       string // Can be empty if expression
+	Extends    string // Can be empty
+	Fields     []*Binding
+	Methods    []*FunctionDeclaration     // Includes 'constructor'
+	Flags      map[any]ClassPropertyFlags // Keys must be in Fields or Methods
+	StaticInit *Block                     // static {}
 	// TODO: 'implements' for TS?
+	// Getters and setters can also be `get/set [computedExpr]()`
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get
 }
 
 type ClassPropertyFlags uint8
@@ -127,9 +130,9 @@ type ImportName struct {
 //	export const ...
 type ExportModifierStatement struct {
 	Default bool
-	// If not Default, must be [BindingDeclaration], [FunctionDeclaration],
-	// or [ClassDeclaration]
-	Declaration Expression
+	// If Default, must be [Expression], otherwise must be [BindingDeclaration],
+	// [FunctionDeclaration], or [ClassDeclaration]
+	Declaration any
 }
 
 // Uses braces

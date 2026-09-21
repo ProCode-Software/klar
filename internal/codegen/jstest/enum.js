@@ -14,7 +14,7 @@ class TokenType {
     }
     equals(other) {
         // TODO: Check equality of parameters
-        return this.rawValue === other.rawValue
+        return this.rawValue === other?.rawValue
     }
     static from(rawValue) {
         if (!this.#names[rawValue]) return undefined

@@ -90,7 +90,7 @@ func (n *ForStatement) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *FuncAliasDeclaration) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Struct}, walkNode{2, n.Identifier}, walkNode{3, n.Target})
+	return walkFields(v, n, c, walkNode{1, n.SelfType}, walkNode{2, n.Identifier}, walkNode{3, n.Target})
 }
 
 func (n *FunctionDeclaration) Walk(v Visitor, c *Cursor) StopCode {

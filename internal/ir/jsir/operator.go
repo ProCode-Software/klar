@@ -8,7 +8,7 @@ type Operator uint8
 const (
 	_ Operator = iota
 
-	// Comparison
+	// Relational/Comparison
 
 	OpEqual          // ==
 	OpNotEqual       // !=
@@ -18,6 +18,8 @@ const (
 	OpLessThan       // <
 	OpGreaterEqual   // >=
 	OpLessEqual      // <=
+	OpIn             // in
+	OpInstanceof     // instanceof
 
 	// Arithmetic
 
@@ -75,3 +77,23 @@ const (
 	OpYield     // yield
 	OpYieldStar // yield*
 )
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_precedence
+func (op Operator) Precedence() int {
+	return 0
+}
+
+type Precedencer interface {
+	Precedence() int
+}
+
+// ShouldAddSpace reports whether spaces should be written around the operator.
+// ShouldAddSpace assumes the operator is used in a unary context. If the operator
+// isn't a unary operator, it returns false.
+func (op Operator) ShouldAddSpace() bool {
+	switch op {
+	case OpBitwiseNot, OpIncrement, OpDecrement, OpLogicalNot, OpPlus, OpMinus:
+		return true
+	}
+	return false
+}
