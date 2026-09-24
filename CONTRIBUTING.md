@@ -205,7 +205,7 @@ Then run `go mod tidy` to install the dependencies and tools defined in the proj
 go build ./cmd/klar
 
 # Generate code prior to running/building
-make gen # Use this over `go generate`
+go generate ./...
 
 # Run Go tests
 go test ./...
@@ -219,7 +219,7 @@ go test ./...
 We have more information about what to do before submitting changes, but as a TL;DR, run the following:
 
 ```sh
-make gen # Create generated files
+go generate ./... # Create generated files
 ./scripts/format.sh # Format
 go test ./... # Run tests
 ./scripts/lint.sh # Lint
@@ -257,7 +257,7 @@ Regenerating files is required after making changes to the following:
 - The `internal/ast` package
 - Error codes in `internal/klarerrs`
 
-To generate these files, run `make gen`.
+To generate these files, run `go generate ./...`.
 
 #### Testing the Compiler
 

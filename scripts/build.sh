@@ -28,7 +28,7 @@ LDFLAGS=(-w "-X 'github.com/ProCode-Software/klar/internal/cli.Klar"{Version=$VE
 
 function pre_build() {
     # Generate code
-    (cd "$KLAR_ROOT" && make gen)
+    (cd "$KLAR_ROOT" && go generate ./...)
     # Run tests
     for os in "${OSES[@]}"; do
         for arch in ${ARCHES[$os]}; do

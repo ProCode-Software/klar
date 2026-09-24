@@ -49,7 +49,7 @@ You may research online about new language and stdlib features. You can also use
 
 - **Run `./run` to run the Klar CLI**
 - Run `make build` to compile the main Klar binary
-- Run `make gen` before submitting if AST types changed, or if objects/types that need to be generated have changed.
+- Run `go generate ./...` before submitting if AST types changed, or if objects/types that need to be generated have changed.
 - Run `./scripts/lint.sh` to validate code quality
 - Run `./scripts/format.sh` before submitting changes
 - In no circumstance should you use the v1 `encoding/json` package. You must always use `encoding/json/v2`.
