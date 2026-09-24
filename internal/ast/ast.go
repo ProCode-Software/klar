@@ -6,7 +6,7 @@ import (
 	"github.com/ProCode-Software/klar/internal/ranges"
 )
 
-//go:generate go run ../cmd/asttempl
+//go:generate ../../scripts/generate_ast_nodes.sh
 
 // All AST tokens implement the Node interface.
 type Node interface {

@@ -1062,7 +1062,7 @@ func (a *RegexLiteral) Equal(b2 Node) bool {
 	if a.Source != b.Source {
 		return false
 	}
-	if !equalSlice(a.Flags, b.Flags) {
+	if a.Flags != b.Flags {
 		return false
 	}
 	if !equalSlice(a.Fragments, b.Fragments) {
