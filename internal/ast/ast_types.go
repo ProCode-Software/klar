@@ -95,7 +95,7 @@ type FloatLiteral struct {
 type RegexLiteral struct {
 	BaseNode
 	Source    string
-	Flags     []byte
+	Flags     string
 	Fragments []StringFragment // Only [TextFragment] and [InterpolationFragment]
 	Multiline bool
 }

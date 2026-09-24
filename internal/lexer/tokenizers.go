@@ -101,7 +101,7 @@ func (l *Lexer) ReadBlockComment(pos Position) *Token {
 }
 
 type RegexAttrs struct {
-	Flags        []byte
+	Flags        string
 	Source       string // Deprecated: Use Fragements instead. Actual expression contents
 	Unterminated bool
 	Multiline    bool
@@ -213,6 +213,10 @@ loop:
 		}
 		c := byte(r)
 		b.WriteByte(c) // Append to full source
+		if flags == nil {
+			// Most regexes won't have more flags than this
+			flags = make([]byte, 0, 3)
+		}
 		flags = append(flags, c)
 		leng++
 	}
@@ -229,7 +233,7 @@ loop:
 		"params": RegexAttrs{
 			Source:       str[len(prefix):srcEnd],
 			Multiline:    hasNewline,
-			Flags:        flags,
+			Flags:        string(flags),
 			Unterminated: unterm,
 			Fragments:    frags,
 		},
