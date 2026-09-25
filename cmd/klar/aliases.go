@@ -7,10 +7,4 @@ var Aliases = map[string]string{
 	"check": "lint",
 }
 
-// Set command aliases
-func init() {
-	for alias, cmd := range Aliases {
-		c := Commands[cmd]
-		c.Aliases = append(c.Aliases, alias)
-	}
-}
+

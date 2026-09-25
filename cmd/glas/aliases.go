@@ -18,10 +18,3 @@ var Aliases = map[string]string{
 	"prune":     "clean",
 }
 
-// Set command aliases
-func init() {
-	for alias, cmd := range Aliases {
-		c := Commands[cmd]
-		c.Aliases = append(c.Aliases, alias)
-	}
-}

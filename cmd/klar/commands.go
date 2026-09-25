@@ -112,9 +112,7 @@ type s = []string
 func init() {
 	for name, cmd := range Commands {
 		cmd.Name = name
-		if cmd.Flags != nil {
-			cmd.Usage = cmd.Flags.Pattern
-		}
 	}
 	command.Commands = Commands
+	command.Aliases = Aliases
 }
