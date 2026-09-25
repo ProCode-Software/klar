@@ -251,8 +251,8 @@ func ParseFlags(r *argparse.Parser, i *build.Input) {
 				return r.Flags[a].Index - r.Flags[b].Index
 			})[0]
 			cli.Failure(fmt.Sprintf(
-				"Can't use JavaScript flag '--%s' with target '%s'",
-				firstJSFlag, f.Target,
+				"Can't use JavaScript flag '--%s' on the %s target",
+				firstJSFlag, f.Target.Name(),
 			))
 		}
 		switch setting {
