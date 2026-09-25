@@ -1,7 +1,7 @@
 // A simple group of characters read by [Lexer].
 public type Token {
     .identifier(name: String)
-    .number(num: String) = num
+    .number(num: String)
     .string(content: String, singleQuote: Bool)
     // A comment until the end of the line. Has no meaning.
     .comment(text: String)
