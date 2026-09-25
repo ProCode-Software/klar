@@ -9,6 +9,7 @@ import (
 var (
 	ExecName string = "klar"
 	Commands map[string]*Command
+	Aliases  map[string]string
 )
 
 type ExampleCmd struct {
@@ -21,12 +22,10 @@ type ExampleCmd struct {
 type Command struct {
 	Name             string
 	ShortDescription string
-	Usage            []string
-	Aliases          []string
 	Run              RunFunc
 
 	// Shown in command help
-	Subcommands     []*Command
+	Subcommands     *[]*Command
 	Flags           *argparse.Parser
 	LongDescription string
 	SeeAlso         []string

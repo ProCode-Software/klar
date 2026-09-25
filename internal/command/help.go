@@ -42,17 +42,30 @@ func (c *Command) ArgUsage() string {
 }
 
 func (c *Command) AliasesString() string {
+	aliases := getAliases(c.Name)
+	if len(aliases) == 0 {
+		return ""
+	}
 	var b strings.Builder
-	b.Grow(10 + len(c.Aliases)*4)
+	b.Grow(10 + len(aliases)*4)
 	b.WriteString(ansi.Bold("Aliases"))
 	b.WriteString(ansi.BoldDim(": "))
-	for i, alias := range c.Aliases {
+	for i, alias := range aliases {
 		if i > 0 {
 			b.WriteString(", ")
 		}
 		b.WriteString(formatCmd(alias))
 	}
 	return b.String()
+}
+
+func getAliases(cmd string) (aliases []string) {
+	for alias, target := range Aliases {
+		if target == cmd {
+			aliases = append(aliases, alias)
+		}
+	}
+	return
 }
 
 func (c *Command) SeeAlsoString(indent int) string {

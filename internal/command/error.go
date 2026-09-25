@@ -50,7 +50,7 @@ func (c *Command) handleFlagError(err error) {
 			"<**>Too many arguments provided:</**> <c!>%s</c!>\n"+
 				"Expected %s, but %s provided.\n\n%s",
 			strings.Join(err.Extra, " "),
-			klarerrs.FormatCount(len(c.Usage), "argument"),
+			klarerrs.FormatCount(len(c.Flags.Pattern), "argument"),
 			klarerrs.FormatCountCustom(len(err.Extra), "none were", "1 was", "%d were"),
 			c.ArgUsage(),
 		)

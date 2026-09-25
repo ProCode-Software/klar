@@ -2,8 +2,9 @@ package command
 
 var fullHelpTemplate = `
 {{- .ArgUsage -}}
-{{ if .Aliases }}
-{{ .AliasesString }}
+{{- $aliasesString := .AliasesString -}}
+{{ if $aliasesString }}
+{{ $aliasesString }}
 {{- end }}
 
 {{ or .LongDescription .ShortDescription | wrap }}
@@ -34,4 +35,4 @@ var fullHelpTemplate = `
 
 var usageTemplate = `
 {{- title "Usage" -}} {{ exec }} {{ bold "33" .Name }}
-{{- range .Usage }} {{ ansi "36" . }} {{- end -}}`
+{{- range .Flags.Pattern }} {{ ansi "36" . }} {{- end -}}`
