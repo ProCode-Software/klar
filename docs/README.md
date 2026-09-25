@@ -11,5 +11,12 @@ The `docs` folder contains documentation related to the internals of the Klar pr
     - JavaScript IR: [`internal/ir/jsir`](../internal/ir/jsir/README.md)
     - JavaScript Codegen: [`internal/codegen`](../internal/codegen/README.md)
 - **Klon:** [`pkg/klon`](../pkg/klon/README.md)
-- **Language Server:** [`internal/lsp`](../internal/lsp/README.md)
 - **CLI Diagnostics:** [`pkg/klarerrors/reporter`](../pkg/klarerrors/reporter/README.md)
+
+## Glas
+
+- **Lockfile (`glas.lock`)**: [`internal/config/glaslock`](../internal/config/glaslock/README.md)
+
+## Tooling
+
+- **Language Server:** [`internal/lsp`](../internal/lsp/README.md)
