@@ -12,6 +12,7 @@ import (
 )
 
 func Main(lookupKlarCmd func(string) *command.Command) {
+	setCommands()
 	args := os.Args
 	if len(args) < 2 {
 		ShowHelp(os.Stderr, false)

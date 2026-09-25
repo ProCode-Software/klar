@@ -57,6 +57,25 @@ var Commands = map[string]*command.Command{
 	},
 }
 
+var Aliases = map[string]string{
+	// Alias -> Command
+	"i":         "install",
+	"a":         "add",
+	"+":         "add",
+	"u":         "remove",
+	"uninstall": "remove",
+	"r":         "remove",
+	"rm":        "remove",
+	"ls":        "list",
+	"tree":      "list",
+	"p":         "publish",
+	"pub":       "publish",
+	"up":        "update",
+	"show":      "info",
+	"prune":     "clean",
+	"doc":       "docs",
+}
+
 type s = []string
 
 // Set command names
@@ -64,6 +83,9 @@ func init() {
 	for name, cmd := range Commands {
 		cmd.Name = name
 	}
+}
+
+func setCommands() {
 	command.Commands = Commands
 	command.Aliases = Aliases
 }

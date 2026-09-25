@@ -106,6 +106,13 @@ var Commands = map[string]*command.Command{
 	},
 }
 
+var Aliases = map[string]string{
+	"b":     "build",
+	"r":     "run",
+	"up":    "upgrade",
+	"check": "lint",
+}
+
 type s = []string
 
 // Set command names
@@ -113,6 +120,9 @@ func init() {
 	for name, cmd := range Commands {
 		cmd.Name = name
 	}
+}
+
+func setCommands() {
 	command.Commands = Commands
 	command.Aliases = Aliases
 }

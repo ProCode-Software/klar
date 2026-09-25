@@ -22,6 +22,7 @@ import (
 )
 
 func main() {
+	setCommands()
 	// Write panics to a file. If there's no panic, delete it before exiting.
 	crashLogFile := setCrashOutput()
 	// Also, the CLI uses [cli.SignalExit] to exit instead of [os.Exit] so deferred
@@ -67,8 +68,14 @@ func main() {
 		))
 	case "glas":
 		os.Args = slices.Delete(os.Args, 1, 2) // Strip 'klar' from 'klar glas'
-		glas.Main(func(cmdName string) *command.Command {
-			return command.Lookup(cmdName, Commands, Aliases)
+		glas.Main(func(cmdName string) (c *command.Command) {
+			// If the user chooses to run the commands, ensure the commands and
+			// aliases variables in the command package refer to the 'klar' command.
+			// If the user declines, the CLI will exit and this change won't matter.
+			if c = command.Lookup(cmdName, Commands, Aliases); c != nil {
+				setCommands()
+			}
+			return c
 		})
 	case "help", "h", "?":
 		// klar help | klar help klar
