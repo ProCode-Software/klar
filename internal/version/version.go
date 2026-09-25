@@ -6,7 +6,24 @@ import (
 	"strings"
 )
 
-type Build int
+type Version struct {
+	Parts    []int
+	Build    Build
+	BuildNum int
+}
+
+func (v Version) Major() int { return v.Parts[0] }
+func (v Version) Minor() int { return v.Part(1) }
+func (v Version) Patch() int { return v.Part(2) }
+
+func (v Version) Part(n int) int {
+	if len(v.Parts) < n+1 {
+		return 0
+	}
+	return v.Parts[n]
+}
+
+type Build uint8
 
 // Higher is newer
 const (
@@ -40,23 +57,6 @@ var BuildMap = map[string]Build{
 	"beta":  Beta,
 	"alpha": Alpha,
 	"dev":   Dev, "main": Dev,
-}
-
-type Version struct {
-	Parts    []int
-	Build    Build
-	BuildNum int
-}
-
-func (v Version) Major() int { return v.Parts[0] }
-func (v Version) Minor() int { return v.Part(1) }
-func (v Version) Patch() int { return v.Part(2) }
-
-func (v Version) Part(n int) int {
-	if len(v.Parts) < n+1 {
-		return 0
-	}
-	return v.Parts[n]
 }
 
 var _ encoding.TextUnmarshaler = (*Version)(nil)
