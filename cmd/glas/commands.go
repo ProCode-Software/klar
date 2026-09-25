@@ -2,6 +2,7 @@ package glas
 
 import (
 	"github.com/ProCode-Software/klar/cmd/glas/internal/add"
+	"github.com/ProCode-Software/klar/cmd/glas/internal/docs"
 	"github.com/ProCode-Software/klar/internal/command"
 )
 
@@ -48,6 +49,9 @@ var Commands = map[string]*command.Command{
 	},
 	"docs": {
 		ShortDescription: "Show documentation for a package or module",
+		Run:              docs.Run,
+		Flags:            docs.Flags,
+		LongDescription:  docs.LongDescription,
 	},
 	"audit": {
 		ShortDescription: "Perform a security audit on the project's dependencies",
