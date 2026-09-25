@@ -38,8 +38,6 @@ func (c *Checker) checkFunctionImpls(ov *Overload, stmt *ast.FunctionDeclaration
 	}
 }
 
-
-
 // Public declarations can't be named after JavaScript keywords when compiling
 // to the JS target. The `@name(js:)` attribute can be used to change the name
 // of the object for JS.

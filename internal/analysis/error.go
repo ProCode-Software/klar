@@ -48,7 +48,7 @@ func kindOf(typ ObjectKind) string {
 	switch typ.(type) {
 	case *Variable:
 		return "variable"
-	case *Constant:
+	case *ConstantDecl:
 		return "constant"
 	case *Function, *Overload:
 		return "function"

@@ -427,8 +427,8 @@ func (c *Checker) declareVars(d *ast.VariableDeclaration, sc *stmtCollector,
 			// Check whether the variable is a const. Vars and consts can't
 			// be mixed in the same declaration.
 			oldVarKind := varKind
-			if IsConst(name.Identifier) && (name.Identifier != "_" || varKind != 0) {
-				obj.Type = &Constant{}
+			if IsConstantName(name.Identifier) && (name.Identifier != "_" || varKind != 0) {
+				obj.Type = &ConstantDecl{}
 				varKind = 2
 			} else {
 				varObjKind := LocalVar

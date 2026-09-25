@@ -57,15 +57,12 @@ const (
 	PipelineVar                 // value
 )
 
-type Constant struct {
-	Type  Type
-	Value ConstValue // TODO
+type ConstantDecl struct {
+	ConstExpr
 }
 
-func (c *Constant) Kind() Kind       { return c.Type.Kind() }
-func (c *Constant) Underlying() Type { return c.Type }
-func (*Constant) objKind()           {}
-func (c *Constant) String() string   { return fmt.Sprintf("%s (%v)", c.Type, c.Value) }
+func (*ConstantDecl) objKind()         {}
+func (c *ConstantDecl) String() string { return fmt.Sprintf("%s (%v)", c.Type, c.Value) }
 
 func (c *Checker) checkVarDecl(o *Object) {
 	var (
@@ -128,7 +125,7 @@ func (c *Checker) checkVarDecl(o *Object) {
 
 func (c *Checker) checkConstDecl(o *Object) {
 	var (
-		cnst  = o.Type.(*Constant)
+		cnst  = o.Type.(*ConstantDecl)
 		vinfo = o.info.varInfo
 		val   = vinfo.rhs
 		rhs   *Expr
@@ -148,19 +145,18 @@ func (c *Checker) checkConstDecl(o *Object) {
 	}
 
 	// TODO: destructure
-	cnst.Value = rhs.ConstValue()
-	if cnst.Value == nil {
-		cnst.Value = UnknownConst{} // Ensure this is never nil if checking fails
-	}
+	cnst.ConstExpr = *rhs.ConstExpr()
 	cnst.Type = rhs.Type
 	// TODO: Go type checker calls check.assignment
 }
 
-// IsConst returns true if the given name is a constant name
+// IsConstantName returns true if the given name is a constant name
 // (all uppercase). Digits and underscores are allowed.
-func IsConst(name string) bool {
+func IsConstantName(name string) bool {
 	for _, r := range name {
 		// Some characters, like CJK, are neither upper nor lower case. Allow them.
+		// TODO: Then every CJK variable would be a constant. Ensure there is at
+		// least 1 distinct uppercase character.
 		if unicode.IsLower(r) && !unicode.IsUpper(r) {
 			return false
 		}

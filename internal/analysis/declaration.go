@@ -86,7 +86,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 			if !c.checkCycle(o) || typ.Type == nil {
 				typ.Type = InvalidType
 			}
-		case *Constant:
+		case *ConstantDecl:
 			if !c.checkCycle(o) || typ.Type == nil {
 				typ.Type = InvalidType
 			}
@@ -118,7 +118,7 @@ func (c *Checker) checkDeclaration(o *Object) {
 	switch o.Type.(type) {
 	case *Variable:
 		c.checkVarDecl(o)
-	case *Constant:
+	case *ConstantDecl:
 		c.checkConstDecl(o)
 	case *TypeName:
 		c.checkTypeDecl(o)
@@ -147,7 +147,7 @@ func (c *Checker) checkCycle(o *Object) bool {
 				// Only increase the count for non-aliases
 				typeDefCount++
 			}
-		case *Variable, *Constant:
+		case *Variable, *ConstantDecl:
 			valCount++
 		case *Function:
 		default:

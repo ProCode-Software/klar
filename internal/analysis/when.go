@@ -202,8 +202,8 @@ func (c *Checker) performWhenSmartCasts(
 		switch orig := og.Type.(type) {
 		case *Variable:
 			NewVariable(casted, orig.VarKind, union)
-		case *Constant:
-			casted.Type = &Constant{Type: union, Value: orig.Value}
+		case *ConstantDecl:
+			casted.Type = &ConstantDecl{Type: union, Value: orig.Value}
 		default: // Unsupported
 		}
 		// Use [Context.Declare] to avoid reporting redeclared errors

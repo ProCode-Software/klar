@@ -104,3 +104,11 @@ func isCloneBuiltin(t Type) bool {
 func hintWithDiff(err *klarerrs.Error, hint string, edits ...klarerrs.DiffEdit) {
 	err.HintWithDiff(hint, klarerrs.NewDiff("", edits...))
 }
+
+func isConstant(t Type) bool {
+	switch t.(type) {
+	case *ConstExpr, *ConstantDecl:
+		return true
+	}
+	return false
+}

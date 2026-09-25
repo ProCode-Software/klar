@@ -634,7 +634,7 @@ func (c *Checker) checkAssignment(
 	uc ast.Operator, fid FileID,
 ) {
 	switch lhs := lhs.(type) {
-	case *Constant:
+	case *ConstantDecl:
 		// Can't assign to a const
 		err := klarerrs.Node(klarerrs.ErrAssignToConst, lhsNode)
 		// TODO: Name and range of declaration

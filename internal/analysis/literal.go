@@ -114,6 +114,7 @@ func (c *Checker) checkNilLiteral(expr *ast.NilLiteral, t *Expr) {
 
 func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
 	t.Type = StringType
+	isConst := true
 	// Check all interpolations
 	for _, frag := range expr.Fragments {
 		interp, ok := frag.(ast.InterpolationFragment)
@@ -123,7 +124,15 @@ func (c *Checker) checkStringLiteral(expr *ast.StringLiteral, t *Expr) {
 		// TODO: Check that each expression can be cast to String
 		// And disallow certain expression nodes (using an exprMode)
 		e := c.checkExprFrom(interp.Expression, t, stringInterpolation)
+		// A string is constant if all interpolations are constant
+		if !e.gotMode.has(constExpr) {
+			isConst = false
+		}
 		c.checkStringInterpolation(interp.Expression, e)
+	}
+	// TODO: Possibly create a new ConstValue type that doesn't evaluate
+	// the interpolations until they're needed (for String() or Len())
+	if isConst {
 	}
 }
 
@@ -258,7 +267,7 @@ func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {
 	t.Type = RegExType
 
 	// Check flags
-	flagsStart := expr.GetRange().End.Sub(0, uint32(len(expr.Flags)))
+	flagsStart := expr.GetRange().End.Offset(0, -len(expr.Flags)+1)
 	validFlag := func(flag byte, t target.Target) bool {
 		if _, ok := RegexFlags[t][flag]; ok {
 			return true
@@ -266,7 +275,7 @@ func (c *Checker) checkRegexLiteral(expr *ast.RegexLiteral, t *Expr) {
 		_, ok := RegexFlags[target.Unknown][flag]
 		return ok
 	}
-	for i, flag := range expr.Flags {
+	for i, flag := range []byte(expr.Flags) {
 		for targ := range c.Options.NormalizedTargets {
 			if validFlag(flag, targ) {
 				continue

@@ -71,7 +71,7 @@ func (obj *Object) ObjectString() string {
 	case *FunctionAlias:
 	case *Variable:
 		declKind = "var"
-	case *Constant:
+	case *ConstantDecl:
 		declKind = "const"
 	case *TypeName:
 		switch inner := typ.Type.(type) {

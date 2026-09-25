@@ -75,8 +75,14 @@ const (
 
 func (mode exprMode) has(opt exprMode) bool { return (mode & opt) != 0 }
 
-func (e *Expr) ConstValue() ConstValue {
-	return UnknownConst{}
+func (e *Expr) ConstExpr() *ConstExpr {
+	switch t := e.Type.(type) {
+	case *ConstantDecl:
+		return &t.ConstExpr
+	case *ConstExpr:
+		return t
+	}
+	panic(fmt.Sprintf("not constant: %T", e.Type))
 }
 
 func (e *Expr) Kind() Kind     { return e.Type.Kind() }
@@ -111,16 +117,16 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		c.checkStringLiteral(expr, t)
 	case *ast.IntegerLiteral:
 		// All numeric literals can be used as Float, so `3.0 + 5` is valid.
-		// TODO: use ConstValue
 		if t.hint != nil && t.hint.Kind() == FloatType {
-			t.Type = FloatType
+			// TODO: Check for truncation
+			t.Type = NewFloatConstExpr(float64(expr.Value))
 		} else {
-			t.Type = Untyped(IntType)
+			t.Type = &ConstExpr{Untyped(IntType), IntConst(expr.Value)}
 		}
 	case *ast.FloatLiteral:
-		t.Type = FloatType
+		t.Type = NewFloatConstExpr(expr.Value)
 	case *ast.BooleanLiteral:
-		t.Type = BoolType
+		t.Type = NewBoolConstExpr(expr.Value)
 	case *ast.Symbol:
 		c.checkSymbolExpr(expr, false, t)
 	case *ast.MapLiteral:
@@ -197,8 +203,12 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	default:
 		panic(fmt.Sprintf("unhandled expression node type: %T", expr))
 	}
+
 	if t.Type == nil {
 		t.Type = InvalidType
+	}
+	if isConstant(t.Type) {
+		t.gotMode |= constExpr
 	}
 	// Ensure a function that returns Nothing isn't being used as a value
 	// TODO: Should we move this to function/pipeline/try/await checking?
@@ -839,7 +849,9 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 		err = klarerrs.Range(klarerrs.ErrAssertionsRestricted, opRange)
 		// Don't call err.Hint now because I want this hint to be after the
 		// hint given by the caller
-		hint = "Assertions are discouraged in Klar because they crash the program when the value is " + crashVal + ". When a crash is intended, it is recommended that you explicitly check the value and call 'crashout()'."
+		hint = "Assertions are discouraged in Klar because they crash the program when the value is " +
+			crashVal +
+			". When a crash is intended, it is recommended that you explicitly check the value and call 'crashout()'."
 		return err, crashVal, hint
 	}
 	switch c.Options.AllowAssertions {
@@ -847,7 +859,8 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 		err, crashVal, hint := newError()
 		err.Label = "The use of '!!' is forbidden"
 		err.Hint(
-			"This is because 'checker.allowAssertions' is set to 'false' in your klar.build config.\nConsider manually checking the expression for " + crashVal + ".",
+			"This is because 'checker.allowAssertions' is set to 'false' in your klar.build config.\n" +
+				"Consider manually checking the expression for " + crashVal + ".",
 		)
 		err.Hint(hint)
 		c.fileError(err, t.Context.File)
@@ -857,8 +870,9 @@ func (c *Checker) checkAssertExpr(expr *ast.AssertExpression, t *Expr) {
 			err, crashVal, hint := newError()
 			err.Label = "You must explain why this is safe"
 			err.Hint(
-				"This is because 'checker.allowAssertions' is set to 'withComments' in your klar.build config.\nConsider manually checking the expression for " +
-					crashVal + ", or adding a comment on this line explaining:\n\n" +
+				"This is because 'checker.allowAssertions' is set to 'withComments' in your klar.build config.\n" +
+					"Consider manually checking the expression for " + crashVal +
+					", or adding a comment on this line explaining:\n\n" +
 					"* // Safety: <why this assertion is safe>, or\n" +
 					"* // I know what I'm doing",
 			)
