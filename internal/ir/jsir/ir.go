@@ -45,5 +45,5 @@ var JSKeywords = map[string]struct{}{
 	"try": {}, "typeof": {}, "undefined": {}, "var": {}, "void": {}, "while": {},
 	"with": {}, "yield": {},
 	// Added myself
-	"using": {},
+	"using": {}, "globalThis": {},
 }

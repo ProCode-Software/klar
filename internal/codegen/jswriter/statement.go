@@ -119,7 +119,26 @@ func (w *Writer) writeStatement(stmt jsir.Statement) {
 		w.writeImportNames(stmt.Exports)
 	case *jsir.ExportFromStatement:
 		w.writeExportFromStmt(stmt)
+
 	// TODO: TypeScript .dts statements
+	// TypeScript
+	case *jsir.TSModifierStatement:
+		w.writeTSModifierStmt(stmt)
+	case *jsir.TSInterfaceDeclaration:
+		w.writeTSInterfaceDecl(stmt)
+	case *jsir.TSTypeDeclaration:
+		w.writeString("type ")
+		w.writeString(stmt.Name)
+		if stmt.Generics != nil {
+			w.writeTSGenericDecl(*stmt.Generics)
+		}
+		w.writeString(" = ")
+		w.writeTSType(stmt.Value)
+	case *jsir.TSNamespaceDeclaration:
+		w.writeString("namespace ")
+		w.writeString(stmt.Namespace)
+		w.writeByte(' ')
+		w.writeBlock(&jsir.Block{stmt.Body})
 	default:
 		panic(fmt.Sprintf("unhandled statement: %T", stmt))
 	}

@@ -6,6 +6,11 @@ type Block struct {
 	Statements []Statement
 }
 
+// StatementChain is a helper struct for generating consecutive statements during codegen.
+type StatementChain struct {
+	Statements []Statement
+}
+
 // Control flow
 // ========
 

@@ -1,5 +1,6 @@
 package jsir
 
+func (*StatementChain) _stmt()  {}
 func (*IfStatement) _stmt()     {}
 func (*SwitchStatement) _stmt() {}
 
@@ -49,3 +50,25 @@ func (*FunctionDeclaration) _expr() {}
 func (*ClassDeclaration) _expr()    {}
 func (*FunctionDeclaration) _stmt() {}
 func (*ClassDeclaration) _stmt()    {}
+
+func (*Symbol) _tsType()           {}
+func (*StringLiteral) _tsType()    {}
+func (*BooleanLiteral) _tsType()   {}
+func (*NumericLiteral) _tsType()   {}
+func (*NullLiteral) _tsType()      {}
+func (*UndefinedLiteral) _tsType() {}
+func (*TSArray) _tsType()          {}
+func (*TSComputedIndex) _tsType()  {}
+func (*TSGeneric) _tsType()        {}
+func (*TSImport) _tsType()         {}
+func (*TSNamespaceIndex) _tsType() {}
+func (*TSTuple) _tsType()          {}
+func (*TSUnion) _tsType()          {}
+func (*TSIntersection) _tsType()   {}
+func (*TSObjectLiteral) _tsType()  {}
+func (*TSFunction) _tsType()       {}
+
+func (*TSModifierStatement) _stmt()    {}
+func (*TSTypeDeclaration) _stmt()      {}
+func (*TSInterfaceDeclaration) _stmt() {}
+func (*TSNamespaceDeclaration) _stmt() {}
