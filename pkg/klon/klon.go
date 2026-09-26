@@ -38,6 +38,30 @@ func UnmarshallDocument(d *ast.Document, v any, f ...klonflags.Flags) error {
 	return decodeDocument(d, nil, v, f...)
 }
 
+// Unmarshall to any
+// =======
+
+// UnmarshallAny decodes a byte slice into a Go any value.
+// It is equivalent to [Unmarshall](b, new(any), f...), but without
+// using reflection.
+func UnmarshallAny(b []byte, f ...klonflags.Flags) (any, error) {
+	return decodeAny(newBufferReader(b), nil, f...)
+}
+
+// UnmarshallReadAny decodes from r into a Go any value.
+// It is equivalent to [UnmarshallRead](r, new(any), f...), but without
+// using reflection.
+func UnmarshallReadAny(r io.Reader, f ...klonflags.Flags) (any, error) {
+	return decodeAny(newStreamReader(r), nil, f...)
+}
+
+// UnmarshallDocumentAny decodes a pre-parsed document into a Go any value.
+// It is equivalent to [UnmarshallDocument](d, new(any), f...), but without
+// using reflection.
+func UnmarshallDocumentAny(d *ast.Document, f ...klonflags.Flags) (any, error) {
+	return decodeDocumentAny(d, nil, f...)
+}
+
 // Unmarshall with Context
 // ========
 

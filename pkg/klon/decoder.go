@@ -57,6 +57,38 @@ func decodeDocument(doc *ast.Document, ctx *Context, v any, flgs ...klonflags.Fl
 	return d.decodeValue(doc.Body, rv.Elem())
 }
 
+func decodeAny(rd *reader, ctx *Context, flgs ...klonflags.Flags) (v any, err error) {
+	defer handlePanic(&err)
+	doc, errs := rd.parseDocument()
+	if len(errs) > 0 {
+		return nil, errs[0]
+	}
+	return decodeDocumentAny(doc, ctx, flgs...)
+}
+
+// This function doesn't use reflection, so it can work in TinyGo.
+func decodeDocumentAny(doc *ast.Document, ctx *Context, flgs ...klonflags.Flags) (v any, err error) {
+	flags := parseFlags(flgs...)
+	// [preprocessValue] can call [reflect.Value.SetZero], so do this instead
+	if _, ok := doc.Body.(*ast.None); ok {
+		if flags.Has(klonflags.EmptyValueIsString) {
+			return "", nil
+		}
+		return nil, nil
+	}
+
+	convert := func(_ reflect.Value, val ast.Value, d *decoder) (err2 error) {
+		v, err2 = d.toGoValue(val)
+		return err2
+	}
+	// Preprocessing still needs to occur to substitute variables and etc
+	err = preprocessValue(convert)(reflect.Value{}, doc.Body, &decoder{
+		// The context and variables are used during preprocessing
+		ctx: ctx, vars: doc.Variables, flags: flags,
+	})
+	return
+}
+
 func (d *decoder) decodeValue(val ast.Value, rv reflect.Value) error {
 	decode := d.getDecoder(rv.Type())
 	return decode(rv, val, d)
