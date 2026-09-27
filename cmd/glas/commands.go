@@ -52,6 +52,13 @@ var Commands = map[string]*command.Command{
 		Run:              docs.Run,
 		Flags:            docs.Flags,
 		LongDescription:  docs.LongDescription,
+		Examples: []command.ExampleCmd{
+			{"docs", s{"./pkg/greeter"}, nil, "Show documentation for the package located at './pkg/greeter'"},
+			{"docs", s{"klar.http.server"}, s{"--web"}, "Show documentation for the 'klar.http.server' module in your browser"},
+			{"docs", s{"klar.http.requests/Response.statusCode"}, nil, "Show documentation for the 'statusCode' field of the 'Response' type defined in 'klar.http.requests'"},
+			{"docs", nil, s{"--generate"}, "Generate a 'klardoc.json' file for the project"},
+			{"docs", s{"mylang.ast"}, s{"-q", "*Expression"}, "Search for declarations in 'mylang.ast' that match the pattern '*Expression'"},
+		},
 	},
 	"audit": {
 		ShortDescription: "Perform a security audit on the project's dependencies",

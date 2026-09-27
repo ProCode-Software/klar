@@ -19,17 +19,21 @@ func Run(p *argparse.Parser) {
 			}
 		}
 	}
+
+	if p.Flag("web").Bool() {
+		startServer()
+	}
 }
 
 var Flags = argparse.NewParser("[module]").
 	BoolFlag("web", "Show documentation in your browser", false, "w").
 	BoolFlag("generate", "Generate 'klardoc.json' documentation to the project root", false, "g").
-	StringFlag("search", "Search for an export within the module", "query", "", "q").
+	StringFlag("search", "Search for an export within the module. Globs are supported", "query", "", "q").
 	BoolFlag("json", "Write 'klardoc.json'-format JSON to standard output", false).
 	BoolFlag("names", "Display only the names of exported objects in the module", false).
 	BoolFlag("private", "Include documentation for private/unexported objects", false)
 
-var LongDescription = `Shows documentation for a given module. The 'module' argument can be a Klar-style import path, a reference to an object within a module (or the current module), or a filesystem path to a module. The documentation contains all of the exported objects in the module, with descriptions generated from comments in the source code.
+var LongDescription = `Shows documentation for a given module or package. The 'module' argument can be a Klar-style import path, a reference to an object within a module (or the current module), a filesystem path to a module or package, or the name of an installed package. If none is provided, the closest module or package will be used. The documentation contains all of the exported objects in the module, with descriptions generated from comments in the source code.
 
 By default, the documentation is displayed in the terminal. To display a navigatable version of the documentation in your browser, use the '--web' flag. The served documentation is similar to the ` + ansi.Hyperlink("Klar package documentation website", "https://klarlanguage.github.dev/packages") + `. A local server will be started to serve the documentation.
 
