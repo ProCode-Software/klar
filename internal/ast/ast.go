@@ -95,3 +95,15 @@ func Unparen(expr Expression) Expression {
 		expr = paren.Expression
 	}
 }
+
+// Unparen removes consecutive parentheses from the provided type.
+// If t is not a [*ParenType], UnparenType returns t unchanged.
+func UnparenType(t Type) Type {
+	for {
+		paren, ok := t.(*ParenType)
+		if !ok {
+			return t
+		}
+		t = paren.Type
+	}
+}
