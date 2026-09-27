@@ -35,7 +35,7 @@ const (
 	UseRuneSlice       // Same as [UseByteSlice] but decodes as []rune
 	BoolIsString       // true and false literals are strings
 	NumberIsString     // Numeric literals are strings
-	EmptyValueIsString // Empty markup values are decoded as "
+	EmptyValueIsString // Empty markup values are decoded as empty strings
 	OmitNullFields     // Don't include fields set to `none`
 
 	StrictFields = NoUnknownFields | CaseSensitiveFields |
