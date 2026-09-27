@@ -1,0 +1,7 @@
+public type #Readable {
+    read() -> Result<String>
+}
+
+public type #LengthReadable {
+    read(_ length: Int) -> Result<String>
+}

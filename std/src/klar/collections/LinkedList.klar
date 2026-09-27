@@ -1,0 +1,70 @@
+public type LinkedList {
+    first: LinkedNode?
+    length: Int = 0
+}
+
+public type LinkedNode {
+    value: Any
+    next: LinkedNode?
+}
+
+public func LinkedList() = .(first: nil)
+
+public func LinkedList(from list: [Any]) {
+    when list {
+        [] -> return .(first: nil)
+        _ -> return .(first: LinkedNode(list), :list.length)
+    }
+}
+
+public func LinkedNode(value: Any) = .(:value, next: nil)
+
+public func LinkedNode(from list: [Any]) {
+    when list {
+        [] -> crashout("Can't create a LinkedNode from an empty list")
+    }
+    currNode := LinkedNode(value: list[0])
+    for item in list[1...] {
+        nextNode := LinkedNode(item)
+        currNode.next = nextNode
+        currNode = nextNode
+    }
+    return currNode
+}
+
+public func LinkedList.items() -> [Any] {
+    currNode := self.first
+    when currNode {
+        nil -> return []
+    }
+    list := [currNode.value]
+    while currNode.next != none {
+        currNode = currNode.next
+        list += [currNode.value]
+    }
+    return list
+}
+
+public func LinkedList.at(index i: Int) -> Any? {
+    node := self.nodeAt(index: i)
+    when node {
+        nil -> return nil
+        _ -> return node.value
+    }
+}
+
+public func LinkedList.nodeAt(index i: Int) -> LinkedNode? {
+    when i {
+        < 0 | >= self.length -> return nil
+    }
+    currI := 0
+    currNode := self.first
+    while currNode != nil {
+        when currI {
+            i -> return currNode
+        }
+        currNode = currNode.next
+        currI += 1
+    }
+    return nil // Index out of range
+}

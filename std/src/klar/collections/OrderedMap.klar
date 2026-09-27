@@ -1,0 +1,47 @@
+public type OrderedMap {
+    _map: #{Any: Any}
+    _orderedKeys: [Any]
+}
+
+// Returns an empty ordered map.
+public func OrderedMap() -> .(_map: #{}, _orderedKeys: [])
+
+// Returns an ordered map from the given keys. The order of the keys in the returned
+// OrderedMap are random.
+public func OrderedMap(from map: #{Any: Any}) {
+    return .(map, map.keys())
+}
+
+public func OrderedMap(from map: #{Any: Any}, order orderedKeys: [Any]) {
+    when orderedKeys.length {
+        != map.length -> crashout(
+            "Mismatched length of 'map' ({map.length}) and 'orderedKeys' ({orderedKeys.length})",
+        )
+    }
+    return .(map, orderedKeys)
+    // TODO: handle duplicate keys in orderedKeys
+}
+
+public func OrderedMap.get(key: Any) -> Any? = self._map[key]
+
+// If `key` doesn't already exist in the map, it will be added as the last item.
+// If `value` is `nil`, the key will be removed from the map.
+public func OrderedMap.set(key, value: Any) {
+    self._map[key] = value
+    when {
+        // If the key is new, add it to the map. This length comparison
+        // is faster than `key in self._orderedKeys`
+        self._map.length > self._orderedKeys.length -> self._orderedKeys += [key]
+
+        // Remove the item from the list of keys. Unfortunately, this isn't a
+        // constant-time operation.
+        value == nil -> {
+            i := self._orderedKeys.index(of: key)!!
+            self._orderedKeys.remove(index: i)
+        }
+    }
+}
+
+public func OrderedMap.contains(key: Any) = self._map[key] != nil
+
+public func OrderedMap.length() = self._map.length

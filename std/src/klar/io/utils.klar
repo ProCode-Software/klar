@@ -1,0 +1,10 @@
+public endOfFileError := Error('End of file')
+
+public type Discard: Readable, Writable, LengthReadable {}
+
+public func Discard.read() -> String { return "" }
+public func Discard.write(_: String) -> Nothing {}
+public func Discard.read(length length: Int) -> Result<String> = when length {
+    0 -> ''
+    _ -> endOfFileError
+}
