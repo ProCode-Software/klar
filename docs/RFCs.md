@@ -238,3 +238,4 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
 22. **Should `Task` and `Regex` be builtin types?**
     - a. Builtin types (either or both) (that beginners have to be introduced to)
     - b. They should be imported from the standard library (ex. `concurrency.Task` and `regex.Regex`). The downside is they have native syntax in the language, but to annotate, they have to be imported.
+23. **Should the exponentiation `^` operator be left- or right-associative?** In Python and JavaScript, exponentiation is right-associative, so `2 ** 3 ** 2 ` (they both use `**` for exponentiation) = `2 ** (3 ** 2)` = `512`. For Klar, using right-association may be confusing and ambiguous.
