@@ -171,3 +171,8 @@ func (p *Parser) ParseList() *ast.ListLiteral {
 ### Skipping
 
 Skip on any unexpected/invalid token until any continuing token is reached. **It may be in the same place**.
+
+## References
+
+- https://discourse.elm-lang.org/t/parsers-with-error-recovery/6262 (29 September 2026)
+- https://github.com/golang/go/issues/58833 (28 September 2026)
