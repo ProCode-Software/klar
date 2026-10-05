@@ -164,6 +164,10 @@ const (
 	ErrInvalidWhenPattern     // Invalid when pattern syntax used
 	ErrFuncNoBody             // Function has neither a body nor @external attribute
 	ErrAssertionsRestricted   // '!!' not allowed due to 'allowAssertions' setting in klar.build
+	ErrTopLevelCall           // Function calls aren't allowed at the top-level
+	ErrCallInConstant         // Function calls aren't allowed in constant expressions
+	ErrNotAllowedInInterp     // Expression not allowed in a string or regex interpolation
+	ErrNonLiteralInAttr       // All expressions in attributes must be literals
 )
 
 func (e *Error) handleSyntaxError() string {
@@ -568,5 +572,14 @@ func (e *Error) handleSyntaxError() string {
 			return "An assertion can't be used without a comment explaining why it's safe"
 		}
 		return "Assertions are banned within this module"
+	case ErrCallInConstant:
+		return "Function calls aren't constant and can't be used here"
+	case ErrTopLevelCall:
+		return "A function call isn't allowed in a top-level variable declaration"
+	case ErrNotAllowedInInterp:
+		return "A string or regex interpolation can't contain " +
+			WithA(e.StringParam("kind"))
+	case ErrNonLiteralInAttr:
+		return "A parameter to an attribute must be a literal"
 	}
 }

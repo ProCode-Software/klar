@@ -191,6 +191,7 @@ func (c *Checker) checkDefaultStructInit(s *Struct,
 			err.Desc = "The struct has these fields: " + strings.Join(
 				slices.Sorted(maps.Keys(s.fieldMap)), ", ",
 			)
+			// err.SetParam("type", ) // TODO: Get type name
 			c.fileError(err, fid)
 			continue
 		}

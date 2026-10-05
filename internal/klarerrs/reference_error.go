@@ -45,5 +45,8 @@ func (e *Error) handleReferenceError() string {
 		return msg
 	case ErrNotExported:
 		return name + " from module " + Quote(e.StringParam("module")) + " isn't public"
+	case ErrFieldNotFound:
+		return "Can't find a field or method named " + Quote(e.Name) + " in type " +
+			Quote(e.StringParam("type"))
 	}
 }

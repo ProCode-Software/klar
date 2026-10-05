@@ -221,9 +221,8 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 		t.stmtCtx.flags |= unreachableStmt
 	}
 	// Ensure the expression is allowed to be used in t's context ([Expr.mode])
-	if filtered, kind := t.IsFiltered(expr); filtered {
-		_ = kind
-	}
+	c.validateExprLocation(expr, t)
+
 	// Record the expression node and its *Expr
 	c.Module.Info.Expressions[expr] = t
 	return t
@@ -233,9 +232,66 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 // This is to ensure specific types of nodes don't appear in certain targets,
 // such as 'when' expressions in string interpolations. A human-friendly
 // name of the node is returned if filtered is false.
-func (e *Expr) IsFiltered(expr ast.Expression) (filtered bool, node string) {
-	// TODO: Only literals should be allowed in [attributeFunc] mode
-	return
+func (c *Checker) validateExprLocation(expr ast.Expression, e *Expr) (ok bool) {
+	ok = true
+	// 1. No function calls in constants or the top-level
+	// TODO: Initializers, but only builtin ones, should still be allowed
+	if _, ok := expr.(*ast.CallExpression); ok {
+		if e.stmtCtx == nil {
+			err := klarerrs.Node(klarerrs.ErrTopLevelCall, expr)
+			err.Label = "Can't call a function here"
+			c.fileError(err, e.FileID())
+			ok = false
+		}
+		// TODO: Should we report multiple errors? If not, just return
+		// false in each branch
+		if e.mode.has(constExpr) {
+			err := klarerrs.Node(klarerrs.ErrCallInConstant, expr)
+			err.Label = "Can't call a function here"
+			c.fileError(err, e.FileID())
+			// Still provide a valid constant for any statement that expects
+			// one, such as const declarations
+			e.Type = &ConstExpr{e.Type, UnknownConst{}}
+			e.gotMode |= constExpr
+			ok = false
+		}
+	}
+	// 2. Disallow some "large" expressions in string/regex interpolations
+	if e.mode.has(stringInterpolation) {
+		var kind string
+		switch expr.(type) {
+		case *ast.LambdaExpression:
+			kind = "lambda"
+		case *ast.WhenExpression:
+			kind = "'when' expression"
+		case *ast.GoExpression:
+			kind = "'go' expression"
+		case *ast.MapLiteral:
+			kind = "map"
+		}
+		if kind != "" {
+			err := klarerrs.Node(klarerrs.ErrNotAllowedInInterp, expr)
+			err.Label = "This expression isn't allowed here"
+			err.SetParam("kind", kind)
+			c.fileError(err, e.FileID())
+			ok = false
+		}
+	}
+	// 3. Only literals should be allowed in attributes
+	if e.mode.has(attributeFunc) {
+		switch expr.(type) {
+		case *ast.EnumLiteral, *ast.FloatLiteral, *ast.ListLiteral,
+			*ast.IntegerLiteral, *ast.MapLiteral, *ast.NilLiteral,
+			*ast.RegexLiteral, *ast.StringLiteral, *ast.TupleLiteral,
+			*ast.BooleanLiteral, *ast.VersionLiteral:
+		default:
+			err := klarerrs.Node(klarerrs.ErrNonLiteralInAttr, expr)
+			err.Label = "This expression isn't a literal"
+			c.fileError(err, e.FileID())
+			ok = false
+		}
+	}
+	return ok
 }
 
 // If valid, t's Type will be set to an [*Object].
@@ -533,6 +589,9 @@ func (c *Checker) checkUnaryExpr(expr *ast.UnaryExpression, t *Expr) {
 		t.Type = BoolType
 	default:
 		panic(fmt.Sprintf("unhandled unary operator: %q", expr.Operator))
+	}
+	if cnst := getConstExpr(rhs.Type); cnst != nil {
+		t.Type = ConstUnaryOp(cnst, expr.Operator.Kind)
 	}
 }
 

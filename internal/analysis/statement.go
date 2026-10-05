@@ -633,6 +633,7 @@ func (c *Checker) checkAssignment(
 	lhs, rhs Type, lhsNode, rhsNode ast.Expression,
 	uc ast.Operator, fid FileID,
 ) {
+	// TODO: lhs may be an *Object. Check o.Type in that case.
 	switch lhs := lhs.(type) {
 	case *ConstantDecl:
 		// Can't assign to a const

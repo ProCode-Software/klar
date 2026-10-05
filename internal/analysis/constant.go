@@ -207,6 +207,9 @@ func (r RegexConst) String() string {
 	return "#/" + r.Pattern + "/" + r.Flags
 }
 
+// Operations
+// ========
+
 func ConstBinaryOp(lhs, rhs *ConstExpr, op lexer.TokenType, typ Type) *ConstExpr {
 	res := &ConstExpr{Type: typ}
 	switch op {
@@ -228,10 +231,33 @@ func ConstBinaryOp(lhs, rhs *ConstExpr, op lexer.TokenType, typ Type) *ConstExpr
 	case lexer.GreaterEqualTo:
 	case lexer.LessEqualTo:
 	default:
-		panic("unknown operator: " + op.String())
+		panic("invalid binary operator: " + op.String())
 	}
 	if res.Value == nil {
 		panic(fmt.Sprintf("invalid operation: %s %s %s", lhs, op, rhs))
+	}
+	return res
+}
+
+func ConstUnaryOp(c *ConstExpr, op lexer.TokenType) *ConstExpr {
+	res := &ConstExpr{Type: c.Type}
+	switch op {
+	case lexer.Not:
+		if c.Type.Kind() != BoolType {
+			panic("invalid operation: can't use '!' operator on type " + c.Type.String())
+		}
+		res.Value = !c.Value.(BoolConst)
+	case lexer.Minus:
+		switch c.Type.Kind() {
+		case FloatType:
+			res.Value = -c.Value.(FloatConst)
+		case IntType:
+			res.Value = -c.Value.(IntConst)
+		default:
+			panic("invalid operation: can't use '-' operator on type " + c.Type.String())
+		}
+	default:
+		panic("invalid unary operator: " + op.String())
 	}
 	return res
 }

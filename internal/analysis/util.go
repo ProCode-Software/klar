@@ -112,3 +112,14 @@ func isConstant(t Type) bool {
 	}
 	return false
 }
+
+// If t isn't a constant, getConstExpr returns nil.
+func getConstExpr(t Type) *ConstExpr {
+	switch t := t.(type) {
+	case *ConstExpr:
+		return t
+	case *ConstantDecl:
+		return &t.ConstExpr
+	}
+	return nil
+}
