@@ -1,5 +1,5 @@
 public func expect(condition: Bool) {}
 
-public func expect(value: Any, toMatchSnapshotNamed: String) {}
+public func expect(value: Any, toMatchSnapshotNamed snapshotName: String) {}
 
 public func runningBenchmark() -> Bool = true

@@ -4,7 +4,7 @@ public type OrderedMap {
 }
 
 // Returns an empty ordered map.
-public func OrderedMap() -> .(_map: #{}, _orderedKeys: [])
+public func OrderedMap() = .(_map: #{}, _orderedKeys: [])
 
 // Returns an ordered map from the given keys. The order of the keys in the returned
 // OrderedMap are random.

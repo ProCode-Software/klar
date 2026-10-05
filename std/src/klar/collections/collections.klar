@@ -1,13 +1,13 @@
 public type SortOrder {
-    .increasing = -1 // A < B
-    .equal = 0 // A == B
+    .increasing = 2, // A < B
+    .equal = 0, // A == B
     .decreasing = 1 // A > B
 }
 
-public func (a: SortOrder).greater(than b: SortOrder) -> Bool = false
-public func (a: SortOrder).greaterOrEqual(to b: SortOrder) -> Bool = false
-public func (a: SortOrder).less(than b: SortOrder) -> Bool = false
-public func (a: SortOrder).lessOrEqual(to b: SortOrder) -> Bool = false
+public func (a: SortOrder).greater(than b: SortOrder) -> Bool = a.value > b.value
+public func (a: SortOrder).greaterOrEqual(to b: SortOrder) -> Bool = a.value >= b.value
+public func (a: SortOrder).less(than b: SortOrder) -> Bool = a.value < b.value
+public func (a: SortOrder).lessOrEqual(to b: SortOrder) -> Bool = a.value <= b.value
 
 public func (a: SortOrder).compare(to b: SortOrder) -> SortOrder = when a.value {
     < b.value -> .increasing,

@@ -3,5 +3,5 @@ public type #Readable {
 }
 
 public type #LengthReadable {
-    read(_ length: Int) -> Result<String>
+    read(length _: Int) -> Result<String>
 }
