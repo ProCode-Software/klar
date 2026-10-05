@@ -239,3 +239,24 @@ Where given, consideration options (listed alphabetically) aren't exhaustive. Yo
     - a. Builtin types (either or both) (that beginners have to be introduced to)
     - b. They should be imported from the standard library (ex. `concurrency.Task` and `regex.Regex`). The downside is they have native syntax in the language, but to annotate, they have to be imported.
 23. **Should the exponentiation `^` operator be left- or right-associative?** In Python and JavaScript, exponentiation is right-associative, so `2 ** 3 ** 2 ` (they both use `**` for exponentiation) = `2 ** (3 ** 2)` = `512`. For Klar, using right-association may be confusing and ambiguous.
+24. **Struct inheritance** - In Klar, we want inheritance to be solely based on copying fields and methods, rather than full OOP. There will not be a `super()` constructor that must be called. The first idea that comes to mind is copying fields from other types, and if there is a field collision between 2 inherited types, it must be explicitly overriden.
+
+    ```klar
+    type A { x: Int }
+    func A.hasX() = self.x != 0
+
+    type B { x: String }
+    func B.hasX() = self.x != ""
+
+    type MyStruct: A, B {
+        // Since there is a collision between field 'x', it must be explictly declared here
+        x: Float
+    }
+    ```
+
+    There are a few concerns with this:
+    1. In the declaration, it says type `MyStruct` inherits `A` and `B`, but when we override a field's type, `MyStruct` cannot be converted to either type. This is misleading.
+    2. There will be no method `hasX` on `MyStruct` because the methods on both inherited types reference the field `x` of a different type. With these rules, it may not be clear what methods `MyStruct` inherits (finding out may require looking in the bodies of several methods in the inherited types, which may also have their own inherited types).
+    3. In structs, field declarations can refer to other fields, such as `type X { x: Int, y: Int = self.x }`. A type override could remove other fields.
+
+    I would like some ideas on how inheritance can be implemented, such as Go-style embedding.
