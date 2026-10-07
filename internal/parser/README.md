@@ -8,6 +8,8 @@ The Klar parser uses a [Pratt parser](https://martin.janiczek.cz/2023/07/03/demy
 
 ## Semicolon Inference
 
+> The architecture of this is planned to change. See [this document](../../docs/Syntax/EOSInference.md) for more info.
+
 - `(*Parser).InsertEOS()`
 - [`eos.go`](./eos.go)
 
@@ -147,5 +149,5 @@ func (p *Parser) parseVariableDeclaration() *VariableDeclaration {
 
 ## Future Work
 
-- Rework the EOS system, allowing for dynamic EOS rules based on where parsing is occurring. For example, in when-expressions, operators can't start on a new line unless they are indented. I am currently inspired by indentation-based rules suggested by https://terts.dev/blog/no-semicolons-needed/
-- **Error recovery!!!** The parser is being used for the LSP and it should not hang or crash.
+- Rework the EOS system, allowing for dynamic EOS rules based on where parsing is occurring. For example, in when-expressions, operators can't start on a new line unless they are indented. I am currently inspired by indentation-based rules suggested by https://terts.dev/blog/no-semicolons-needed/. See [EOSInference.md](../../docs/Syntax/EOSInference.md)
+- **Error recovery!!!** The parser is being used for the LSP and it should not hang or crash. See [ParserErrorRecovery.md](../../docs/Syntax/ParserErrorRecovery.md)
