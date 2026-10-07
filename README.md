@@ -80,9 +80,6 @@ klar format  # Format the files in your project
 glas --help  # Use Glas, the Klar package manager
 ```
 
-> [!NOTE]
-> While the typechecker is in active development, you may set the `NO_TYPECHECK=1` environment variable to disable typechecking. When disabled, only syntax is checked. Otherwise, you can see what we're working on, but you may see type errors for unimplemented functionality.
-
 ## Examples
 
 Many examples are available in the [samples](https://github.com/ProCode-Software/klar/tree/main/samples) folder. To compile them, run `klar build <file/folder>`

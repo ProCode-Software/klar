@@ -3,7 +3,6 @@ package build
 import (
 	"errors"
 	"log/slog"
-	"os"
 	"path/filepath"
 
 	"github.com/ProCode-Software/klar/internal/build/cache"
@@ -12,9 +11,6 @@ import (
 	"github.com/ProCode-Software/klar/internal/module/imports"
 	"github.com/ProCode-Software/klar/internal/version"
 )
-
-// For [PackageCompiler.TypeCheckModules]. TODO: Remove when type checker is mostly done
-const noTypecheckEnv = "NO_TYPECHECK"
 
 type PackageCompiler struct {
 	*Compiler
@@ -143,7 +139,7 @@ func (pkc *PackageCompiler) TypeCheckModules(loaded *Loaded) (
 	succeededModules = loaded.cached // I don't care about loaded.cache being mutated
 	// If the build mode is parse-only, we don't need to typecheck. Just return
 	// the modules without syntax errors.
-	if !pkc.Mode.ShouldTypecheck() || os.Getenv(noTypecheckEnv) == "1" {
+	if !pkc.Mode.ShouldTypecheck() {
 		for _, importPathStr := range loaded.sortedDeps {
 			if mod, ok := pkc.Deps.TryGet(importPathStr); ok && !mod.Failed {
 				succeededModules = append(succeededModules, mod)
