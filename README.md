@@ -23,15 +23,13 @@ Klar is Danish for _clear_. In Klar, if you read code, that's what it does, with
 
 ## Inspiration
 
-- Idioms and opinionation from Go
-- Error handling from Rust and [Gleam](https://gleam.run/)
-- Type system from TypeScript
-- Syntax from Swift and Go
-- `when` expressions from Kotlin
-- Enums and pattern matching from Gleam and Rust
-- Tooling from Go and JavaScript
-- Compiler from Go and Gleam
-- `try` from [Zig](https://ziglang.org)
+- Go (idioms, opinionation, syntax, tooling)
+- [Gleam](https://gleam.run/) (idioms, opinionation, pattern matching, tooling)
+- TypeScript/JavaScript (type system, tooling)
+- Swift (syntax)
+- Rust (pattern matching)
+- Kotlin (`when`)
+- [Zig](https://ziglang.org) (`try`, idioms)
 
 ## Installation & Quickstart
 
@@ -80,6 +78,8 @@ klar format  # Format the files in your project
 glas --help  # Use Glas, the Klar package manager
 ```
 
+<!-- TODO: Add `klar lint` once started -->
+
 ## Examples
 
 Many examples are available in the [samples](https://github.com/ProCode-Software/klar/tree/main/samples) folder. To compile them, run `klar build <file/folder>`
@@ -95,7 +95,7 @@ The `mylang` folder can be passed to `klar build` directly, but files in `basic`
 
 ### Factorial
 
-```swift
+```go
 // Calculates the factorial, the product of all positive integers up to n.
 func factorial(n: Int) = when n {
     <= 1 -> 1
@@ -111,7 +111,7 @@ for num in numbers {
 
 ### HTTP Requests
 
-```swift
+```go
 import klar.http.requests
 
 BASE_ENDPOINT := 'https://api.github.com'
@@ -133,7 +133,7 @@ print(topLanguage)
 
 ### Testing
 
-```swift
+```go
 // sum.klar
 public func sum(a, b: Int) = a + b
 
