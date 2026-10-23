@@ -205,7 +205,9 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		// Inferred return type from body expression. If there is a body
 		// expression but also an explicit return type, the expression
 		// will be checked later.
-		bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx))
+		bodyExpr = c.checkExpr(
+			stmt.Expression, newStmtContext(ctx, ov.File, allowReturn).newExpr(),
+		)
 		ov.Return, retRange = bodyExpr.Type, stmt.Expression.GetRange()
 	case isInit:
 		// `func Int()` implicitly returns Int
@@ -256,7 +258,11 @@ func (c *Checker) checkOverload(ov *Overload, fnObj *Object) {
 		c.queue(func() {
 			// If there is an explicit return type, check the expression now with a hint
 			if bodyExpr == nil && (!c.Options.IgnoreFuncBodies || ov.Return == nil) {
-				bodyExpr = c.checkExpr(stmt.Expression, NewExpr(ctx).withHint(ov.Return))
+				bodyExpr = c.checkExpr(
+					stmt.Expression,
+					// Create a stmtCtx to alloow 'try' and function calls
+					newStmtContext(ctx, ov.File, allowReturn).newExpr().withHint(ov.Return),
+				)
 				if ov.Return == nil {
 					ov.Return = bodyExpr.Type
 				}

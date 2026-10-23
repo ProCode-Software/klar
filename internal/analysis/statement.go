@@ -320,7 +320,7 @@ func (c *Checker) checkReturnStmt(stmt *ast.ReturnStatement, sctx *stmtContext) 
 	var pos ranges.Range
 	if stmt.Value == nil {
 		e.Type = NothingType
-		pos = stmt.Value.GetRange()
+		pos = stmt.GetRange()
 	} else {
 		c.checkExpr(stmt.Value, e)
 		pos = stmt.Value.GetRange()

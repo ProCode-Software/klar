@@ -228,7 +228,7 @@ func (c *Checker) checkExpr(expr ast.Expression, t *Expr) *Expr {
 	return t
 }
 
-// IsFiltered reports whether the given node is disallowed based on e's mode.
+// validateExprLocation checks whether the given node is allowed based on e's mode.
 // This is to ensure specific types of nodes don't appear in certain targets,
 // such as 'when' expressions in string interpolations. A human-friendly
 // name of the node is returned if filtered is false.
