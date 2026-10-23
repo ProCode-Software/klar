@@ -51,6 +51,7 @@ const (
 	ErrEmptyRegexInterpolation // Empty regex interpolation
 	ErrInvalidDecimalPoint     // Decimal point can only be used in decimal (base 10) format
 	ErrIdentMustHaveLetter     // Identifiers must have at least 1 letter
+	ErrLeadingDecimalPoint     // A leading decimal point (`.3`) isn't allowed
 
 	// Assignment =====
 
@@ -581,5 +582,7 @@ func (e *Error) handleSyntaxError() string {
 			WithA(e.StringParam("kind"))
 	case ErrNonLiteralInAttr:
 		return "A parameter to an attribute must be a literal"
+	case ErrLeadingDecimalPoint:
+		return "A number is required before the decimal point"
 	}
 }

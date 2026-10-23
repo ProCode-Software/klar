@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -352,9 +353,26 @@ func (p *Parser) ParseCallExpression(left ast.Expression, bp BindingPower) *ast.
 }
 
 func (p *Parser) ParseEnumLiteral() ast.Expression {
-	p.Expect(lexer.Dot)
+	dot := p.Expect(lexer.Dot)
 	if p.CurrKind() == lexer.LeftParenthesis {
 		return p.ParseStructDotInit()
+	}
+	// Show a hint if a float is typed as '.3' instead of '0.3'
+	if p.CurrKind() == lexer.Numeric {
+		err := klarerrs.Token(klarerrs.ErrLeadingDecimalPoint, dot)
+		err.HintWithDiff(
+			"Add an explicit '0' before the decimal point.",
+			klarerrs.NewDiff("", klarerrs.AddedString{Pos: dot.Position, String: "0"}),
+		)
+		p.ErrorLabelled(err, "Write a '0' before this decimal")
+		// Return a valid AST node so the formatter can fix it
+		numTok := p.Advance()
+		float, err2 := strconv.ParseFloat("0."+numTok.Source, 64)
+		return &ast.FloatLiteral{
+			Source: "0." + numTok.Source,
+			Flags:  lexer.IsFloat | numTok.Attributes["params"].(lexer.NumberAttrs).Flags,
+			Value:  p.tryStrconv(numTok, float, err2),
+		}
 	}
 	return &ast.EnumLiteral{Name: p.ParseMapIdentifier(0)}
 }
