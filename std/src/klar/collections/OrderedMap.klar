@@ -26,7 +26,7 @@ public func OrderedMap.get(key: Any) -> Any? = self._map[key]
 
 // If `key` doesn't already exist in the map, it will be added as the last item.
 // If `value` is `nil`, the key will be removed from the map.
-public func OrderedMap.set(key, value: Any) {
+public func OrderedMap.set(key: Any, value: Any?) {
     self._map[key] = value
     when {
         // If the key is new, add it to the map. This length comparison

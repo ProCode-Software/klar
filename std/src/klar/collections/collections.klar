@@ -1,7 +1,7 @@
 public type SortOrder {
-    .increasing = 2, // A < B
+    .increasing = 1, // A < B
     .equal = 0, // A == B
-    .decreasing = 1 // A > B
+    .decreasing = -1 // A > B
 }
 
 public func (a: SortOrder).greater(than b: SortOrder) -> Bool = a.value > b.value
