@@ -7,12 +7,12 @@ import (
 	"github.com/ProCode-Software/klar/internal/ir/jsir"
 )
 
-func (g *Generator) convertDestructure(dest ast.Destructurable) jsir.Destructure {
+func (g *Generator) convertDestructure(dest ast.Destructurable, nameMangle bool) jsir.Destructure {
 	switch dest := dest.(type) {
 	case *ast.Discard:
 		return nil
 	case *ast.Symbol:
-		return &jsir.Symbol{dest.Identifier}
+		return escapedSymbol(dest.Identifier, nameMangle)
 	case *ast.ListLiteral:
 	case *ast.TupleLiteral:
 	default:

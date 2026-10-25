@@ -1,6 +1,6 @@
 /**
- * This file is for evaluating possible JS outputs for Klar enums. Please send
- * feedback in GitHub discussions.
+ * This file is for evaluating possible JS outputs for Klar enums. Please send feedback in
+ * GitHub discussions.
  */
 
 class TokenType {

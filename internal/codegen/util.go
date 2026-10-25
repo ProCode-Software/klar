@@ -45,3 +45,17 @@ func generateLetter(i int) string {
 	}
 	return string(res)
 }
+
+func escapeName(s string) string {
+	if _, ok := jsir.JSKeywords[s]; ok {
+		return s + "_"
+	}
+	return s
+}
+
+func escapedSymbol(s string, nameMangle bool) *jsir.Symbol {
+	if nameMangle {
+		return &jsir.Symbol{escapeName(s)}
+	}
+	return &jsir.Symbol{s}
+}

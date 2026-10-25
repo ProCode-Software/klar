@@ -2,6 +2,8 @@ package codegen
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/ProCode-Software/klar/internal/analysis"
 	"github.com/ProCode-Software/klar/internal/ast"
@@ -11,7 +13,7 @@ import (
 func (g *Generator) convertObject(o *analysis.Object) jsir.Statement {
 	switch stmt := o.Node().(type) {
 	case *ast.FunctionDeclaration:
-		return g.convertFuncDecl(o, stmt)
+		return g.convertFuncDecl(o)
 	case *ast.FuncAliasDeclaration:
 		return g.convertFuncAlias(o, stmt)
 	case *ast.VariableDeclaration:
@@ -62,8 +64,10 @@ func (g *Generator) convertVarDecl(
 		return &jsir.BindingDeclaration{
 			Kind: jsir.LetBinding,
 			// Destructurability validated at analysis time
-			Variable: g.convertDestructure(decl.Variables[0].(ast.Destructurable)),
-			Value:    g.convertExpression(decl.Values[0]),
+			Variable: g.convertDestructure(
+				decl.Variables[0].(ast.Destructurable), !o.Public,
+			),
+			Value: g.convertExpression(decl.Values[0]),
 		}
 	}
 
@@ -71,20 +75,24 @@ func (g *Generator) convertVarDecl(
 		Kind:     jsir.LetBinding,
 		Bindings: make([]*jsir.Binding, 0, len(decl.Variables)),
 	}
+	var singleRHS jsir.Expression
+	if decl.IsSingleRHS() {
+		singleRHS = g.convertExpression(decl.Values[0])
+	}
 	for i, name := range decl.Variables {
 		// Don't declare discards. Remember that '_' is a valid identifier in JS.
 		if _, ok := name.(*ast.Discard); ok {
 			continue
 		}
-		var val ast.Expression
-		if decl.IsSingleRHS() {
-			val = decl.Values[0]
+		var val jsir.Expression
+		if singleRHS != nil {
+			val = singleRHS
 		} else {
-			val = decl.Values[i]
+			val = g.convertExpression(decl.Values[i])
 		}
 		jsDecl.Bindings = append(jsDecl.Bindings, &jsir.Binding{
-			Variable: g.convertDestructure(name.(ast.Destructurable)),
-			Value:    g.convertExpression(val),
+			Variable: g.convertDestructure(name.(ast.Destructurable), !o.Public),
+			Value:    val,
 		})
 	}
 	if len(jsDecl.Bindings) == 0 {
@@ -102,19 +110,52 @@ func (g *Generator) convertFuncAlias(
 ) *jsir.BindingDeclaration {
 	return &jsir.BindingDeclaration{
 		Kind:     jsir.ConstBinding,
-		Variable: &jsir.Symbol{o.Name},
+		Variable: escapedSymbol(o.Name, !o.Public),
 		Value:    &jsir.NullLiteral{},
 	}
 }
 
-func (g *Generator) convertFuncDecl(
-	o *analysis.Object, decl *ast.FunctionDeclaration,
-) *jsir.FunctionDeclaration {
-	// The self type will be disregarded as the generated function is put
-	// into the JS class body
-	return &jsir.FunctionDeclaration{
-		Name: o.Name,
-		Body: &jsir.Block{},
+func (g *Generator) convertFuncDecl(o *analysis.Object) jsir.Statement {
+	// Some overloads may have different names via the @name attribute.
+	// Group the overloads by name and convert those grouped ones to JavaScript.
+	var nameGroups map[string][]*analysis.Overload
+	fnType := o.Type.(*analysis.Function)
+	for _, ov := range fnType.Overloads {
+		if ov.Name != o.Name {
+			if nameGroups == nil {
+				nameGroups = make(map[string][]*analysis.Overload)
+			}
+			nameGroups[ov.Name] = append(nameGroups[ov.Name], ov)
+		}
+	}
+	var converted []jsir.Statement
+	if nameGroups == nil {
+		// No name changes
+		converted = make([]jsir.Statement, 0, len(fnType.Overloads)+1)
+		converted = g.appendOverloads(converted, fnType.Overloads)
+	} else {
+		// Some may still have the original name, so add that to nameGroups
+		for _, fnType := range fnType.Overloads {
+			if fnType.Name == o.Name {
+				nameGroups[fnType.Name] = append(nameGroups[fnType.Name], fnType)
+			}
+		}
+		converted = make([]jsir.Statement, 0, len(nameGroups)+len(fnType.Overloads))
+		// Sort the overloads by declaration order
+		sortOverloads := createOverloadSorter(nameGroups)
+		for _, name := range slices.SortedFunc(maps.Keys(nameGroups), sortOverloads) {
+			converted = g.appendOverloads(converted, nameGroups[name])
+		}
+	}
+	if len(converted) == 1 { // Optimization when there's only 1 overload
+		return converted[0]
+	}
+	return &jsir.StatementChain{converted}
+}
+
+func createOverloadSorter(nameGroups map[string][]*analysis.Overload) func(string, string) int {
+	return func(a, b string) int {
+		return int(nameGroups[a][0].Order) - int(nameGroups[b][0].Order)
 	}
 }
 
@@ -125,9 +166,10 @@ func (g *Generator) convertTagDecl(o *analysis.Object) *jsir.BindingDeclaration 
 	}
 	// Tags are converted to unique Symbols that are set as properties
 	// on implementing classes
+	// 	const Node = Symbol('Node')
 	return &jsir.BindingDeclaration{
 		Kind:     keyword,
-		Variable: &jsir.Symbol{o.Name},
+		Variable: escapedSymbol(o.Name, !o.Public),
 		Value: &jsir.CallExpression{
 			g.getGlobal("Symbol", o.Context), []jsir.Expression{
 				// Use single quotes because the name is a valid identifier
@@ -137,6 +179,12 @@ func (g *Generator) convertTagDecl(o *analysis.Object) *jsir.BindingDeclaration 
 	}
 }
 
-func (g *Generator) getGlobal(name string, ctx *analysis.Context) *jsir.Symbol {
+func (g *Generator) getGlobal(name string, ctx *analysis.Context) jsir.Expression {
+	if ctx.LookupRecursive(name) != nil {
+		return &jsir.IndexExpression{
+			Object:   &jsir.Symbol{"globalThis"},
+			Property: &jsir.Symbol{Name: name},
+		}
+	}
 	return &jsir.Symbol{Name: name}
 }
