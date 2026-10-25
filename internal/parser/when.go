@@ -110,6 +110,7 @@ func (p *Parser) parseWhenCase(subjects int) *ast.WhenCase {
 		p.ExpectOneOf(lexer.Newline, lexer.Comma)
 		return c
 	default:
+		// TODO: Should a 'for' loop be parsed as a statement or an expression?
 		// BUG: Braces/comma required before '<' starting next case
 		stmt := p.ParseStatement(allowCommaTerminator)
 		switch stmt := stmt.(type) {

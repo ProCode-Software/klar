@@ -86,6 +86,8 @@ func Run(c *argparse.Parser) {
 		cli.Exit(0)
 	}
 
+	// TODO: Show the user the download size of the release (stdlib + binaries)
+
 	ansi.TagFprintf(
 		os.Stderr,
 		// TODO: Once we have numbered releases, switch "build" for "v"
