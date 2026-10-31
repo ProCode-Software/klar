@@ -370,6 +370,46 @@ func (c *Checker) inferReturnType(returns []returnStmt) Type {
 }
 
 func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
+	bodyCtx := sctx.newChildContext()
+	// Variable declaration
+	// 	while data := read(), data.length > 0 {}
+	if stmt.Variable != nil {
+		valExpr := stmt.Variable.Values[0]
+		val := c.checkExpr(valExpr, sctx.newExpr())
+		// TODO: followDestructure skips invalid destructure patterns because
+		// it assumes [Checker.declareVars] reported errors for them already.
+		// Create a parameter that can report those errors.
+		for name, typ := range c.followDestructure(
+			stmt.Variable.Variables[0], val.Type, sctx.fid(), valExpr.GetRange(), true,
+		) {
+			if name, ok := name.(*ast.Symbol); ok {
+				obj := NewObject(name.Identifier, sctx.fid(), name.Range, c.Module, nil)
+				_ = NewVariable(obj, LocalVar, typ)
+				c.declare(bodyCtx, obj)
+			}
+		}
+		// If there's no explicit condition, the variable's value must be an optional
+		// type. Don't allow booleans because the variable would always be 'true'.
+		// TODO: Allow it to be a Result?
+		if stmt.Condition == nil && val.Kind() != KindOptional && val.Kind() != InvalidType {
+			err := klarerrs.Node(klarerrs.ErrNonOptionalWhileVar, valExpr)
+			err.Label = "The variable's value has type " + quoteAka(val.Type)
+			err.Info = klarerrs.TypeErrorInfo{GotType: val.Type.String()}
+			if val.Kind() == BoolType {
+				// Show a hint to remove/inline the variable declaration
+				hintWithDiff(
+					err,
+					"If trying to run the loop while this value is 'true', you don't need to declare a variable, because it will always be 'true'. The value alone can be used as the loop condition.",
+					klarerrs.DeletedRange{ranges.Range{
+						Start: stmt.Variable.Variables[0].GetRange().Start,
+						End:   valExpr.GetRange().Start,
+					}},
+				)
+			}
+			c.fileError(err, sctx.fid())
+		}
+	}
+
 	if stmt.Condition != nil {
 		cond := c.checkExpr(stmt.Condition, sctx.newExpr())
 		if typ := cond.Type; typ.Kind() != BoolType && typ.Kind() != InvalidType {
@@ -389,7 +429,7 @@ func (c *Checker) checkWhileStmt(stmt *ast.WhileStatement, sctx *stmtContext) {
 		}
 	}
 	// Body
-	bodySctx := newChildStmtContext(sctx, sctx.newChildContext(), allowNextStop)
+	bodySctx := newChildStmtContext(sctx, bodyCtx, allowNextStop)
 	c.recordBlock(stmt.Body, bodySctx)
 	c.checkBlock(stmt.Body.Body, bodySctx)
 }
@@ -408,6 +448,7 @@ func (c *Checker) checkControlStmt(stmt ast.Statement,
 		if !ok {
 			err := klarerrs.Node(klarerrs.ErrLoopLabelUndefined, label)
 			err.Label = "Label :" + label.Name + " doesn't exist"
+			err.Name = label.Name
 			if sctx.ctx.index > 0 {
 				err.SetParam("isFunc", true)
 				err.Label += " in this function"

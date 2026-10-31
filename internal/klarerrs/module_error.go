@@ -44,7 +44,7 @@ func (e *Error) handleModuleError() string {
 	case ErrImporterNotFound:
 		return "Imports aren't allowed from this file"
 	case ErrSingleFileImport:
-		return "Single-file modules can only import from the standard library"
+		return "A single-file module can only import from the standard library"
 	case ErrPrivateImport:
 		return path + " is private to another package and can't be imported"
 	case ErrModuleCompileError:

@@ -367,13 +367,7 @@ func (a *ForExpression) Equal(b2 Node) bool {
 	if a.Iterator != nil && b.Iterator != nil && !a.Iterator.Equal(b.Iterator) {
 		return false
 	}
-	if !a.Operator.Equal(b.Operator) {
-		return false
-	}
 	if a.Value != nil && b.Value != nil && !a.Value.Equal(b.Value) {
-		return false
-	}
-	if a.Block != nil && b.Block != nil && !a.Block.Equal(b.Block) {
 		return false
 	}
 	return true
@@ -1526,6 +1520,9 @@ func (a *WhileStatement) Equal(b2 Node) bool {
 	}
 	if a == nil || b == nil {
 		return a == b
+	}
+	if a.Variable != nil && b.Variable != nil && !a.Variable.Equal(b.Variable) {
+		return false
 	}
 	if a.Condition != nil && b.Condition != nil && !a.Condition.Equal(b.Condition) {
 		return false

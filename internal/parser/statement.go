@@ -213,9 +213,32 @@ func (p *Parser) parseForVariables() (
 func (p *Parser) ParseWhileStatement() *ast.WhileStatement {
 	p.Advance() // while
 	w := &ast.WhileStatement{}
+	// Unfortunately, the colon delimiting a loop label conflicts with
+	// the colon in a type annotation. Type annotations won't be allowed.
+	// - Type annotations make the loop less readable anyway
+	// - There is inconsistency when a type annotation is allowed in a for-loop,
+	// but not in a while-loop.
+	//
+	// We're also allowing only 1 binding for readability.
+	// TODO: Maybe change our minds on these.
 	if curr := p.CurrKind(); curr != lexer.LeftCurlyBrace && curr != lexer.Colon {
-		w.Condition = p.ParseExpression(ExpressionBindingPower)
-	} // Otherwise, it's an infinite loop
+		conditionOrVar := p.ParseExpression(ExpressionBindingPower)
+		if p.CurrKind() == lexer.ColonEqual {
+			p.Advance()
+			w.Variable = &ast.VariableDeclaration{
+				Variables: []ast.Assignable{p.validateAssignable(conditionOrVar)},
+				Values:    []ast.Expression{p.ParseExpression(ExpressionBindingPower)},
+				Range:     ranges.Range{conditionOrVar.GetRange().Start, p.lastTokEnd()},
+			}
+			// while var := value, condition
+			if p.CurrKind() == lexer.Comma {
+				p.Advance()
+				w.Condition = p.ParseExpression(ExpressionBindingPower)
+			}
+		} else {
+			w.Condition = conditionOrVar
+		}
+	}
 	w.Label = p.tryParseLoopLabel()
 	w.Body = p.ParseBlock()
 	return w

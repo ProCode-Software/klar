@@ -82,7 +82,7 @@ func (n *FloatLiteral) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *ForExpression) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{3, n.Iterator}, walkNode{5, n.Value}, walkNode{6, n.Block})
+	return walkFields(v, n, c, walkSlice[*AssignableTypePair]{1, n.Variables}, walkNode{3, n.Iterator}, walkNode{4, n.Value})
 }
 
 func (n *ForStatement) Walk(v Visitor, c *Cursor) StopCode {
@@ -338,5 +338,5 @@ func (n *WhenExpression) Walk(v Visitor, c *Cursor) StopCode {
 }
 
 func (n *WhileStatement) Walk(v Visitor, c *Cursor) StopCode {
-	return walkFields(v, n, c, walkNode{1, n.Condition}, walkNode{2, n.Label}, walkNode{3, n.Body})
+	return walkFields(v, n, c, walkNode{1, n.Variable}, walkNode{2, n.Condition}, walkNode{3, n.Label}, walkNode{4, n.Body})
 }

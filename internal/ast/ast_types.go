@@ -319,9 +319,7 @@ type ForExpression struct {
 	Variables []*AssignableTypePair
 	In        lexer.Position
 	Iterator  Expression
-	Operator  Operator
 	Value     Expression
-	Block     *Block
 }
 
 // Old docs for ForExpression:
@@ -417,10 +415,14 @@ type ForStatement struct {
 
 // A WhileStatement executes Body while Condition is true
 //
-//	while { ...infinite loop }
-//	while <expr> - while loop
+//	while { } // Infinite loop
+//	while <expr> {}
+//	while variable := value {}
+//	while variable := value, condition {}
 type WhileStatement struct {
 	BaseNode
+	Variable *VariableDeclaration // Can be nil
+	// Can be nil if Variable != nil or the loop is infinite
 	Condition Expression
 	Label     *Identifier
 	Body      *Block

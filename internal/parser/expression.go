@@ -627,23 +627,9 @@ func (p *Parser) ParseForExpression() *ast.ForExpression {
 	p.Advance() // for
 	f := &ast.ForExpression{}
 	f.Variables, f.In, f.Iterator = p.parseForVariables()
-	k := p.CurrKind()
-	switch {
-	case p.isEqual(p.Curr()):
-		// = or :=; neither are allowed
-		fallthrough
-	default:
-		p.Error(klarerrs.Token(klarerrs.ErrInvalidForExprOperator, p.Curr()))
-		p.AdvanceNonBoundary()
-		// TODO: should we still parse an expression after?
-	case isAssignment(k), k == lexer.Arrow:
-		// -> or any assignment except := or =
-		f.Operator = newOperator(p.Advance())
-		// Allow spread (...) to be included at the end, to spread entire loop.
-		f.Value = p.ParseExpressionFilter(excludeIf(lexer.Ellipsis), RangeBindingPower, try)
-	case k == lexer.LeftCurlyBrace:
-		f.Block = p.ParseBlock()
-	}
+	p.Expect(lexer.Arrow)
+	// Allow spread (...) to be included at the end, to spread entire loop.
+	f.Value = p.ParseExpressionFilter(excludeIf(lexer.Ellipsis), RangeBindingPower, try)
 	return f
 }
 

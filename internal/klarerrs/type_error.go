@@ -49,6 +49,7 @@ const (
 
 	ErrNotIterable         // Type isn't iterable (can be used in a 'for' loop)
 	ErrNonBoolWhileCond    // Condition in 'while' statement must be type Bool
+	ErrNonOptionalWhileVar // Implicit condition in 'while' statement with var decl must be an optional
 	ErrOver2LoopVars       // Can't declare more than 2 loop variables in a 'for' loop
 	ErrMultipleIntIterVars // Only 1 variable allowed when iterating over Int
 	ErrAssignToConst       // Attempted reassignment to constant reference
@@ -363,5 +364,7 @@ func (e *Error) handleTypeError() string {
 		return "Too many parameters in this initializer; there are only "
 	case ErrNonGenericType:
 		return "Type " + e.Name + " doesn't take any generic parameters"
+	case ErrNonOptionalWhileVar:
+		return "An explicit condition is required after this variable unless it's an optional"
 	}
 }
